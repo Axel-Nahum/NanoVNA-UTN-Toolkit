@@ -1,18 +1,28 @@
 import os
 import sys
 
+
+from pathlib import Path
 from PySide6.QtCore import QSettings
 
-def get_settings(path_inside_base):
-    if getattr(sys, 'frozen', False):
-        appdata = os.getenv("APPDATA")
-        base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
 
-        ruta = os.path.join(base, *path_inside_base.split("/"))
+def get_project_root(caller_path):
+    current = caller_path
 
-    else:
-        ui_dir = os.path.dirname(os.path.dirname(__file__))
+    for parent in current.parents:
+        if parent.name == "NanoVNA_UTN_Toolkit":
+            return parent
 
-        ruta = os.path.join(ui_dir, *path_inside_base.split("/"))
+    raise RuntimeError("Project root not found")
 
-    return QSettings(ruta, QSettings.Format.IniFormat)
+
+def get_settings(exe_path_inside_base, dev_path_inside_base, caller_path):
+    is_exe = getattr(sys, 'frozen', False)
+
+    base = get_project_root(caller_path)
+
+    selected_path = exe_path_inside_base if is_exe else dev_path_inside_base
+
+    final_path = base.joinpath(*selected_path.split("/"))
+
+    return QSettings(str(final_path), QSettings.IniFormat)

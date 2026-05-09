@@ -1,24 +1,30 @@
 import os
 import sys
+import logging
+
+logging.basicConfig(level=logging.INFO)
+
+from pathlib import Path
+
 from PySide6.QtCore import QTimer, QThread, Qt, QSettings
 
-def toggle_menu_dark_mode(self, light_dark_mode):
-    # Load configuration for UI colors and styles
-    if getattr(sys, 'frozen', False):
-        appdata = os.getenv("APPDATA")
-        ruta_colors = os.path.join(
-            appdata,
-            "NanoVNA-UTN-Toolkit",
-            "INI",
-            "colors_config",
-            "config.ini"
-        )
-        ruta_colors = os.path.normpath(ruta_colors)
-    else:
-        ui_dir = os.path.dirname(os.path.dirname(__file__))
-        ruta_colors = os.path.join(ui_dir, "ui", "graphics_windows", "ini", "config.ini")
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
-    settings = QSettings(ruta_colors, QSettings.IniFormat)
+
+def toggle_menu_dark_mode(self, light_dark_mode):
+
+    logging.info(f"Entressss")   
+
+    # Load configuration for UI colors and styles
+    settings = get_settings("NanoVNA-UTN-Toolkit/INI/colors_config/config.ini", "ui/graphics_windows/ini/config.ini", Path(__file__).resolve())
+
+    logging.info(f"SETTINGS: {settings.fileName()}")   
 
     if self.is_dark_mode:
         light_dark_mode.setText("Light Mode 🔆")
@@ -501,7 +507,10 @@ def toggle_menu_dark_mode(self, light_dark_mode):
         settings.setValue("Dark_Light/is_dark_mode", self.is_dark_mode)  
         settings.setValue("Dark_Light/text_light_dark", "Dark Mode 🌙")
     
-def dark_light_config(self, settings):
+def dark_light_config(self):
+
+    settings = get_settings("INI/colors_config/config.ini", "ui/graphics_windows/ini/config.ini", Path(__file__).resolve())
+
     # QWidget
     background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")
 

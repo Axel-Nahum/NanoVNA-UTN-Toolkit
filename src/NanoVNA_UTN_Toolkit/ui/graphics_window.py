@@ -306,11 +306,11 @@ class NanoVNAGraphics(QMainWindow):
 
         # Dark-Light mode settings
 
-        settings = get_settings("INI/colors_config/config.ini")
-
-        dark_light_config(self, settings)
+        dark_light_config(self)
 
 #------------------------------------------------------------------------------------------------------------------------------------------
+
+        # Load graphics configuration data from ini file
 
         config = load_graph_configuration()
 
@@ -319,7 +319,10 @@ class NanoVNAGraphics(QMainWindow):
         self.right_graph_type = config['graph_type_tab2']
         self.right_s_param    = config['s_param_tab2']
 
+#-------- Menu ---------------------------------------------------------------------------------------- #
+
         # --- Marker visibility flags ---
+
         self.show_graphic1_marker1 = True
         self.show_graphic2_marker1 = True
 
@@ -327,6 +330,7 @@ class NanoVNAGraphics(QMainWindow):
         self.show_graphic2_marker2 = False
 
         # --- Menu ---
+
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("File")
         edit_menu = menu_bar.addMenu("Edit")
@@ -335,7 +339,8 @@ class NanoVNAGraphics(QMainWindow):
         calibration_menu = menu_bar.addMenu("Calibration")
         help_menu = menu_bar.addMenu("Help")
 
-        # File menu actions
+        # --- File menu actions ---
+
         import_touchstone_action = file_menu.addAction("Import Touchstone Data (Calibration)")
         import_touchstone_action.triggered.connect(lambda: self.import_touchstone_data_calibration())
 
@@ -356,7 +361,8 @@ class NanoVNAGraphics(QMainWindow):
         graphics_markers = edit_menu.addAction("Graphics/Markers")
         graphics_markers.triggered.connect(lambda: self.edit_graphics_markers())
 
-        # Help menu actions
+        # --- Help menu actions ---
+
         report_action = help_menu.addAction("Report")
         report_action.triggered.connect(lambda: self.open_report_url())
 
@@ -369,6 +375,7 @@ class NanoVNAGraphics(QMainWindow):
 #-------- Lock Markers ----------------------------------------------------------------------------#
 
         # Load configuration for UI colors and styles
+
         if getattr(sys, 'frozen', False):
             appdata = os.getenv("APPDATA")
             base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
