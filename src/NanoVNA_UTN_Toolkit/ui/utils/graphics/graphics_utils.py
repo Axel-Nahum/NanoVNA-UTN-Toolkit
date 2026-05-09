@@ -103,7 +103,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     # --- Figure ---
     if graph_type == "Smith Diagram":
         # Use consolidated Smith chart functionality
-        from ...utils.smith_chart_utils import SmithChartConfig, SmithChartManager
+        from ....utils.smith_chart_utils import SmithChartConfig, SmithChartManager
         
         # Create custom config to match original settings
         config = SmithChartConfig()
@@ -1212,7 +1212,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     # --- Figure ---
     if graph_type == "Smith Diagram":
         # Use consolidated Smith chart functionality
-        from ...utils.smith_chart_utils import SmithChartConfig, SmithChartManager
+        from ....utils.smith_chart_utils import SmithChartConfig, SmithChartManager
         
         # Create custom config to match original settings
         config = SmithChartConfig()

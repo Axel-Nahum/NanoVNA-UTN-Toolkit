@@ -20,7 +20,7 @@ from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QIcon, QTextCursor, QFont, QPen
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.utils.edit_graphics_utils import create_edit_tab1, create_edit_tab2
+    from src.NanoVNA_UTN_Toolkit.ui.utils.edit_graphics.edit_graphics_utils import create_edit_tab1, create_edit_tab2
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -294,7 +294,7 @@ class EditGraphics(QMainWindow):
                      line_width=2, line_width2=2,
                      marker_size=2, marker_size2=2,
                      marker2_size=2, marker2_size2=2):
-        from NanoVNA_UTN_Toolkit.ui.utils.graphics_utils import create_left_panel, create_right_panel
+        from src.NanoVNA_UTN_Toolkit.ui.utils.graphics.graphics_utils import create_left_panel, create_right_panel
 
         settings.setValue("Graphic1/TraceColor", trace_color)
         settings.setValue("Graphic1/MarkerColor1", marker_color)

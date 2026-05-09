@@ -61,7 +61,7 @@ from .export import ExportDialog
 # Import dark-light mode toggle function with error handling to log issues without crashing the application
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.utils.light_dark_mode import toggle_menu_dark_mode, dark_light_config
+    from src.NanoVNA_UTN_Toolkit.ui.utils.settings.dark_light_mode.light_dark_mode import toggle_menu_dark_mode, dark_light_config
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -69,7 +69,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.utils.settings_utils import get_settings
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -79,8 +79,15 @@ except ImportError as e:
 # Import graphics utilities for creating panels and handling interactions
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.utils.graphics_utils import create_left_panel
-    from NanoVNA_UTN_Toolkit.ui.utils.graphics_utils import create_right_panel
+    from src.NanoVNA_UTN_Toolkit.ui.utils.graphics.graphics_utils import create_left_panel
+    from src.NanoVNA_UTN_Toolkit.ui.utils.graphics.graphics_utils import create_right_panel
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from src.NanoVNA_UTN_Toolkit.ui.utils.settings.load_graph_config.load_graph_config import load_graph_configuration
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
@@ -282,19 +289,12 @@ class NanoVNAGraphics(QMainWindow):
     def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11", vna_device=None, dut=None):
         super().__init__()
 
-        self.dut = dut
-
         # Store VNA device reference
+        self.dut = dut
         self.vna_device = vna_device
 
-        # Dark-Light mode settings
-
-        settings = get_settings("INI/colors_config/config.ini")
-
-        dark_light_config(self, settings)
-
         # Log graphics window initialization
-        
+
         logging.info("[graphics_window.__init__] Initializing graphics window")
         if vna_device:
             device_type = type(vna_device).__name__
@@ -302,7 +302,17 @@ class NanoVNAGraphics(QMainWindow):
         else:
             logging.warning("[graphics_window.__init__] No VNA device provided")
 
-        config = self._load_graph_configuration()
+#------------------------------------------------------------------------------------------------------------------------------------------
+
+        # Dark-Light mode settings
+
+        settings = get_settings("INI/colors_config/config.ini")
+
+        dark_light_config(self, settings)
+
+#------------------------------------------------------------------------------------------------------------------------------------------
+
+        config = load_graph_configuration()
 
         self.left_graph_type  = config['graph_type_tab1']
         self.left_s_param     = config['s_param_tab1']
@@ -774,38 +784,6 @@ class NanoVNAGraphics(QMainWindow):
         except Exception as e:
             logging.error(f"[GraphicsWindow] Error loading latest calibration: {e}")
 
-    def _load_graph_configuration(self):
-
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "ui", "graphics_windows", "ini", "config.ini")
-
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
-
-        return {
-            'graph_type_tab1': settings.value("Tab1/GraphType1", "Smith Diagram"),
-            's_param_tab1': settings.value("Tab1/SParameter", "S11"),
-            'graph_type_tab2': settings.value("Tab2/GraphType2", "Magnitude"),
-            's_param_tab2': settings.value("Tab2/SParameter", "S11"),
-            'trace_color1': settings.value("Graphic1/TraceColor", "blue"),
-            'marker_color1': settings.value("Graphic1/MarkerColor1", "blue"),
-            'marker2_color1': settings.value("Graphic1/MarkerColor2", "blue"),
-            'trace_size1': int(settings.value("Graphic1/TraceWidth", 2)),
-            'marker_size1': int(settings.value("Graphic1/MarkerWidth1", 6)),
-            'marker2_size1': int(settings.value("Graphic1/MarkerWidth2", 6)),
-            'trace_color2': settings.value("Graphic2/TraceColor", "blue"),
-            'marker_color2': settings.value("Graphic2/MarkerColor1", "blue"),
-            'marker2_color2': settings.value("Graphic2/MarkerColor2", "blue"),
-            'trace_size2': int(settings.value("Graphic2/TraceWidth", 2)),
-            'marker_size2': int(settings.value("Graphic2/MarkerWidth1", 6)),
-            'marker2_size2': int(settings.value("Graphic2/MarkerWidth2", 6))
-        }
-
     def _clear_panel_labels(self, panel_side='left'):
         """Clear all labels for a specific panel (left or right)."""
         if panel_side == 'left' and hasattr(self, 'labels_left') and self.labels_left:
@@ -952,7 +930,7 @@ class NanoVNAGraphics(QMainWindow):
         """Clear marker values but keep all panels and labels intact."""
         logging.info("[graphics_window._clear_all_marker_fields] Clearing marker values but keeping layout intact")
 
-        config = self._load_graph_configuration()
+        config = load_graph_configuration()
         graph_type_tab1 = config['graph_type_tab1']
         graph_type_tab2 = config['graph_type_tab2']
 
