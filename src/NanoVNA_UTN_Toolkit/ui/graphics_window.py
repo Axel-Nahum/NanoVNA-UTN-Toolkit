@@ -1,6 +1,9 @@
 """
 Graphic view window for NanoVNA devices with dual info panels and cursors.
 """
+
+#-------------------- IMPORTS -------------------------------------------------------------------------#    
+
 import os
 import sys
 import shutil
@@ -9,10 +12,53 @@ import logging
 import webbrowser
 import numpy as np
 import skrf as rf
-
 from skrf import Network
+from datetime import datetime
+
+# Matplotlib imports for plotting and interactive features
 
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
+from matplotlib.backends.backend_pdf import PdfPages
+
+# Configure matplotlib for better integration with PySide6 and improved aesthetics
+
+plt.rcParams['mathtext.fontset'] = 'cm'  
+plt.rcParams['text.usetex'] = False       
+plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['font.family'] = 'serif'    
+plt.rcParams['mathtext.rm'] = 'serif'  
+
+# Suppress matplotlib debug logs to keep console output clean, while allowing warnings and errors to be visible
+
+logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
+logging.getLogger('matplotlib.pyplot').setLevel(logging.WARNING)
+logging.getLogger('matplotlib').setLevel(logging.WARNING)
+
+# Suppress matplotlib debug logs
+
+from pathlib import Path
+
+# PySide6 imports for GUI components, with error handling to log issues without crashing the application
+
+from PySide6.QtCore import QTimer, QThread, Qt, QSettings
+from PySide6.QtWidgets import (
+    QLabel, QMainWindow, QVBoxLayout, QWidget, QFileDialog,
+    QPushButton, QHBoxLayout, QSizePolicy, QApplication, QGroupBox, QGridLayout,
+    QMenu, QFileDialog, QMessageBox, QProgressBar, QDialog, QLineEdit, QTextEdit, QScrollArea, 
+    QFileDialog, QMessageBox
+)
+from PySide6.QtGui import QIcon, QPixmap, QColor
+
+# Import exporters for saving data in different formats, with error handling to log issues without crashing the application
+
+from ..exporters.latex_exporter import LatexExporter
+from ..exporters.touchstone_exporter import TouchstoneExporter
+from .export import ExportDialog
+
+# Import dark-light mode toggle function with error handling to log issues without crashing the application
 
 try:
     from NanoVNA_UTN_Toolkit.ui.utils.light_dark_mode import toggle_menu_dark_mode 
@@ -21,46 +67,8 @@ except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
-    
-from src.NanoVNA_UTN_Toolkit.ui.wizard_windows import CalibrationWizard
 
-plt.rcParams['mathtext.fontset'] = 'cm'  
-plt.rcParams['text.usetex'] = False       
-plt.rcParams['axes.labelsize'] = 12
-plt.rcParams['font.family'] = 'serif'    
-plt.rcParams['mathtext.rm'] = 'serif'     
-
-from pathlib import Path
-from PySide6.QtWidgets import QFileDialog, QMessageBox
-
-# Import exporters
-from ..exporters.latex_exporter import LatexExporter
-from ..exporters.touchstone_exporter import TouchstoneExporter
-
-from matplotlib.backends.backend_pdf import PdfPages
-
-from NanoVNA_UTN_Toolkit.ui.calibration.methods import Methods
-from NanoVNA_UTN_Toolkit.ui.calibration.kits import KitsCalibrator
-
-from datetime import datetime
-
-# Suppress verbose matplotlib logging
-logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
-logging.getLogger('matplotlib.pyplot').setLevel(logging.WARNING)
-logging.getLogger('matplotlib').setLevel(logging.WARNING)
-
-from PySide6.QtCore import QTimer, QThread, Qt, QSettings
-from PySide6.QtWidgets import (
-    QLabel, QMainWindow, QVBoxLayout, QWidget, QFileDialog,
-    QPushButton, QHBoxLayout, QSizePolicy, QApplication, QGroupBox, QGridLayout,
-    QMenu, QFileDialog, QMessageBox, QProgressBar, QDialog, QLineEdit, QTextEdit, QScrollArea
-)
-from PySide6.QtGui import QIcon, QPixmap, QColor
-from .export import ExportDialog
-
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider
+# Import graphics utilities for creating panels and handling interactions
 
 try:
     from NanoVNA_UTN_Toolkit.ui.utils.graphics_utils import create_left_panel
@@ -70,7 +78,8 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
-# Import calibration data storage
+# Import calibration managers for handling OSM and THRU calibrations, with error handling to log issues without crashing the application
+
 try:
     from NanoVNA_UTN_Toolkit.calibration.calibration_manager import OSMCalibrationManager
     from NanoVNA_UTN_Toolkit.calibration.calibration_manager import THRUCalibrationManager
@@ -80,6 +89,16 @@ except ImportError as e:
     OSMCalibrationManager = None
     THRUCalibrationManager = None
 
+# Import calibration wizard for guiding users through the calibration process, with error handling to log issues without crashing the application
+
+from src.NanoVNA_UTN_Toolkit.ui.wizard_windows import CalibrationWizard
+
+# Import calibration methods and kits for managing different calibration techniques, with error handling to log issues without crashing the application
+
+from NanoVNA_UTN_Toolkit.ui.calibration.methods import Methods
+from NanoVNA_UTN_Toolkit.ui.calibration.kits import KitsCalibrator
+
+#-------------------- ABOUT DIALOG -------------------------------------------------------------------------#
 
 class AboutDialog(QDialog):
     """
