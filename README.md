@@ -1,12 +1,10 @@
 # NanoVNA-UTN-Toolkit
 
-UTN FRBA 2025 - ELECTRONIC MEASUREMENTS II - Course R5052
+UTN FRBA 2026 - Proyecto Final - Course R6051
 
 **Authors:**
 - Axel Nathanel Nahum ([@Axel-Nahum](https://github.com/Axel-Nahum))
-- Fernando Castro Canosa ([@fcascan](https://github.com/fcascan))
-- Hugo Alejandro Gomez ([@hugomezok](https://github.com/hugomezok))
-- Uriel Sandomir Laham ([@usandomir](https://github.com/usandomir))
+- Fernando Castro Canosa ([@fcascan](https://github.com/fcascan)) (ME2)
 
 ## PC Connection Steps
 ### 1. Install driver
