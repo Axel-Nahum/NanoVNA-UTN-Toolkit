@@ -20,6 +20,10 @@ plt.rcParams['mathtext.rm'] = 'serif'     # Números y texto coherentes
 
 from matplotlib.ticker import ScalarFormatter
 
+# Suppress matplotlib debug logs
+
+from pathlib import Path
+
 # --- Scikit-RF ---
 import skrf as rf
 import numpy as np
@@ -37,6 +41,14 @@ spin_style = """
     }
 """
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 ####################################################################################################
 #--------- Tab 1  ---------------------------------------------------------------------------------#
 ####################################################################################################
@@ -44,20 +56,11 @@ spin_style = """
 def create_edit_tab1(self, tabs, nano_window):
 
     # Load configuration for UI colors and styles
-    if getattr(sys, 'frozen', False):
-        appdata = os.getenv("APPDATA")
-        ruta_colors = os.path.join(
-            appdata,
-            "NanoVNA-UTN-Toolkit",
-            "INI",
-            "colors_config",
-            "config.ini"
-        )
-    else:
-        ui_dir = os.path.dirname(os.path.dirname(__file__))
-        ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
-
-    settings = QSettings(ruta_colors, QSettings.IniFormat)
+    settings = get_settings(
+        "INI/colors_config/config.ini",
+        "ui/graphics_windows/ini/config.ini", 
+        Path(__file__).resolve()
+    )
 
     groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
     groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"
@@ -556,20 +559,11 @@ def create_edit_tab1(self, tabs, nano_window):
 def create_edit_tab2(self, tabs, nano_window):
 
     # Load configuration for UI colors and styles
-    if getattr(sys, 'frozen', False):
-        appdata = os.getenv("APPDATA")
-        ruta_colors = os.path.join(
-            appdata,
-            "NanoVNA-UTN-Toolkit",
-            "INI",
-            "colors_config",
-            "config.ini"
-        )
-    else:
-        ui_dir = os.path.dirname(os.path.dirname(__file__))
-        ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
-
-    settings = QSettings(ruta_colors, QSettings.IniFormat)
+    settings = get_settings(
+        "INI/colors_config/config.ini",
+        "ui/graphics_windows/ini/config.ini", 
+        Path(__file__).resolve()
+    )
 
     groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
     groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"
