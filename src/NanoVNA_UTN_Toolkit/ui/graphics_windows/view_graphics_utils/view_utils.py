@@ -21,6 +21,10 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.lines import Line2D
 
+# Suppress matplotlib debug logs
+
+from pathlib import Path
+
 from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
     QPushButton, QTabWidget, QFrame, QSizePolicy, QApplication,
@@ -28,23 +32,25 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QSettings
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 def create_tab1(self):
 
     # Load configuration for UI colors and styles
-    if getattr(sys, 'frozen', False):
-        appdata = os.getenv("APPDATA")
-        ruta_colors = os.path.join(
-            appdata,
-            "NanoVNA-UTN-Toolkit",
-            "INI",
-            "colors_config",
-            "config.ini"
-        )
-    else:
-        ui_dir = os.path.dirname(os.path.dirname(__file__))
-        ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+    settings = get_settings(
+        "INI/colors_config/config.ini",
+        "ui/graphics_windows/ini/config.ini", 
+        Path(__file__).resolve()
+    )
 
-    settings = QSettings(ruta_colors, QSettings.IniFormat)
+    graph_type1 = settings.value("Tab1/GraphType1", "Magnitudes")
+    s_param1 = settings.value("Tab1/SParameter", "S11")
 
     groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
     groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"
@@ -108,25 +114,6 @@ def create_tab1(self):
     menubar_item_color = settings.value("Dark_Light/QMenuBar_item/color", "white")
     menubar_item_padding = settings.value("Dark_Light/QMenuBar_item/padding", "4px 10px")
     menubar_item_selected_bg = settings.value("Dark_Light/QMenuBar_item_selected/background-color", "#4d4d4d")
-
-    # Load configuration for UI colors and styles
-    if getattr(sys, 'frozen', False):
-        appdata = os.getenv("APPDATA")
-        ruta_colors = os.path.join(
-            appdata,
-            "NanoVNA-UTN-Toolkit",
-            "INI",
-            "colors_config",
-            "config.ini"
-        )
-    else:
-        ui_dir = os.path.dirname(os.path.dirname(__file__))
-        ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
-
-    settings = QSettings(ruta_colors, QSettings.IniFormat)
-
-    graph_type1 = settings.value("Tab1/GraphType1", "Smith Diagram")
-    s_param1 = settings.value("Tab1/SParameter", "S11")
 
     tab1 = QWidget()
     tab1_layout = QHBoxLayout(tab1)
@@ -278,26 +265,17 @@ def create_tab1(self):
 def create_tab2(self):
 
     # Load configuration for UI colors and styles
-    if getattr(sys, 'frozen', False):
-        appdata = os.getenv("APPDATA")
-        ruta_colors = os.path.join(
-            appdata,
-            "NanoVNA-UTN-Toolkit",
-            "INI",
-            "colors_config",
-            "config.ini"
-        )
-    else:
-        ui_dir = os.path.dirname(os.path.dirname(__file__))
-        ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
-
-    settings = QSettings(ruta_colors, QSettings.IniFormat)
-
-    groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
-    groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"
+    settings = get_settings(
+        "INI/colors_config/config.ini",
+        "ui/graphics_windows/ini/config.ini", 
+        Path(__file__).resolve()
+    )
 
     graph_type2 = settings.value("Tab2/GraphType2", "Smith Diagram")
     s_param2 = settings.value("Tab2/SParameter", "S11")
+
+    groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
+    groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"
 
     # QTabWidget pane
     tabwidget_pane_bg = settings.value("Dark_Light/QTabWidget_pane/background-color", "#3b3b3b")
