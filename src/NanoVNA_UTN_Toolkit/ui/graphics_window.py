@@ -61,12 +61,14 @@ from .export import ExportDialog
 # Import dark-light mode toggle function with error handling to log issues without crashing the application
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.utils.settings.dark_light_mode.light_dark_mode import toggle_menu_dark_mode, dark_light_config
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.dark_light_mode.light_dark_mode import toggle_menu_dark_mode, dark_light_config
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
+
+# Import get_settings 
 
 try:
     from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
@@ -79,16 +81,26 @@ except ImportError as e:
 # Import graphics utilities for creating panels and handling interactions
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.utils.graphics.graphics_utils import create_left_panel
-    from src.NanoVNA_UTN_Toolkit.ui.utils.graphics.graphics_utils import create_right_panel
+    from NanoVNA_UTN_Toolkit.ui.utils.graphics.graphics_utils import create_left_panel
+    from NanoVNA_UTN_Toolkit.ui.utils.graphics.graphics_utils import create_right_panel
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+# Import load graph configuration
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.load_graph_config.load_graph_config import load_graph_configuration
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.utils.settings.load_graph_config.load_graph_config import load_graph_configuration
+    from NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration import handle_save_calibration
 except ImportError as e:
+    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -106,7 +118,7 @@ except ImportError as e:
 
 # Import calibration wizard for guiding users through the calibration process, with error handling to log issues without crashing the application
 
-from src.NanoVNA_UTN_Toolkit.ui.wizard_windows import CalibrationWizard
+from NanoVNA_UTN_Toolkit.ui.wizard_windows import CalibrationWizard
 
 # Import calibration methods and kits for managing different calibration techniques, with error handling to log issues without crashing the application
 
@@ -376,15 +388,11 @@ class NanoVNAGraphics(QMainWindow):
 
         # Load configuration for UI colors and styles
 
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "ui", "graphics_windows", "ini", "config.ini")
-
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        settings = get_settings(
+            "INI/colors_config/config.ini",
+            "ui/graphics_windows/ini/config.ini", 
+            Path(__file__).resolve()
+        )
 
         self.markers_locked = settings.value("Markers/locked", False, type=bool)
 
@@ -397,7 +405,7 @@ class NanoVNAGraphics(QMainWindow):
 
         #self.lock_markers.triggered.connect(toggle_markers_lock) 
 
-#-------- Dark-light Mode ----------------------------------------------------------------------------#
+#-------- Dark-light Mode --------------------------------------------------------------------------- #
 
         text_light_dark = settings.value("Dark_Light/text_light_dark", "text_light_dark")
 
@@ -406,6 +414,8 @@ class NanoVNAGraphics(QMainWindow):
         self.is_dark_mode = settings.value("Dark_Light/is_dark_mode", False, type=bool)
 
         light_dark_mode.triggered.connect(lambda: toggle_menu_dark_mode(self, light_dark_mode))
+
+#-------- Other options ---------------------------------------------------------------------------- #
 
         choose_graphics = view_menu.addAction("Graphics")
         choose_graphics.triggered.connect(self.open_view)  
@@ -428,39 +438,6 @@ class NanoVNAGraphics(QMainWindow):
         select_calibration.triggered.connect(lambda: self.select_kit_dialog())
 
         sweep_load_calibration = calibration_menu.addAction("Save Calibration (Kit)")
-
-        def handle_save_calibration(self):
-
-            # Load configuration for UI colors and styles
-            if getattr(sys, 'frozen', False):
-                appdata = os.getenv("APPDATA")
-                config_path = os.path.join(
-                    appdata,
-                    "NanoVNA-UTN-Toolkit",
-                    "INI",
-                    "calibration_config",
-                    "calibration_config.ini"
-                )
-                config_path = os.path.normpath(config_path)
-            else:
-                ui_dir = os.path.dirname(os.path.dirname(__file__))
-                config_path = os.path.join(ui_dir, "calibration", "config", "calibration_config.ini")
-
-            settings = QSettings(config_path, QSettings.IniFormat)
-
-            settings.sync()
-
-            # Read values from INI
-            kits_ok = settings.value("Calibration/Kits", False, type=bool)
-            no_calibration = settings.value("Calibration/NoCalibration", False, type=bool)
-
-            # Check if calibration was performed from scratch
-            if not kits_ok and not no_calibration:
-                # Calibration was done from scratch → execute save
-                self.save_kit_dialog()
-            else:
-                # Calibration was not done from scratch → show warning
-                self.show_calibration_warning()
 
         # Connect the action to the handler
         sweep_load_calibration.triggered.connect(lambda: handle_save_calibration(self))

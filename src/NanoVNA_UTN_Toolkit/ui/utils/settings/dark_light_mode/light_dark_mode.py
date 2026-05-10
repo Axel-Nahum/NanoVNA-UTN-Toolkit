@@ -22,7 +22,11 @@ def toggle_menu_dark_mode(self, light_dark_mode):
     logging.info(f"Entressss")   
 
     # Load configuration for UI colors and styles
-    settings = get_settings("NanoVNA-UTN-Toolkit/INI/colors_config/config.ini", "ui/graphics_windows/ini/config.ini", Path(__file__).resolve())
+    settings = get_settings(
+        "INI/colors_config/config.ini", 
+        "ui/graphics_windows/ini/config.ini", 
+        Path(__file__).resolve()
+    )
 
     logging.info(f"SETTINGS: {settings.fileName()}")   
 
@@ -509,7 +513,11 @@ def toggle_menu_dark_mode(self, light_dark_mode):
     
 def dark_light_config(self):
 
-    settings = get_settings("INI/colors_config/config.ini", "ui/graphics_windows/ini/config.ini", Path(__file__).resolve())
+    settings = get_settings(
+        "INI/colors_config/config.ini", 
+        "ui/graphics_windows/ini/config.ini", 
+        Path(__file__).resolve()
+    )
 
     # QWidget
     background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")

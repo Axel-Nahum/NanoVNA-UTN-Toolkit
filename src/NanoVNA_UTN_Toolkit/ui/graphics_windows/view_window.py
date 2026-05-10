@@ -21,8 +21,8 @@ from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QIcon, QTextCursor, QFont, QPen
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.utils.view_graphics.view_utils import create_tab1
-    from src.NanoVNA_UTN_Toolkit.ui.utils.view_graphics.view_utils import create_tab2
+    from NanoVNA_UTN_Toolkit.ui.utils.view_graphics.view_utils import create_tab1
+    from NanoVNA_UTN_Toolkit.ui.utils.view_graphics.view_utils import create_tab2
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
@@ -274,7 +274,7 @@ class View(QMainWindow):
         self.update_graph()
 
     def on_apply_clicked(self):
-        from src.NanoVNA_UTN_Toolkit.ui.utils.graphics.graphics_utils import create_left_panel, create_right_panel
+        from NanoVNA_UTN_Toolkit.ui.utils.graphics.graphics_utils import create_left_panel, create_right_panel
 
         import os
         from PySide6.QtCore import QSettings
