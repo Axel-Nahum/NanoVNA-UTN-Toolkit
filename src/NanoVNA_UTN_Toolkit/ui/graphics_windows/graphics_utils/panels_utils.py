@@ -79,6 +79,7 @@ def _clear_panel_labels(self, panel_side='left'):
                 self.labels_left["freq"].clearFocus()
             except Exception:
                 pass  # Ignore if widget doesn't have these methods
+
     elif panel_side == 'right' and hasattr(self, 'labels_right') and self.labels_right:
         # Clear right panel marker 1 labels
         if "freq" in self.labels_right:
@@ -126,6 +127,7 @@ def _clear_panel_labels(self, panel_side='left'):
                 self.labels_left_2["freq"].clearFocus()
             except Exception:
                 pass  # Ignore if widget doesn't have these methods
+            
     elif panel_side == 'right' and hasattr(self, 'labels_right_2') and self.labels_right_2:
         # Clear right panel marker 2 labels
         if "freq" in self.labels_right_2:
@@ -149,6 +151,7 @@ def _clear_panel_labels(self, panel_side='left'):
                 self.labels_right_2["freq"].clearFocus()
             except Exception:
                 pass  # Ignore if widget doesn't have these methods
+            
         self.labels_right_2.get("phase")
         self.labels_right_2["phase"].setText("Phase: --")
         self.labels_right_2.get("z")

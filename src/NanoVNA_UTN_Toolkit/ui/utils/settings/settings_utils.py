@@ -3,7 +3,6 @@ import sys
 from pathlib import Path
 from PySide6.QtCore import QSettings
 
-
 def get_base_dir(is_exe, caller_path=None):
     
     if is_exe:

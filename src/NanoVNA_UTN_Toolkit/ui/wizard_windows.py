@@ -37,8 +37,7 @@ from datetime import datetime
 
 # Import calibration data storage
 try:
-    from NanoVNA_UTN_Toolkit.calibration.calibration_manager import OSMCalibrationManager
-    from NanoVNA_UTN_Toolkit.calibration.calibration_manager import THRUCalibrationManager
+    from NanoVNA_UTN_Toolkit.calibration.calibration_manager import OSMCalibrationManager, THRUCalibrationManager
 except ImportError as e:
     logging.error("Failed to import OSMCalibrationManager: %s", e)
     logging.error("Failed to import THRUCalibrationManager: %s", e)

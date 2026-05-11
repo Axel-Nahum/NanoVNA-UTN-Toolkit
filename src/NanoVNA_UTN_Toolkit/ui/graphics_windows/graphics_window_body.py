@@ -15,13 +15,15 @@ from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_utils impor
     create_right_panel
 )
 
-def setup_graphics_window_body(
-    self,
-    settings,
-    config,
-    left_graph_type,
-    left_s_param
-):
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_param):
 
     # --- Central widget ---
     central_widget = QWidget()
@@ -42,7 +44,7 @@ def setup_graphics_window_body(
     # Sweep button
     self.sweep_button = QPushButton("Run Sweep")
     self.sweep_button.setMaximumWidth(120)
-    self.sweep_button.clicked.connect(self.run_sweep)
+    self.sweep_button.clicked.connect(lambda: run_sweep(self))
 
     self.sweep_info_label = QLabel(
         "Sweep: 0.050 MHz - 1500.000 MHz, 101 points"
