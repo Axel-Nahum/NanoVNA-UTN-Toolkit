@@ -16,7 +16,7 @@ from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_utils impor
 )
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep
+    from src.NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)

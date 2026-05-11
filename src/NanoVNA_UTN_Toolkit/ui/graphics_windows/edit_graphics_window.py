@@ -27,6 +27,13 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.graphics_update import recreate_single_plot
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
 
 class EditGraphics(QMainWindow):
@@ -346,7 +353,8 @@ class EditGraphics(QMainWindow):
 
         self.nano_window.update_plots_with_new_data(skip_reset=True)
 
-        self.nano_window._recreate_single_plot(
+        recreate_single_plot(
+            self,
             ax=self.nano_window.ax_left,
             fig=self.nano_window.fig_left,
             s_data=data_left,
@@ -365,7 +373,8 @@ class EditGraphics(QMainWindow):
             cursor_graph_2=self.nano_window.cursor_left_2
         )
 
-        self.nano_window._recreate_single_plot(
+        recreate_single_plot(
+            self,
             ax=self.nano_window.ax_right,
             fig=self.nano_window.fig_right,
             s_data=data_right,

@@ -40,6 +40,56 @@ except ImportError as e:
 
 # ----------------------------------------------------------------------------------------------------------------- #
 
+def update_reconnect_button_state(self):
+    """Update the reconnect button state based on device connection."""
+    if not self.vna_device:
+        # Instead of disabling, show "Connect" button so user can try to connect
+        self.reconnect_button.setEnabled(True)
+        self.reconnect_button.setText("Connect")
+        self.reconnect_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #45A049;
+            }
+        """)
+        return
+        
+    is_connected = self.vna_device.connected()
+
+    if is_connected:
+        # Connected state: standard button saying "Reconnect" (same style as Run Sweep button)
+        self.reconnect_button.setEnabled(True)
+        self.reconnect_button.setText("Reconnect")
+        # Force reset to standard button appearance by setting style to None and updating
+        self.reconnect_button.setStyleSheet("")
+        self.reconnect_button.style().unpolish(self.reconnect_button)
+        self.reconnect_button.style().polish(self.reconnect_button)
+        self.reconnect_button.update()
+    else:
+        # Disconnected state: green button saying "Connect"
+        self.reconnect_button.setEnabled(True)
+        self.reconnect_button.setText("Connect")
+        self.reconnect_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 5px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #45A049;
+            }
+        """)
+
 def _reset_sweep_ui(self):
 
     if hasattr(self, "sweep_button"):
@@ -51,7 +101,7 @@ def _reset_sweep_ui(self):
         self.sweep_progress_bar.setValue(0)
 
     if hasattr(self, "_update_reconnect_button_state"):
-        self._update_reconnect_button_state()
+        update_reconnect_button_state(self)
 
 def run_sweep(self):
     """Run a sweep on the connected device."""
