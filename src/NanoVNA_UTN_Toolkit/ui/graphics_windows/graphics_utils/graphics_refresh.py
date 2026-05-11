@@ -22,6 +22,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration_path_utils import get_calibration_path
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ----------------------------------------------------------------------------------------------------------------- #
 
 def _reset_sweep_ui(self):
@@ -433,11 +441,12 @@ def run_sweep(self):
 
         logging.info(f"[graphics_window.run_sweep] calibration_method leído: '{calibration_method}'")
 
-        if getattr(sys, 'frozen', False):
-            cal_dir = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit", "Calibration", "osm_results")
-        else: 
-            # Cal_Directory
-            cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
+        # Cal_Directory
+        cal_dir = get_calibration_path(
+            "Calibration/osm_results",
+            "calibration/osm_results",
+            Path(__file__).resolve()
+        )
         methods = Methods(cal_dir)
 
         kits_ok = settings.value("Calibration/Kits", False, type=bool)
@@ -458,51 +467,55 @@ def run_sweep(self):
                 s11 = methods.osm_calibrate_s11(s11_med)
                 s21 = s21_med  # S21 sin calibrar
             elif calibration_method == "Normalization":
-                # Cal_Directory
-                if getattr(sys, 'frozen', False):
-                    cal_dir = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit", "Calibration", "thru_results")
-                else: 
-                    # Cal_Directory
-                    cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
 
+                # Cal_Directory
+                cal_dir = get_calibration_path(
+                    "Calibration/thru_results",
+                    "Calibration/thru_results",
+                    Path(__file__).resolve()
+                )
                 methods = Methods(cal_dir)
+
                 s11 = s11_med  # S11 sin calibrar
                 s21 = methods.normalization_calibrate_s21(s21_med)
             elif calibration_method == "1-Port+N":
 
                 # Cal_Directory
-                if getattr(sys, 'frozen', False):
-                    cal_dir = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit", "Calibration", "osm_results")
-                else: 
-                    # Cal_Directory
-                    cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
+                cal_dir = get_calibration_path(
+                    "Calibration/osm_results",
+                    "Calibration/osm_results",
+                    Path(__file__).resolve()
+                )
                 methods = Methods(cal_dir)
 
                 s11 = methods.osm_calibrate_s11(s11_med)
 
-                if getattr(sys, 'frozen', False):
-                    cal_dir = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit", "Calibration", "thru_results")
-                else: 
-                    # Cal_Directory
-                    cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
+                # Cal_Directory
+
+                cal_dir = get_calibration_path(
+                    "Calibration/thru_results",
+                    "Calibration/thru_results",
+                    Path(__file__).resolve()
+                )
                 methods = Methods(cal_dir)
             
                 s21 = methods.normalization_calibrate_s21(s21_med)
 
             elif calibration_method == "Enhanced-Response":
 
-                # Cal_Directory
-                if getattr(sys, 'frozen', False):
-                    osm_dir = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit", "Calibration", "osm_results")
-                else: 
-                    # Cal_Directory
-                    osm_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "osm_results")
+                # Osm_Directory
+                osm_dir = get_calibration_path(
+                    "Calibration/osm_results",
+                    "Calibration/osm_results",
+                    Path(__file__).resolve()
+                )
 
-                if getattr(sys, 'frozen', False):
-                    thru_dir = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit", "Calibration", "thru_results")
-                else: 
-                    # Cal_Directory
-                    thru_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "thru_results")
+                # Thru_Directory
+                thru_dir = get_calibration_path(
+                    "Calibration/thru_results",
+                    "Calibration/thru_results",
+                    Path(__file__).resolve()
+                )
 
                 s11, s21 = methods.enhanced_response_calibrate(s11_med, s21_med, osm_dir, thru_dir)
             else:
@@ -511,11 +524,11 @@ def run_sweep(self):
 
         elif kits_ok == True and no_calibration == False and not is_import_dut:
 
-            if getattr(sys, 'frozen', False):
-                selected_kit_dir = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit", "Calibration", "kits")
-            else: 
-                # Cal_Directory
-                selected_kit_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration", "kits")
+            selected_kit_dir = get_calibration_path(
+                "Calibration/Kits",
+                "Calibration/Kits",
+                Path(__file__).resolve()
+            )
 
             kits_calibrator = KitsCalibrator(selected_kit_dir)
             s11, s21 = kits_calibrator.kits_selected(calibration_method, kit_name, s11_med, s21_med)
