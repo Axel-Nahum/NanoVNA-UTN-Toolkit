@@ -142,6 +142,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.graphics_update import update_plots_with_new_data
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 #-------------------- ABOUT DIALOG -------------------------------------------------------------------------#
 
 class AboutDialog(QDialog):
@@ -3319,8 +3327,6 @@ class NanoVNAGraphics(QMainWindow):
         dialog.setLayout(layout)
         dialog.exec()
 
-
-
     def toggle_db_times(self, event, new_mode):
         """
         Toggle between dB and times for the clicked graph.
@@ -3378,7 +3384,7 @@ class NanoVNAGraphics(QMainWindow):
 
             logging.info(f"Unit {new_mode} saved for {ini_section}")
 
-            self.update_plots_with_new_data(skip_reset=False)
+            update_plots_with_new_data(self, skip_reset=False)
 
             self.update_cursor()
             self.update_right_cursor()

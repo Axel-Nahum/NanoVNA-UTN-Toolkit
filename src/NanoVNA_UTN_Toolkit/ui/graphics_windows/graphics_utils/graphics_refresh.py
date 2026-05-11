@@ -30,6 +30,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.graphics_update import update_plots_with_new_data
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ----------------------------------------------------------------------------------------------------------------- #
 
 def _reset_sweep_ui(self):
@@ -558,7 +566,7 @@ def run_sweep(self):
         self.s21 = s21
         
         # Update plots with new data (skip graph-change reset since we're doing a sweep reset)
-        self.update_plots_with_new_data(skip_reset=True)
+        update_plots_with_new_data(self, skip_reset=True)
         self.sweep_progress_bar.setValue(100)
         QApplication.processEvents()
         
