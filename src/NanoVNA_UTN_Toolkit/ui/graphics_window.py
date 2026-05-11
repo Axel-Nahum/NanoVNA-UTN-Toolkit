@@ -666,43 +666,6 @@ class NanoVNAGraphics(QMainWindow):
         except Exception as e:
             logging.error(f"[GraphicsWindow] Error loading latest calibration: {e}")
 
-    def _clear_axis_and_show_message(self, panel_side='right', message_pos=(0.5, 0.5)):
-        """Clear axis and show waiting message for a specific panel."""
-        if panel_side == 'right':
-            if hasattr(self, 'ax_right') and self.ax_right:
-                self.ax_right.text(
-                    message_pos[0], message_pos[1],
-                    r"$\mathrm{Waiting\ for\ sweep\ data\ ...}$",
-                    transform=self.ax_right.transAxes,
-                    ha='center', va='center',
-                    fontsize=15, color='white'
-                )
-
-                for line in self.ax_right.lines:
-                    line.remove()
-
-                self.ax_right.grid(False)
-
-            if hasattr(self, 'canvas_right') and self.canvas_right:
-                self.canvas_right.draw()
-        elif panel_side == 'left':
-            if hasattr(self, 'ax_left') and self.ax_left:
-                self.ax_left.text(
-                    message_pos[0], message_pos[1],
-                    r"$\mathrm{Waiting\ for\ sweep\ data\ ...}$",
-                    transform=self.ax_left.transAxes,
-                    ha='center', va='center',
-                    fontsize=15, color='white'
-                )
-
-                for line in self.ax_left.lines:
-                    line.remove()
-
-                self.ax_left.grid(False)
-
-            if hasattr(self, 'canvas_left') and self.canvas_left:
-                self.canvas_left.draw()
-
     def _reset_markers_after_sweep(self):
         """Reset markers and all marker-dependent information after a sweep completes."""
         logging.info("[graphics_window._reset_markers_after_sweep] Resetting markers after sweep completion")
