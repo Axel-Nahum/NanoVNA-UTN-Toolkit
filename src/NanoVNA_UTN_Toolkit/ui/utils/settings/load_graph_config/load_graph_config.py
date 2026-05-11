@@ -1,35 +1,27 @@
 import os
 import sys
 
+from pathlib import Path
+
 from PySide6.QtCore import QSettings
+
+# Import get_settings 
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 def load_graph_configuration():
 
-    # Load configuration for UI colors and styles
-    if getattr(sys, 'frozen', False):
-        appdata = os.getenv("APPDATA")
-        base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-        graph_config = os.path.join(base, "INI", "colors_config", "config.ini") # VER
-    else:
-        base_dir = os.path.dirname(
-            os.path.dirname(
-                os.path.dirname(
-                    os.path.dirname(
-                        os.path.dirname(__file__)
-                    )
-                )
-            )
-        )
-
-        graph_config = os.path.join(
-            base_dir,
-            "ui",
-            "graphics_windows",
-            "ini",
-            "config.ini"
-        )
-
-    settings = QSettings(graph_config, QSettings.IniFormat)
+    settings = get_settings(
+        "INI/colors_config/config.ini",
+        "ui/graphics_windows/ini/config.ini", 
+        Path(__file__).resolve()
+    )
 
     return {
         'graph_type_tab1': settings.value("Tab1/GraphType1", "Smith Diagram"),
