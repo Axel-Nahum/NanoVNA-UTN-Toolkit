@@ -38,6 +38,20 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from src.NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.sliders_reset import _reset_sliders_before_sweep
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from src.NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.cursors_reset import _reset_markers_after_sweep
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ----------------------------------------------------------------------------------------------------------------- #
 
 def update_reconnect_button_state(self):
@@ -133,7 +147,7 @@ def run_sweep(self):
     try:
         # Reset sliders and clear all marker information before starting sweep
         logging.info("[graphics_window.run_sweep] Preparing for sweep - resetting sliders and clearing info")
-        self._reset_sliders_before_sweep()
+        _reset_sliders_before_sweep(self)
         
         # Disable sweep button and show progress bar
         self.sweep_button.setEnabled(False)
@@ -621,7 +635,7 @@ def run_sweep(self):
         QApplication.processEvents()
         
         # Reset markers and all marker-dependent information after new sweep
-        self._reset_markers_after_sweep()
+        _reset_markers_after_sweep(self)
         
         # Additional reset specifically for Run Sweep to ensure cursor info is updated
         def final_run_sweep_cursor_reset():

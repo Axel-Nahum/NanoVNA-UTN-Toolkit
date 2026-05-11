@@ -16,7 +16,7 @@ from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_utils impor
 )
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep
+    from src.NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep, update_reconnect_button_state
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -92,7 +92,7 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
     self.main_layout_vertical.addLayout(sweep_control_layout)
 
     # Initial reconnect button state
-    self._update_reconnect_button_state()
+    update_reconnect_button_state(self)
 
     # --- Initialize empty data ---
     self.freqs = None
