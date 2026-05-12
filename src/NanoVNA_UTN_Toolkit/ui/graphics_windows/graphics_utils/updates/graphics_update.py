@@ -46,6 +46,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import toggle_marker_visibility, toggle_marker2_visibility
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ------------------------------------------------------------------------------------------------------------------------------ #
 
 def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param, 
@@ -341,8 +349,8 @@ def update_plots_with_new_data(self, skip_reset=False):
                 self.info_panel_left,
                 self.info_panel_left_2
             )
-            self.toggle_marker_visibility(0, self.show_graphic1_marker1)
-            self.toggle_marker2_visibility(0, self.show_graphic1_marker2)
+            toggle_marker_visibility(self, 0, self.show_graphic1_marker1)
+            toggle_marker2_visibility(self, 0, self.show_graphic1_marker2)
 
         if hasattr(self, 'update_right_data') and self.update_right_data:
             self.slider_right, self.slider_right_2 = self.update_right_data(

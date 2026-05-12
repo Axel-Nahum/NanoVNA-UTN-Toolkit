@@ -10,7 +10,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility, force_marker_visibility_2
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -133,7 +133,7 @@ def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_colo
         force_marker_visibility(self, marker_color_left=marker_color_left, marker_color_right=marker_color_right, 
             marker1_size_left=marker1_size_left, marker1_size_right=marker1_size_right)
 
-        self._force_marker_visibility_2(marker_color_left=marker2_color_left, marker_color_right=marker2_color_right,
+        force_marker_visibility_2(self, marker_color_left=marker2_color_left, marker_color_right=marker2_color_right,
             marker_size_left=marker2_size_left, marker_size_right=marker2_size_right)
 
         if self.show_graphic1_marker1 and not self.show_graphic1_marker2:

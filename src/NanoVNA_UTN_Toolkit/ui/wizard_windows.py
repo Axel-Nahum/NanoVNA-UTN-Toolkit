@@ -52,6 +52,14 @@ from matplotlib.figure import Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.lines import Line2D
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration import update_calibration_label_from_method
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 class CalibrationWizard(QMainWindow):
     def __init__(self, vna_device=None, parent=None, caller="welcome"):
         super().__init__()
@@ -1793,7 +1801,7 @@ class CalibrationWizard(QMainWindow):
 
                 # Update calibration label with current method
                 try:
-                    graphics_window.update_calibration_label_from_method(self.selected_method)
+                    update_calibration_label_from_method(self, self.selected_method)
                 except Exception as e:
                     logging.error(f"Failed to update calibration label in graphics window: {e}")
                 

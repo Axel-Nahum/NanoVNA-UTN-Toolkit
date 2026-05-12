@@ -592,3 +592,161 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                 
             except Exception as e:
                 print(f"Error forcing cursor_right to ax_right: {e}")
+
+def toggle_marker_visibility(self, marker_index, show=True):
+    marker = self.markers[marker_index]
+    cursor = marker["cursor"]
+    slider = marker["slider"]
+    labels = marker["label"]
+    update_cursor_func = marker.get("update_cursor", None)
+
+    logging.info(f"cursor data: {cursor.get_data()}")
+
+    # Check if cursor is valid before using it
+    if cursor is None or cursor.figure is None:
+        logging.warning(f"[graphics_window.toggle_marker_visibility] Cursor {marker_index} is invalid, skipping toggle")
+        return
+
+    cursor.set_visible(show)
+
+    if marker_index == 0:  
+        slider = self.slider_left
+        slider_2 = self.slider_left_2
+        fig = self.fig_left
+    elif marker_index == 1: 
+        slider = self.slider_right
+        slider_2 = self.slider_right_2
+        fig = self.fig_right
+    else:
+        logging.warning(f"[move_marker2_slider_left] Invalid marker_index {marker_index}")
+        return
+
+    if show:
+        slider_2.ax.set_position([0.55,0.04,0.35,0.03])
+
+        slider.ax.set_visible(True)
+        slider.set_active(True)
+        if hasattr(marker, "slider_callback"):
+            slider.on_changed(marker.slider_callback)
+
+        if update_cursor_func:
+            update_cursor_func(0)
+
+        edit_value = labels["freq"]
+        edit_value.setEnabled(True)
+        if self.freqs is not None and len(self.freqs) > 0:
+            if self.freqs[0] < 1e6:  
+                edit_value.setText(f"{self.freqs[0]/1e3:.3f}")
+            elif self.freqs[0] < 1e9:  
+                edit_value.setText(f"{self.freqs[0]/1e6:.3f}")
+            else: 
+                edit_value.setText(f"{self.freqs[0]/1e9:.3f}")
+        else:
+            edit_value.setText("--") 
+
+    else:
+        slider.set_val(0)
+        slider.ax.set_visible(False)
+        slider.set_active(False)
+
+        edit_value = labels["freq"]
+        edit_value.setEnabled(False)
+        edit_value.setText("0")
+
+        # --- Limpiar otros labels ---
+        labels["val"].setText(f"{self.left_s_param if marker_index==0 else 'S11'}: -- + j--")
+        labels["mag"].setText("|S11|: --")
+        labels["phase"].setText("Phase: --")
+        labels["z"].setText("Z: -- + j--")
+        labels["il"].setText("IL: --")
+        labels["vswr"].setText("VSWR: --")
+
+        slider_2.ax.set_position([0.25,0.04,0.5,0.03])
+
+    # Only draw if cursor and figure are valid
+    if cursor is not None and cursor.figure is not None and cursor.figure.canvas is not None:
+        cursor.figure.canvas.draw_idle()
+    else:
+        logging.warning(f"[graphics_window.toggle_marker_visibility] Cannot draw cursor {marker_index}, figure or canvas is None")
+
+def toggle_marker2_visibility(self, marker_index, show_markers):
+    """
+    Move Marker 2 slider to the left of the corresponding canvas
+    without hiding or deactivating it.
+    """
+    marker_2 = self.markers[marker_index]
+
+    cursor_2 = marker_2["cursor_2"]
+    slider_2 = marker_2["slider_2"]
+    labels_2 = marker_2["label_2"]
+
+    update_cursor_func_2 = marker_2.get("update_cursor_2", None)
+
+    logging.info(f"cursor_2 data: {cursor_2.get_data()}")
+
+    if cursor_2 is None or cursor_2.figure is None:
+        logging.warning(f"[graphics_window.toggle_marker_visibility_2] Cursor {marker_index} is invalid, skipping toggle")
+        return
+
+    cursor_2.set_visible(show_markers)
+
+    if marker_index == 0:  
+        slider = self.slider_left
+        slider_2 = self.slider_left_2
+        fig = self.fig_left
+    elif marker_index == 1: 
+        slider = self.slider_right
+        slider_2 = self.slider_right_2
+        fig = self.fig_right
+    else:
+        logging.warning(f"[move_marker2_slider_left] Invalid marker_index {marker_index}")
+        return
+
+    if show_markers:
+
+        slider_2.ax.set_visible(True)
+        slider_2.set_active(True)
+
+        slider.ax.set_position([0.1, 0.04, 0.35, 0.03])
+
+        #slider_2.on_changed(lambda val: update_cursor(int(val), from_slider=True))
+
+        if slider.ax.figure is not None:
+            slider.ax.figure.canvas.draw_idle()
+
+        if update_cursor_func_2:
+            update_cursor_func_2(0)
+
+        edit_value_2 = labels_2["freq"]
+        edit_value_2.setEnabled(True)
+        if self.freqs is not None and len(self.freqs) > 0:
+            if self.freqs[0] < 1e6:  
+                edit_value_2.setText(f"{self.freqs[0]/1e3:.3f}")
+            elif self.freqs[0] < 1e9:  
+                edit_value_2.setText(f"{self.freqs[0]/1e6:.3f}")
+            else: 
+                edit_value_2.setText(f"{self.freqs[0]/1e9:.3f}")
+        else:
+            edit_value_2.setText("--") 
+
+    elif not show_markers:
+
+        slider_2.set_val(0)
+        slider_2.ax.set_visible(False)
+        slider_2.set_active(False) 
+
+        # --- Limpiar otros labels ---
+        labels_2["val"].setText(f"{self.left_s_param if marker_index==0 else 'S11'}: -- + j--")
+        labels_2["mag"].setText("|S11|: --")
+        labels_2["phase"].setText("Phase: --")
+        labels_2["z"].setText("Z: -- + j--")
+        labels_2["il"].setText("IL: --")
+        labels_2["vswr"].setText("VSWR: --")
+
+        slider.ax.set_position([0.25,0.04,0.5,0.03])
+
+    # Only draw if cursor and figure are valid
+    if cursor_2 is not None and cursor_2.figure is not None and cursor_2.figure.canvas is not None:
+        cursor_2.figure.canvas.draw_idle()
+    else:
+        logging.warning(f"[graphics_window.toggle_marker_visibility] Cannot draw cursor {marker_index}, figure or canvas is None")

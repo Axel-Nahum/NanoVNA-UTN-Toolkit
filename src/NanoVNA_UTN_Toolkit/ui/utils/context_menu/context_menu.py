@@ -45,6 +45,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import toggle_marker_visibility, toggle_marker2_visibility
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # -------------------------------------------------------------------------------------------------------------------- #
 
 def handle_contextMenuEvent(self, event):
@@ -200,7 +208,7 @@ def handle_contextMenuEvent(self, event):
 
     elif selected_action == marker1_graphic1_action:
         self.show_graphic1_marker1 = not self.show_graphic1_marker1
-        self.toggle_marker_visibility(0, self.show_graphic1_marker1)
+        toggle_marker_visibility(self, 0, self.show_graphic1_marker1)
 
         if self.show_graphic1_marker1:
             self.info_panel_left.show()
@@ -213,7 +221,7 @@ def handle_contextMenuEvent(self, event):
 
     elif selected_action == marker1_graphic2_action:
         self.show_graphic2_marker1 = not self.show_graphic2_marker1
-        self.toggle_marker_visibility(1, self.show_graphic2_marker1)
+        toggle_marker_visibility(self, 1, self.show_graphic2_marker1)
 
         if self.show_graphic2_marker1:
             self.info_panel_right.show()
@@ -226,7 +234,7 @@ def handle_contextMenuEvent(self, event):
     elif selected_action == marker2_graphic1_action:
         self.show_graphic1_marker2 = not self.show_graphic1_marker2
         
-        self.toggle_marker2_visibility(0, self.show_graphic1_marker2)
+        toggle_marker2_visibility(self, 0, self.show_graphic1_marker2)
 
         if self.show_graphic1_marker2:
             self.info_panel_left_2.show()
@@ -239,7 +247,7 @@ def handle_contextMenuEvent(self, event):
     elif selected_action == marker2_graphic2_action:
         self.show_graphic2_marker2 = not self.show_graphic2_marker2
         
-        self.toggle_marker2_visibility(1, self.show_graphic2_marker2)
+        toggle_marker2_visibility(self, 1, self.show_graphic2_marker2)
 
         if self.show_graphic2_marker2:
             self.info_panel_right_2.show()

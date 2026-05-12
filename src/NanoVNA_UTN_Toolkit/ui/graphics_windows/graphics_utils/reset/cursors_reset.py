@@ -18,7 +18,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility, force_marker_visibility_2
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -192,7 +192,7 @@ def _reset_markers_after_sweep(self):
                 
         # Force marker visibility with debug AND fix cursor references
         force_marker_visibility(self)
-        self._force_marker_visibility_2()
+        force_marker_visibility_2(self)
                 
         logging.info("[graphics_window._reset_markers_after_sweep] Marker reset completed successfully")
         
