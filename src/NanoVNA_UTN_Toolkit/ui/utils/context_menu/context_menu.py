@@ -24,6 +24,27 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.context_menu.set_range.set_range import show_y_range_dialog
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.context_menu.toggle_db_times.toggle_db_times import toggle_db_times
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.context_menu.export_dialog.open_export_dialog import open_export_dialog
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # -------------------------------------------------------------------------------------------------------------------- #
 
 def handle_contextMenuEvent(self, event):
@@ -259,7 +280,7 @@ def handle_contextMenuEvent(self, event):
     # --- Range ---
 
     elif selected_action == range_action and not is_smith_diagram:
-        self.show_y_range_dialog(target_ax)
+        show_y_range_dialog(self, target_ax)
 
     # --- Smith Normalized ---
         
@@ -302,15 +323,15 @@ def handle_contextMenuEvent(self, event):
     # --- Export ---
 
     elif selected_action == export_action:
-        self.open_export_dialog(event)
+        open_export_dialog(self, event)
 
     # --- Handle unit change (disabled for Smith Diagram) ---
     elif current_unit == "dB" and not is_smith_diagram:
         if selected_action == voltage_action:
-            self.toggle_db_times(event, "Voltage ratio")
+            toggle_db_times(self, event, "Voltage ratio")
     elif current_unit in ("Power ratio", "Voltage ratio") and not is_smith_diagram:
         if selected_action == db_action:
-            self.toggle_db_times(event, "dB")
+            toggle_db_times(self, event, "dB")
 
     if self.show_graphic1_marker1 and self.show_graphic1_marker2 or self.show_graphic2_marker1 and self.show_graphic2_marker2:
         self.markers_button.show()
