@@ -42,6 +42,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.db_unit.db_unit import get_graph_unit
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 class View(QMainWindow):
     def __init__(self, nano_window=None, freqs=None):
         super().__init__()
@@ -349,8 +357,8 @@ class View(QMainWindow):
         settings.setValue("Tab2/GraphType2", selected_graph_right)
         settings.sync()
 
-        unit_left = self.nano_window.get_graph_unit(1)
-        unit_right = self.nano_window.get_graph_unit(2)
+        unit_left = get_graph_unit(self, 1)
+        unit_right = get_graph_unit(self, 2)
 
         if self.nano_window is not None:
             # --- Save markers before recreating ---

@@ -39,6 +39,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from src.NanoVNA_UTN_Toolkit.ui.utils.reconect.reconect_button import reconnect_device
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 
 def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_param):
 
@@ -56,7 +64,7 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
     # Reconnect button
     self.reconnect_button = QPushButton("Reconnect")
     self.reconnect_button.setMaximumWidth(100)
-    self.reconnect_button.clicked.connect(self.reconnect_device)
+    self.reconnect_button.clicked.connect(lambda: reconnect_device(self))
 
     # Sweep button
     self.sweep_button = QPushButton("Run Sweep")

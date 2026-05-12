@@ -49,6 +49,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.db_unit.db_unit import get_graph_unit
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
 
 class EditGraphics(QMainWindow):
@@ -363,8 +371,8 @@ class EditGraphics(QMainWindow):
         data_left = self.s11 if s_param1 == "S11" else self.s21
         data_right = self.s11 if s_param2 == "S11" else self.s21
 
-        unit_left = self.nano_window.get_graph_unit(1)
-        unit_right = self.nano_window.get_graph_unit(2)
+        unit_left = get_graph_unit(self, 1)
+        unit_right = get_graph_unit(self, 2)
 
         update_plots_with_new_data(self, skip_reset=True)
         

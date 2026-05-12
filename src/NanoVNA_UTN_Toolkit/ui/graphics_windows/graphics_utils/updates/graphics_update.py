@@ -38,6 +38,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.db_unit.db_unit import get_graph_unit
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ------------------------------------------------------------------------------------------------------------------------------ #
 
 def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param, 
@@ -248,7 +256,7 @@ def update_plots_with_new_data(self, skip_reset=False):
 
         # --- Recreate left panel plot ---
         logging.info(f"[graphics_window.update_plots_with_new_data] Recreating left plot: {graph_type_tab1} - {s_param_tab1}")
-        unit_left = self.get_graph_unit(1)
+        unit_left = get_graph_unit(self, 1)
 
         # --- Clean up old slider event connections before redrawing 
         if hasattr(self, "slider_left") and self.slider_left is not None:
@@ -294,7 +302,7 @@ def update_plots_with_new_data(self, skip_reset=False):
 
         # --- Recreate right panel plot ---
         logging.info(f"[graphics_window.update_plots_with_new_data] Recreating right plot: {graph_type_tab2} - {s_param_tab2} - {marker_color2}")
-        unit_right = self.get_graph_unit(2)
+        unit_right = get_graph_unit(self, 2)
 
         recreate_single_plot(
             self,

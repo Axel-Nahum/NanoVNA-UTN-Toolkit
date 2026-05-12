@@ -5,11 +5,11 @@ Allows configuration of frequency start/stop, segments, and displays calculated 
 import os
 import sys
 import logging
-from PySide6.QtCore import QSettings, Qt
+from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget,
-    QPushButton, QHBoxLayout, QGroupBox, QGridLayout,
-    QLineEdit, QSpinBox, QDoubleSpinBox, QFormLayout,
+    QPushButton, QHBoxLayout, QGroupBox, 
+    QSpinBox, QDoubleSpinBox, QFormLayout,
     QApplication, QMessageBox, QComboBox, QToolTip
 )
 from PySide6.QtGui import QIcon, QDoubleValidator, QFont, QValidator
@@ -993,7 +993,7 @@ class SweepOptionsWindow(QMainWindow):
         # Update main window configuration if available
         if self.parent() and hasattr(self.parent(), 'load_sweep_configuration'):
             logging.info("[sweep_options_window.on_segments_changed] Updating parent graphics_window configuration")
-            self.parent().load_sweep_configuration()
+            load_sweep_configuration(self)
         else:
             logging.warning("[sweep_options_window.on_segments_changed] Parent graphics_window not available for config update")
         
