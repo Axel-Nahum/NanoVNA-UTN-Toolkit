@@ -10,7 +10,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep, update_reconnect_button_state
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep, update_reconnect_button_state
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)

@@ -2,7 +2,7 @@ import logging
 import numpy as np
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)

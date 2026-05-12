@@ -39,21 +39,21 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.sliders_reset import _reset_sliders_before_sweep
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.sliders_reset import _reset_sliders_before_sweep
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.cursors_reset import _reset_markers_after_sweep
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.cursors_reset import _reset_markers_after_sweep
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration import update_calibration_label_from_method
+    from NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration import update_calibration_label_from_method
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -61,7 +61,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
+    from NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)

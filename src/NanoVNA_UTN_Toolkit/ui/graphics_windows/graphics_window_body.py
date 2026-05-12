@@ -16,7 +16,7 @@ from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_utils impor
 )
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep, update_reconnect_button_state
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep, update_reconnect_button_state
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -24,7 +24,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration import update_calibration_label_from_method
+    from NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration import update_calibration_label_from_method
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -32,7 +32,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
+    from NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -40,7 +40,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.utils.reconect.reconect_button import reconnect_device
+    from NanoVNA_UTN_Toolkit.ui.utils.reconect.reconect_button import reconnect_device
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)

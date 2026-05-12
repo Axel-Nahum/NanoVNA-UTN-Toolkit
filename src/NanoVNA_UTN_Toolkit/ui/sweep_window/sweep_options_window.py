@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon, QDoubleValidator, QFont, QValidator
 
 try:
-    from src.NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
+    from NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
