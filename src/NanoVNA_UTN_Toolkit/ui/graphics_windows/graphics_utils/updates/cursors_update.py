@@ -9,6 +9,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_color_left, marker_color_right, 
     marker2_color_left, marker2_color_right, marker1_size_left, marker1_size_right, marker2_size_left, marker2_size_right):
     """Recreate cursors when the plot type changes."""
@@ -122,7 +130,7 @@ def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_colo
                 self.markers[1]['cursor_2'] = self.cursor_right_2
 
         # Force marker visibility setup to create the wrapper functions again
-        self._force_marker_visibility(marker_color_left=marker_color_left, marker_color_right=marker_color_right, 
+        force_marker_visibility(self, marker_color_left=marker_color_left, marker_color_right=marker_color_right, 
             marker1_size_left=marker1_size_left, marker1_size_right=marker1_size_right)
 
         self._force_marker_visibility_2(marker_color_left=marker2_color_left, marker_color_right=marker2_color_right,

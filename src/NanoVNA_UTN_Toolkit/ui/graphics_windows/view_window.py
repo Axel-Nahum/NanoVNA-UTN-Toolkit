@@ -50,6 +50,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility, force_marker_visibility_2
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 class View(QMainWindow):
     def __init__(self, nano_window=None, freqs=None):
         super().__init__()
@@ -437,9 +445,9 @@ class View(QMainWindow):
                 cursor_graph_2=self.nano_window.cursor_right_2
             )
 
-            self.nano_window._force_marker_visibility(marker_color_left=marker_color1, marker_color_right=marker_color2, 
+            force_marker_visibility(self.nano_window, marker_color_left=marker_color1, marker_color_right=marker_color2, 
                 marker1_size_left=marker_size1, marker1_size_right=marker_size2)
-            self.nano_window._force_marker_visibility_2(marker_color_left=marker2_color1, marker_color_right=marker2_color2, 
+            force_marker_visibility_2(self.nano_window, marker_color_left=marker2_color1, marker_color_right=marker2_color2, 
                 marker_size_left=marker2_size1, marker_size_right=marker2_size2)
 
             self.nano_window.fig_left.canvas.draw_idle()

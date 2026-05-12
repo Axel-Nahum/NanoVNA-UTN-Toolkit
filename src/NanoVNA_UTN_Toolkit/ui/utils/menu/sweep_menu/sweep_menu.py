@@ -1,5 +1,26 @@
 import logging
 
+def get_current_vna_device(self):
+    """Try to get the current VNA device."""
+    logging.info("[graphics_window.get_current_vna_device] Searching for current VNA device")
+    
+    try:
+        # Check if we have device stored in this graphics window
+        if hasattr(self, 'vna_device') and self.vna_device is not None:
+            device_type = type(self.vna_device).__name__
+            logging.info(f"[graphics_window.get_current_vna_device] Found stored device: {device_type}")
+            return self.vna_device
+            
+        # Check if we can access the connection window device
+        # This is a more advanced implementation for future development
+        logging.warning("[graphics_window.get_current_vna_device] No VNA device found in graphics window")
+        logging.warning("[graphics_window.get_current_vna_device] Device wasn't passed from previous window")
+        
+        return None
+    except Exception as e:
+        logging.error(f"[graphics_window.get_current_vna_device] Error getting current VNA device: {e}")
+        return None
+
 def open_sweep_options(self):
     from NanoVNA_UTN_Toolkit.ui.sweep_window import SweepOptionsWindow
 
@@ -7,7 +28,7 @@ def open_sweep_options(self):
     logging.info("[graphics_window.open_sweep_options] Opening sweep options window")
 
     # Try to get the current VNA device (this is a placeholder for now)
-    vna_device = self.get_current_vna_device()
+    vna_device = get_current_vna_device(self)
 
     # Log device information being passed to sweep options
     if vna_device:

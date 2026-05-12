@@ -23,6 +23,8 @@ def load_graph_configuration():
         Path(__file__).resolve()
     )
 
+    settings.sync()
+
     return {
         'graph_type_tab1': settings.value("Tab1/GraphType1", "Smith Diagram"),
         's_param_tab1': settings.value("Tab1/SParameter", "S11"),

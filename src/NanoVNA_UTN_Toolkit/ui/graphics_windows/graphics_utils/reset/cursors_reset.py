@@ -17,6 +17,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # -------------------------------------------------------------------------------------------------------------------- #
 
 def _reset_markers_after_sweep(self):
@@ -183,7 +191,7 @@ def _reset_markers_after_sweep(self):
         QTimer.singleShot(100, force_cursor_info_update)
                 
         # Force marker visibility with debug AND fix cursor references
-        self._force_marker_visibility()
+        force_marker_visibility(self)
         self._force_marker_visibility_2()
                 
         logging.info("[graphics_window._reset_markers_after_sweep] Marker reset completed successfully")

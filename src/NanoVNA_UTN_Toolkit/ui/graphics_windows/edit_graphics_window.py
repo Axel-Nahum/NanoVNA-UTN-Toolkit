@@ -57,6 +57,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility, force_marker_visibility_2
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
 
 class EditGraphics(QMainWindow):
@@ -374,8 +382,9 @@ class EditGraphics(QMainWindow):
         unit_left = get_graph_unit(self, 1)
         unit_right = get_graph_unit(self, 2)
 
-        update_plots_with_new_data(self, skip_reset=True)
-        
+        self.nano_window.ax_left.clear()
+        self.nano_window.ax_right.clear()
+
         recreate_single_plot(
             self,
             ax=self.nano_window.ax_left,
@@ -416,8 +425,10 @@ class EditGraphics(QMainWindow):
             cursor_graph_2=self.nano_window.cursor_right_2
         )
 
-        self.nano_window._force_marker_visibility(marker_color_left=marker_color, marker_color_right=marker_color2, 
-                marker1_size_left=marker_size, marker1_size_right=marker_size2)
+        force_marker_visibility(self.nano_window, marker_color_left=marker_color, marker_color_right=marker_color2, 
+                                marker1_size_left=marker_size, marker1_size_right=marker_size2)
+        force_marker_visibility_2(self.nano_window, marker_color_left=marker2_color, marker_color_right=marker2_color2, 
+                                marker_size_left=marker2_size, marker_size_right=marker2_size2)
 
         self.nano_window.s11 = self.s11
         self.nano_window.s21 = self.s21
