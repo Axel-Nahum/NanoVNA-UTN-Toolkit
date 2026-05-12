@@ -6,22 +6,15 @@ Graphic view window for NanoVNA devices with dual info panels and cursors.
 
 import os
 import sys
-import shutil
-import re
 import logging
 import webbrowser
 import numpy as np
 import skrf as rf
-from skrf import Network
-from datetime import datetime
 
 # Matplotlib imports for plotting and interactive features
 
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider
-from matplotlib.backends.backend_pdf import PdfPages
 
 # Configure matplotlib for better integration with PySide6 and improved aesthetics
 
@@ -173,177 +166,29 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.menu.view_edit_menu.view_edit_menu import open_view, edit_graphics_markers
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.menu.sweep_menu.sweep_menu import open_sweep_options
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.menu.help_menu.help_menu import show_about_dialog, open_report_url
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 #-------------------- ABOUT DIALOG -------------------------------------------------------------------------#
-
-class AboutDialog(QDialog):
-    """
-    About dialog that displays the project README.md file in a scrollable window.
-    Supports both English and Spanish versions.
-    """
-    
-    def __init__(self, parent=None, language='en'):
-        """
-        Initialize the About dialog.
-        
-        Args:
-            parent: Parent widget
-            language: Language code ('en' for English, 'es' for Spanish)
-        """
-        super().__init__(parent)
-        self.language = language
-        
-        if language == 'es':
-            self.setWindowTitle("NanoVNA UTN Toolkit - Acerca de NanoVNA UTN Toolkit")
-        else:
-            self.setWindowTitle("NanoVNA UTN Toolkit - About NanoVNA UTN Toolkit")
-
-        self.setModal(True)
-        self.setMinimumSize(700, 500)
-        self.resize(800, 600)
-        
-        self._setup_ui()
-        self._load_readme()
-    
-    def _setup_ui(self):
-        """Set up the user interface."""
-        layout = QVBoxLayout(self)
-        
-        # Create a text widget with scroll capability
-        self.text_widget = QTextEdit()
-        self.text_widget.setReadOnly(True)
-        
-        # Configure scrolling: vertical only, no horizontal scroll
-        self.text_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.text_widget.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        
-        # Enable word wrap to fit content to window width
-        self.text_widget.setLineWrapMode(QTextEdit.LineWrapMode.WidgetWidth)
-        
-        # Apply comprehensive CSS to force ALL code elements to wrap
-        css_style = """
-        QTextEdit {
-            font-family: system-ui, -apple-system, sans-serif;
-            line-height: 1.4;
-        }
-        pre, code, .codehilite, .highlight {
-            white-space: pre-wrap !important;
-            word-wrap: break-word !important;
-            overflow-wrap: break-word !important;
-            word-break: break-all !important;
-            max-width: 100% !important;
-            font-family: 'Consolas', 'Monaco', 'Courier New', monospace !important;
-            background-color: #f5f5f5 !important;
-            padding: 8px !important;
-            border-radius: 4px !important;
-            border: 1px solid #e0e0e0 !important;
-            overflow-x: hidden !important;
-        }
-        pre code {
-            white-space: pre-wrap !important;
-            word-wrap: break-word !important;
-            overflow-wrap: break-word !important;
-            word-break: break-all !important;
-        }
-        """
-        self.text_widget.setStyleSheet(css_style)
-        
-        # Enable markdown rendering
-        self.text_widget.setMarkdown("")
-        
-        layout.addWidget(self.text_widget)
-    
-    def _load_readme(self):
-        """Load and display the appropriate README file based on language."""
-        
-        try:
-            # Get the project root directory (go up from ui/graphics_window.py to project root)
-            if hasattr(sys, '_MEIPASS'):
-                project_root = sys._MEIPASS
-            else:
-                current_dir = os.path.dirname(os.path.abspath(__file__))
-                project_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
-            
-            if self.language == 'es':
-                readme_path = os.path.join(project_root, "README_ES.md")
-                fallback_text = (
-                    "Archivo README_ES.md no encontrado.\n\n"
-                    f"Ubicación esperada: {readme_path}\n\n"
-                    "NanoVNA UTN Toolkit\n"
-                    "Un toolkit integral para mediciones y análisis con NanoVNA."
-                )
-            else:
-                readme_path = os.path.join(project_root, "README.md")
-                fallback_text = (
-                    "README.md file not found.\n\n"
-                    f"Expected location: {readme_path}\n\n"
-                    "NanoVNA UTN Toolkit\n"
-                    "A comprehensive toolkit for NanoVNA measurements and analysis."
-                )
-            
-            if os.path.exists(readme_path):
-                with open(readme_path, 'r', encoding='utf-8') as f:
-                    readme_content = f.read()
-                
-                # Process content to ensure code blocks wrap properly
-                processed_content = self._process_content_for_wrapping(readme_content)
-                self.text_widget.setMarkdown(processed_content)
-            else:
-                self.text_widget.setPlainText(fallback_text)
-                
-        except Exception as e:
-            if self.language == 'es':
-                error_text = (
-                    f"Error cargando README_ES.md: {str(e)}\n\n"
-                    "NanoVNA UTN Toolkit\n"
-                    "Un toolkit integral para mediciones y análisis con NanoVNA."
-                )
-            else:
-                error_text = (
-                    f"Error loading README.md: {str(e)}\n\n"
-                    "NanoVNA UTN Toolkit\n"
-                    "A comprehensive toolkit for NanoVNA measurements and analysis."
-                )
-            self.text_widget.setPlainText(error_text)
-
-    def _process_content_for_wrapping(self, content):
-        """Process markdown content to ensure code blocks wrap properly."""
-        import re
-        
-        # Find all code blocks (both ``` and indented)
-        # Pattern for fenced code blocks
-        fenced_pattern = r'```(\w*)\n(.*?)\n```'
-        
-        def replace_fenced_code(match):
-            lang = match.group(1)
-            code = match.group(2)
-            # Break long lines in code blocks
-            lines = code.split('\n')
-            processed_lines = []
-            for line in lines:
-                if len(line) > 80:  # Break lines longer than 80 characters
-                    # For command lines, try to break at logical points
-                    if line.strip().startswith('python') and '--' in line:
-                        # Break at command line arguments
-                        parts = line.split(' --')
-                        if len(parts) > 1:
-                            reconstructed = parts[0]
-                            for i, part in enumerate(parts[1:], 1):
-                                reconstructed += ' \\\n    --' + part
-                            processed_lines.append(reconstructed)
-                        else:
-                            processed_lines.append(line)
-                    else:
-                        processed_lines.append(line)
-                else:
-                    processed_lines.append(line)
-            
-            processed_code = '\n'.join(processed_lines)
-            return f'```{lang}\n{processed_code}\n```'
-        
-        # Apply the replacement
-        content = re.sub(fenced_pattern, replace_fenced_code, content, flags=re.DOTALL)
-        
-        return content
 
 class NanoVNAGraphics(QMainWindow):
     def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11", vna_device=None, dut=None):
@@ -422,7 +267,7 @@ class NanoVNAGraphics(QMainWindow):
         export_touchstone_action.triggered.connect(lambda: export_errors(self))
 
         graphics_markers = edit_menu.addAction("Graphics/Markers")
-        graphics_markers.triggered.connect(lambda: self.edit_graphics_markers())
+        graphics_markers.triggered.connect(lambda: edit_graphics_markers(self))
 
         # --- Help menu actions ---
 
@@ -430,14 +275,14 @@ class NanoVNAGraphics(QMainWindow):
         report_action.triggered.connect(lambda: self.open_report_url())
 
         about_en_action = help_menu.addAction("About [EN]")
-        about_en_action.triggered.connect(lambda: self.show_about_dialog('en'))
+        about_en_action.triggered.connect(lambda: show_about_dialog(self, 'en'))
 
         about_es_action = help_menu.addAction("About [ES]")
-        about_es_action.triggered.connect(lambda: self.show_about_dialog('es'))
+        about_es_action.triggered.connect(lambda: show_about_dialog(self, 'es'))
 
 #-------- Lock Markers ----------------------------------------------------------------------------#
 
-        # Load configuration for UI colors and styles
+        # Load configuration for calibration
 
         settings = get_settings(
             "INI/colors_config/config.ini",
@@ -469,10 +314,10 @@ class NanoVNAGraphics(QMainWindow):
 #-------- Other options ---------------------------------------------------------------------------- #
 
         choose_graphics = view_menu.addAction("Graphics")
-        choose_graphics.triggered.connect(self.open_view)  
+        choose_graphics.triggered.connect(lambda: open_view(self))  
 
         sweep_options = sweep_menu.addAction("Options")
-        sweep_options.triggered.connect(lambda: self.open_sweep_options())
+        sweep_options.triggered.connect(lambda: open_sweep_options(self))
  
         sweep_run = sweep_menu.addAction("Run Sweep")
         sweep_run.triggered.connect(lambda: run_sweep(self))
@@ -1478,38 +1323,6 @@ class NanoVNAGraphics(QMainWindow):
 
     # =================== SWEEP OPTIONS FUNCTION ==================
 
-    def open_sweep_options(self):
-        from NanoVNA_UTN_Toolkit.ui.sweep_window import SweepOptionsWindow
-
-        # Log sweep options opening
-        logging.info("[graphics_window.open_sweep_options] Opening sweep options window")
-
-        # Try to get the current VNA device (this is a placeholder for now)
-        vna_device = self.get_current_vna_device()
-
-        # Log device information being passed to sweep options
-        if vna_device:
-            device_type = type(vna_device).__name__
-            logging.info(f"[graphics_window.open_sweep_options] Device found: {device_type}")
-            if hasattr(vna_device, 'sweep_points_min') and hasattr(vna_device, 'sweep_points_max'):
-                logging.info(f"[graphics_window.open_sweep_options] Device sweep limits: {vna_device.sweep_points_min} to {vna_device.sweep_points_max}")
-            else:
-                logging.info("[graphics_window.open_sweep_options] Device has no sweep_points limits")
-        else:
-            logging.warning("[graphics_window.open_sweep_options] No VNA device available - using default limits")
-
-        if hasattr(self, 'sweep_options_window') and self.sweep_options_window is not None:
-            self.sweep_options_window.close()
-            self.sweep_options_window.deleteLater()
-            self.sweep_options_window = None
-
-        logging.info("[graphics_window.open_sweep_options] Creating new sweep options window")
-        self.sweep_options_window = SweepOptionsWindow(parent=self, vna_device=self.vna_device)
-
-        self.sweep_options_window.show()
-        self.sweep_options_window.raise_()
-        self.sweep_options_window.activateWindow()
-        
     def get_current_vna_device(self):
         """Try to get the current VNA device."""
         logging.info("[graphics_window.get_current_vna_device] Searching for current VNA device")
@@ -1683,7 +1496,7 @@ class NanoVNAGraphics(QMainWindow):
 
         # --- Handle actions ---
         if selected_action == view_menu:
-            self.open_view()
+            open_view(self)
 
         # --- Markers ---
 
@@ -2112,30 +1925,6 @@ class NanoVNAGraphics(QMainWindow):
         except Exception as e:
             logging.error(f"Error opening export dialog: {e}")
             QMessageBox.warning(self, "Export Error", f"Failed to open export dialog: {str(e)}")
-
-    # =================== MARKERS ==================
-
-    def edit_graphics_markers(self):
-        from NanoVNA_UTN_Toolkit.ui.graphics_windows.edit_graphics_window import EditGraphics
-        self.edit_graphics_window = EditGraphics(nano_window=self) 
-        self.edit_graphics_window.show()
-
-    # =================== VIEW ==================
-
-    def open_view(self):
-        from NanoVNA_UTN_Toolkit.ui.graphics_windows.view_window import View
-        
-        # Cerrar la instancia anterior si existe
-        if hasattr(self, 'view_window') and self.view_window is not None:
-            self.view_window.close()
-            self.view_window.deleteLater()
-            self.view_window = None
-
-        # Crear nueva instancia de View
-        self.view_window = View(nano_window=self)
-        self.view_window.show()
-        self.view_window.raise_()
-        self.view_window.activateWindow()
 
     # =================== TOGGLE MARKERS==================
 
