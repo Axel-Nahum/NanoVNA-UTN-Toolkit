@@ -161,6 +161,73 @@ def _clear_panel_labels(self, panel_side='left'):
         self.labels_right_2.get("vswr")
         self.labels_right_2["vswr"].setText("VSWR: --")
 
+def _clear_marker_fields_only(self):
+    """Clear only marker information fields without affecting the graphs."""
+    logging.info("[graphics_window._clear_marker_fields_only] Clearing marker information fields only")
+    
+    # --- Clear left panel marker information ---
+    if hasattr(self, 'labels_left') and self.labels_left:
+        freq_left = self.labels_left.get("freq")
+        if freq_left:
+            freq_left.setText("--")
+            freq_left.setSelection(0, 0)  
+            freq_left.setCursorPosition(0) 
+            freq_left.deselect()
+            freq_left.clearFocus()
+        self.labels_left.get("val") and self.labels_left["val"].setText("S11: -- + j--")
+        self.labels_left.get("mag") and self.labels_left["mag"].setText("|S11|: --")
+        self.labels_left.get("phase") and self.labels_left["phase"].setText("Phase: --")
+        self.labels_left.get("z") and self.labels_left["z"].setText("Zin (Z0): -- + j--")
+        self.labels_left.get("il") and self.labels_left["il"].setText("IL: --")
+        self.labels_left.get("vswr") and self.labels_left["vswr"].setText("VSWR: --")
+
+    # --- Clear right panel marker information ---
+    if hasattr(self, 'labels_right') and self.labels_right:
+        freq_right = self.labels_right.get("freq")
+        if freq_right:
+            freq_right.setText("--")   # set "--"
+            freq_right.setSelection(0, 0)  
+            freq_right.setCursorPosition(0) 
+            freq_right.deselect()
+            freq_right.clearFocus()
+        self.labels_right.get("val") and self.labels_right["val"].setText("S21: -- + j--")
+        self.labels_right.get("mag") and self.labels_right["mag"].setText("|S21|: --")
+        self.labels_right.get("phase") and self.labels_right["phase"].setText("Phase: --")
+        self.labels_right.get("z") and self.labels_right["z"].setText("Zin (Z0): -- + j--")
+        self.labels_right.get("il") and self.labels_right["il"].setText("IL: --")
+        self.labels_right.get("vswr") and self.labels_right["vswr"].setText("VSWR: --")
+
+    # --- Clear left panel marker information ---
+    if hasattr(self, 'labels_left_2') and self.labels_left_2:
+        freq_left = self.labels_left_2.get("freq")
+        if freq_left:
+            freq_left.setText("--")    # set "--"
+            freq_left.deselect()       # remove selection
+            freq_left.clearFocus()     # remove focus so it's not blue
+        self.labels_left_2.get("val") and self.labels_left_2["val"].setText("S11: -- + j--")
+        self.labels_left_2.get("mag") and self.labels_left_2["mag"].setText("|S11|: --")
+        self.labels_left_2.get("phase") and self.labels_left_2["phase"].setText("Phase: --")
+        self.labels_left_2.get("z") and self.labels_left_2["z"].setText("Zin (Z0): -- + j--")
+        self.labels_left_2.get("il") and self.labels_left_2["il"].setText("IL: --")
+        self.labels_left_2.get("vswr") and self.labels_left_2["vswr"].setText("VSWR: --")
+
+    # --- Clear right panel marker information ---
+    if hasattr(self, 'labels_right_2') and self.labels_right_2:
+        freq_right = self.labels_right_2.get("freq")
+        if freq_right:
+            freq_right.setText("--")   # set "--"
+            freq_right.deselect()      # remove selection
+            freq_right.clearFocus()    # remove focus so it's not blue
+        self.labels_right_2.get("val") and self.labels_right_2["val"].setText("S21: -- + j--")
+        self.labels_right_2.get("mag") and self.labels_right_2["mag"].setText("|S21|: --")
+        self.labels_right_2.get("phase") and self.labels_right_2["phase"].setText("Phase: --")
+        self.labels_right_2.get("z") and self.labels_right_2["z"].setText("Zin (Z0): -- + j--")
+        self.labels_right_2.get("il") and self.labels_right_2["il"].setText("IL: --")
+        self.labels_right_2.get("vswr") and self.labels_right_2["vswr"].setText("VSWR: --")
+
+    # Do NOT clear the graphs - leave them with the actual data
+    logging.info("[graphics_window._clear_marker_fields_only] Marker fields cleared, graphs preserved")
+
 def _clear_all_marker_fields(self):
     """Clear marker values but keep all panels and labels intact."""
 

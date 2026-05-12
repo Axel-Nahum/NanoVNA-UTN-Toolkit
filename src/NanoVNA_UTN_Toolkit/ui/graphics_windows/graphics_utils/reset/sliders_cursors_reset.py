@@ -1,6 +1,14 @@
 import logging
+import sys
 
 from PySide6.QtCore import QTimer
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.panels_utils import _clear_marker_fields_only
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 def reset_sliders_and_markers_for_graph_change(self):
     """Reset sliders and markers to leftmost position specifically for graph type changes."""
@@ -36,7 +44,7 @@ def reset_sliders_and_markers_for_graph_change(self):
                 logging.warning(f"[graphics_window._reset_sliders_and_markers_for_graph_change] Could not reset right slider: {e}")
         
         # Clear marker information fields
-        self._clear_marker_fields_only()
+        _clear_marker_fields_only(self)
         
         # Force cursor position updates to leftmost position (index 0)
         if hasattr(self, 'update_cursor') and callable(self.update_cursor):

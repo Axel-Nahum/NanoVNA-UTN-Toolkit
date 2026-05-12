@@ -204,6 +204,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.sliders_update import left_slider_moved, left_slider_moved_2, right_slider_moved, right_slider_moved_2
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 #-------------------- ABOUT DIALOG -------------------------------------------------------------------------#
 
 class NanoVNAGraphics(QMainWindow):
@@ -555,30 +563,6 @@ class NanoVNAGraphics(QMainWindow):
         except Exception as e:
             logging.error(f"[GraphicsWindow] Error loading latest calibration: {e}")
 
-    def left_slider_moved(self, val):
-        if self.markers_locked:
-            if self.slider_right.val != val:
-                self.slider_right.set_val(val)
-                self.update_right_cursor(val)
-
-    def right_slider_moved(self, val):
-        if self.markers_locked:
-            if self.slider_left.val != val:
-                self.slider_left.set_val(val)
-                self.update_cursor(val)
-
-    def left_slider_moved_2(self, val):
-        if self.markers_locked:
-            if self.slider_right_2.val != val:
-                self.slider_right_2.set_val(val)
-                self.update_right_cursor_2(val)
-
-    def right_slider_moved_2(self, val):
-        if self.markers_locked:
-            if self.slider_left_2.val != val:
-                self.slider_left_2.set_val(val)
-                self.update_cursor_2(val)
-
     def _force_marker_visibility_2(self, marker_color_left, marker_color_right, marker_size_left, marker_size_right):
         """Force markers to be visible by recreating them directly on axes"""
         logging.info(f"entre wey: {marker_color_left}")
@@ -725,7 +709,7 @@ class NanoVNAGraphics(QMainWindow):
                                 self.slider_left_2.observers.clear()
                             except:
                                 pass
-                            self.slider_left_2.on_changed(self.left_slider_moved_2)
+                            self.slider_left_2.on_changed(lambda: left_slider_moved_2(self))
                         
                         # Reconnect the slider to use our wrapper
                         if hasattr(self, 'slider_left_2') and self.slider_left_2:
@@ -866,8 +850,8 @@ class NanoVNAGraphics(QMainWindow):
                                 self.slider_right_2.observers.clear()
                             except:
                                 pass
-                            self.slider_right_2.on_changed(self.right_slider_moved_2)
-                            self.right_slider_moved_2(int(val))
+                            self.slider_right_2.on_changed(lambda: right_slider_moved_2(self))
+                            self.right_slider_moved_2(int(0))   # antes val
                         
                         # Reconnect the slider to use our wrapper
                         if hasattr(self, 'slider_right_2') and self.slider_right_2:
@@ -1029,7 +1013,7 @@ class NanoVNAGraphics(QMainWindow):
                                 self.slider_left.observers.clear()
                             except:
                                 pass
-                            self.slider_left.on_changed(self.left_slider_moved)
+                            self.slider_left.on_changed(lambda: left_slider_moved(self))
                         
                         # Reconnect the slider to use our wrapper
                         if hasattr(self, 'slider_left') and self.slider_left:
@@ -1174,7 +1158,7 @@ class NanoVNAGraphics(QMainWindow):
                                 self.slider_right.observers.clear()
                             except:
                                 pass
-                            self.slider_right.on_changed(self.right_slider_moved)
+                            self.slider_right.on_changed(lambda: right_slider_moved(self))
                             #self.right_slider_moved()
                         
                         # Reconnect the slider to use our wrapper
@@ -1190,140 +1174,6 @@ class NanoVNAGraphics(QMainWindow):
                 
             except Exception as e:
                 print(f"Error forcing cursor_right to ax_right: {e}")
-
-    def _clear_marker_fields_only(self):
-        """Clear only marker information fields without affecting the graphs."""
-        logging.info("[graphics_window._clear_marker_fields_only] Clearing marker information fields only")
-        
-        # --- Clear left panel marker information ---
-        if hasattr(self, 'labels_left') and self.labels_left:
-            freq_left = self.labels_left.get("freq")
-            if freq_left:
-                freq_left.setText("--")
-                freq_left.setSelection(0, 0)  
-                freq_left.setCursorPosition(0) 
-                freq_left.deselect()
-                freq_left.clearFocus()
-            self.labels_left.get("val") and self.labels_left["val"].setText("S11: -- + j--")
-            self.labels_left.get("mag") and self.labels_left["mag"].setText("|S11|: --")
-            self.labels_left.get("phase") and self.labels_left["phase"].setText("Phase: --")
-            self.labels_left.get("z") and self.labels_left["z"].setText("Zin (Z0): -- + j--")
-            self.labels_left.get("il") and self.labels_left["il"].setText("IL: --")
-            self.labels_left.get("vswr") and self.labels_left["vswr"].setText("VSWR: --")
-
-        # --- Clear right panel marker information ---
-        if hasattr(self, 'labels_right') and self.labels_right:
-            freq_right = self.labels_right.get("freq")
-            if freq_right:
-                freq_right.setText("--")   # set "--"
-                freq_right.setSelection(0, 0)  
-                freq_right.setCursorPosition(0) 
-                freq_right.deselect()
-                freq_right.clearFocus()
-            self.labels_right.get("val") and self.labels_right["val"].setText("S21: -- + j--")
-            self.labels_right.get("mag") and self.labels_right["mag"].setText("|S21|: --")
-            self.labels_right.get("phase") and self.labels_right["phase"].setText("Phase: --")
-            self.labels_right.get("z") and self.labels_right["z"].setText("Zin (Z0): -- + j--")
-            self.labels_right.get("il") and self.labels_right["il"].setText("IL: --")
-            self.labels_right.get("vswr") and self.labels_right["vswr"].setText("VSWR: --")
-
-        # --- Clear left panel marker information ---
-        if hasattr(self, 'labels_left_2') and self.labels_left_2:
-            freq_left = self.labels_left_2.get("freq")
-            if freq_left:
-                freq_left.setText("--")    # set "--"
-                freq_left.deselect()       # remove selection
-                freq_left.clearFocus()     # remove focus so it's not blue
-            self.labels_left_2.get("val") and self.labels_left_2["val"].setText("S11: -- + j--")
-            self.labels_left_2.get("mag") and self.labels_left_2["mag"].setText("|S11|: --")
-            self.labels_left_2.get("phase") and self.labels_left_2["phase"].setText("Phase: --")
-            self.labels_left_2.get("z") and self.labels_left_2["z"].setText("Zin (Z0): -- + j--")
-            self.labels_left_2.get("il") and self.labels_left_2["il"].setText("IL: --")
-            self.labels_left_2.get("vswr") and self.labels_left_2["vswr"].setText("VSWR: --")
-
-        # --- Clear right panel marker information ---
-        if hasattr(self, 'labels_right_2') and self.labels_right_2:
-            freq_right = self.labels_right_2.get("freq")
-            if freq_right:
-                freq_right.setText("--")   # set "--"
-                freq_right.deselect()      # remove selection
-                freq_right.clearFocus()    # remove focus so it's not blue
-            self.labels_right_2.get("val") and self.labels_right_2["val"].setText("S21: -- + j--")
-            self.labels_right_2.get("mag") and self.labels_right_2["mag"].setText("|S21|: --")
-            self.labels_right_2.get("phase") and self.labels_right_2["phase"].setText("Phase: --")
-            self.labels_right_2.get("z") and self.labels_right_2["z"].setText("Zin (Z0): -- + j--")
-            self.labels_right_2.get("il") and self.labels_right_2["il"].setText("IL: --")
-            self.labels_right_2.get("vswr") and self.labels_right_2["vswr"].setText("VSWR: --")
-
-        # Do NOT clear the graphs - leave them with the actual data
-        logging.info("[graphics_window._clear_marker_fields_only] Marker fields cleared, graphs preserved")
-
-    def _update_slider_ranges(self):
-        """Update slider ranges and steps to match the current sweep data."""
-        if not hasattr(self, 'freqs') or self.freqs is None or len(self.freqs) == 0:
-            logging.warning("[graphics_window._update_slider_ranges] No frequency data available, cannot update sliders")
-            return
-            
-        try:
-            num_points = len(self.freqs)
-            max_index = num_points - 1
-            middle_index = max_index // 2
-            
-            logging.info(f"[graphics_window._update_slider_ranges] Updating sliders for {num_points} frequency points (indices 0 to {max_index})")
-            logging.info(f"[graphics_window._update_slider_ranges] Frequency range: {self.freqs[0]/1e6:.3f} - {self.freqs[-1]/1e6:.3f} MHz")
-            
-            # Update left slider range if it exists and make it visible
-            if hasattr(self, 'slider_left') and self.slider_left:
-                try:
-                    # Update slider range to match frequency data indices
-                    self.slider_left.valmin = 0
-                    self.slider_left.valmax = max_index
-                    self.slider_left.valstep = 1
-                    
-                    # Set slider to middle position
-                    self.slider_left.set_val(middle_index)
-                    
-                    # Make sure the slider is visible and active
-                    if hasattr(self.slider_left, 'ax'):
-                        self.slider_left.ax.set_visible(True)
-                    if hasattr(self.slider_left, 'set_active'):
-                        self.slider_left.set_active(True)
-                    
-                    logging.info(f"[graphics_window._update_slider_ranges] Left slider updated: range 0-{max_index}, positioned at index {middle_index} ({self.freqs[middle_index]/1e6:.3f} MHz)")
-                except Exception as e:
-                    logging.warning(f"[graphics_window._update_slider_ranges] Could not update left slider: {e}")
-            
-            # Update right slider range if it exists and make it visible
-            if hasattr(self, 'slider_right') and self.slider_right:
-                try:
-                    # Update slider range to match frequency data indices  
-                    self.slider_right.valmin = 0
-                    self.slider_right.valmax = max_index
-                    self.slider_right.valstep = 1
-                    
-                    # Set slider to middle position
-                    self.slider_right.set_val(middle_index)
-                    
-                    # Make sure the slider is visible and active
-                    if hasattr(self.slider_right, 'ax'):
-                        self.slider_right.ax.set_visible(True)
-                    if hasattr(self.slider_right, 'set_active'):
-                        self.slider_right.set_active(True)
-                    
-                    logging.info(f"[graphics_window._update_slider_ranges] Right slider updated: range 0-{max_index}, positioned at index {middle_index} ({self.freqs[middle_index]/1e6:.3f} MHz)")
-                except Exception as e:
-                    logging.warning(f"[graphics_window._update_slider_ranges] Could not update right slider: {e}")
-
-            # Force canvas redraw to show updated markers
-            if hasattr(self, 'canvas_left') and self.canvas_left:
-                self.canvas_left.draw_idle()
-            if hasattr(self, 'canvas_right') and self.canvas_right:
-                self.canvas_right.draw_idle()
-                    
-            logging.info("[graphics_window._update_slider_ranges] Slider ranges updated successfully")
-            
-        except Exception as e:
-            logging.error(f"[graphics_window._update_slider_ranges] Error updating slider ranges: {e}")
 
     # =================== CONNECTION FUNCTION ==================
 

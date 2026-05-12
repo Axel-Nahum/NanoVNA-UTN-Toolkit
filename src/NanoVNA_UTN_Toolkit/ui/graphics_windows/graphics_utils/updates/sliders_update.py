@@ -1,6 +1,83 @@
 import logging
+import sys
 
 from PySide6.QtCore import QTimer
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.panels_utils import _clear_marker_fields_only
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+# ---------------------------------------------------------------------------------------------------------------------------------------- #
+
+def update_slider_ranges(self):
+    """Update slider ranges and steps to match the current sweep data."""
+    if not hasattr(self, 'freqs') or self.freqs is None or len(self.freqs) == 0:
+        logging.warning("[graphics_window._update_slider_ranges] No frequency data available, cannot update sliders")
+        return
+        
+    try:
+        num_points = len(self.freqs)
+        max_index = num_points - 1
+        middle_index = max_index // 2
+        
+        logging.info(f"[graphics_window._update_slider_ranges] Updating sliders for {num_points} frequency points (indices 0 to {max_index})")
+        logging.info(f"[graphics_window._update_slider_ranges] Frequency range: {self.freqs[0]/1e6:.3f} - {self.freqs[-1]/1e6:.3f} MHz")
+        
+        # Update left slider range if it exists and make it visible
+        if hasattr(self, 'slider_left') and self.slider_left:
+            try:
+                # Update slider range to match frequency data indices
+                self.slider_left.valmin = 0
+                self.slider_left.valmax = max_index
+                self.slider_left.valstep = 1
+                
+                # Set slider to middle position
+                self.slider_left.set_val(middle_index)
+                
+                # Make sure the slider is visible and active
+                if hasattr(self.slider_left, 'ax'):
+                    self.slider_left.ax.set_visible(True)
+                if hasattr(self.slider_left, 'set_active'):
+                    self.slider_left.set_active(True)
+                
+                logging.info(f"[graphics_window._update_slider_ranges] Left slider updated: range 0-{max_index}, positioned at index {middle_index} ({self.freqs[middle_index]/1e6:.3f} MHz)")
+            except Exception as e:
+                logging.warning(f"[graphics_window._update_slider_ranges] Could not update left slider: {e}")
+        
+        # Update right slider range if it exists and make it visible
+        if hasattr(self, 'slider_right') and self.slider_right:
+            try:
+                # Update slider range to match frequency data indices  
+                self.slider_right.valmin = 0
+                self.slider_right.valmax = max_index
+                self.slider_right.valstep = 1
+                
+                # Set slider to middle position
+                self.slider_right.set_val(middle_index)
+                
+                # Make sure the slider is visible and active
+                if hasattr(self.slider_right, 'ax'):
+                    self.slider_right.ax.set_visible(True)
+                if hasattr(self.slider_right, 'set_active'):
+                    self.slider_right.set_active(True)
+                
+                logging.info(f"[graphics_window._update_slider_ranges] Right slider updated: range 0-{max_index}, positioned at index {middle_index} ({self.freqs[middle_index]/1e6:.3f} MHz)")
+            except Exception as e:
+                logging.warning(f"[graphics_window._update_slider_ranges] Could not update right slider: {e}")
+
+        # Force canvas redraw to show updated markers
+        if hasattr(self, 'canvas_left') and self.canvas_left:
+            self.canvas_left.draw_idle()
+        if hasattr(self, 'canvas_right') and self.canvas_right:
+            self.canvas_right.draw_idle()
+                
+        logging.info("[graphics_window._update_slider_ranges] Slider ranges updated successfully")
+        
+    except Exception as e:
+        logging.error(f"[graphics_window._update_slider_ranges] Error updating slider ranges: {e}")
 
 def reset_sliders_and_markers_for_graph_change(self):
     """Reset sliders and markers to leftmost position specifically for graph type changes."""
@@ -36,7 +113,7 @@ def reset_sliders_and_markers_for_graph_change(self):
                 logging.warning(f"[graphics_window._reset_sliders_and_markers_for_graph_change] Could not reset right slider: {e}")
         
         # Clear marker information fields
-        self._clear_marker_fields_only()
+        _clear_marker_fields_only(self)
         
         # Force cursor position updates to leftmost position (index 0)
         if hasattr(self, 'update_cursor') and callable(self.update_cursor):

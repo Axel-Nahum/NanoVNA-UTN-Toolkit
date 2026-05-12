@@ -1,5 +1,23 @@
 import logging
+import sys
+
 from PySide6.QtCore import QTimer
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.panels_utils import _clear_marker_fields_only
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.sliders_update import update_slider_ranges
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+# -------------------------------------------------------------------------------------------------------------------- #
 
 def _reset_markers_after_sweep(self):
     """Reset markers and all marker-dependent information after a sweep completes."""
@@ -48,12 +66,11 @@ def _reset_markers_after_sweep(self):
             except Exception as e:
                 logging.warning(f"[graphics_window._reset_markers_after_sweep] Could not reset right slider: {e}")
         
-        
         # Reset ONLY marker field information - NOT the graphs themselves
-        self._clear_marker_fields_only()
+        _clear_marker_fields_only(self)
         
         # Update slider ranges to match the new sweep data
-        self._update_slider_ranges()
+        update_slider_ranges(self)
         
         # Force cursor position updates if update functions exist
         if hasattr(self, 'update_cursor') and callable(self.update_cursor):

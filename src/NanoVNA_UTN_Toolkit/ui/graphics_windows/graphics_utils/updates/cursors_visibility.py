@@ -16,6 +16,16 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.sliders_update import left_slider_moved, left_slider_moved_2, right_slider_moved, right_slider_moved_2
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+# ----------------------------------------------------------------------------------------------------------------------------------- #
+
 def force_marker_visibility(self, marker_color_left, marker_color_right, marker1_size_left, marker1_size_right):
     """Force markers to be visible by recreating them directly on axes"""
 
@@ -150,7 +160,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                             self.slider_left.observers.clear()
                         except:
                             pass
-                        self.slider_left.on_changed(self.left_slider_moved)
+                        self.slider_left.on_changed(lambda: left_slider_moved(self))
                     
                     # Reconnect the slider to use our wrapper
                     if hasattr(self, 'slider_left') and self.slider_left:
@@ -286,7 +296,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                             self.slider_right.observers.clear()
                         except:
                             pass
-                        self.slider_right.on_changed(self.right_slider_moved)
+                        self.slider_right.on_changed(lambda: right_slider_moved(self))
                         #self.right_slider_moved()
                     
                     # Reconnect the slider to use our wrapper
