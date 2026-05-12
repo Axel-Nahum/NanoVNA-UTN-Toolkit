@@ -35,6 +35,13 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.sliders_cursors_reset import reset_sliders_and_markers_for_graph_change
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 class View(QMainWindow):
     def __init__(self, nano_window=None, freqs=None):
         super().__init__()
@@ -446,7 +453,7 @@ class View(QMainWindow):
                 self.nano_window.update_right_s_param(self.current_s_tab2)
 
             # --- Reset sliders and update QGroupBox information ---
-            self.nano_window._reset_sliders_and_markers_for_graph_change()
+            reset_sliders_and_markers_for_graph_change(self)
 
             self.nano_window.show()
 

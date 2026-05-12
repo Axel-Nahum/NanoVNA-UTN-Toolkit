@@ -52,6 +52,22 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from src.NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration import update_calibration_label_from_method
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from src.NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ----------------------------------------------------------------------------------------------------------------- #
 
 def update_reconnect_button_state(self):
@@ -159,7 +175,7 @@ def run_sweep(self):
         self.reconnect_button.setEnabled(False)
         
         # Load current sweep configuration
-        self.load_sweep_configuration()
+        load_sweep_configuration(self)
         
         device_type = type(self.vna_device).__name__
         logging.info(f"[graphics_window.run_sweep] Running sweep on {device_type}")
@@ -515,7 +531,7 @@ def run_sweep(self):
 
         # Cal_Directory
         cal_dir = get_calibration_path(
-            "Calibration/osm_results",
+            "calibration/osm_results",
             "calibration/osm_results",
             Path(__file__).resolve()
         )
@@ -526,9 +542,9 @@ def run_sweep(self):
         is_import_dut = settings.value("Calibration/isImportDut", False, type=bool)
 
         if not kits_ok and not no_calibration and not is_import_dut:
-            self.update_calibration_label_from_method(calibration_method)
+            update_calibration_label_from_method(self, calibration_method)
         elif not is_import_dut:
-            self.update_calibration_label_from_method()
+            update_calibration_label_from_method(self)
 
         if kits_ok == False and no_calibration == True and not is_import_dut:
             s11 = s11_med
@@ -542,7 +558,7 @@ def run_sweep(self):
 
                 # Cal_Directory
                 cal_dir = get_calibration_path(
-                    "Calibration/thru_results",
+                    "calibration/thru_results",
                     "Calibration/thru_results",
                     Path(__file__).resolve()
                 )
@@ -554,8 +570,8 @@ def run_sweep(self):
 
                 # Cal_Directory
                 cal_dir = get_calibration_path(
-                    "Calibration/osm_results",
-                    "Calibration/osm_results",
+                    "calibration/osm_results",
+                    "calibration/osm_results",
                     Path(__file__).resolve()
                 )
                 methods = Methods(cal_dir)
@@ -565,8 +581,8 @@ def run_sweep(self):
                 # Cal_Directory
 
                 cal_dir = get_calibration_path(
-                    "Calibration/thru_results",
-                    "Calibration/thru_results",
+                    "calibration/thru_results",
+                    "calibration/thru_results",
                     Path(__file__).resolve()
                 )
                 methods = Methods(cal_dir)
@@ -577,15 +593,15 @@ def run_sweep(self):
 
                 # Osm_Directory
                 osm_dir = get_calibration_path(
-                    "Calibration/osm_results",
-                    "Calibration/osm_results",
+                    "calibration/osm_results",
+                    "calibration/osm_results",
                     Path(__file__).resolve()
                 )
 
                 # Thru_Directory
                 thru_dir = get_calibration_path(
-                    "Calibration/thru_results",
-                    "Calibration/thru_results",
+                    "calibration/thru_results",
+                    "calibration/thru_results",
                     Path(__file__).resolve()
                 )
 
@@ -597,8 +613,8 @@ def run_sweep(self):
         elif kits_ok == True and no_calibration == False and not is_import_dut:
 
             selected_kit_dir = get_calibration_path(
-                "Calibration/Kits",
-                "Calibration/Kits",
+                "calibration/Kits",
+                "calibration/Kits",
                 Path(__file__).resolve()
             )
 

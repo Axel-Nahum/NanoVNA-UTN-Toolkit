@@ -293,7 +293,7 @@ def update_plots_with_new_data(self, skip_reset=False):
         )
 
         # --- Recreate right panel plot ---
-        logging.info(f"[graphics_window.update_plots_with_new_data] Recreating right plot: {graph_type_tab2} - {s_param_tab2}")
+        logging.info(f"[graphics_window.update_plots_with_new_data] Recreating right plot: {graph_type_tab2} - {s_param_tab2} - {marker_color2}")
         unit_right = self.get_graph_unit(2)
 
         recreate_single_plot(

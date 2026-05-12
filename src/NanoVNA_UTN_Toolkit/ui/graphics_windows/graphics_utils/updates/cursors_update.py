@@ -1,9 +1,18 @@
 import logging
 import numpy as np
 
+try:
+    from src.NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_color_left, marker_color_right, 
     marker2_color_left, marker2_color_right, marker1_size_left, marker1_size_right, marker2_size_left, marker2_size_right):
     """Recreate cursors when the plot type changes."""
+
     try:
         logging.info("[graphics_window._recreate_cursors_for_new_plots] Recreating cursors for plot type changes")
         

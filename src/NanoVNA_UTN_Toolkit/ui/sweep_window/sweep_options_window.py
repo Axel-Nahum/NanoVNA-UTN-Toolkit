@@ -14,6 +14,15 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QIcon, QDoubleValidator, QFont, QValidator
 
+try:
+    from src.NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
 
 class SmartDatapointsSpinBox(QSpinBox):
     """
@@ -97,7 +106,7 @@ class SmartDatapointsSpinBox(QSpinBox):
 
 
 class SweepOptionsWindow(QMainWindow):
-    def __init__(self, parent: "NanoVNAGraphics", vna_device=None):
+    def __init__(self, parent: NanoVNAGraphics, vna_device=None):
         super().__init__(parent)
 
         self.last_start_value = 50   
@@ -962,7 +971,7 @@ class SweepOptionsWindow(QMainWindow):
             # Update main window configuration if available
             if self.parent() and hasattr(self.parent(), 'load_sweep_configuration'):
                 logging.info("[sweep_options_window.on_frequency_changed] Updating parent graphics_window configuration")
-                self.parent().load_sweep_configuration()
+                load_sweep_configuration(self)
             else:
                 logging.warning("[sweep_options_window.on_frequency_changed] Parent graphics_window not available for config update")
         except Exception as e:
@@ -1028,7 +1037,7 @@ class SweepOptionsWindow(QMainWindow):
         # Save settings
         self.save_settings()
 
-        self.main_window.load_sweep_configuration()
+        load_sweep_configuration(self)
 
         # Close window without confirmation message
         self.close()
@@ -1093,7 +1102,7 @@ class SweepOptionsWindow(QMainWindow):
         # Ensure parent graphics_window is updated with final configuration
         if self.parent() and hasattr(self.parent(), 'load_sweep_configuration'):
             logging.info("[sweep_options_window.closeEvent] Final update to parent graphics_window configuration")
-            self.parent().load_sweep_configuration()
+            load_sweep_configuration(self)
         
         # Call parent closeEvent
         super().closeEvent(event)

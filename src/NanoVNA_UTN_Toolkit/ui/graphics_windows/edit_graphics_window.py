@@ -28,8 +28,23 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.graphics_update import recreate_single_plot
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.graphics_update import recreate_single_plot, update_plots_with_new_data
 except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.sliders_cursors_reset import reset_sliders_and_markers_for_graph_change
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_update import recreate_cursors_for_new_plots
+except ImportError as e:
+    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -351,8 +366,8 @@ class EditGraphics(QMainWindow):
         unit_left = self.nano_window.get_graph_unit(1)
         unit_right = self.nano_window.get_graph_unit(2)
 
-        self.nano_window.update_plots_with_new_data(skip_reset=True)
-
+        update_plots_with_new_data(self, skip_reset=True)
+        
         recreate_single_plot(
             self,
             ax=self.nano_window.ax_left,
@@ -392,6 +407,9 @@ class EditGraphics(QMainWindow):
             cursor_graph=self.nano_window.cursor_right,
             cursor_graph_2=self.nano_window.cursor_right_2
         )
+
+        self.nano_window._force_marker_visibility(marker_color_left=marker_color, marker_color_right=marker_color2, 
+                marker1_size_left=marker_size, marker1_size_right=marker_size2)
 
         self.nano_window.s11 = self.s11
         self.nano_window.s21 = self.s21

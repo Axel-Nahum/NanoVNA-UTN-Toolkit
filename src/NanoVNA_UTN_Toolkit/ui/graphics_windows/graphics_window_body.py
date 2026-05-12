@@ -23,6 +23,23 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from src.NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration import update_calibration_label_from_method
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from src.NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+
 def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_param):
 
     # --- Central widget ---
@@ -52,7 +69,7 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
     self.sweep_info_label.setStyleSheet("font-size: 12px;")
 
     # Initialize sweep configuration
-    self.load_sweep_configuration()
+    load_sweep_configuration(self)
 
     # Progress bar
     self.sweep_progress_bar = QProgressBar()
@@ -87,7 +104,7 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
         alignment=Qt.AlignRight
     )
 
-    self.update_calibration_label_from_method()
+    update_calibration_label_from_method(self)
 
     self.main_layout_vertical.addLayout(sweep_control_layout)
 
