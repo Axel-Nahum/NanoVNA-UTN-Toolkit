@@ -2,22 +2,19 @@
 Edit graphics window for NanoVNA devices.
 """
 
-import skrf as rf
 import numpy as np
 import os
 import sys
 import logging
-import shutil
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.lines import Line2D
+
+from pathlib import Path
 
 from PySide6.QtWidgets import (
-    QLabel, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
-    QPushButton, QTabWidget, QFrame, QSizePolicy, QApplication
+    QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
+    QPushButton, QTabWidget, QApplication
 )
-from PySide6.QtCore import Qt, QSettings
-from PySide6.QtGui import QIcon, QTextCursor, QFont, QPen
+from PySide6.QtCore import QSettings
+from PySide6.QtGui import QIcon
 
 try:
     from NanoVNA_UTN_Toolkit.ui.graphics_windows.edit_graphics_utils.edit_graphics_utils import create_edit_tab1, create_edit_tab2
@@ -65,6 +62,23 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.dark_light_mode.light_dark_mode import dark_light_config
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+
 from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
 
 class EditGraphics(QMainWindow):
@@ -98,16 +112,30 @@ class EditGraphics(QMainWindow):
             else:
                 logging.getLogger(__name__).warning("icon.ico not found in dev mode")
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+#------------------------------------------------------------------------------------------------------------------------------------------
 
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        # Load configuration for UI colors and styles
+        settings = get_settings(
+            "INI/dark_light_config/dark_light_config.ini",
+            "ui/utils/settings/dark_light_mode/dark_light_config.ini",
+            Path(__file__).resolve()
+        )  
+
+        # QFrame
+        qframe_color = settings.value("Dark_Light/QFrame/background-color", "white")
+
+        # Dark-Light mode settings
+
+        dark_light_config(self)
+
+#------------------------------------------------------------------------------------------------------------------------------------------
+
+        # Load configuration for UI colors and styles
+        settings = get_settings(
+            "INI/dark_light_config/dark_light_config.ini", 
+            "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
+            Path(__file__).resolve()
+        )
 
         # QWidget
         background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")

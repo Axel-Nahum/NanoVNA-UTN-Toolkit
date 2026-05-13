@@ -23,8 +23,8 @@ def toggle_menu_dark_mode(self, light_dark_mode):
 
     # Load configuration for UI colors and styles
     settings = get_settings(
-        "INI/colors_config/config.ini", 
-        "ui/graphics_windows/ini/config.ini", 
+        "INI/dark_light_config/dark_light_config.ini", 
+        "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
         Path(__file__).resolve()
     )
 
@@ -513,16 +513,17 @@ def toggle_menu_dark_mode(self, light_dark_mode):
     
 def dark_light_config(self):
 
+    # Load configuration for UI colors and styles
     settings = get_settings(
-        "INI/colors_config/config.ini", 
-        "ui/graphics_windows/ini/config.ini", 
+        "INI/dark_light_config/dark_light_config.ini",
+        "ui/utils/settings/dark_light_mode/dark_light_config.ini",
         Path(__file__).resolve()
     )
 
     # QWidget
     background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")
 
-    # QTabWidget pane
+    # QTabWidget
     tabwidget_pane_bg = settings.value("Dark_Light/QTabWidget_pane/background-color", "#3b3b3b")
 
     # QTabBar
@@ -535,7 +536,7 @@ def dark_light_config(self):
 
     # QTabBar selected
     tabbar_selected_bg = settings.value("Dark_Light/QTabBar_selected/background-color", "#4d4d4d")
-    tabbar_selected_color = settings.value("Dark_Light/QTabBar/color", "white")
+    tabbar_selected_color = settings.value("Dark_Light/QTabBar_selected/color", "white")
 
     # QSpinBox
     spinbox_bg = settings.value("Dark_Light/QSpinBox/background-color", "#3b3b3b")
@@ -543,8 +544,9 @@ def dark_light_config(self):
     spinbox_border = settings.value("Dark_Light/QSpinBox/border", "1px solid white")
     spinbox_border_radius = settings.value("Dark_Light/QSpinBox/border-radius", "8px")
 
-    # QGroupBox title
+    # QGroupBox
     groupbox_title_color = settings.value("Dark_Light/QGroupBox_title/color", "white")
+    groupbox_border = settings.value("Dark_Light/QGroupBox/border", "1.5px solid white")
 
     # QLabel
     label_color = settings.value("Dark_Light/QLabel/color", "white")
@@ -567,6 +569,11 @@ def dark_light_config(self):
     pushbutton_hover_bg = settings.value("Dark_Light/QPushButton_hover/background-color", "#4d4d4d")
     pushbutton_pressed_bg = settings.value("Dark_Light/QPushButton_pressed/background-color", "#5c5c5c")
 
+    # QPushButton disabled
+    pushbutton_disabled_bg = settings.value("Dark_Light/QPushButton_disabled/background-color", "#242424")
+    pushbutton_disabled_color = settings.value("Dark_Light/QPushButton_disabled/color", "#777777")
+    pushbutton_disabled_border = settings.value("Dark_Light/QPushButton_disabled/border", "1px solid #333333")
+
     # QMenu
     menu_bg = settings.value("Dark_Light/QMenu/background", "#3a3a3a")
     menu_color = settings.value("Dark_Light/QMenu/color", "white")
@@ -574,7 +581,7 @@ def dark_light_config(self):
     menu_item_selected_bg = settings.value("Dark_Light/QMenu::item:selected/background-color", "#4d4d4d")
 
     # QMenuBar
-    menu_item_color = settings.value("Dark_Light/QMenu_item_selected/background-color", "4d4d4d")
+    menu_item_color = settings.value("Dark_Light/QMenu_item_selected/background-color", "#4d4d4d")
     menubar_bg = settings.value("Dark_Light/QMenuBar/background-color", "#3a3a3a")
     menubar_color = settings.value("Dark_Light/QMenuBar/color", "white")
     menubar_item_bg = settings.value("Dark_Light/QMenuBar_item/background", "transparent")
@@ -582,53 +589,186 @@ def dark_light_config(self):
     menubar_item_padding = settings.value("Dark_Light/QMenuBar_item/padding", "4px 10px")
     menubar_item_selected_bg = settings.value("Dark_Light/QMenuBar_item_selected/background-color", "#4d4d4d")
 
+    # QComboBox
+    combobox_color = settings.value("Dark_Light/QComboBox/color", "white")
+    combobox_bg = settings.value("Dark_Light/QComboBox/background-color", "#3b3b3b")
+    combobox_border = settings.value("Dark_Light/QComboBox/border", "2px solid white")
+    combobox_border_radius = settings.value("Dark_Light/QComboBox/border-radius", "6px")
+    combobox_hover_bg = settings.value("Dark_Light/QComboBox:hover/background-color", "#4d4d4d")
+    combobox_focus_bg = settings.value("Dark_Light/QComboBox:focus/background-color", "#4d4d4d")
+    combobox_placeholder_color = settings.value("Dark_Light/QComboBox::placeholder/color", "#cccccc")
+
     self.setStyleSheet(f"""
+
+        /* QWidget */
         QWidget {{
             background-color: {background_color};
         }}
+
+        /* QTabWidget */
         QTabWidget::pane {{
-            background-color: {tabwidget_pane_bg}; 
+            background-color: {tabwidget_pane_bg};
         }}
+
+        /* QTabBar */
         QTabBar::tab {{
-            background-color: {tabbar_bg}; 
+            background-color: {tabbar_bg};
             color: {tabbar_color};
             padding: {tabbar_padding};
-            border: {tabbar_border}; 
+            border: {tabbar_border};
             border-top-left-radius: {tabbar_border_tl_radius};
             border-top-right-radius: {tabbar_border_tr_radius};
         }}
-        QMenu{{
-            color_ {menubar_color};
-            background-color_ {menu_item_color};
-        }}
+
         QTabBar::tab:selected {{
-            background-color: {tabbar_selected_bg};  
+            background-color: {tabbar_selected_bg};
             color: {tabbar_selected_color};
         }}
+
+        /* QSpinBox */
         QSpinBox {{
+            color: black;
+            background-color: white;
+            border: 1px solid gray;
+            border-radius: 2px;
+            padding: 0px 2px;
+        }}
+        
+
+        /* QDoubleSpinBox */
+        QDoubleSpinBox {{
             background-color: {spinbox_bg};
             color: {spinbox_color};
             border: {spinbox_border};
             border-radius: {spinbox_border_radius};
+            padding: 4px;
+            min-height: 20px;
         }}
+
+        QDoubleSpinBox:hover {{
+            background-color: {spinbox_bg};
+        }}
+
+        QDoubleSpinBox:focus {{
+            background-color: {spinbox_bg};
+            border: {spinbox_border};
+        }}
+
+        QDoubleSpinBox::up-button {{
+            background-color: {spinbox_bg};
+            border: {spinbox_border};
+            border-radius: 3px;
+            width: 18px;
+            min-height: 12px;
+        }}
+
+        QDoubleSpinBox::down-button {{
+            background-color: {spinbox_bg};
+            border: {spinbox_border};
+            border-radius: 3px;
+            width: 18px;
+            min-height: 12px;
+        }}
+
+        QDoubleSpinBox::up-button:hover,
+        QDoubleSpinBox::down-button:hover {{
+            background-color: {pushbutton_hover_bg};
+        }}
+
+        QDoubleSpinBox::up-arrow {{
+            image: none;
+            border-left: 2px solid transparent;
+            border-right: 2px solid transparent;
+            border-bottom: 3px solid {spinbox_color};
+            width: 0px;
+            height: 0px;
+        }}
+
+        QDoubleSpinBox::down-arrow {{
+            image: none;
+            border-left: 2px solid transparent;
+            border-right: 2px solid transparent;
+            border-top: 3px solid {spinbox_color};
+            width: 0px;
+            height: 0px;
+        }}
+
+        /* QComboBox */
+        QComboBox {{
+            background-color: {combobox_bg};
+            color: {combobox_color};
+            border: {combobox_border};
+            border-radius: {combobox_border_radius};
+            padding: 4px 8px;
+            min-height: 20px;
+            min-width: 60px;
+        }}
+
+        QComboBox:hover {{
+            background-color: {combobox_hover_bg};
+        }}
+
+        QComboBox:focus {{
+            background-color: {combobox_focus_bg};
+            border: 1px solid #4d90fe;
+        }}
+
+        QComboBox {{
+            padding-right: 0px;
+        }}
+
+        QComboBox::drop-down {{
+            border: none;
+            width: 0px;
+            background: transparent;
+        }}
+
+        QComboBox::down-arrow {{
+            image: none;
+            width: 0px;
+            height: 0px;
+        }}
+
+        QComboBox QAbstractItemView {{
+            background-color: {combobox_bg};
+            color: {combobox_color};
+            border: {combobox_border};
+            selection-background-color: {combobox_hover_bg};
+            selection-color: {combobox_color};
+        }}
+
+        QComboBox::placeholder {{
+            color: {combobox_placeholder_color};
+        }}
+
+        /* QGroupBox */
         QGroupBox:title {{
-            color: {groupbox_title_color};  
+            color: {groupbox_title_color};
         }}
-        QGroupBox{{
-            color: {groupbox_title_color}
-        }}
+
+        /* Text widgets */
         QTextEdit {{
-            color: {label_color};  
+            color: {label_color};
         }}
+
         QLabel {{
-            color: {label_color};  
+            color: {label_color};
         }}
+
         QProgressBar {{
             color: {label_color};
         }}
-            QRadioButton{{
+
+        QRadioButton {{
             color: {label_color};
         }}
+
+        /* QFrame */
+        QFrame {{
+            border-radius: 5px;
+        }}
+
+        /* QLineEdit */
         QLineEdit {{
             background-color: {lineedit_bg};
             color: {lineedit_color};
@@ -636,10 +776,13 @@ def dark_light_config(self):
             border-radius: {lineedit_border_radius};
             padding: {lineedit_padding};
         }}
+
         QLineEdit:focus {{
             background-color: {lineedit_focus_bg};
             border: {lineedit_focus_border};
         }}
+
+        /* QPushButton */
         QPushButton {{
             background-color: {pushbutton_bg};
             color: {pushbutton_color};
@@ -647,32 +790,49 @@ def dark_light_config(self):
             border-radius: {pushbutton_border_radius};
             padding: {pushbutton_padding};
         }}
+
         QPushButton:hover {{
             background-color: {pushbutton_hover_bg};
         }}
+
         QPushButton:pressed {{
             background-color: {pushbutton_pressed_bg};
         }}
+
+        QPushButton:disabled {{
+            background-color: {pushbutton_disabled_bg};
+            color: {pushbutton_disabled_color};
+            border: {pushbutton_disabled_border};
+        }}
+
+        /* QMenuBar */
         QMenuBar {{
             background-color: {menubar_bg};
             color: {menubar_color};
         }}
+
         QMenuBar::item {{
             background: {menubar_item_bg};
             color: {menubar_item_color};
             padding: {menubar_item_padding};
         }}
+
         QMenuBar::item:selected {{
             background: {menubar_item_selected_bg};
         }}
+
+        /* QMenu */
         QMenu {{
             background-color: {menu_bg};
             color: {menu_color};
             border: {menu_border};
         }}
+
         QMenu::item:selected {{
             background-color: {menu_item_color};
         }}
+
+        /* Lists and trees */
         QListWidget {{
             color: {label_color};
             background-color: transparent;
@@ -687,4 +847,5 @@ def dark_light_config(self):
             color: {label_color};
             background-color: transparent;
         }}
+
     """)

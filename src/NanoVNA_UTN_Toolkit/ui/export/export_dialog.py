@@ -6,15 +6,22 @@ Provides functionality to export graph data and images in various formats.
 import io
 import os
 import sys
-import numpy as np
 import matplotlib.pyplot as plt
+
+from pathlib import Path
+
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, 
                                QPushButton, QMessageBox, QApplication, QFileDialog)
-from PySide6.QtCore import QTimer, QThread, Qt, QSettings
+from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QPixmap
-from PySide6.QtCore import Qt
 
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 class ExportDialog(QDialog):
     """Dialog for exporting graph data and images."""
@@ -34,15 +41,11 @@ class ExportDialog(QDialog):
         self.update_cursor_right = update_cursor_right
 
         # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
-
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        settings = get_settings(
+            "INI/dark_light_config/dark_light_config.ini", 
+            "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
+            Path(__file__).resolve()
+        )
 
         # QWidget
         background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")

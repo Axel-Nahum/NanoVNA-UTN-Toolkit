@@ -1,31 +1,23 @@
-import sys
-import pandas as pd
 import logging
+import sys
 import os
+from datetime import datetime
+import numpy as np
 from shiboken6 import isValid
-from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QPushButton, QComboBox, QMessageBox
+
+import matplotlib.pyplot as plt
+
+from pathlib import Path
+
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, 
+        QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox,  
+        QMessageBox,QGroupBox, QFormLayout, QDoubleSpinBox, QToolTip
 )
 from PySide6.QtGui import QIcon, QColor
 from PySide6.QtCore import Qt, QSettings
-from PySide6.QtCore import QSettings as QtSettings
-from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, 
-                               QLabel, QPushButton, QComboBox, QSpacerItem, 
-                               QSizePolicy, QProgressBar, QMessageBox, QInputDialog,
-                               QGroupBox, QFormLayout, QDoubleSpinBox, QSpinBox, QToolTip)
 
 # Import SmartDatapointsSpinBox for intelligent datapoints navigation
 from .sweep_window.sweep_options_window import SmartDatapointsSpinBox
-
-# Import NanoVNAGraphics for the final step
-try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
-except ImportError as e:
-    logging.error("Failed to import NanoVNAGraphics: %s", e)
-    NanoVNAGraphics = None  # Safe fallback
-
-import matplotlib.pyplot as plt
 
 plt.rcParams['mathtext.fontset'] = 'cm'   
 plt.rcParams['text.usetex'] = False      
@@ -33,7 +25,12 @@ plt.rcParams['axes.labelsize'] = 12
 plt.rcParams['font.family'] = 'serif'    
 plt.rcParams['mathtext.rm'] = 'serif'     
 
-from datetime import datetime
+# Import NanoVNAGraphics for the final step
+try:
+    from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
+except ImportError as e:
+    logging.error("Failed to import NanoVNAGraphics: %s", e)
+    NanoVNAGraphics = None  # Safe fallback
 
 # Import calibration data storage
 try:
@@ -46,12 +43,6 @@ except ImportError as e:
 
 from NanoVNA_UTN_Toolkit.ui.calibration.errors import CalibrationErrors
 
-import numpy as np
-import skrf as rf
-from matplotlib.figure import Figure
-from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.lines import Line2D
-
 try:
     from NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration import update_calibration_label_from_method
 except ImportError as e:
@@ -59,6 +50,24 @@ except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.dark_light_mode.light_dark_mode import dark_light_config
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+# ------------------------------------------------------------------------------------------------------------------- #
 
 class CalibrationWizard(QMainWindow):
     def __init__(self, vna_device=None, parent=None, caller="welcome"):
@@ -79,244 +88,15 @@ class CalibrationWizard(QMainWindow):
         self.last_start_value = 50   
         self.last_stop_value  = 1.5   
 
-        logging.info(f"[CalibrationWizard] Initialized with caller: {caller}")
-
         self.caller = caller
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "ui", "graphics_windows", "ini", "config.ini")
+ #------------------------------------------------------------------------------------------------------------------------------------------
 
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        # Dark-Light mode settings
 
-        # QWidget
-        background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")
+        dark_light_config(self)
 
-        # QTabWidget pane
-        tabwidget_pane_bg = settings.value("Dark_Light/QTabWidget_pane/background-color", "#3b3b3b")
-
-        # QTabBar
-        tabbar_bg = settings.value("Dark_Light/QTabBar/background-color", "#2b2b2b")
-        tabbar_color = settings.value("Dark_Light/QTabBar/color", "white")
-        tabbar_padding = settings.value("Dark_Light/QTabBar/padding", "5px 12px")
-        tabbar_border = settings.value("Dark_Light/QTabBar/border", "none")
-        tabbar_border_tl_radius = settings.value("Dark_Light/QTabBar/border-top-left-radius", "6px")
-        tabbar_border_tr_radius = settings.value("Dark_Light/QTabBar/border-top-right-radius", "6px")
-
-        # QTabBar selected
-        tabbar_selected_bg = settings.value("Dark_Light/QTabBar_selected/background-color", "#4d4d4d")
-        tabbar_selected_color = settings.value("Dark_Light/QTabBar/color", "white")
-
-        # QSpinBox
-        spinbox_bg = settings.value("Dark_Light/QSpinBox/background-color", "#3b3b3b")
-        spinbox_color = settings.value("Dark_Light/QSpinBox/color", "white")
-        spinbox_border = settings.value("Dark_Light/QSpinBox/border", "1px solid white")
-        spinbox_border_radius = settings.value("Dark_Light/QSpinBox/border-radius", "8px")
-
-        # QGroupBox title
-        groupbox_title_color = settings.value("Dark_Light/QGroupBox_title/color", "white")
-
-        # QLabel
-        label_color = settings.value("Dark_Light/QLabel/color", "white")
-
-        # QLineEdit
-        lineedit_bg = settings.value("Dark_Light/QLineEdit/background-color", "#3b3b3b")
-        lineedit_color = settings.value("Dark_Light/QLineEdit/color", "white")
-        lineedit_border = settings.value("Dark_Light/QLineEdit/border", "1px solid white")
-        lineedit_border_radius = settings.value("Dark_Light/QLineEdit/border-radius", "6px")
-        lineedit_padding = settings.value("Dark_Light/QLineEdit/padding", "4px")
-        lineedit_focus_bg = settings.value("Dark_Light/QLineEdit_focus/background-color", "#454545")
-        lineedit_focus_border = settings.value("Dark_Light/QLineEdit_focus/border", "1px solid #4d90fe")
-
-        # QPushButton
-        pushbutton_bg = settings.value("Dark_Light/QPushButton/background-color", "#3b3b3b")
-        pushbutton_color = settings.value("Dark_Light/QPushButton/color", "white")
-        pushbutton_border = settings.value("Dark_Light/QPushButton/border", "1px solid white")
-        pushbutton_border_radius = settings.value("Dark_Light/QPushButton/border-radius", "6px")
-        pushbutton_padding = settings.value("Dark_Light/QPushButton/padding", "4px 10px")
-        pushbutton_hover_bg = settings.value("Dark_Light/QPushButton_hover/background-color", "#4d4d4d")
-        pushbutton_pressed_bg = settings.value("Dark_Light/QPushButton_pressed/background-color", "#5c5c5c")
-
-        # QMenu
-        menu_bg = settings.value("Dark_Light/QMenu/background", "#3a3a3a")
-        menu_color = settings.value("Dark_Light/QMenu/color", "white")
-        menu_border = settings.value("Dark_Light/QMenu/border", "1px solid #3b3b3b")
-        menu_item_selected_bg = settings.value("Dark_Light/QMenu::item:selected/background-color", "#4d4d4d")
-
-        # QMenuBar
-        menu_item_color = settings.value("Dark_Light/QMenu_item_selected/background-color", "4d4d4d")
-        menubar_bg = settings.value("Dark_Light/QMenuBar/background-color", "#3a3a3a")
-        menubar_color = settings.value("Dark_Light/QMenuBar/color", "white")
-        menubar_item_bg = settings.value("Dark_Light/QMenuBar_item/background", "transparent")
-        menubar_item_color = settings.value("Dark_Light/QMenuBar_item/color", "white")
-        menubar_item_padding = settings.value("Dark_Light/QMenuBar_item/padding", "4px 10px")
-        menubar_item_selected_bg = settings.value("Dark_Light/QMenuBar_item_selected/background-color", "#4d4d4d")
-
-        # QCombo
-
-        color_bg_text_QCombo = settings.value("Dark_Light/QComboBox/background-color", "#3b3b3b")
-        color_text_QCombo = settings.value("Dark_Light/QComboBox/color", "white")
-
-        self.setStyleSheet(f"""
-            QWidget {{
-                background-color: {background_color};
-            }}
-            QTabWidget::pane {{
-                background-color: {tabwidget_pane_bg}; 
-            }}
-            QTabBar::tab {{
-                background-color: {tabbar_bg}; 
-                color: {tabbar_color};
-                padding: {tabbar_padding};
-                border: {tabbar_border}; 
-                border-top-left-radius: {tabbar_border_tl_radius};
-                border-top-right-radius: {tabbar_border_tr_radius};
-            }}
-            QTabBar::tab:selected {{
-                background-color: {tabbar_selected_bg};  
-                color: {tabbar_selected_color};
-            }}
-            QSpinBox {{
-                background-color: {spinbox_bg};
-                color: {spinbox_color};
-                border: 2px solid {spinbox_color};
-                border-radius: 6px;
-                padding: 8px;
-                font-size: 14px;
-                min-width: 150px;
-            }}
-            QSpinBox:hover {{
-                background-color: {spinbox_bg};
-            }}
-            QSpinBox:focus {{
-                background-color: {spinbox_bg};
-                border: 2px solid {spinbox_color};
-            }}
-            QSpinBox::up-button, QSpinBox::down-button {{
-                background-color: {spinbox_bg};
-                border: 1px solid {spinbox_color};
-                border-radius: 3px;
-                width: 16px;
-            }}
-            QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
-                background-color: {spinbox_bg};
-            }}
-            QDoubleSpinBox {{
-                background-color: {spinbox_bg};
-                color: {spinbox_color};
-                border: 2px solid {spinbox_color};
-                border-radius: 6px;
-                padding: 8px;
-                font-size: 14px;
-                min-width: 150px;
-            }}
-            QDoubleSpinBox:hover {{
-                background-color: {spinbox_bg};
-            }}
-            QDoubleSpinBox:focus {{
-                background-color: {spinbox_bg};
-                border: 2px solid {spinbox_color};
-            }}
-            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
-                background-color: {spinbox_bg};
-                border: 1px solid {spinbox_color};
-                border-radius: 3px;
-                width: 16px;
-            }}
-            QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {{
-                background-color: {spinbox_bg};
-            }}
-            QGroupBox:title {{
-                color: {groupbox_title_color};  
-            }}
-            QLabel {{
-                color: {label_color};  
-            }}
-            QLineEdit {{
-                background-color: {lineedit_bg};
-                color: {lineedit_color};
-                border: {lineedit_border};
-                border-radius: {lineedit_border_radius};
-                padding: {lineedit_padding};
-            }}
-            QLineEdit:focus {{
-                background-color: {lineedit_focus_bg};
-                border: {lineedit_focus_border};
-            }}
-            QPushButton {{
-                background-color: {pushbutton_bg};
-                color: {pushbutton_color};
-                border: {pushbutton_border};
-                border-radius: {pushbutton_border_radius};
-                padding: {pushbutton_padding};
-            }}
-            QPushButton:hover {{
-                background-color: {pushbutton_hover_bg};
-            }}
-            QPushButton:pressed {{
-                background-color: {pushbutton_pressed_bg};
-            }}
-            QMenuBar {{
-                background-color: {menubar_bg};
-                color: {menubar_color};
-            }}
-            QMenuBar::item {{
-                background: {menubar_item_bg};
-                color: {menubar_item_color};
-                padding: {menubar_item_padding};
-            }}
-            QMenuBar::item:selected {{
-                background: {menubar_item_selected_bg};
-            }}
-            QMenu {{
-                background-color: {menu_bg};
-                color: {menu_color};
-                border: {menu_border};
-            }}
-            QMenu::item:selected {{
-                background-color: {menu_item_color};
-            }}
-            QComboBox {{
-                background-color: {color_bg_text_QCombo};
-                color: {color_text_QCombo};
-                border: 2px solid {color_text_QCombo};
-                border-radius: 6px;
-                padding: 8px;
-                font-size: 14px;
-                min-width: 200px;
-            }}
-            QComboBox:hover {{
-                background-color: {color_bg_text_QCombo};
-            }}
-            QComboBox::drop-down {{
-                width: 0px;
-                border: none;
-                background: transparent;
-            }}
-            QComboBox::down-arrow {{
-                image: none;
-                width: 0px;
-                height: 0px;
-            }}
-            QComboBox QAbstractItemView {{
-                background-color: {color_bg_text_QCombo};
-                color: {color_text_QCombo};
-                selection-background-color: {color_bg_text_QCombo};
-                selection-color: white;
-                border: 1px solid white;
-            }}
-            QComboBox:focus {{
-                background-color: #4d4d4d;
-            }}
-            QComboBox::placeholder {{
-                color: #cccccc;
-            }}
-        """)
+#------------------------------------------------------------------------------------------------------------------------------------------
 
         self.setWindowTitle("NanoVNA UTN Toolkit - Calibration Wizard")
         self.setGeometry(150, 150, 1000, 600)

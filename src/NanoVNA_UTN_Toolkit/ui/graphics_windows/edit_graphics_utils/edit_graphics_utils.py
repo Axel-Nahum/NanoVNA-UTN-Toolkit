@@ -55,7 +55,7 @@ except ImportError as e:
 
 def create_edit_tab1(self, tabs, nano_window):
 
-    # Load configuration for UI colors and styles
+    # Load configuration for graphics
     settings = get_settings(
         "INI/colors_config/config.ini",
         "ui/graphics_windows/ini/config.ini", 
@@ -82,6 +82,16 @@ def create_edit_tab1(self, tabs, nano_window):
     cursor_1_1 = int(settings.value("Cursor_1_1/index", 0))
     cursor_2_1 = int(settings.value("Cursor_2_1/index", 0))
 
+    # Load configuration for UI colors and styles
+    settings_dark_light = get_settings(
+        "INI/dark_light_config/dark_light_config.ini",
+        "ui/utils/settings/dark_light_mode/dark_light_config.ini",
+        Path(__file__).resolve()
+    )  
+
+    # QFrame
+    qframe_color = settings_dark_light.value("Dark_Light/QFrame/background-color", "white")
+
 ####################################################################################################
 #--------- Tab1 -----------------------------------------------------------------------------------#
 ####################################################################################################
@@ -92,6 +102,7 @@ def create_edit_tab1(self, tabs, nano_window):
     tab1_container.setSpacing(0)
 
     line_tab = QFrame()
+    line_tab.setStyleSheet(f"""background-color: {qframe_color}; color: {qframe_color}""")
     line_tab.setObjectName("separatorLine")
     line_tab.setFixedHeight(2)
     tab1_container.addWidget(line_tab)
@@ -585,6 +596,16 @@ def create_edit_tab2(self, tabs, nano_window):
     cursor_1_2 = int(settings.value("Cursor_1_2/index", 0))
     cursor_2_2 = int(settings.value("Cursor_2_2/index", 0))
 
+    # Load configuration for UI colors and styles
+    settings_dark_light = get_settings(
+        "INI/dark_light_config/dark_light_config.ini",
+        "ui/utils/settings/dark_light_mode/dark_light_config.ini",
+        Path(__file__).resolve()
+    )  
+
+    # QFrame
+    qframe_color = settings_dark_light.value("Dark_Light/QFrame/background-color", "white")
+ 
 ####################################################################################################
 #--------- Tab2 -----------------------------------------------------------------------------------#
 ####################################################################################################
@@ -596,6 +617,7 @@ def create_edit_tab2(self, tabs, nano_window):
 
     # Línea arriba
     line_tab = QFrame()
+    line_tab.setStyleSheet(f"""background-color: {qframe_color}; color: {qframe_color}""")
     line_tab.setFixedHeight(2)
     line_tab.setObjectName("separatorLine")
     tab2_container.addWidget(line_tab)
@@ -1033,6 +1055,7 @@ def create_edit_tab2(self, tabs, nano_window):
 
     # Line above the buttons
     line_above_buttons = QFrame()
+    line_above_buttons.setStyleSheet(f"""background-color: {qframe_color}; color: {qframe_color}""")
     line_above_buttons.setObjectName("separatorLine")
     line_above_buttons.setFixedHeight(2)
     tab2_container.addWidget(line_above_buttons)
