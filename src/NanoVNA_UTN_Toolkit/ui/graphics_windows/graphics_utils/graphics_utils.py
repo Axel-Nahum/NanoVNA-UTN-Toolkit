@@ -1,29 +1,37 @@
 import numpy as np
-import skrf as rf
 import os
 import logging
 import gc
 import sys
-import matplotlib
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QGroupBox, QLabel, QSizePolicy, QLineEdit, QApplication
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
-from matplotlib.patches import Circle
+from pathlib import Path
+
 from matplotlib.widgets import Slider
 from PySide6.QtCore import Qt
-from matplotlib.lines import Line2D
-
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 plt.rcParams['mathtext.fontset'] = 'cm'   # Computer Modern font
 plt.rcParams['text.usetex'] = False       # No external LaTeX required
 plt.rcParams['axes.labelsize'] = 12
 plt.rcParams['font.family'] = 'serif'     # Matches LaTeX style
 plt.rcParams['mathtext.rm'] = 'serif'     # Consistent numbers and text
- 
-from PySide6.QtCore import QObject, QEvent, QSettings
 
-from PySide6.QtGui import QDoubleValidator
+
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QSizePolicy, QLineEdit
+from PySide6.QtCore import QSettings
+
+# Import get_settings 
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+# ------------------------------------------------------------------------------------------------------------------ #
 
 def format_frequency_smart(freq_hz):
     """Format frequency in the most appropriate unit (Hz, kHz, MHz, GHz)."""
@@ -556,16 +564,13 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
         magnitude = abs(val_complex)
         phase_deg = np.angle(val_complex, deg=True)
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+        # Load configuration for calibration
 
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        settings = get_settings(
+            "INI/colors_config/config.ini",
+            "ui/graphics_windows/ini/config.ini", 
+            Path(__file__).resolve()
+        )
 
         current_s_param = s_param
 
@@ -657,16 +662,13 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
         magnitude = abs(val_complex)
         phase_deg = np.angle(val_complex, deg=True)
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+        # Load configuration for calibration
 
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        settings = get_settings(
+            "INI/colors_config/config.ini",
+            "ui/graphics_windows/ini/config.ini", 
+            Path(__file__).resolve()
+        )
 
         current_s_param = s_param
 
@@ -1652,16 +1654,13 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
         magnitude = abs(val_complex)
         phase_deg = np.angle(val_complex, deg=True)
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+        # Load configuration for calibration
 
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        settings = get_settings(
+            "INI/colors_config/config.ini",
+            "ui/graphics_windows/ini/config.ini", 
+            Path(__file__).resolve()
+        )
 
         current_s_param = s_param
 
@@ -1723,16 +1722,13 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
 
         edit_value.clearFocus()
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+        # Load configuration for calibration
 
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        settings = get_settings(
+            "INI/colors_config/config.ini",
+            "ui/graphics_windows/ini/config.ini", 
+            Path(__file__).resolve()
+        )
 
         settings.setValue("Cursor_1_2/index", index)
 
@@ -1752,16 +1748,13 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
         magnitude = abs(val_complex)
         phase_deg = np.angle(val_complex, deg=True)
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
+        # Load configuration for calibration
 
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        settings = get_settings(
+            "INI/colors_config/config.ini",
+            "ui/graphics_windows/ini/config.ini", 
+            Path(__file__).resolve()
+        )
 
         current_s_param = s_param
 
