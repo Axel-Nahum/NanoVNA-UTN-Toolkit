@@ -14,8 +14,7 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
-
-def update_sweep_info_label(self):
+def update_sweep_info_label(self, parent = None):
     """Update the sweep information label with current configuration."""
     try:
         start_val = self.start_freq_hz
@@ -50,12 +49,15 @@ def update_sweep_info_label(self):
             freq_stop_str = f"{stop_val} Hz"
 
         info_text = f"Sweep: {freq_start_str} - {freq_stop_str}, {self.segments} points"
-        self.sweep_info_label.setText(info_text)
+        if (parent != None):
+            parent.sweep_info_label.setText(info_text)
+        else:
+            self.sweep_info_label.setText(info_text)
         logging.info(f"[graphics_window.update_sweep_info_label] Updated info: {info_text}")
     except Exception as e:
         logging.error(f"[graphics_window.update_sweep_info_label] Error updating label: {e}")
 
-def load_sweep_configuration(self):
+def load_sweep_configuration(self, parent = None):
     """Load sweep configuration from sweep options config file."""
     
     try:
@@ -76,6 +78,8 @@ def load_sweep_configuration(self):
         start_freq_val = settings.value("Frequency/StartFreqHz", default_start_hz)
         stop_freq_val = settings.value("Frequency/StopFreqHz", default_stop_hz)
         segments_val = settings.value("Frequency/Segments", default_segments)
+
+        settings.sync()
 
         # Debug: log what we read from file
         logging.info(f"[graphics_window.load_sweep_configuration] Raw values from config: "
@@ -98,9 +102,7 @@ def load_sweep_configuration(self):
         self.start_unit = settings.value("Frequency/StartUnit", "kHz")
         self.stop_unit = settings.value("Frequency/StopUnit", "GHz")
 
-        # Update info label if it exists
-        if hasattr(self, 'sweep_info_label'):
-            update_sweep_info_label(self)
+        update_sweep_info_label(self, parent)
 
     except Exception as e:
         logging.error(f"[graphics_window.load_sweep_configuration] Error loading sweep config: {e}")
@@ -108,4 +110,6 @@ def load_sweep_configuration(self):
         self.start_freq_hz = 50000
         self.stop_freq_hz = int(1.5e9)
         self.segments = 101
+
+
 

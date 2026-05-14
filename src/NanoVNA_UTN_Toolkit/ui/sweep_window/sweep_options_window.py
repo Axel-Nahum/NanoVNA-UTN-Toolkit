@@ -34,6 +34,15 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+
 from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
 
 # -------------------------------------------------------------------------------------------------------------------------------- #
@@ -187,7 +196,7 @@ class SweepOptionsWindow(QMainWindow):
         # Flag to prevent auto-saving during initialization
         self._loading_settings = True
         
-        self.init_ui()
+        self.init_ui(parent)
         self.load_settings()
         
         # Enable auto-saving after initialization is complete
@@ -363,7 +372,7 @@ class SweepOptionsWindow(QMainWindow):
     def unit_multiplier(self, unit):
         return {"Hz": 1, "kHz": 1e3, "MHz": 1e6, "GHz": 1e9}[unit]
 
-    def init_ui(self):
+    def init_ui(self, parent):
         """Initialize the user interface."""
         self.setWindowTitle("NanoVNA UTN Toolkit - Sweep Options")
         self.setGeometry(200, 200, 400, 300)
@@ -512,7 +521,7 @@ class SweepOptionsWindow(QMainWindow):
         button_layout = QHBoxLayout()
         
         apply_button = QPushButton("Apply")
-        apply_button.clicked.connect(self.apply_settings)
+        apply_button.clicked.connect(lambda: self.apply_settings(parent))
         
         cancel_button = QPushButton("Cancel")
         cancel_button.clicked.connect(self.cancel_changes)
@@ -597,6 +606,13 @@ class SweepOptionsWindow(QMainWindow):
                     f"Segments={segments}")
         
     def save_settings(self):
+
+        settings = get_settings(
+            "INI/sweep_config/config.ini",
+            "ui/sweep_window/config/config.ini", 
+            Path(__file__).resolve()
+        )
+
         """Save current settings to config.ini file."""
         logging.info("[sweep_options_window.save_settings] Saving settings to config.ini")
         
@@ -604,22 +620,24 @@ class SweepOptionsWindow(QMainWindow):
         start_freq_hz = self.frequency_to_hz(self.start_freq_edit.value(), self.start_freq_unit.currentText())
         stop_freq_hz = self.frequency_to_hz(self.stop_freq_edit.value(), self.stop_freq_unit.currentText())
         
-        logging.info(f"[sweep_options_window.save_settings] Values to save: "
+        logging.info(f"[sweep_options_window.save_settings] sValues to save: "
                     f"StartFreqHz={start_freq_hz} ({start_freq_hz/1e6:.3f} MHz), "
                     f"StopFreqHz={stop_freq_hz} ({stop_freq_hz/1e6:.3f} MHz), "
                     f"Segments={self.segments_spinbox.value()}")
         
         # Save frequencies in Hz and units separately
-        self.settings.setValue("Frequency/StartFreqHz", start_freq_hz)
-        self.settings.setValue("Frequency/StopFreqHz", stop_freq_hz)
-        self.settings.setValue("Frequency/Segments", self.segments_spinbox.value())
+        settings.setValue("Frequency/StartFreqHz", start_freq_hz)
+        settings.setValue("Frequency/StopFreqHz", stop_freq_hz)
+        settings.setValue("Frequency/Segments", self.segments_spinbox.value())
         
         # Save units
-        self.settings.setValue("Frequency/StartUnit", self.start_freq_unit.currentText())
-        self.settings.setValue("Frequency/StopUnit", self.stop_freq_unit.currentText())
+        settings.setValue("Frequency/StartUnit", self.start_freq_unit.currentText())
+        settings.setValue("Frequency/StopUnit", self.stop_freq_unit.currentText())
         
-        self.settings.sync()
+        settings.sync()
         logging.info("[sweep_options_window.save_settings] Settings saved successfully")
+
+        load_sweep_configuration(self)
         
     def calculate_derived_values(self):
         """Calculate and update center frequency, span, and Hz/step."""
@@ -701,10 +719,11 @@ class SweepOptionsWindow(QMainWindow):
             
             logging.info(f"[sweep_options_window.on_frequency_changed] Auto-saved frequencies: {start_freq_hz/1e6:.3f} - {stop_freq_hz/1e6:.3f} MHz")
             
+            load_sweep_configuration(self)
+            
             # Update main window configuration if available
             if self.parent() and hasattr(self.parent(), 'load_sweep_configuration'):
                 logging.info("[sweep_options_window.on_frequency_changed] Updating parent graphics_window configuration")
-                load_sweep_configuration(self)
             else:
                 logging.warning("[sweep_options_window.on_frequency_changed] Parent graphics_window not available for config update")
         except Exception as e:
@@ -726,11 +745,11 @@ class SweepOptionsWindow(QMainWindow):
         # Update main window configuration if available
         if self.parent() and hasattr(self.parent(), 'load_sweep_configuration'):
             logging.info("[sweep_options_window.on_segments_changed] Updating parent graphics_window configuration")
-            load_sweep_configuration(self)
         else:
             logging.warning("[sweep_options_window.on_segments_changed] Parent graphics_window not available for config update")
-        
-    def apply_settings(self):
+        load_sweep_configuration(self)
+
+    def apply_settings(self, parent = None):
         """Apply and save current settings."""
         # Get frequencies in Hz for validation
         start_freq_hz = self.frequency_to_hz(self.start_freq_edit.value(), self.start_freq_unit.currentText())
@@ -770,7 +789,7 @@ class SweepOptionsWindow(QMainWindow):
         # Save settings
         self.save_settings()
 
-        load_sweep_configuration(self)
+        load_sweep_configuration(self, parent)
 
         # Close window without confirmation message
         self.close()
@@ -835,7 +854,7 @@ class SweepOptionsWindow(QMainWindow):
         # Ensure parent graphics_window is updated with final configuration
         if self.parent() and hasattr(self.parent(), 'load_sweep_configuration'):
             logging.info("[sweep_options_window.closeEvent] Final update to parent graphics_window configuration")
-            load_sweep_configuration(self)
+        load_sweep_configuration(self)
         
         # Call parent closeEvent
         super().closeEvent(event)

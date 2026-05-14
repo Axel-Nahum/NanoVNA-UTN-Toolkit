@@ -11,7 +11,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import (
     QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
-    QPushButton, QTabWidget, QApplication
+    QPushButton, QTabWidget, QApplication, QFrame
 )
 from PySide6.QtCore import QSettings
 from PySide6.QtGui import QIcon
@@ -325,6 +325,14 @@ class EditGraphics(QMainWindow):
         tabs.addTab(tab2_widget, "Graphic 2")
 
         central_layout.addWidget(tabs)
+
+        # --- Line above buttons ---
+        line_above_buttons = QFrame()
+        line_above_buttons.setStyleSheet(f"""background-color: {qframe_color}; color: {qframe_color}""")
+        line_above_buttons.setFrameShape(QFrame.HLine)
+        line_above_buttons.setFrameShadow(QFrame.Plain)
+        line_above_buttons.setFixedHeight(2)
+        central_layout.addWidget(line_above_buttons)
 
         # --- Buttons ---
         button_layout = QHBoxLayout()
