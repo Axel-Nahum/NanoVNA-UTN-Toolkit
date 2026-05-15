@@ -82,8 +82,8 @@ class CalibrationWizard(QMainWindow):
             os.makedirs(base_path, exist_ok=True)
 
         # Inicializar el manager pasándole la ruta
-        self.osm_calibration = OSMCalibrationManager(base_path=base_path)
-        self.thru_calibration = THRUCalibrationManager(base_path=base_path)
+        self.osm_calibration = OSMCalibrationManager(base_path=None)
+        self.thru_calibration = THRUCalibrationManager(base_path=None)
 
         self.last_start_value = 50   
         self.last_stop_value  = 1.5   

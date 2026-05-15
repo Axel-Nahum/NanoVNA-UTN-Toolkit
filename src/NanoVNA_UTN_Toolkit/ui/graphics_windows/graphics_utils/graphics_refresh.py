@@ -709,6 +709,8 @@ def run_sweep(self):
         
         # Reset UI after longer delay to show 100% completion and allow cursor updates
         QTimer.singleShot(700, lambda: _reset_sweep_ui(self))
+
+        self.slider_left.set_val(0)
         
     except Exception as e:
         error_msg = f"Error during sweep: {str(e)}"

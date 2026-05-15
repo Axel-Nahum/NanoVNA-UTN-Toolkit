@@ -284,16 +284,12 @@ class EditGraphics(QMainWindow):
             }}
         """)
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
-
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        # Load configuration for graphics
+        settings = get_settings(
+            "INI/colors_config/config.ini",
+            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            Path(__file__).resolve()
+        )
 
         self.nano_window = nano_window
 
@@ -392,16 +388,12 @@ class EditGraphics(QMainWindow):
         settings.setValue("Graphic2/MarkerWidth2", marker2_size2)
         settings.sync()
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
-
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        # Load configuration for graphics
+        settings = get_settings(
+            "INI/colors_config/config.ini",
+            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            Path(__file__).resolve()
+        )
 
         graph_type1 = settings.value("Tab1/GraphType1", "Smith Diagram")
         s_param1 = settings.value("Tab1/SParameter", "S11")

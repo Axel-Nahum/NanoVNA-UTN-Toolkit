@@ -263,7 +263,7 @@ class NanoVNAGraphics(QMainWindow):
 
         settings = get_settings(
             "INI/colors_config/config.ini",
-            "ui/graphics_windows/ini/config.ini", 
+            "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
             Path(__file__).resolve()
         )
 
@@ -391,6 +391,12 @@ class NanoVNAGraphics(QMainWindow):
             logging.warning("[graphics_window.__init__] No VNA device provided for auto-sweep")
 
 # ------- WIDGETS --------------------------------------------------------------------------------------------------------- #
+
+        settings = get_settings(
+            "INI/colors_config/config.ini",
+            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            Path(__file__).resolve()
+        )
 
         setup_graphics_window_body(         # Widgets Body of graphics_window
             self,

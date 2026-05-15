@@ -106,7 +106,7 @@ def handle_contextMenuEvent(self, event):
 
     settings = get_settings(
         "INI/colors_config/config.ini",
-        "ui/graphics_windows/ini/config.ini", 
+        "ui/graphics_windows/graphics_ini/graphics_config.ini", 
         Path(__file__).resolve()
     )
 

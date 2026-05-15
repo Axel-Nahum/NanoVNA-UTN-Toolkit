@@ -39,6 +39,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration_path_utils import get_calibration_path
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ---------------------------------------------------------------------------------------------------------------- #
 
 def open_calibration_wizard(self):
@@ -374,8 +382,6 @@ def delete_kit_dialog(self):
 
         deleted_current_kit = False
 
-        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
         # --- Delete physical folders and mark if current kit is deleted ---
         kits_to_delete = []
         for g in settings.childGroups():
@@ -385,16 +391,11 @@ def delete_kit_dialog(self):
                     if kit_name_ini == current_name_base:
                         deleted_current_kit = True  # MARKER: current kit will be deleted
 
-                    if getattr(sys, 'frozen', False):
-                        appdata = os.getenv("APPDATA")  
-                        base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-
-                        kit_path = os.path.join(
-                            base, "Calibration", "kits",
-                        )
-                    else:
-                        ui_dir = os.path.dirname(os.path.dirname(__file__))
-                        kit_path = os.path.join(ui_dir, "calibration", "kits", kit_name_ini)
+                    kit_path = get_calibration_path(
+                        f"calibration/kits/{kit_name_ini}",
+                        f"calibration/kits/{kit_name_ini}",
+                        Path(__file__).resolve()
+                    )
 
                     if os.path.exists(kit_path) and os.path.isdir(kit_path):
                         shutil.rmtree(kit_path)

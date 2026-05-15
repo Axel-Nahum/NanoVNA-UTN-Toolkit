@@ -45,7 +45,7 @@ def create_tab1(self):
     # Load configuration for UI colors and styles
     settings = get_settings(
         "INI/colors_config/config.ini",
-        "ui/graphics_windows/ini/config.ini", 
+        "ui/graphics_windows/graphics_ini/graphics_config.ini", 
         Path(__file__).resolve()
     )
 
@@ -225,7 +225,7 @@ def create_tab2(self):
     # Load configuration for UI colors and styles
     settings = get_settings(
         "INI/colors_config/config.ini",
-        "ui/graphics_windows/ini/config.ini", 
+        "ui/graphics_windows/graphics_ini/graphics_config.ini", 
         Path(__file__).resolve()
     )
 

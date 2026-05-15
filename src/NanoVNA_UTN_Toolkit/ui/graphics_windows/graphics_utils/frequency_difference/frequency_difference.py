@@ -29,7 +29,7 @@ def show_frequency_difference_dialog(self):
 
     settings = get_settings(
         "INI/colors_config/config.ini",
-        "ui/graphics_windows/ini/config.ini", 
+        "ui/graphics_windows/graphics_ini/graphics_config.ini", 
         Path(__file__).resolve()
     )
 

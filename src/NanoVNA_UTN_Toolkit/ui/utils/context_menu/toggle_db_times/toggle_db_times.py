@@ -53,7 +53,7 @@ def toggle_db_times(self, event, new_mode):
 
         settings = get_settings(
             "INI/colors_config/config.ini",
-            "ui/graphics_windows/ini/config.ini", 
+            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
             Path(__file__).resolve()
         )
 

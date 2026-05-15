@@ -277,15 +277,13 @@ class ExportDialog(QDialog):
                 ax_sub.set_visible(False)
 
         # --- Load INI settings ---
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
 
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        # Load configuration for graphics
+        settings = get_settings(
+            "INI/colors_config/config.ini",
+            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            Path(__file__).resolve()
+        )
 
         # --- Determine active markers dynamically ---
         active_markers = []
@@ -459,17 +457,6 @@ class ExportDialog(QDialog):
                         if ax.get_position().height < 0.1 or ax.get_position().width < 0.1]
         for ax in axes_to_remove:
             fig_copy.delaxes(ax)
-
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-            ruta_colors = os.path.join(base, "INI", "colors_config", "config.ini")
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
-
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
 
         # Detect active markers
         if self.figure == getattr(self.parent_window, 'fig_left', None):

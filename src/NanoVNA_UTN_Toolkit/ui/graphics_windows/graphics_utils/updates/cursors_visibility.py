@@ -30,7 +30,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
     # Load configuration for UI colors and styles
     settings = get_settings(
         "INI/colors_config/config.ini",
-        "ui/graphics_windows/ini/config.ini", 
+        "ui/graphics_windows/graphics_ini/graphics_config.ini", 
         Path(__file__).resolve()
     )
 
@@ -92,7 +92,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                 # Load configuration for UI colors and styles
                                 settings = get_settings(
                                     "INI/colors_config/config.ini",
-                                    "ui/graphics_windows/ini/config.ini", 
+                                    "ui/graphics_windows/graphics_ini/graphics_config.ini", 
                                     Path(__file__).resolve()
                                 )
 
@@ -227,7 +227,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                 # Load configuration for UI colors and styles
                                 settings = get_settings(
                                     "INI/colors_config/config.ini",
-                                    "ui/graphics_windows/ini/config.ini", 
+                                    "ui/graphics_windows/graphics_ini/graphics_config.ini", 
                                     Path(__file__).resolve()
                                 )
 
@@ -317,7 +317,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
 
         settings = get_settings(
             "INI/colors_config/config.ini",
-            "ui/graphics_windows/ini/config.ini", 
+            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
             Path(__file__).resolve()
         )
 
@@ -379,7 +379,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                     # Load configuration for UI colors and styles
                                     settings = get_settings(
                                         "INI/colors_config/config.ini",
-                                        "ui/graphics_windows/ini/config.ini", 
+                                        "ui/graphics_windows/graphics_ini/graphics_config.ini", 
                                         Path(__file__).resolve()
                                     )
 
@@ -510,7 +510,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                     # Load configuration for UI colors and styles
                                     settings = get_settings(
                                         "INI/colors_config/config.ini",
-                                        "ui/graphics_windows/ini/config.ini", 
+                                        "ui/graphics_windows/graphics_ini/graphics_config.ini", 
                                         Path(__file__).resolve()
                                     )
 

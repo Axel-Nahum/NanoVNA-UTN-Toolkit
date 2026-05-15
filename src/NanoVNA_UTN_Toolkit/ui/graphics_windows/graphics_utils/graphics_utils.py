@@ -568,7 +568,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
 
         settings = get_settings(
             "INI/colors_config/config.ini",
-            "ui/graphics_windows/ini/config.ini", 
+            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
             Path(__file__).resolve()
         )
 
@@ -634,10 +634,10 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
         if not from_slider:
 
             if new_slider is None or getattr(new_slider, "ax", None) is None or getattr(new_slider.ax, "get_figure", lambda: None)() is None:
-                logging.warning("Skipping cursor update: new slider or figure no longer exists")
+                logging.warning("Skipping cursor update: new slider or figure no longer exists_1")
                 return
             try:
-                new_slider.set_val(index)
+                new_slider.set_val(0)
             except Exception as e:
                 logging.warning(f"Failed to set slider value: {e}")
                 return
@@ -666,7 +666,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
 
         settings = get_settings(
             "INI/colors_config/config.ini",
-            "ui/graphics_windows/ini/config.ini", 
+            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
             Path(__file__).resolve()
         )
 
@@ -1658,7 +1658,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
 
         settings = get_settings(
             "INI/colors_config/config.ini",
-            "ui/graphics_windows/ini/config.ini", 
+            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
             Path(__file__).resolve()
         )
 
@@ -1726,7 +1726,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
 
         settings = get_settings(
             "INI/colors_config/config.ini",
-            "ui/graphics_windows/ini/config.ini", 
+            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
             Path(__file__).resolve()
         )
 
@@ -1752,7 +1752,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
 
         settings = get_settings(
             "INI/colors_config/config.ini",
-            "ui/graphics_windows/ini/config.ini", 
+            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
             Path(__file__).resolve()
         )
 

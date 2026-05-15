@@ -70,8 +70,6 @@ def handle_all_kits_deleted(self):
     if not no_calibration and calibration_wizard:
         # If no kits remain, fallback to a safe state
 
-        print(f"CalibrationWizard1: {calibration_wizard}")
-
         settings.beginGroup("Calibration")
         settings.setValue("Kits", False)
         settings.setValue("NoCalibration", False)
