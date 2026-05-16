@@ -432,7 +432,7 @@ class NanoVNAGraphics(QMainWindow):
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------------ #
 
-    # =================== MENU FUNCTION ==================
+# =================== MENU FUNCTION ==================
 
     def open_connection_window(self):
         from NanoVNA_UTN_Toolkit.ui.connection_window import NanoVNAStatusApp
@@ -444,13 +444,13 @@ class NanoVNAGraphics(QMainWindow):
         self.close()
         self.deleteLater()
 
-    # =================== RIGHT CLICK ==================
+# =================== RIGHT CLICK ==================
 
     def contextMenuEvent(self, event):
 
         handle_contextMenuEvent(self, event)
 
-    # =================== CLEAR FREQ ==================
+# =================== CLEAR FREQ ==================
 
     def clear_freq_edit(self, edit_widget):
         edit_widget.blockSignals(True) 

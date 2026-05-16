@@ -712,24 +712,13 @@ class LatexExporter:
             # Handle measurement numbering with daily reset
             measurement_number = 1
             
-            # Load configuration for UI colors and styles
-            if getattr(sys, 'frozen', False):
-                appdata = os.getenv("APPDATA")
-                calibration_path = os.path.join(
-                    appdata,
-                    "NanoVNA-UTN-Toolkit",
-                    "INI",
-                    "measurement_numbers",
-                    "measurement_numbers.ini"
-                )
-                calibration_path = os.path.normpath(calibration_path)
-            else:
-                ui_dir = os.path.dirname(os.path.dirname(__file__))
-                os.makedirs(ui_dir, exist_ok=True)
-                calibration_path = os.path.join(ui_dir, "calibration", "config", "measurement_numbers.ini")
+            # Load configuration for measurement
+            tracking_settings = get_settings(
+                "INI/measurement_numbers/measurement_numbers.ini",
+                "calibration/measurement_numbers/measurement_numbers.ini", 
+                Path(__file__).resolve()
+            )
 
-            tracking_settings = QSettings(calibration_path, QSettings.IniFormat)
-            
             # Get current date as string (YYYY-MM-DD format)
             current_date = datetime.now().strftime("%Y-%m-%d")
             

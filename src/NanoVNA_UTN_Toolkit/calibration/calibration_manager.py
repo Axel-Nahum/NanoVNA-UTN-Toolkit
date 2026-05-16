@@ -30,7 +30,7 @@ class OSMCalibrationManager:
         self.base_path = base_path
         self.osm_results_path = os.path.join(base_path, "osm_results")
         self.thru_results_path = os.path.join(base_path, "thru_results")
-        self.kits_path = os.path.join(base_path, "Kits")
+        self.kits_path = os.path.join(base_path, "kits")
         
         # Ensure directories exist
         os.makedirs(self.osm_results_path, exist_ok=True)
@@ -381,7 +381,7 @@ def get_current_calibration_info(kits_path: str = None) -> Optional[Dict[str, st
     """Get information about currently selected calibration."""
     try:
         if kits_path is None:
-            kits_path = os.path.join(os.path.dirname(__file__), "Kits")
+            kits_path = os.path.join(os.path.dirname(__file__), "kits")
 
         # Check for active calibration info
         from PySide6.QtCore import QSettings
@@ -437,7 +437,7 @@ class THRUCalibrationManager:
 
         self.base_path = base_path
         self.thru_results_path = os.path.join(base_path, "thru_results")
-        self.kits_path = os.path.join(base_path, "Kits")
+        self.kits_path = os.path.join(base_path, "kits")
 
         # Ensure directories exist
         os.makedirs(self.thru_results_path, exist_ok=True)
