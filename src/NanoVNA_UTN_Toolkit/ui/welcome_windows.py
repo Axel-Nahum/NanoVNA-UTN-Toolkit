@@ -146,7 +146,7 @@ class NanoVNAWelcome(QMainWindow):
 
         # Load configuration for UI colors and styles
         settings = get_settings(
-            "INI/dark_light_mode/dark_light_config.ini",
+            "INI/dark_light_config/dark_light_config.ini",
             "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
             Path(__file__).resolve()
         ) 
@@ -191,7 +191,7 @@ class NanoVNAWelcome(QMainWindow):
 
         # Load configuration for UI colors and styles
         settings = get_settings(
-            "INI/dark_light_mode/dark_light_config.ini",
+            "INI/dark_light_config/dark_light_config.ini",
             "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
             Path(__file__).resolve()
         ) 
@@ -347,23 +347,13 @@ class NanoVNAWelcome(QMainWindow):
                 kit_index = self.kit_names.index(self.selected_kit_name)
                 kit_id = self.kit_ids[kit_index] if kit_index < len(self.kit_ids) else "Unknown"
                 
-                # Load configuration for UI colors and styles
-                if getattr(sys, 'frozen', False):
-                    appdata = os.getenv("APPDATA")
-                    config_path = os.path.join(
-                        appdata,
-                        "NanoVNA-UTN-Toolkit",
-                        "INI",
-                        "calibration_config",
-                        "calibration_config.ini"
-                    )
-                    calibration_path = os.path.normpath(config_path)
-                else:
-                    ui_dir = os.path.dirname(os.path.dirname(__file__))
-                    calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
+                # Load configuration for calibration settings
+                settings = get_settings(
+                    "INI/calibration_config/calibration_config.ini",
+                    "calibration/calibration_config/calibration_config.ini", 
+                    Path(__file__).resolve()
+                )
 
-                settings = QSettings(calibration_path, QSettings.IniFormat)
-                
                 kit_method = settings.value(f"Kit_{kit_id}/method", "Unknown")
                 kit_datetime = settings.value(f"Kit_{kit_id}/DateTime_Kits", "Unknown")
                 
@@ -411,19 +401,12 @@ class NanoVNAWelcome(QMainWindow):
         """
         logging.info("[welcome_windows._load_calibration_kits] Loading calibration kits")
         
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")  
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-
-            calibration_path = os.path.join(
-                base, "INI", "calibration_config", "calibration_config.ini"
-            )
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
-
-        settings_calibration = QSettings(calibration_path, QSettings.IniFormat)
+        # Load configuration for calibration settings
+        settings_calibration = get_settings(
+            "INI/calibration_config/calibration_config.ini",
+            "calibration/calibration_config/calibration_config.ini", 
+            Path(__file__).resolve()
+        )
         
         kit_groups = [g for g in settings_calibration.childGroups() if g.startswith("Kit_")]
 
@@ -438,20 +421,14 @@ class NanoVNAWelcome(QMainWindow):
         Get the currently selected calibration name from settings.
         Returns the active calibration name or default value.
         """
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")  
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
 
-            calibration_path = os.path.join(
-                base, "INI", "calibration_config", "calibration_config.ini"
-            )
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
+        # Load configuration for calibration settings
+        settings_calibration = get_settings(
+            "INI/calibration_config/calibration_config.ini",
+            "calibration/calibration_config/calibration_config.ini", 
+            Path(__file__).resolve()
+        )
 
-        settings_calibration = QSettings(calibration_path, QSettings.IniFormat)
-        
         # --- Get current calibration ---
         calibration_name = settings_calibration.value("Calibration/Name", "No Calibration")
         logging.info(f"[welcome_windows._get_current_calibration_name] Current calibration: {calibration_name}")
@@ -643,22 +620,12 @@ class NanoVNAWelcome(QMainWindow):
 
                 # --- Read current calibration method ---
                 # Use new calibration structure
-                # Load configuration for UI colors and styles
-                if getattr(sys, 'frozen', False):
-                    appdata = os.getenv("APPDATA")
-                    config_path = os.path.join(
-                        appdata,
-                        "NanoVNA-UTN-Toolkit",
-                        "INI",
-                        "calibration_config",
-                        "calibration_config.ini"
-                    )
-                    calibration_path = os.path.normpath(config_path)
-                else:
-                    ui_dir = os.path.dirname(os.path.dirname(__file__))
-                    calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
-
-                settings_calibration = QSettings(calibration_path, QSettings.IniFormat)
+                # Load configuration for calibration settings
+                settings_calibration = get_settings(
+                    "INI/calibration_config/calibration_config.ini",
+                    "calibration/calibration_config/calibration_config.ini", 
+                    Path(__file__).resolve()
+                )
 
                 """     # --- If a kit was previously saved in this session, show its name ---
                 if getattr(self, 'last_saved_kit_id', None):
@@ -743,19 +710,12 @@ class NanoVNAWelcome(QMainWindow):
 
     def open_calibration_wizard(self):
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")  
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-
-            calibration_path = os.path.join(
-                base, "INI", "calibration_config", "calibration_config.ini"
-            )
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
-
-        settings_calibration = QSettings(calibration_path, QSettings.IniFormat)
+        # Load configuration for calibration settings
+        settings_calibration = get_settings(
+            "INI/calibration_config/calibration_config.ini",
+            "calibration/calibration_config/calibration_config.ini", 
+            Path(__file__).resolve()
+        )
 
         settings_calibration.setValue("Calibration/Kits", False)
         settings_calibration.setValue("Calibration/NoCalibration", False)
@@ -777,19 +737,12 @@ class NanoVNAWelcome(QMainWindow):
         """
         logging.info("[welcome_windows.graphics_clicked] Opening graphics window")
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")  
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-
-            calibration_path = os.path.join(
-                base, "INI", "calibration_config", "calibration_config.ini"
-            )
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
-
-        settings_calibration = QSettings(calibration_path, QSettings.IniFormat)
+        # Load configuration for calibration settings
+        settings_calibration = get_settings(
+            "INI/calibration_config/calibration_config.ini",
+            "calibration/calibration_config/calibration_config.ini", 
+            Path(__file__).resolve()
+        )
 
         # Get currently selected kit from dropdown
         current_selection = self.kit_dropdown.currentText()
@@ -823,19 +776,12 @@ class NanoVNAWelcome(QMainWindow):
         """
         logging.info(f"[welcome_windows._apply_selected_kit_calibration] Applying kit: {kit_name}")
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")  
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-
-            calibration_path = os.path.join(
-                base, "INI", "calibration_config", "calibration_config.ini"
-            )
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
-
-        settings_calibration = QSettings(calibration_path, QSettings.IniFormat)
+        # Load configuration for calibration settings
+        settings_calibration = get_settings(
+            "INI/calibration_config/calibration_config.ini",
+            "calibration/calibration_config/calibration_config.ini", 
+            Path(__file__).resolve()
+        )
 
         # --- Get all kit names, IDs, and methods ---
         kit_groups = [g for g in settings_calibration.childGroups() if g.startswith("Kit_")]

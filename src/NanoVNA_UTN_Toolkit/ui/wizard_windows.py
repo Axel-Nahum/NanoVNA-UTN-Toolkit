@@ -410,7 +410,7 @@ class CalibrationWizard(QMainWindow):
 
         # Load configuration for UI colors and styles
         settings = get_settings(
-            "INI/dark_light_mode/dark_light_config.ini",
+            "INI/dark_light_config/dark_light_config.ini",
             "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
             Path(__file__).resolve()
         ) 
@@ -1109,44 +1109,21 @@ class CalibrationWizard(QMainWindow):
         self.reflection_tracking = errors.reflection_tracking
         self.source_match = errors.source_match
 
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            config_path = os.path.join(
-                appdata,
-                "NanoVNA-UTN-Toolkit",
-                "INI",
-                "calibration_config",
-                "calibration_config.ini"
-            )
-            calibration_path = os.path.normpath(config_path)
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
-
-        settings_calibration = QSettings(calibration_path, QSettings.IniFormat)
+        # Load configuration for calibration settings
+        settings_calibration = get_settings(
+            "INI/calibration_config/calibration_config.ini",
+            "calibration/calibration_config/calibration_config.ini", 
+            Path(__file__).resolve()
+        )
 
         settings_calibration.setValue("Calibration/CalibrationWizard", True)
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            sweep_config_path = os.path.join(
-                appdata,
-                "NanoVNA-UTN-Toolkit",
-                "INI",
-                "sweep_config",
-                "config.ini"
-            )
-            sweep_config_path = os.path.normpath(sweep_config_path)
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            sweep_config_path = os.path.join(ui_dir, "ui", "sweep_window", "config", "config.ini")
-            sweep_config_path = os.path.normpath(sweep_config_path)
-
-        # Debug: log the config path to verify it matches sweep_options_window.py
-        logging.info(f"[graphics_window.load_sweep_configuration] Config path: {sweep_config_path}")
-
-        settings = QSettings(sweep_config_path, QSettings.IniFormat)
+        # Load configuration for sweep settings and frequency range parameters
+        settings = get_settings(
+                "INI/sweep_config/sweep_config.ini",
+                "ui/sweep_window/sweep_config/sweep_config.ini", 
+                Path(__file__).resolve()        
+        )
 
         settings.setValue("Frequency/StartFreqHz", self.get_sweep_start_frequency())
         settings.setValue("Frequency/StopFreqHz", self.get_sweep_stop_frequency())
@@ -1447,22 +1424,13 @@ class CalibrationWizard(QMainWindow):
 
                 # --- Read current calibration method ---
                 # Use new calibration structure
-                # Load configuration for UI colors and styles
-                if getattr(sys, 'frozen', False):
-                    appdata = os.getenv("APPDATA")
-                    config_path = os.path.join(
-                        appdata,
-                        "NanoVNA-UTN-Toolkit",
-                        "INI",
-                        "calibration_config",
-                        "calibration_config.ini"
-                    )
-                    calibration_path = os.path.normpath(config_path)
-                else:
-                    ui_dir = os.path.dirname(os.path.dirname(__file__))
-                    calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
 
-                settings_calibration = QSettings(calibration_path, QSettings.IniFormat)
+                # Load configuration for calibration settings
+                settings_calibration = get_settings(
+                    "INI/calibration_config/calibration_config.ini",
+                    "calibration/calibration_config/calibration_config.ini", 
+                    Path(__file__).resolve()
+                )
                 """
                 # --- If a kit was previously saved in this session, show its name ---
                 if getattr(self, 'last_saved_kit_id', None):
@@ -1660,24 +1628,14 @@ class CalibrationWizard(QMainWindow):
     def _save_calibration_config(self):
         """Save calibration configuration to config file"""
         try:
-            # Load configuration for UI colors and styles
-            if getattr(sys, 'frozen', False):
-                appdata = os.getenv("APPDATA")
-                calibration_path = os.path.join(
-                    appdata,
-                    "NanoVNA-UTN-Toolkit",
-                    "INI",
-                    "calibration_config",
-                    "calibration_config.ini"
-                )
-                calibration_path = os.path.normpath(calibration_path)
-            else:
-                ui_dir = os.path.dirname(os.path.dirname(__file__))
-                calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
-
-            settings = QSettings(calibration_path, QSettings.IniFormat)
-
             current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            # Load configuration for calibration settings
+            settings = get_settings(
+                "INI/calibration_config/calibration_config.ini",
+                "calibration/calibration_config/calibration_config.ini", 
+                Path(__file__).resolve()
+            )
 
             settings.setValue("Calibration/Method", self.selected_method)
             settings.setValue("Calibration/DateTime_Calibration", current_datetime)

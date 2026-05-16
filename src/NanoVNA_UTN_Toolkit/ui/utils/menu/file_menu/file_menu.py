@@ -211,19 +211,12 @@ def import_touchstone_data_dut(self):
     QMessageBox.information(self, "File Loaded", "Touchstone file loaded successfully!")
     print("Selected DUT file:", file_path)
 
-    # Load configuration for UI colors and styles
-    if getattr(sys, 'frozen', False):
-        appdata = os.getenv("APPDATA")  
-        base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-
-        calibration_path = os.path.join(
-            base, "INI", "calibration_config", "calibration_config.ini"
-        )
-    else:
-        ui_dir = os.path.dirname(os.path.dirname(__file__))
-        calibration_path = os.path.join(ui_dir, "calibration", "config", "calibration_config.ini")
-
-    settings_calibration = QSettings(calibration_path, QSettings.IniFormat)
+    # Load configuration for calibration settings
+    settings_calibration = get_settings(
+        "INI/calibration_config/calibration_config.ini",
+        "calibration/calibration_config/calibration_config.ini", 
+        Path(__file__).resolve()
+    )
 
     settings_calibration.setValue("Calibration/isImportDut", True)
 

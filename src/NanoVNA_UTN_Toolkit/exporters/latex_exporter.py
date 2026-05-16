@@ -17,13 +17,22 @@ from pathlib import Path
 from datetime import datetime
 import skrf as rf
 from PySide6.QtCore import QSettings
-from PySide6.QtWidgets import QMessageBox, QFileDialog, QDialog
+from PySide6.QtWidgets import QMessageBox, QFileDialog
 from pylatex import Document, Section, Subsection, Command, Figure, NewPage
 from pylatex.utils import NoEscape
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+# ------------------------------------------------------------------------------------------------------------------------ #
 
 def _find_latex_compiler():
     """
@@ -553,19 +562,12 @@ class LatexExporter:
     def _create_cover_page(self, doc, freqs, current_datetime, measurement_name, measurement_number, 
                           calibration_method, calibrated_parameter, vna_name):
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")  
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-
-            calibration_path = os.path.join(
-                base, "INI", "calibration_config", "calibration_config.ini"
-            )
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
-
-        settings_calibration = QSettings(calibration_path, QSettings.IniFormat)
+        # Load configuration for calibration settings
+        settings_calibration = get_settings(
+            "INI/calibration_config/calibration_config.ini",
+            "calibration/calibration_config/calibration_config.ini", 
+            Path(__file__).resolve()
+        )
         
         kits_ok = settings_calibration.value("Calibration/Kits", False, type=bool)
         selected_kit = settings_calibration.value("Calibration/Name", "Normalization")
@@ -576,20 +578,12 @@ class LatexExporter:
         no_calibration = settings_calibration.value("Calibration/NoCalibration", False, type=bool)
         is_import_dut = settings_calibration.value("Calibration/DUT", False, type=bool)
 
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            base = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-
-            sweep_path = os.path.join(
-                base, "INI", "sweep_config", "config.ini"
-            )
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            os.makedirs(ui_dir, exist_ok=True)
-            sweep_path = os.path.join(ui_dir, "ui" ,"sweep_window", "config", "config.ini")
-
-        settings_sweep = QSettings(sweep_path, QSettings.IniFormat)
+        # Load configuration for sweep settings and frequency range parameters
+        settings_sweep = get_settings(
+                "INI/sweep_config/sweep_config.ini",
+                "ui/sweep_window/sweep_config/sweep_config.ini", 
+                Path(__file__).resolve()        
+        )
 
         start_unit = settings_sweep.value("Frequency/StartUnit", "MHz")
         stop_unit = settings_sweep.value("Frequency/StopUnit", "MHz")
@@ -704,23 +698,13 @@ class LatexExporter:
         try:
             # Note: This assumes a specific directory structure relative to UI
             # In a real application, you might want to make this configurable
-            # Load configuration for UI colors and styles
-            if getattr(sys, 'frozen', False):
-                appdata = os.getenv("APPDATA")
-                calibration_path = os.path.join(
-                    appdata,
-                    "NanoVNA-UTN-Toolkit",
-                    "INI",
-                    "calibration_config",
-                    "calibration_config.ini"
-                )
-                calibration_path = os.path.normpath(calibration_path)
-            else:
-                ui_dir = os.path.dirname(os.path.dirname(__file__))
-                os.makedirs(ui_dir, exist_ok=True)
-                calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
 
-            settings = QSettings(calibration_path, QSettings.IniFormat)
+            # Load configuration for calibration settings
+            settings = get_settings(
+                "INI/calibration_config/calibration_config.ini",
+                "calibration/calibration_config/calibration_config.ini", 
+                Path(__file__).resolve()
+            )
 
             calibration_method = settings.value("Calibration/Method", "---")
             calibrated_parameter = settings.value("Calibration/Parameter", "---")
