@@ -249,7 +249,7 @@ def _clear_all_marker_fields(self):
         if hasattr(self, 'cursor_left_2') and self.cursor_left_2:
             self.cursor_left_2.set_visible(False)
         
-        _clear_axis_and_show_message(self, 'left', (0.5, 0.5))
+        _clear_axis_and_show_message(self, 'left', (0.5, -0.1))
 
     if graph_type_tab2 == "Smith Diagram":
 
