@@ -15,10 +15,10 @@ def handle_deleted_current_kit(self):
 
     from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
 
-    # Load configuration for calibration 
+    # Load configuration for calibration settings
     settings = get_settings(
         "INI/calibration_config/calibration_config.ini",
-        "calibration/config/calibration_config.ini", 
+        "calibration/calibration_config/calibration_config.ini", 
         Path(__file__).resolve()
     )
 
@@ -54,10 +54,10 @@ def handle_all_kits_deleted(self):
 
     from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
 
-    # Load configuration for calibration 
+    # Load configuration for calibration settings
     settings = get_settings(
         "INI/calibration_config/calibration_config.ini",
-        "calibration/config/calibration_config.ini", 
+        "calibration/calibration_config/calibration_config.ini", 
         Path(__file__).resolve()
     )
 

@@ -159,12 +159,11 @@ class SweepOptionsWindow(QMainWindow):
         else:
             logging.warning("[sweep_options_window.__init__] No VNA device provided - using default limits")
         
-        # Load configuration for swee
-
+        # Load configuration for sweep settings and frequency range parameters
         self.settings = get_settings(
-            "INI/sweep_config/sweep_config.ini",
-            "ui/sweep_window/sweep_config/sweep_config.ini", 
-            Path(__file__).resolve()
+                "INI/sweep_config/sweep_config.ini",
+                "ui/sweep_window/sweep_config/sweep_config.ini", 
+                Path(__file__).resolve()        
         )
         
         # Load maximum frequency limit from config
@@ -592,10 +591,11 @@ class SweepOptionsWindow(QMainWindow):
         
     def save_settings(self):
 
+        # Load configuration for sweep settings and frequency range parameters
         settings = get_settings(
-            "INI/sweep_config/sweep_config.ini",
-            "ui/sweep_window/sweep_config/sweep_config.ini", 
-            Path(__file__).resolve()
+                "INI/sweep_config/sweep_config.ini",
+                "ui/sweep_window/sweep_config/sweep_config.ini", 
+                Path(__file__).resolve()        
         )
 
         settings.sync()

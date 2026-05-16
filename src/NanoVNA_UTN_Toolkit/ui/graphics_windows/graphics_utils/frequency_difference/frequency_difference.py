@@ -25,8 +25,7 @@ def show_frequency_difference_dialog(self):
             return f"{freq_hz / 1e9:.3f} GHz"
 
     # --- Path to config.ini ---
-    # Load configuration for UI colors and styles
-
+    # Load configuration for graphics settings and visualization parameters
     settings = get_settings(
         "INI/graphics_config/graphics_config.ini",
         "ui/graphics_windows/graphics_config/graphics_config.ini", 

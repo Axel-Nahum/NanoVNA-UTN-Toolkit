@@ -49,8 +49,7 @@ def toggle_db_times(self, event, new_mode):
         # Decide INI section based on graph
         ini_section = "Graphic1" if graph_number == 1 else "Graphic2"
 
-        # Load configuration for UI colors and styles
-
+        # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
             "INI/graphics_config/graphics_config.ini",
             "ui/graphics_windows/graphics_config/graphics_config.ini", 

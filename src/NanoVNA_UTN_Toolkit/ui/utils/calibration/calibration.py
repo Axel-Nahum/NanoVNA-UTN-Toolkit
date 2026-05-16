@@ -14,9 +14,10 @@ except ImportError as e:
 
 def update_calibration_label_from_method(self, method=None):
 
+    # Load configuration for calibration settings
     settings_calibration = get_settings(
         "INI/calibration_config/calibration_config.ini",
-        "calibration/config/calibration_config.ini",
+        "calibration/calibration_config/calibration_config.ini", 
         Path(__file__).resolve()
     )
 

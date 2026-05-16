@@ -563,7 +563,7 @@ class LatexExporter:
             )
         else:
             ui_dir = os.path.dirname(os.path.dirname(__file__))
-            calibration_path = os.path.join(ui_dir, "calibration", "config", "calibration_config.ini")
+            calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
 
         settings_calibration = QSettings(calibration_path, QSettings.IniFormat)
         
@@ -718,7 +718,7 @@ class LatexExporter:
             else:
                 ui_dir = os.path.dirname(os.path.dirname(__file__))
                 os.makedirs(ui_dir, exist_ok=True)
-                calibration_path = os.path.join(ui_dir, "calibration", "config", "calibration_config.ini")
+                calibration_path = os.path.join(ui_dir, "calibration", "calibration_config", "calibration_config.ini")
 
             settings = QSettings(calibration_path, QSettings.IniFormat)
 

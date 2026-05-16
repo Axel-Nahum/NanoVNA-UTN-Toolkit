@@ -392,6 +392,7 @@ class NanoVNAGraphics(QMainWindow):
 
 # ------- WIDGETS --------------------------------------------------------------------------------------------------------- #
 
+        # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
             "INI/graphics_config/graphics_config.ini",
             "ui/graphics_windows/graphics_config/graphics_config.ini", 

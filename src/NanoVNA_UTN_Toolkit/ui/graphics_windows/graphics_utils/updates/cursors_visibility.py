@@ -27,7 +27,7 @@ except ImportError as e:
 def force_marker_visibility(self, marker_color_left, marker_color_right, marker1_size_left, marker1_size_right):
     """Force markers to be visible by recreating them directly on axes"""
 
-    # Load configuration for UI colors and styles
+    # Load configuration for graphics settings and visualization parameters
     settings = get_settings(
         "INI/graphics_config/graphics_config.ini",
         "ui/graphics_windows/graphics_config/graphics_config.ini", 
@@ -89,7 +89,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                         if hasattr(self, 'cursor_left') and self.cursor_left and hasattr(self.cursor_left, 'set_data'):
                             try:
 
-                                # Load configuration for UI colors and styles
+                                # Load configuration for graphics settings and visualization parameters
                                 settings = get_settings(
                                     "INI/graphics_config/graphics_config.ini",
                                     "ui/graphics_windows/graphics_config/graphics_config.ini", 
@@ -224,7 +224,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                         if hasattr(self, 'cursor_right') and self.cursor_right and hasattr(self.cursor_right, 'set_data'):
                             try:
 
-                                # Load configuration for UI colors and styles
+                                # Load configuration for graphics settings and visualization parameters
                                 settings = get_settings(
                                     "INI/graphics_config/graphics_config.ini",
                                     "ui/graphics_windows/graphics_config/graphics_config.ini", 
@@ -313,14 +313,12 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
 def force_marker_visibility_2(self, marker_color_left, marker_color_right, marker_size_left, marker_size_right):
         """Force markers to be visible by recreating them directly on axes"""
 
-        # Load configuration for UI colors and styles
-
+        # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
             "INI/graphics_config/graphics_config.ini",
             "ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
-
         unit_mode_left = settings.value("Graphic1/db_times", "dB") 
         unit_mode_right  = settings.value("Graphic2/db_times", "dB")
 
@@ -376,7 +374,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                             if hasattr(self, 'cursor_left') and self.cursor_left and hasattr(self.cursor_left, 'set_data'):
                                 try:
 
-                                    # Load configuration for UI colors and styles
+                                    # Load configuration for graphics settings and visualization parameters
                                     settings = get_settings(
                                         "INI/graphics_config/graphics_config.ini",
                                         "ui/graphics_windows/graphics_config/graphics_config.ini", 
@@ -507,7 +505,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                             if hasattr(self, 'cursor_right_2') and self.cursor_right_2 and hasattr(self.cursor_right_2, 'set_data'):
                                 try:
  
-                                    # Load configuration for UI colors and styles
+                                    # Load configuration for graphics settings and visualization parameters
                                     settings = get_settings(
                                         "INI/graphics_config/graphics_config.ini",
                                         "ui/graphics_windows/graphics_config/graphics_config.ini", 

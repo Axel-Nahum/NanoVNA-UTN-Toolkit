@@ -564,8 +564,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
         magnitude = abs(val_complex)
         phase_deg = np.angle(val_complex, deg=True)
 
-        # Load configuration for calibration
-
+        # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
             "INI/graphics_config/graphics_config.ini",
             "ui/graphics_windows/graphics_config/graphics_config.ini", 
@@ -662,8 +661,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
         magnitude = abs(val_complex)
         phase_deg = np.angle(val_complex, deg=True)
 
-        # Load configuration for calibration
-
+        # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
             "INI/graphics_config/graphics_config.ini",
             "ui/graphics_windows/graphics_config/graphics_config.ini", 
@@ -1654,8 +1652,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
         magnitude = abs(val_complex)
         phase_deg = np.angle(val_complex, deg=True)
 
-        # Load configuration for calibration
-
+        # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
             "INI/graphics_config/graphics_config.ini",
             "ui/graphics_windows/graphics_config/graphics_config.ini", 
@@ -1722,8 +1719,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
 
         edit_value.clearFocus()
 
-        # Load configuration for calibration
-
+        # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
             "INI/graphics_config/graphics_config.ini",
             "ui/graphics_windows/graphics_config/graphics_config.ini", 
@@ -1748,8 +1744,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
         magnitude = abs(val_complex)
         phase_deg = np.angle(val_complex, deg=True)
 
-        # Load configuration for calibration
-
+        # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
             "INI/graphics_config/graphics_config.ini",
             "ui/graphics_windows/graphics_config/graphics_config.ini", 

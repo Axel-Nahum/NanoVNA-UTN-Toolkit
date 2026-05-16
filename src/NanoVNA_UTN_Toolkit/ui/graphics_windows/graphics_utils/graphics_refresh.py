@@ -516,9 +516,10 @@ def run_sweep(self):
         self.sweep_progress_bar.setValue(90)
         QApplication.processEvents()
 
+        # Load configuration for calibration settings
         settings = get_settings(
             "INI/calibration_config/calibration_config.ini",
-            "calibration/config/calibration_config.ini", 
+            "calibration/calibration_config/calibration_config.ini", 
             Path(__file__).resolve()
         )
 

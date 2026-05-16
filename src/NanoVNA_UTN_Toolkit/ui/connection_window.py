@@ -57,7 +57,7 @@ class NanoVNAStatusApp(QMainWindow):
         settings = get_settings(
             "INI/dark_light_config/dark_light_config.ini", 
             "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
-            Path(__file__).resolve()
+                Path(__file__).resolve()
         )
 
 #------------------------------------------------------------------------------------------------------------------------------------------

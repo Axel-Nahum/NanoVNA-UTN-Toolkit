@@ -11,6 +11,7 @@ except ImportError as e:
 def get_graph_unit(self, graph_number):
     """Read the unit from INI for left (1) or right (2) graph."""
     try:
+        # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
             "INI/graphics_config/graphics_config.ini",
             "ui/graphics_windows/graphics_config/graphics_config.ini", 

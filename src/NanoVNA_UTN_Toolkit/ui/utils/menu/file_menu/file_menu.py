@@ -277,9 +277,10 @@ def export_errors(self):
 
     # Export error 
 
+    # Load configuration for calibration settings
     settings = get_settings(
         "INI/calibration_config/calibration_config.ini",
-        "calibration/config/calibration_config.ini", 
+        "calibration/calibration_config/calibration_config.ini", 
         Path(__file__).resolve()
     )
 

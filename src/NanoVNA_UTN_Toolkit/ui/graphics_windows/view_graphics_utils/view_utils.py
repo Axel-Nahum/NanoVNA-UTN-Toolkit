@@ -42,7 +42,7 @@ except ImportError as e:
 
 def create_tab1(self):
 
-    # Load configuration for UI colors and styles
+    # Load configuration for graphics settings and visualization parameters
     settings = get_settings(
         "INI/graphics_config/graphics_config.ini",
         "ui/graphics_windows/graphics_config/graphics_config.ini", 
@@ -222,7 +222,7 @@ def create_tab1(self):
 
 def create_tab2(self):
 
-    # Load configuration for UI colors and styles
+    # Load configuration for graphics settings and visualization parameters
     settings = get_settings(
         "INI/graphics_config/graphics_config.ini",
         "ui/graphics_windows/graphics_config/graphics_config.ini", 

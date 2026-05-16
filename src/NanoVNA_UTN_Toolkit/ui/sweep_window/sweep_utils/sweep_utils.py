@@ -61,10 +61,11 @@ def load_sweep_configuration(self, parent = None):
     """Load sweep configuration from sweep options config file."""
     
     try:
+        # Load configuration for sweep settings and frequency range parameters
         settings = get_settings(
-            "INI/sweep_config/sweep_config.ini",
-            "ui/sweep_window/sweep_config/sweep_config.ini", 
-            Path(__file__).resolve()
+                "INI/sweep_config/sweep_config.ini",
+                "ui/sweep_window/sweep_config/sweep_config.ini", 
+                Path(__file__).resolve()        
         )
 
         logging.info(f"[graphics_window.load_sweep_configuration] Config file found and opened successfully")

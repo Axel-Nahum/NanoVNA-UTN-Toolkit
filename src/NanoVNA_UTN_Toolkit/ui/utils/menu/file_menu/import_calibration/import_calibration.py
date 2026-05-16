@@ -97,11 +97,10 @@ def save_calibration_dialog(self, selected_method, files):
             # --- Read current calibration method ---
             # Use new calibration structure
 
-            # Load configuration for calibration
-
+            # Load configuration for calibration settings
             settings_calibration = get_settings(
                 "INI/calibration_config/calibration_config.ini",
-                "calibration/config/calibration_config.ini", 
+                "calibration/calibration_config/calibration_config.ini", 
                 Path(__file__).resolve()
             )
 

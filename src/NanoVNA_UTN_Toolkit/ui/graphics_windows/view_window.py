@@ -109,10 +109,10 @@ class View(QMainWindow):
 
         # Load configuration for UI colors and styles
         settings = get_settings(
-            "INI/dark_light_config/dark_light_config.ini",
-            "ui/utils/settings/dark_light_mode/dark_light_config.ini",
-            Path(__file__).resolve()
-        )  
+            "INI/dark_light_config/dark_light_config.ini", 
+            "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
+                Path(__file__).resolve()
+        )
 
         # QFrame
         qframe_color = settings.value("Dark_Light/QFrame/background-color", "white")
@@ -186,11 +186,11 @@ class View(QMainWindow):
         import os
         from PySide6.QtCore import QSettings
 
-        # Load configuration for graphics
+        # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
-            "INI/graphics_config/graphics_config.ini",
-            "ui/graphics_windows/graphics_config/graphics_config.ini", 
-            Path(__file__).resolve()
+                "INI/graphics_config/graphics_config.ini",
+                "ui/graphics_windows/graphics_config/graphics_config.ini", 
+                Path(__file__).resolve()
         )
 
         graph_type_tab1 = settings.value("Tab1/GraphType1", "Smith Diagram")

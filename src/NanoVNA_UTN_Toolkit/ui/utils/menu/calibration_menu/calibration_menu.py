@@ -69,10 +69,10 @@ def open_no_calibration(self):
 
     logging.info("[graphics_window.open_no_calibration] Opening no calibration")
 
-    # Load configuration for calibration 
+    # Load configuration for calibration settings
     settings_calibration = get_settings(
         "INI/calibration_config/calibration_config.ini",
-        "calibration/config/calibration_config.ini", 
+        "calibration/calibration_config/calibration_config.ini", 
         Path(__file__).resolve()
     )
 
@@ -103,10 +103,10 @@ def select_kit_dialog(self):
 
     layout = QVBoxLayout(dialog)
 
-    # Load configuration for calibration 
+    # Load configuration for calibration settings
     settings = get_settings(
         "INI/calibration_config/calibration_config.ini",
-        "calibration/config/calibration_config.ini", 
+        "calibration/calibration_config/calibration_config.ini", 
         Path(__file__).resolve()
     )
 
@@ -235,9 +235,10 @@ def select_kit_dialog(self):
 
 def handle_save_calibration(self):
 
+    # Load configuration for calibration settings
     settings = get_settings(
         "INI/calibration_config/calibration_config.ini",
-        "calibration/config/calibration_config.ini", 
+        "calibration/calibration_config/calibration_config.ini", 
         Path(__file__).resolve()
     )
 
@@ -274,10 +275,10 @@ def delete_kit_dialog(self):
 
     # --- Base directory and ini path ---
 
-    # Load configuration for calibration 
+    # Load configuration for calibration settings
     settings = get_settings(
         "INI/calibration_config/calibration_config.ini",
-        "calibration/config/calibration_config.ini", 
+        "calibration/calibration_config/calibration_config.ini", 
         Path(__file__).resolve()
     )
 

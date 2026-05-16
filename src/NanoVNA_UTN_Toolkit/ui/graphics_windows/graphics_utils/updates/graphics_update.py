@@ -63,9 +63,10 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
     try:
         from matplotlib.lines import Line2D
 
+        # Load configuration for calibration settings
         settings_calibration = get_settings(
             "INI/calibration_config/calibration_config.ini",
-            "calibration/config/calibration_config.ini", 
+            "calibration/calibration_config/calibration_config.ini", 
             Path(__file__).resolve()
         )
 
