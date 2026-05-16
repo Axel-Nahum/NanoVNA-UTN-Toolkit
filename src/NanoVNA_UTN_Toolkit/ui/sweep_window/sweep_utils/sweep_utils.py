@@ -62,8 +62,8 @@ def load_sweep_configuration(self, parent = None):
     
     try:
         settings = get_settings(
-            "INI/sweep_config/config.ini",
-            "ui/sweep_window/config/config.ini", 
+            "INI/sweep_config/sweep_config.ini",
+            "ui/sweep_window/sweep_config/sweep_config.ini", 
             Path(__file__).resolve()
         )
 

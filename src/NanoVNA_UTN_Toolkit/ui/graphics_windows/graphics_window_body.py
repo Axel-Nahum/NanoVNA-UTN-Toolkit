@@ -32,14 +32,6 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
-
-try:
     from NanoVNA_UTN_Toolkit.ui.utils.reconect.reconect_button import reconnect_device
 except ImportError as e:
     import logging, sys
@@ -77,7 +69,7 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
     self.sweep_info_label.setStyleSheet("font-size: 12px;")
 
     # Initialize sweep configuration
-    load_sweep_configuration(self)
+    _load_sweep_configuration(self)
 
     # Progress bar
     self.sweep_progress_bar = QProgressBar()
@@ -252,3 +244,17 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
     self.main_layout_vertical.addLayout(
         self.markers_button_layout
     )
+
+def _load_sweep_configuration(self):
+    try:
+        from NanoVNA_UTN_Toolkit.ui.sweep_window.sweep_utils.sweep_utils import load_sweep_configuration
+    except ImportError as e:
+        import logging, sys
+        logging.error("Failed to import required modules: %s", e)
+        logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+        sys.exit(1)
+
+    load_sweep_configuration(self)
+    
+
+    

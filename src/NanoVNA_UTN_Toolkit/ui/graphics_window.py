@@ -262,7 +262,7 @@ class NanoVNAGraphics(QMainWindow):
         # Load configuration for calibration
 
         settings = get_settings(
-            "INI/colors_config/config.ini",
+            "INI/dark_light_mode/dark_light_config.ini",
             "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
             Path(__file__).resolve()
         )
@@ -393,8 +393,8 @@ class NanoVNAGraphics(QMainWindow):
 # ------- WIDGETS --------------------------------------------------------------------------------------------------------- #
 
         settings = get_settings(
-            "INI/colors_config/config.ini",
-            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            "INI/graphics_config/graphics_config.ini",
+            "ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
 

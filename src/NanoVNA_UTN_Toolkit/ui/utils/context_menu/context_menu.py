@@ -105,8 +105,8 @@ def handle_contextMenuEvent(self, event):
     # Load configuration for UI colors and styles
 
     settings = get_settings(
-        "INI/colors_config/config.ini",
-        "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+        "INI/graphics_config/graphics_config.ini",
+        "ui/graphics_windows/graphics_config/graphics_config.ini", 
         Path(__file__).resolve()
     )
 

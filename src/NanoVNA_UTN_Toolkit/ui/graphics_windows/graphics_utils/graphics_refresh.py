@@ -61,7 +61,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
+    from NanoVNA_UTN_Toolkit.ui.sweep_window.sweep_utils.sweep_utils import load_sweep_configuration
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)

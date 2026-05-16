@@ -16,14 +16,6 @@ from PySide6.QtGui import QIcon, QValidator
 
 from pathlib import Path
 
-try:
-    from NanoVNA_UTN_Toolkit.ui.utils.sweep_utils.sweep_utils import load_sweep_configuration
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
-
 # Import dark-light mode toggle function with error handling to log issues without crashing the application
 
 try:
@@ -42,8 +34,13 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
-
-from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
+try:
+    from NanoVNA_UTN_Toolkit.ui.sweep_window.sweep_utils.sweep_utils import load_sweep_configuration
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 # -------------------------------------------------------------------------------------------------------------------------------- #
 
@@ -130,7 +127,7 @@ class SmartDatapointsSpinBox(QSpinBox):
 # ---------------------------------------------------------------------------------------------------------------- #
 
 class SweepOptionsWindow(QMainWindow):
-    def __init__(self, parent: NanoVNAGraphics, vna_device=None):
+    def __init__(self, parent: None, vna_device=None):
         super().__init__(parent)
 
 #------------------------------------------------------------------------------------------------------------------------------------------
@@ -162,24 +159,13 @@ class SweepOptionsWindow(QMainWindow):
         else:
             logging.warning("[sweep_options_window.__init__] No VNA device provided - using default limits")
         
-        # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            self.config_path = os.path.join(
-                appdata,
-                "NanoVNA-UTN-Toolkit",
-                "INI",
-                "sweep_config",
-                "config.ini"
-            )
-            self.config_path = os.path.normpath(self.config_path)
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            os.makedirs(ui_dir, exist_ok=True)
-            self.config_path = os.path.join(ui_dir, "sweep_window", "config", "config.ini")
-            self.config_path = os.path.normpath(self.config_path)
-        
-        self.settings = QSettings(self.config_path, QSettings.Format.IniFormat)
+        # Load configuration for swee
+
+        self.settings = get_settings(
+            "INI/sweep_config/sweep_config.ini",
+            "ui/sweep_window/sweep_config/sweep_config.ini", 
+            Path(__file__).resolve()
+        )
         
         # Load maximum frequency limit from config
         self.max_frequency_hz = self.load_max_frequency()
@@ -572,7 +558,6 @@ class SweepOptionsWindow(QMainWindow):
         start_unit = self.settings.value("Frequency/StartUnit", "kHz")
         stop_unit = self.settings.value("Frequency/StopUnit", "GHz")
         
-        logging.info(f"[sweep_options_window.load_settings] Config file exists: {os.path.exists(self.config_path)}")
         logging.info(f"[sweep_options_window.load_settings] Raw values from config: "
                     f"StartFreqHz={start_freq_val}, StopFreqHz={stop_freq_val}, Segments={segments_val}")
         logging.info(f"[sweep_options_window.load_settings] Raw units from config: "
@@ -608,10 +593,12 @@ class SweepOptionsWindow(QMainWindow):
     def save_settings(self):
 
         settings = get_settings(
-            "INI/sweep_config/config.ini",
-            "ui/sweep_window/config/config.ini", 
+            "INI/sweep_config/sweep_config.ini",
+            "ui/sweep_window/sweep_config/sweep_config.ini", 
             Path(__file__).resolve()
         )
+
+        settings.sync()
 
         """Save current settings to config.ini file."""
         logging.info("[sweep_options_window.save_settings] Saving settings to config.ini")

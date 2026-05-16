@@ -52,8 +52,8 @@ def toggle_db_times(self, event, new_mode):
         # Load configuration for UI colors and styles
 
         settings = get_settings(
-            "INI/colors_config/config.ini",
-            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            "INI/graphics_config/graphics_config.ini",
+            "ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
 

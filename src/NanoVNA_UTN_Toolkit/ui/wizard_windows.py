@@ -409,20 +409,11 @@ class CalibrationWizard(QMainWindow):
         # Add sweep configuration section
 
         # Load configuration for UI colors and styles
-        if getattr(sys, 'frozen', False):
-            appdata = os.getenv("APPDATA")
-            ruta_colors = os.path.join(
-                appdata,
-                "NanoVNA-UTN-Toolkit",
-                "INI",
-                "colors_config",
-                "config.ini"
-            )
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            ruta_colors = os.path.join(ui_dir, "graphics_windows", "ini", "config.ini")
-
-        settings = QSettings(ruta_colors, QSettings.IniFormat)
+        settings = get_settings(
+            "INI/dark_light_mode/dark_light_config.ini",
+            "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
+            Path(__file__).resolve()
+        ) 
 
         groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
         groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"

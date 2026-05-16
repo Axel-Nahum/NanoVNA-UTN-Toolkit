@@ -567,8 +567,8 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
         # Load configuration for calibration
 
         settings = get_settings(
-            "INI/colors_config/config.ini",
-            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            "INI/graphics_config/graphics_config.ini",
+            "ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
 
@@ -665,8 +665,8 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
         # Load configuration for calibration
 
         settings = get_settings(
-            "INI/colors_config/config.ini",
-            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            "INI/graphics_config/graphics_config.ini",
+            "ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
 
@@ -1657,8 +1657,8 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
         # Load configuration for calibration
 
         settings = get_settings(
-            "INI/colors_config/config.ini",
-            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            "INI/graphics_config/graphics_config.ini",
+            "ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
 
@@ -1725,8 +1725,8 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
         # Load configuration for calibration
 
         settings = get_settings(
-            "INI/colors_config/config.ini",
-            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            "INI/graphics_config/graphics_config.ini",
+            "ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
 
@@ -1751,8 +1751,8 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
         # Load configuration for calibration
 
         settings = get_settings(
-            "INI/colors_config/config.ini",
-            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            "INI/graphics_config/graphics_config.ini",
+            "ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
 

@@ -12,8 +12,8 @@ def get_graph_unit(self, graph_number):
     """Read the unit from INI for left (1) or right (2) graph."""
     try:
         settings = get_settings(
-            "INI/colors_config/config.ini",
-            "ui/graphics_windows/graphics_ini/graphics_config.ini", 
+            "INI/graphics_config/graphics_config.ini",
+            "ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
         
