@@ -12,7 +12,9 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
-def update_calibration_label_from_method(self, method=None):
+def update_calibration_label_from_method(self, parent = None, method=None):
+
+    self.graphics_window = parent
 
     # Load configuration for calibration settings
     settings_calibration = get_settings(
@@ -21,10 +23,14 @@ def update_calibration_label_from_method(self, method=None):
         Path(__file__).resolve()
     )
 
+    settings_calibration.sync()
+
     kits_ok = settings_calibration.value("Calibration/Kits", False, type=bool)
     no_calibration = settings_calibration.value("Calibration/NoCalibration", False, type=bool)
     calibration_method = settings_calibration.value("Calibration/Method", "---")
     is_import_dut = settings_calibration.value("Calibration/isImportDut", False, type=bool)
+
+    settings_calibration.sync()
 
     if is_import_dut:
         text = "DUT"
@@ -54,9 +60,16 @@ def update_calibration_label_from_method(self, method=None):
 
         if not kit_found:
             text = f"Calibration Kit: {selected_kit_name or 'Unknown'} (method not found)"
-
-    else:
+        
+    elif not no_calibration:
         text = f"Calibration Wizard | Method: {calibration_method}"
 
+
     self.calibration_label.setText(text)
+
+
+
+        
+
+
 

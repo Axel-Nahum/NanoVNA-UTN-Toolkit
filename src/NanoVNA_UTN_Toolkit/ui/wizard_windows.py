@@ -88,6 +88,8 @@ class CalibrationWizard(QMainWindow):
         self.last_start_value = 50   
         self.last_stop_value  = 1.5   
 
+        self.parent = parent
+
         self.caller = caller
 
  #------------------------------------------------------------------------------------------------------------------------------------------
@@ -1117,6 +1119,9 @@ class CalibrationWizard(QMainWindow):
         )
 
         settings_calibration.setValue("Calibration/CalibrationWizard", True)
+        settings_calibration.setValue("Calibration/NoCalibration", False)
+        settings_calibration.setValue("Calibration/Kits", False)
+        settings_calibration.setValue("Calibration/isImportDut", False)
 
         # Load configuration for sweep settings and frequency range parameters
         settings = get_settings(
@@ -1540,7 +1545,7 @@ class CalibrationWizard(QMainWindow):
 
                 # Update calibration label with current method
                 try:
-                    update_calibration_label_from_method(self, self.selected_method)
+                    update_calibration_label_from_method(self, self.parent, self.selected_method)
                 except Exception as e:
                     logging.error(f"Failed to update calibration label in graphics window: {e}")
                 
@@ -1555,7 +1560,7 @@ class CalibrationWizard(QMainWindow):
                 self.close()
 
                 if hasattr(self, "caller") and hasattr(self.caller, "update_calibration_label_from_method"):
-                    self.caller.update_calibration_label_from_method(self.selected_method)
+                    update_calibration_label_from_method(self, self.parent, self.selected_method)
                 
             else:
                 logging.error("NanoVNAGraphics not available - cannot open graphics window")

@@ -56,9 +56,9 @@ def open_calibration_wizard(self):
         logging.info("[wizard_windows.open_calibration_wizard] Opening calibration wizard")
         
         if self.vna_device:
-            self.welcome_windows = CalibrationWizard(self.vna_device, caller="graphics")
+            self.welcome_windows = CalibrationWizard(self.vna_device, parent = self, caller="graphics")
         else:
-            self.welcome_windows = CalibrationWizard(caller="graphics")
+            self.welcome_windows = CalibrationWizard(parent = self, caller="graphics")
         self.welcome_windows.show()
         self.close()
         self.deleteLater()
@@ -376,6 +376,13 @@ def delete_kit_dialog(self):
         )
         if confirm != QMessageBox.Yes:
             return
+        
+        # Load configuration for calibration settings
+        settings = get_settings(
+            "INI/calibration_config/calibration_config.ini",
+            "calibration/calibration_config/calibration_config.ini", 
+            Path(__file__).resolve()
+        )
 
         # --- Read current calibration name ---
         current_full_name = settings.value("Calibration/Name", "")

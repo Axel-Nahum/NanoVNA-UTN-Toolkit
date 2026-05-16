@@ -1,5 +1,7 @@
 import logging
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget,
@@ -14,6 +16,14 @@ from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_utils impor
     create_left_panel,
     create_right_panel
 )
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 try:
     from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep, update_reconnect_button_state
@@ -38,7 +48,6 @@ except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
-
 
 def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_param):
 

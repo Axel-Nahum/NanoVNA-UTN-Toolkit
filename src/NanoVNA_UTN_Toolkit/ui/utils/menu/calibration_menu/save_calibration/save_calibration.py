@@ -62,7 +62,7 @@ def save_kit_dialog(self):
     # Load configuration for calibration
 
     settings = get_settings(
-        "calibration/calibration_config/calibration_config.ini",
+        "INI/calibration_config/calibration_config.ini",
         "calibration/calibration_config/calibration_config.ini", 
         Path(__file__).resolve()
     )
@@ -132,7 +132,7 @@ def save_kit_dialog(self):
             # Load configuration for calibration
 
             settings_calibration = get_settings(
-                "calibration/calibration_config/calibration_config.ini",
+                "INI/calibration_config/calibration_config.ini",
                 "calibration/calibration_config/calibration_config.ini", 
                 Path(__file__).resolve()
             )
