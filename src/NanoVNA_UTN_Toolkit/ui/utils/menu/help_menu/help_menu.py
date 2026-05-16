@@ -194,13 +194,13 @@ def open_report_url(self):
     Open the GitHub issues page for reporting bugs or feature requests.
     """
     try:
-        webbrowser.open("https://github.com/fcascan/NanoVNA-UTN-Toolkit/issues")
+        webbrowser.open("https://github.com/Axel-Nahum/NanoVNA-UTN-Toolkit")
     except Exception as e:
         # Fallback if webbrowser fails
         QMessageBox.information(
             self, 
             "Report Issues", 
-            "Please visit: https://github.com/fcascan/NanoVNA-UTN-Toolkit/issues\n"
+            "Please visit: https://github.com/Axel-Nahum/NanoVNA-UTN-Toolkit\n"
             "to report bugs or request features."
         )
 

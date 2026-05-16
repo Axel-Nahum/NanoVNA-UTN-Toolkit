@@ -165,6 +165,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.menu.help_menu.help_menu import open_report_url
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 #-------------------- ABOUT DIALOG -------------------------------------------------------------------------#
 
 class NanoVNAGraphics(QMainWindow):
@@ -249,7 +257,7 @@ class NanoVNAGraphics(QMainWindow):
         # --- Help menu actions ---
 
         report_action = help_menu.addAction("Report")
-        report_action.triggered.connect(lambda: self.open_report_url())
+        report_action.triggered.connect(lambda: open_report_url(self))
 
         about_en_action = help_menu.addAction("About [EN]")
         about_en_action.triggered.connect(lambda: show_about_dialog(self, 'en'))
