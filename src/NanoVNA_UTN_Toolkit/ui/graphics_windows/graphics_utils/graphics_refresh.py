@@ -544,7 +544,7 @@ def run_sweep(self):
 
         if not kits_ok and not no_calibration and not is_import_dut:
             update_calibration_label_from_method(self, calibration_method)
-        elif not is_import_dut:
+        if not is_import_dut:
             update_calibration_label_from_method(self)
 
         if kits_ok == False and no_calibration == True and not is_import_dut:

@@ -1,18 +1,17 @@
-import os
+import logging
 import sys
 from pathlib import Path
-
-from PySide6.QtCore import QSettings
 
 try:
     from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
 def update_calibration_label_from_method(self, parent = None, method=None):
+
+    logging.info("Entre")
 
     self.graphics_window = parent
 
@@ -29,6 +28,7 @@ def update_calibration_label_from_method(self, parent = None, method=None):
     no_calibration = settings_calibration.value("Calibration/NoCalibration", False, type=bool)
     calibration_method = settings_calibration.value("Calibration/Method", "---")
     is_import_dut = settings_calibration.value("Calibration/isImportDut", False, type=bool)
+    calibration_wizard = settings_calibration.value("Calibration/CalibrationWizard", True, type=bool)
 
     settings_calibration.sync()
 
@@ -61,7 +61,7 @@ def update_calibration_label_from_method(self, parent = None, method=None):
         if not kit_found:
             text = f"Calibration Kit: {selected_kit_name or 'Unknown'} (method not found)"
         
-    elif not no_calibration:
+    elif calibration_wizard:
         text = f"Calibration Wizard | Method: {calibration_method}"
 
     self.calibration_label.setText(text)

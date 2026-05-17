@@ -198,7 +198,7 @@ class CalibrationWizard(QMainWindow):
         self.next_button = QPushButton("▶▶")
         self.next_button.setFixedSize(100, 30)
         self.next_button.setStyleSheet("font-size: 14px;")
-        self.next_button.clicked.connect(lambda: next_step(self))
+        self.next_button.clicked.connect(lambda: next_step(self, parent = parent))
         self.next_button.setEnabled(False)  # start locked until user selects
         self.button_layout.addWidget(self.next_button)
 

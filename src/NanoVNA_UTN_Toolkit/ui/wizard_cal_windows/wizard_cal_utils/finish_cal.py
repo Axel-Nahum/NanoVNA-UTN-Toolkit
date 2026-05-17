@@ -131,7 +131,7 @@ def open_graphics_window(self):
             f"Failed to open graphics window: {str(e)}"
         )
 
-def finish_wizard(self):
+def finish_wizard(self, parent = None):
     """Finish calibration wizard by calculating OSM errors and opening graphics window."""
     logging.info("Calibration wizard completed - calculating OSM errors")
 
@@ -210,7 +210,8 @@ def finish_wizard(self):
     settings_calibration.setValue("Calibration/NoCalibration", False)
     settings_calibration.setValue("Calibration/Kits", False)
     settings_calibration.setValue("Calibration/isImportDut", False)
-
+    settings_calibration.setValue("Calibration/Method", self.selected_method)
+    
     # Load configuration for sweep settings and frequency range parameters
     settings = get_settings(
             "INI/sweep_config/sweep_config.ini",

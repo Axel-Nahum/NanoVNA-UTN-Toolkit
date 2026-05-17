@@ -112,7 +112,7 @@ def return_to_graphics(self):
 
 # --- Navigation Handlers -------------------------------------------------
 
-def next_step(self):
+def next_step(self, parent = None):
     self.next_button.setEnabled(False)
 
     if self.current_step == 0:
@@ -122,9 +122,9 @@ def next_step(self):
     else:
         steps = get_steps_for_method(self)
         if self.current_step < len(steps):
-            show_step_screen(self, self.current_step + 1)
+            show_step_screen(self, self.current_step + 1, parent = parent)
         else:
-            show_step_screen(self, self.current_step + 1)
+            show_step_screen(self, self.current_step + 1, parent = parent)
 
     # --- Control de visibilidad del botón "Save Calibration" ---
     if (
@@ -377,7 +377,7 @@ def show_first_screen(self):
     
     self.current_step = 0
 
-def show_step_screen(self, step):
+def show_step_screen(self, step, parent = None):
     """Show the given step with left info panel and right Smith chart."""
     clear_main_content(self)
     steps = get_steps_for_method(self)
@@ -597,7 +597,7 @@ def show_step_screen(self, step):
     except (TypeError, RuntimeError):
         pass
     try:
-        self.next_button.clicked.disconnect(lambda: finish_wizard(self))
+        self.next_button.clicked.disconnect(lambda: finish_wizard(self, parent = parent))
     except (TypeError, RuntimeError):
         pass
 
