@@ -64,7 +64,6 @@ def update_calibration_label_from_method(self, parent = None, method=None):
     elif not no_calibration:
         text = f"Calibration Wizard | Method: {calibration_method}"
 
-
     self.calibration_label.setText(text)
 
 
