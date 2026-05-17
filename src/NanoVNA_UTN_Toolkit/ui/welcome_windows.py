@@ -27,7 +27,7 @@ except ImportError as e:
     NanoVNAGraphics = None
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.wizard_windows import CalibrationWizard
+    from NanoVNA_UTN_Toolkit.ui.wizard_cal_windows.wizard_windows import CalibrationWizard
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")

@@ -5,11 +5,19 @@ Handles OSM calibrations with persistent state and Touchstone export.
 import numpy as np
 import logging
 import os
-import pickle
 from datetime import datetime
 from typing import Dict, Optional, Tuple, List
 import skrf as rf
 
+from pathlib import Path
+
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration_path_utils import get_calibration_path
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 class OSMCalibrationManager:
     """
@@ -17,20 +25,24 @@ class OSMCalibrationManager:
     """
     
     def __init__(self, base_path: str = None):
-        if base_path is None:
-            if getattr(sys, 'frozen', False):
-                base_path = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit", "Calibration")
-                os.makedirs(base_path, exist_ok=True)
-                logging.info(f"[CalibrationWizard] Running as EXE, saving measurements in {base_path}")
-            else:
-                base_path = os.path.join(os.path.dirname(__file__))
-                os.makedirs(base_path, exist_ok=True)
-                logging.info(f"[CalibrationWizard] Running as Python, saving measurements in {base_path}")
         
-        self.base_path = base_path
-        self.osm_results_path = os.path.join(base_path, "osm_results")
-        self.thru_results_path = os.path.join(base_path, "thru_results")
-        self.kits_path = os.path.join(base_path, "kits")
+        self.osm_results_path = get_calibration_path(
+            "calibration/osm_results",
+            "calibration/osm_results",
+            Path(__file__).resolve()
+        )
+
+        self.thru_results_path = get_calibration_path(
+            "calibration/thru_results",
+            "calibration/thru_results",
+            Path(__file__).resolve()
+        )
+
+        self.kits_path = self.thru_results_path = get_calibration_path(
+            "calibration/kits",
+            "calibration/kits",
+            Path(__file__).resolve()
+        )
         
         # Ensure directories exist
         os.makedirs(self.osm_results_path, exist_ok=True)
@@ -181,14 +193,12 @@ class OSMCalibrationManager:
                 logging.warning("[OSMCalibrationManager] Cannot save incomplete calibration")
                 return False
             
-            if getattr(sys, 'frozen', False):
-                # Modo EXE (PyInstaller)
-                base_dir = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit", "Calibration")
-            else:
-                # Modo Python
-                base_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Calibration")
+            cal_dir = get_calibration_path(
+                "calibration/osm_results",
+                "calibration/osm_results",
+                Path(__file__).resolve()
+            )
 
-            cal_dir = os.path.join(base_dir, "osm_results")
             self.calibration_dir = cal_dir
             os.makedirs(self.calibration_dir, exist_ok=True)
 
@@ -425,15 +435,12 @@ class THRUCalibrationManager:
     """
 
     def __init__(self, base_path: str = None):
-        if base_path is None:
-            if getattr(sys, 'frozen', False):
-                base_path = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit", "Calibration")
-                os.makedirs(base_path, exist_ok=True)
-                logging.info(f"[CalibrationWizard] Running as EXE, saving measurements in {base_path}")
-            else:
-                base_path = os.path.join(os.path.dirname(__file__))
-                os.makedirs(base_path, exist_ok=True)
-                logging.info(f"[CalibrationWizard] Running as Python, saving measurements in {base_path}")
+   
+        base_path = get_calibration_path(
+            "calibration",
+            "calibration",
+            Path(__file__).resolve()
+        )
 
         self.base_path = base_path
         self.thru_results_path = os.path.join(base_path, "thru_results")
@@ -458,33 +465,25 @@ class THRUCalibrationManager:
     def set_measurement(self, standard_name: str, freqs: np.ndarray, s11: np.ndarray, s21: np.ndarray) -> bool:
         """Store THRU measurement and save as Touchstone file."""
         
-        import numpy as np
-
-        # ---- Entradas ----
-        freqs = freqs       
-        s21 = s21        
-
-        # ---- Parámetros físicos ----
-        delta_L = 0.0064   # m
+        freqs = np.asarray(freqs, dtype=np.float64)
+        s21 = np.asarray(s21, dtype=np.complex128)
+        
+        delta_L = 0.0064
         c = 299792458.0
-
-        # ---- Búsqueda de er_eff ----
         er_eff = 3.3
 
         beta = 2.0 * np.pi * freqs * np.sqrt(er_eff) / c
 
-        phase_delta_L = beta * delta_L   
+        phase_delta_L = beta * delta_L
 
-        phase_s21 = np.angle(s21)
-
-        phase_s21_corr = phase_s21 - phase_delta_L
-
-        mag_s21 = np.abs(s21)
-
-        s21 = mag_s21 * np.exp(1j * phase_s21_corr)
+        s21 = s21 * np.exp(-1j * phase_delta_L)
 
         self.s11m = s11
         self.s21m = s21
+
+        logging.info(f"S21 dtype before copy: {s21.dtype}")
+        logging.info(f"S21 shape before copy: {s21.shape}")
+        logging.info(f"S21 first raw: {s21[:5]}")
 
         try:
             self.measurements[standard_name]['freqs'] = np.array(freqs)
@@ -504,27 +503,27 @@ class THRUCalibrationManager:
             logging.error(f"[THRUCalibrationManager] Error saving THRU measurement: {e}")
             return False
 
-    def _save_as_touchstone(self, freqs: np.ndarray, s11: np.ndarray, s21: np.ndarray, filepath: str):
-        """Save THRU measurement as Touchstone .s2p file (S21 explícito, S11/S12/S22 = 0)."""
+    def _save_as_touchstone(self, freqs, s11, s21, filepath):
         try:
-            import numpy as np
-            import skrf as rf
-
-            # Crea matriz S de 2 puertos: S11, S12, S21, S22
             s_data = np.zeros((len(freqs), 2, 2), dtype=complex)
-            s_data[:, 0, 0] = s11  # S11
-            s_data[:, 1, 0] = s21  # S21
-            # S11, S12, S22 quedan en 0
 
-            network = rf.Network(frequency=freqs, s=s_data, z0=50)
-            # Forzar extensión .s2p
-            if not filepath.endswith('.s2p'):
-                filepath = os.path.splitext(filepath)[0] + '.s2p'
+            s_data[:, 0, 0] = s11
+            s_data[:, 1, 0] = s21
+
+            network = rf.Network()
+            network.frequency = rf.Frequency.from_f(freqs, unit="Hz")
+            network.s = s_data
+            network.z0 = 50
+
+            filepath = os.path.splitext(filepath)[0]
+
             network.write_touchstone(filepath)
-            logging.info(f"[THRUCalibrationManager] Touchstone S2P file saved: {filepath}")
+
+            logging.info(f"[THRUCalibrationManager] Touchstone S2P file saved: {filepath}.s2p")
+
         except Exception as e:
             logging.error(f"[THRUCalibrationManager] Error writing Touchstone S2P file: {e}")
-
+            
     def get_measurement(self) -> Optional[Tuple[np.ndarray, np.ndarray]]:
         """Return THRU measurement data if available."""
         data = self.measurements['thru']

@@ -51,7 +51,7 @@ except ImportError as e:
 
 def open_calibration_wizard(self):
         
-        from NanoVNA_UTN_Toolkit.ui.wizard_windows import CalibrationWizard
+        from NanoVNA_UTN_Toolkit.ui.wizard_cal_windows.wizard_windows import CalibrationWizard
 
         logging.info("[wizard_windows.open_calibration_wizard] Opening calibration wizard")
         

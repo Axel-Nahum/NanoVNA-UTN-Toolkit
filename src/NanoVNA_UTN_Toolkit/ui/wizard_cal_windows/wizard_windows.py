@@ -14,10 +14,10 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget,
         QMessageBox,QGroupBox, QFormLayout, QDoubleSpinBox, QToolTip
 )
 from PySide6.QtGui import QIcon, QColor
-from PySide6.QtCore import Qt, QSettings
+from PySide6.QtCore import Qt
 
 # Import SmartDatapointsSpinBox for intelligent datapoints navigation
-from .sweep_window.sweep_options_window import SmartDatapointsSpinBox
+from ..sweep_window.sweep_options_window import SmartDatapointsSpinBox
 
 plt.rcParams['mathtext.fontset'] = 'cm'   
 plt.rcParams['text.usetex'] = False      
@@ -67,19 +67,25 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration_path_utils import get_calibration_path
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
 class CalibrationWizard(QMainWindow):
     def __init__(self, vna_device=None, parent=None, caller="welcome"):
         super().__init__()
 
-        if getattr(sys, 'frozen', False):
-            base_path = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit", "Calibration")
-            os.makedirs(base_path, exist_ok=True)
-            logging.info(f"[CalibrationWizard] Running as EXE, saving measurements in {base_path}")
-        else:
-            base_path = os.path.join(os.path.dirname(__file__))
-            os.makedirs(base_path, exist_ok=True)
+        base_path = get_calibration_path(
+            "calibration",
+            "calibration",
+            Path(__file__).resolve()
+        )
 
         # Inicializar el manager pasándole la ruta
         self.osm_calibration = OSMCalibrationManager(base_path=None)
@@ -869,8 +875,8 @@ class CalibrationWizard(QMainWindow):
         right_layout = QVBoxLayout(self.right_panel_widget)
 
         # Use consolidated Smith chart creation
-        from ..utils.smith_chart_utils import create_wizard_smith_chart
-        from ..utils.magnitude_chat_utils import create_wizard_magnitude_chart
+        from ...utils.smith_chart_utils import create_wizard_smith_chart
+        from ...utils.magnitude_chat_utils import create_wizard_magnitude_chart
 
         if step_name == "OPEN" or "SHORT" or "MATCH":
             fig, ax, canvas = create_wizard_smith_chart(
@@ -1065,14 +1071,12 @@ class CalibrationWizard(QMainWindow):
         """Finish calibration wizard by calculating OSM errors and opening graphics window."""
         logging.info("Calibration wizard completed - calculating OSM errors")
 
-        # Detect if running as .exe
-        if getattr(sys, 'frozen', False):
-            base_cal_dir = os.path.join(os.getenv('APPDATA'), "NanoVNA-UTN-Toolkit")
-        else:
-            base_cal_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)))
-
         if self.selected_method == "OSM (Open - Short - Match)":
-            cal_dir = os.path.join(base_cal_dir, "Calibration", "osm_results")
+            cal_dir = get_calibration_path(
+                "calibration/osm_results",
+                "calibration/osm_results",
+                Path(__file__).resolve()
+            )
             os.makedirs(cal_dir, exist_ok=True)
 
             # Create calibration error handler and compute OSM errors
@@ -1080,15 +1084,27 @@ class CalibrationWizard(QMainWindow):
             errors.calculate_osm_errors()
 
         elif self.selected_method == "Normalization":
-            cal_dir = os.path.join(base_cal_dir, "Calibration", "thru_results")
+            cal_dir = get_calibration_path(
+                "calibration/thru_results",
+                "calibration/thru_results",
+                Path(__file__).resolve()
+            )
             os.makedirs(cal_dir, exist_ok=True)
 
             errors = CalibrationErrors(cal_dir, error_subfolder="normalization_errors")
             errors.calculate_normalization_errors()
 
         elif self.selected_method == "1-Port+N":
-            osm_dir = os.path.join(base_cal_dir, "Calibration", "osm_results")
-            thru_dir = os.path.join(base_cal_dir, "Calibration", "thru_results")
+            osm_dir = get_calibration_path(
+                "calibration/osm_results",
+                "calibration/osm_results",
+                Path(__file__).resolve()
+            )
+            thru_dir = get_calibration_path(
+                "calibration/thru_results",
+                "calibration/thru_results",
+                Path(__file__).resolve()
+            )
 
             os.makedirs(osm_dir, exist_ok=True)
             os.makedirs(thru_dir, exist_ok=True)
@@ -1097,8 +1113,16 @@ class CalibrationWizard(QMainWindow):
             errors.calculate_1PortN_errors(osm_dir, thru_dir)
 
         elif self.selected_method == "Enhanced-Response":
-            osm_dir = os.path.join(base_cal_dir, "Calibration", "osm_results")
-            thru_dir = os.path.join(base_cal_dir, "Calibration", "thru_results")
+            osm_dir = get_calibration_path(
+                "calibration/osm_results",
+                "calibration/osm_results",
+                Path(__file__).resolve()
+            )
+            thru_dir = get_calibration_path(
+                "calibration/thru_results",
+                "calibration/thru_results",
+                Path(__file__).resolve()
+            )
 
             os.makedirs(osm_dir, exist_ok=True)
             os.makedirs(thru_dir, exist_ok=True)
@@ -1292,8 +1316,29 @@ class CalibrationWizard(QMainWindow):
                 
                 logging.info(f"[CalibrationWizard] Reading S21 data for THRU...")
                 s21_data = self.vna_device.readValues("data 1")
+                logging.info(f"[CalibrationWizard] Reading S21 data for THRU...")
+                s21_data = self.vna_device.readValues("data 1")
+
+                logging.info(f"[RAW S21] TYPE: {type(s21_data)}")
+
+                try:
+                    logging.info(f"[RAW S21] LEN: {len(s21_data)}")
+                except Exception as e:
+                    logging.error(f"[RAW S21] LEN ERROR: {e}")
+
+                logging.info(f"[RAW S21] FIRST 10: {s21_data[:10]}")
+
+                if len(s21_data) > 0:
+                    logging.info(f"[RAW S21] FIRST ELEMENT TYPE: {type(s21_data[0])}")
+                    logging.info(f"[RAW S21] FIRST ELEMENT: {s21_data[0]}")
+
                 s21 = np.array(s21_data)
-                
+
+                logging.info(f"[NP S21] DTYPE: {s21.dtype}")
+                logging.info(f"[NP S21] SHAPE: {s21.shape}")
+                logging.info(f"[NP S21] FIRST 10: {s21[:10]}")
+                s21 = np.array(s21_data)
+
                 logging.info(f"[CalibrationWizard] Got {len(freqs)} freq, {len(s11)} S11, and {len(s21)} S21 points")
                 
                 # Verify that we got the expected number of points for THRU
@@ -1665,8 +1710,8 @@ class CalibrationWizard(QMainWindow):
     
     def show_existing_measurements_on_chart(self):
         """Show all existing measurements on Smith chart to preserve state"""
-        from ..utils.smith_chart_utils import SmithChartManager
-        from ..utils.magnitude_chat_utils import MagnitudeChartManager
+        from ...utils.smith_chart_utils import SmithChartManager
+        from ...utils.magnitude_chat_utils import MagnitudeChartManager
         
         if not self.osm_calibration or not hasattr(self, 'current_ax'):
             return
@@ -1722,8 +1767,8 @@ class CalibrationWizard(QMainWindow):
     
     def show_current_step_measurement(self, step):
         """Show only the measurement for the current step on Smith chart."""
-        from ..utils.smith_chart_utils import SmithChartManager
-        from ..utils.magnitude_chat_utils import MagnitudeChartManager
+        from ...utils.smith_chart_utils import SmithChartManager
+        from ...utils.magnitude_chat_utils import MagnitudeChartManager
         
         if not self.osm_calibration or not hasattr(self, 'current_ax'):
             return
@@ -1809,7 +1854,7 @@ class CalibrationWizard(QMainWindow):
     
     def update_smith_chart(self, freqs, s11, standard_name):
         """Update Smith chart with measured calibration data."""
-        from ..utils.smith_chart_utils import SmithChartManager
+        from ...utils.smith_chart_utils import SmithChartManager
         
         if not hasattr(self, 'current_ax') or not self.current_ax:
             logging.warning("[CalibrationWizard] No Smith chart axis available")
@@ -1827,7 +1872,7 @@ class CalibrationWizard(QMainWindow):
 
     def update_magnitude_chart(self, freqs, s21, standard_name):
         """Update Magnitude chart with measured calibration data."""
-        from ..utils.magnitude_chat_utils import MagnitudeChartManager
+        from ...utils.magnitude_chat_utils import MagnitudeChartManager
         
         if not hasattr(self, 'current_ax') or not self.current_ax:
             logging.warning("[CalibrationWizard] No Magnitude chart axis available")
