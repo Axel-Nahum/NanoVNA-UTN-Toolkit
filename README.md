@@ -78,4 +78,4 @@ dist/NanoVNA-UTN-Toolkit.exe
 ```
 
 ## Credits
-This project was developed as part of the requirements for the **Electronic Measurements II** course at UTN FRBA during the 2025 academic year.
+This project was developed as part of the requirements for the **Proyecto Final** course at UTN FRBA during the 2026 academic year.
