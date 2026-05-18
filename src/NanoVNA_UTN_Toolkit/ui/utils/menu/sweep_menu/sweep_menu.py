@@ -22,7 +22,7 @@ def get_current_vna_device(self):
         return None
 
 def open_sweep_options(self):
-    from NanoVNA_UTN_Toolkit.ui.sweep_window import SweepOptionsWindow
+    from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.sweep_window import SweepOptionsWindow
 
     # Log sweep options opening
     logging.info("[graphics_window.open_sweep_options] Opening sweep options window")

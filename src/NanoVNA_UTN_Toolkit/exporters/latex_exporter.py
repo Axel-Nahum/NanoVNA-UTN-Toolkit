@@ -580,9 +580,9 @@ class LatexExporter:
 
         # Load configuration for sweep settings and frequency range parameters
         settings_sweep = get_settings(
-                "INI/sweep_config/sweep_config.ini",
-                "ui/sweep_window/sweep_config/sweep_config.ini", 
-                Path(__file__).resolve()        
+            "INI/sweep_config/sweep_config.ini",
+            "ui/menu_window/dut_measurement/sweep_window/sweep_config/sweep_config.ini", 
+            Path(__file__).resolve()        
         )
 
         start_unit = settings_sweep.value("Frequency/StartUnit", "MHz")

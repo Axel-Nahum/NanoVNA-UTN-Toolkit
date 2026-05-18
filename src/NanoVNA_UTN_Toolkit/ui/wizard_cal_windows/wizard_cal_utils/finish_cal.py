@@ -27,7 +27,7 @@ except ImportError as e:
 
 # Import NanoVNAGraphics for the final step
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_window import NanoVNAGraphics
+    from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.graphics_windows.graphics_window import NanoVNAGraphics
 except ImportError as e:
     logging.error("Failed to import NanoVNAGraphics: %s", e)
     NanoVNAGraphics = None  # Safe fallback
@@ -214,9 +214,9 @@ def finish_wizard(self, parent = None):
     
     # Load configuration for sweep settings and frequency range parameters
     settings = get_settings(
-            "INI/sweep_config/sweep_config.ini",
-            "ui/sweep_window/sweep_config/sweep_config.ini", 
-            Path(__file__).resolve()        
+        "INI/sweep_config/sweep_config.ini",
+        "ui/menu_window/dut_measurement/sweep_window/sweep_config/sweep_config.ini",
+        Path(__file__).resolve()        
     )
 
     settings.setValue("Frequency/StartFreqHz", get_sweep_start_frequency(self))

@@ -65,7 +65,7 @@ def open_calibration_wizard(self):
 
 def open_no_calibration(self):
 
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_window import NanoVNAGraphics
+    from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.graphics_windows.graphics_window import NanoVNAGraphics
 
     logging.info("[graphics_window.open_no_calibration] Opening no calibration")
 
@@ -94,7 +94,7 @@ def open_no_calibration(self):
 
 def select_kit_dialog(self): 
 
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_window import NanoVNAGraphics
+    from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.graphics_windows.graphics_window import NanoVNAGraphics
     
     # --- Create dialog ---
     dialog = QDialog(self)

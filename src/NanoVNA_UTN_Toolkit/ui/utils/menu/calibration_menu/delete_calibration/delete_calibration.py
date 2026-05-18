@@ -13,7 +13,7 @@ except ImportError as e:
 
 def handle_deleted_current_kit(self):
 
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_window import NanoVNAGraphics
+    from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.graphics_windows.graphics_window import NanoVNAGraphics
 
     # Load configuration for calibration settings
     settings = get_settings(
@@ -52,7 +52,7 @@ def handle_deleted_current_kit(self):
 
 def handle_all_kits_deleted(self):
 
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_window import NanoVNAGraphics
+    from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.graphics_windows.graphics_window import NanoVNAGraphics
 
     # Load configuration for calibration settings
     settings = get_settings(

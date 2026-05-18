@@ -46,7 +46,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_visibility import toggle_marker_visibility, toggle_marker2_visibility
+    from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.graphics_windows.graphics_utils.updates.cursors_visibility import toggle_marker_visibility, toggle_marker2_visibility
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -105,7 +105,7 @@ def handle_contextMenuEvent(self, event):
     # Load configuration for graphics settings and visualization parameters
     settings = get_settings(
         "INI/graphics_config/graphics_config.ini",
-        "ui/graphics_windows/graphics_config/graphics_config.ini", 
+        "ui/menu_window/dut_measurement/graphics_windows/graphics_config/graphics_config.ini",
         Path(__file__).resolve()
     )
 

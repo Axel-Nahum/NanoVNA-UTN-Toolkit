@@ -20,7 +20,7 @@ def load_graph_configuration():
     # Load configuration for graphics settings and visualization parameters
     settings = get_settings(
         "INI/graphics_config/graphics_config.ini",
-        "ui/graphics_windows/graphics_config/graphics_config.ini", 
+        "ui/menu_window/dut_measurement/graphics_windows/graphics_config/graphics_config.ini",
         Path(__file__).resolve()
     )
 

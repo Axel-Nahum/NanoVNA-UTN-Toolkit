@@ -2,7 +2,7 @@ import logging
 from PySide6.QtWidgets import QMessageBox
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.sliders_reset import _reset_sliders_after_reconnect
+    from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.graphics_windows.graphics_utils.reset.sliders_reset import _reset_sliders_after_reconnect
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -10,7 +10,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep, update_reconnect_button_state
+    from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.graphics_windows.graphics_utils.graphics_refresh import run_sweep, update_reconnect_button_state
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)

@@ -10,7 +10,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtCore import Qt
 
 # Import SmartDatapointsSpinBox for intelligent datapoints navigation
-from NanoVNA_UTN_Toolkit.ui.sweep_window.sweep_options_window import SmartDatapointsSpinBox
+from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.sweep_window.sweep_options_window import SmartDatapointsSpinBox
 
 try:
     from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings
@@ -90,7 +90,7 @@ def return_to_graphics(self):
         logging.info("Returning to graphics window from calibration wizard")
         
         # Import graphic window
-        from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_window import NanoVNAGraphics
+        from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.graphics_windows.graphics_window import NanoVNAGraphics
 
         # Create graphics window with VNA device if available
         self.graphics_window = NanoVNAGraphics(vna_device=self.vna_device) if self.vna_device else NanoVNAGraphics()

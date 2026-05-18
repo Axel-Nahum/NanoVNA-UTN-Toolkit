@@ -14,7 +14,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.graphics_update import update_plots_with_new_data
+    from NanoVNA_UTN_Toolkit.ui.menu_window.dut_measurement.graphics_windows.graphics_utils.updates.graphics_update import update_plots_with_new_data
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -52,7 +52,7 @@ def toggle_db_times(self, event, new_mode):
         # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
             "INI/graphics_config/graphics_config.ini",
-            "ui/graphics_windows/graphics_config/graphics_config.ini", 
+            "ui/menu_window/dut_measurement/graphics_windows/graphics_config/graphics_config.ini",
             Path(__file__).resolve()
         )
 
