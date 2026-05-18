@@ -13,11 +13,10 @@ from PySide6.QtWidgets import (
     QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
     QPushButton, QTabWidget, QApplication, QFrame
 )
-from PySide6.QtCore import QSettings
 from PySide6.QtGui import QIcon
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.edit_graphics_utils.edit_graphics_utils import create_edit_tab1, create_edit_tab2
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.edit_graphics.edit_graphics_utils.edit_graphics_utils import create_edit_tab1, create_edit_tab2
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -25,23 +24,8 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.graphics_update import recreate_single_plot, update_plots_with_new_data
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.graphics_update import recreate_single_plot
 except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
-
-try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.reset.sliders_cursors_reset import reset_sliders_and_markers_for_graph_change
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
-
-try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_utils.updates.cursors_update import recreate_cursors_for_new_plots
-except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)

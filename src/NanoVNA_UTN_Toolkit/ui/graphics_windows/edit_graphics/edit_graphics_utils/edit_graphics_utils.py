@@ -1,11 +1,9 @@
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGroupBox, 
-    QColorDialog, QSpinBox, QCheckBox, QPushButton, QSizePolicy, QSpacerItem, QApplication
-)
-from PySide6.QtCore import Qt, QSettings
-from PySide6.QtGui import QPixmap, QIcon
+import logging
+import sys
+import skrf as rf
+import numpy as np
 
-import qtawesome as qta
+from pathlib import Path
 
 # --- Matplotlib ---
 import matplotlib.pyplot as plt
@@ -18,18 +16,14 @@ plt.rcParams['axes.labelsize'] = 12
 plt.rcParams['font.family'] = 'serif'     # Coincide con el estilo de LaTeX
 plt.rcParams['mathtext.rm'] = 'serif'     # Números y texto coherentes
 
-from matplotlib.ticker import ScalarFormatter
+
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGroupBox, 
+    QColorDialog, QSpinBox, QSizePolicy, QSpacerItem, QApplication
+)
+from PySide6.QtCore import Qt
 
 # Suppress matplotlib debug logs
-
-from pathlib import Path
-
-# --- Scikit-RF ---
-import skrf as rf
-import numpy as np
-import os
-import sys
-import logging
 
 spin_style = """
     QSpinBox {

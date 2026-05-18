@@ -90,7 +90,7 @@ except ImportError as e:
     THRUCalibrationManager = None
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_window_body import setup_graphics_window_body 
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_windows_body.graphics_window_body import setup_graphics_window_body 
 except ImportError as e:
     logging.error("Failed to import setup_graphics_window_body: %s", e)
     setup_graphics_window_body = None

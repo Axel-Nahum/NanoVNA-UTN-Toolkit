@@ -16,8 +16,8 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.view_graphics_utils.view_utils import create_tab1
-    from NanoVNA_UTN_Toolkit.ui.graphics_windows.view_graphics_utils.view_utils import create_tab2
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.view_edit.view_graphics_utils.view_utils import create_tab1
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.view_edit.view_graphics_utils.view_utils import create_tab2
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
