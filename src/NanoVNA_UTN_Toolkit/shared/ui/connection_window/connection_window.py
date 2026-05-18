@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon, QFont
 
 try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.welcome_window.welcome_windows import NanoVNAWelcome
+    from NanoVNA_UTN_Toolkit.modules.menu_window import ModuleSelectionWindow
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
@@ -317,8 +317,8 @@ class NanoVNAStatusApp(QMainWindow):
 
         layout.addLayout(button_layout)
 
-        self.smith_btn = QPushButton("Open Welcome Window")
-        self.smith_btn.clicked.connect(self.open_welcome_window)
+        self.smith_btn = QPushButton("Open Menu")
+        self.smith_btn.clicked.connect(self.open_selection_window)
         self.stop_btn.setEnabled(False)
         self.smith_btn.setStyleSheet("padding: 12px; font-size: 14px;")
         layout.addWidget(self.smith_btn)
@@ -507,18 +507,18 @@ class NanoVNAStatusApp(QMainWindow):
             self.worker.stop()
             self.log_message("Stopping device search...")
 
-    def open_welcome_window(self):
+    def open_selection_window(self):
         """Open the welcome window."""
         # Log device transfer to welcome window
         if self.vna:
             device_type = type(self.vna).__name__
-            self.log_message(f"[connection_window.open_welcome_window] Device {device_type} available - passing to welcome window")
-            self.welcome_windows = NanoVNAWelcome(vna_device=self.vna)
+            self.log_message(f"[connection_window.open_selection_window] Device {device_type} available - passing to welcome window")
+            self.selection_windows = ModuleSelectionWindow(vna_device=self.vna)
         else:
-            self.log_message("[connection_window.open_welcome_window] No device connected - using placeholder mode")
-            self.welcome_windows = NanoVNAWelcome()
+            self.log_message("[connection_window.open_selection_window] No device connected - using placeholder mode")
+            self.selection_windows = ModuleSelectionWindow()
             
-        self.welcome_windows.show()
+        self.selection_windows.show()
         self.close() 
 
     def manual_refresh(self):

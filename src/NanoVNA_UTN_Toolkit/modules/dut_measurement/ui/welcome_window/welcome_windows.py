@@ -1,6 +1,7 @@
 """
 Welcome setup window for NanoVNA devices.
 """
+
 import logging
 import os
 import sys
