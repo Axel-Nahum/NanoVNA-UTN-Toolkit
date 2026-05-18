@@ -531,8 +531,8 @@ def run_sweep(self):
 
         # Cal_Directory
         cal_dir = get_calibration_path(
-            "calibration/osm_results",
-            "calibration/osm_results",
+            "modules/dut_measurement/calibration/osm_results",
+            "modules/dut_measurement/calibration/osm_results",
             Path(__file__).resolve()
         )
         methods = Methods(cal_dir)
@@ -558,8 +558,8 @@ def run_sweep(self):
 
                 # Cal_Directory
                 cal_dir = get_calibration_path(
-                    "calibration/thru_results",
-                    "Calibration/thru_results",
+                    "modules/dut_measurement/calibration/thru_results",
+                    "modules/dut_measurement/Calibration/thru_results",
                     Path(__file__).resolve()
                 )
                 methods = Methods(cal_dir)
@@ -570,8 +570,8 @@ def run_sweep(self):
 
                 # Cal_Directory
                 cal_dir = get_calibration_path(
-                    "calibration/osm_results",
-                    "calibration/osm_results",
+                    "modules/dut_measurement/calibration/osm_results",
+                    "modules/dut_measurement/calibration/osm_results",
                     Path(__file__).resolve()
                 )
                 methods = Methods(cal_dir)
@@ -581,8 +581,8 @@ def run_sweep(self):
                 # Cal_Directory
 
                 cal_dir = get_calibration_path(
-                    "calibration/thru_results",
-                    "calibration/thru_results",
+                    "modules/dut_measurement/calibration/thru_results",
+                    "modules/dut_measurement/calibration/thru_results",
                     Path(__file__).resolve()
                 )
                 methods = Methods(cal_dir)
@@ -593,15 +593,15 @@ def run_sweep(self):
 
                 # Osm_Directory
                 osm_dir = get_calibration_path(
-                    "calibration/osm_results",
-                    "calibration/osm_results",
+                    "modules/dut_measurement/calibration/osm_results",
+                    "modules/dut_measurement/calibration/osm_results",
                     Path(__file__).resolve()
                 )
 
                 # Thru_Directory
                 thru_dir = get_calibration_path(
-                    "calibration/thru_results",
-                    "calibration/thru_results",
+                    "modules/dut_measurement/calibration/thru_results",
+                    "modules/dut_measurement/calibration/thru_results",
                     Path(__file__).resolve()
                 )
 
@@ -613,8 +613,8 @@ def run_sweep(self):
         elif kits_ok == True and no_calibration == False and not is_import_dut:
 
             selected_kit_dir = get_calibration_path(
-                "calibration/Kits",
-                "calibration/Kits",
+                "modules/dut_measurement/calibration/Kits",
+                "modules/dut_measurement/calibration/Kits",
                 Path(__file__).resolve()
             )
 

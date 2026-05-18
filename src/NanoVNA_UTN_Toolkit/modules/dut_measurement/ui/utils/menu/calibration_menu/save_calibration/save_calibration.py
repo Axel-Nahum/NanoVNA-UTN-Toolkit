@@ -42,14 +42,14 @@ def save_kit_dialog(self):
     self.thru_calibration.is_complete_true()
 
     osm_dir = get_calibration_path(
-        "calibration/osm_results",
-        "calibration/osm_results",
+        "modules/dut_measurement/calibration/osm_results",
+        "modules/dut_measurement/calibration/osm_results",
         Path(__file__).resolve()
     )
 
     thru_dir = get_calibration_path(
-        "calibration/thru_results",
-        "calibration/thru_results",
+        "modules/dut_measurement/calibration/thru_results",
+        "modules/dut_measurement/calibration/thru_results",
         Path(__file__).resolve()
     )
 

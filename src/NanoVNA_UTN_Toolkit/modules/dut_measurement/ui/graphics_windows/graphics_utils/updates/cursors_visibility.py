@@ -27,7 +27,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
     # Load configuration for graphics settings and visualization parameters
     settings = get_settings(
         "INI/graphics_config/graphics_config.ini",
-        "ui/menu_window/dut_measurement/graphics_windows/graphics_config/graphics_config.ini",
+        "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
         Path(__file__).resolve()
     )
 
@@ -89,7 +89,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                 # Load configuration for graphics settings and visualization parameters
                                 settings = get_settings(
                                     "INI/graphics_config/graphics_config.ini",
-                                    "ui/menu_window/dut_measurement/graphics_windows/graphics_config/graphics_config.ini", 
+                                    "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
                                     Path(__file__).resolve()
                                 )
 
@@ -224,7 +224,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                 # Load configuration for graphics settings and visualization parameters
                                 settings = get_settings(
                                     "INI/graphics_config/graphics_config.ini",
-                                    "ui/menu_window/dut_measurement/graphics_windows/graphics_config/graphics_config.ini",
+                                    "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
                                     Path(__file__).resolve()
                                 )
 
@@ -313,7 +313,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
         # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
             "INI/graphics_config/graphics_config.ini",
-            "ui/menu_window/dut_measurement/graphics_windows/graphics_config/graphics_config.ini",
+            "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
         unit_mode_left = settings.value("Graphic1/db_times", "dB") 
@@ -374,7 +374,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                     # Load configuration for graphics settings and visualization parameters
                                     settings = get_settings(
                                         "INI/graphics_config/graphics_config.ini",
-                                        "ui/menu_window/dut_measurement/graphics_windows/graphics_config/graphics_config.ini", 
+                                        "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
                                         Path(__file__).resolve()
                                     )
 
@@ -505,7 +505,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                     # Load configuration for graphics settings and visualization parameters
                                     settings = get_settings(
                                         "INI/graphics_config/graphics_config.ini",
-                                        "ui/menu_window/dut_measurement/graphics_windows/graphics_config/graphics_config.ini",
+                                        "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
                                         Path(__file__).resolve()
                                     )
 

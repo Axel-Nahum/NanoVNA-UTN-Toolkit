@@ -72,8 +72,8 @@ class CalibrationWizard(QMainWindow):
         super().__init__()
 
         base_path = get_calibration_path(
-            "calibration",
-            "calibration",
+            "modules/dut_measurement/calibration",
+            "modules/dut_measurement/calibration",
             Path(__file__).resolve()
         )
 

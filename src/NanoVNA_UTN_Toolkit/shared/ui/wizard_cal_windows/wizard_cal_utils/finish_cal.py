@@ -137,8 +137,8 @@ def finish_wizard(self, parent = None):
 
     if self.selected_method == "OSM (Open - Short - Match)":
         cal_dir = get_calibration_path(
-            "calibration/osm_results",
-            "calibration/osm_results",
+            "modules/dut_measurement/calibration/osm_results",
+            "modules/dut_measurement/calibration/osm_results",
             Path(__file__).resolve()
         )
         os.makedirs(cal_dir, exist_ok=True)
@@ -149,8 +149,8 @@ def finish_wizard(self, parent = None):
 
     elif self.selected_method == "Normalization":
         cal_dir = get_calibration_path(
-            "calibration/thru_results",
-            "calibration/thru_results",
+            "modules/dut_measurement/calibration/thru_results",
+            "modules/dut_measurement/calibration/thru_results",
             Path(__file__).resolve()
         )
         os.makedirs(cal_dir, exist_ok=True)
@@ -160,13 +160,13 @@ def finish_wizard(self, parent = None):
 
     elif self.selected_method == "1-Port+N":
         osm_dir = get_calibration_path(
-            "calibration/osm_results",
-            "calibration/osm_results",
+            "modules/dut_measurement/calibration/osm_results",
+            "modules/dut_measurement/calibration/osm_results",
             Path(__file__).resolve()
         )
         thru_dir = get_calibration_path(
-            "calibration/thru_results",
-            "calibration/thru_results",
+            "modules/dut_measurement/calibration/thru_results",
+            "modules/dut_measurement/calibration/thru_results",
             Path(__file__).resolve()
         )
 
@@ -178,13 +178,13 @@ def finish_wizard(self, parent = None):
 
     elif self.selected_method == "Enhanced-Response":
         osm_dir = get_calibration_path(
-            "calibration/osm_results",
-            "calibration/osm_results",
+            "modules/dut_measurement/calibration/osm_results",
+            "modules/dut_measurement/calibration/osm_results",
             Path(__file__).resolve()
         )
         thru_dir = get_calibration_path(
-            "calibration/thru_results",
-            "calibration/thru_results",
+            "modules/dut_measurement/calibration/thru_results",
+            "modules/dut_measurement/calibration/thru_results",
             Path(__file__).resolve()
         )
 
@@ -215,7 +215,7 @@ def finish_wizard(self, parent = None):
     # Load configuration for sweep settings and frequency range parameters
     settings = get_settings(
         "INI/sweep_config/sweep_config.ini",
-        "ui/menu_window/dut_measurement/sweep_window/sweep_config/sweep_config.ini",
+        "modules/dut_measurement/ui/sweep_window/sweep_config/sweep_config.ini", 
         Path(__file__).resolve()        
     )
 

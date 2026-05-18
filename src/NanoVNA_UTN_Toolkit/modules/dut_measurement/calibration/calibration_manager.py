@@ -29,20 +29,20 @@ class OSMCalibrationManager:
     def __init__(self, base_path: str = None):
         
         self.osm_results_path = get_calibration_path(
-            "calibration/osm_results",
-            "calibration/osm_results",
+            "modules/dut_measurement/calibration/osm_results",
+            "modules/dut_measurement/calibration/osm_results",
             Path(__file__).resolve()
         )
 
         self.thru_results_path = get_calibration_path(
-            "calibration/thru_results",
-            "calibration/thru_results",
+            "modules/dut_measurement/calibration/thru_results",
+            "modules/dut_measurement/calibration/thru_results",
             Path(__file__).resolve()
         )
 
         self.kits_path = self.thru_results_path = get_calibration_path(
-            "calibration/kits",
-            "calibration/kits",
+            "modules/dut_measurement/calibration/kits",
+            "modules/dut_measurement/calibration/kits",
             Path(__file__).resolve()
         )
         
@@ -196,8 +196,8 @@ class OSMCalibrationManager:
                 return False
             
             cal_dir = get_calibration_path(
-                "calibration/osm_results",
-                "calibration/osm_results",
+                "modules/dut_measurement/calibration/osm_results",
+                "modules/dut_measurement/calibration/osm_results",
                 Path(__file__).resolve()
             )
 
@@ -439,8 +439,8 @@ class THRUCalibrationManager:
     def __init__(self, base_path: str = None):
    
         base_path = get_calibration_path(
-            "calibration",
-            "calibration",
+            "modules/dut_measurement/calibration",
+            "modules/dut_measurement/calibration",
             Path(__file__).resolve()
         )
 

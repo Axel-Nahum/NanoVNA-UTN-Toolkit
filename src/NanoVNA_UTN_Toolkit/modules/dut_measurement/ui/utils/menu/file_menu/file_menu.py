@@ -282,29 +282,29 @@ def export_errors(self):
 
         if method == "OSM (Open - Short - Match)":
             src_folder = get_calibration_path(
-                "calibration/osm_results/osm_errors",
-                "calibration/osm_results/osm_errors",
+                "modules/dut_measurement/calibration/osm_results/osm_errors",
+                "modules/dut_measurement/calibration/osm_results/osm_errors",
                 Path(__file__).resolve()
             )
 
         elif method == "Normalization":
             src_folder = get_calibration_path(
-                "calibration/thru_results/normalization_errors",
-                "calibration/thru_results/normalization_errors",
+                "modules/dut_measurement/calibration/thru_results/normalization_errors",
+                "modules/dut_measurement/calibration/thru_results/normalization_errors",
                 Path(__file__).resolve()
             )
 
         elif method == "1-Port+N":
             src_folder = get_calibration_path(
-                "calibration/thru_results/1-Port+N_errors",
-                "calibration/thru_results/1-Port+N_errors",
+                "modules/dut_measurement/modules/dut_measurement/calibration/thru_results/1-Port+N_errors",
+                "modules/dut_measurement/modules/dut_measurement/calibration/thru_results/1-Port+N_errors",
                 Path(__file__).resolve()
             )
 
         elif method == "Enhanced-Response":
             src_folder = get_calibration_path(
-                "calibration/thru_results/enhanced_response_errors",
-                "calibration/thru_results/enhanced_response_errors",
+                "modules/dut_measurement/calibration/thru_results/enhanced_response_errors",
+                "modules/dut_measurement/calibration/thru_results/enhanced_response_errors",
                 Path(__file__).resolve()
             )
 

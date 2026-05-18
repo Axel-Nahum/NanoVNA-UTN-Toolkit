@@ -1,4 +1,6 @@
 import logging
+import shiboken6
+
 from PySide6.QtWidgets import QMessageBox
 
 try:
@@ -68,7 +70,8 @@ def reconnect_device(self):
             _reset_sliders_after_reconnect(self)
             
             # Enable sweep button since device is now connected
-            self.sweep_button.setEnabled(True)
+            if shiboken6.isValid(self.sweep_button):
+                self.sweep_button.setEnabled(True)
         else:
             # Connection failed - show detailed error dialog but keep button enabled
             error_msg = (f"Failed to connect to {device_type}.\n\n"
@@ -98,4 +101,5 @@ def reconnect_device(self):
         update_reconnect_button_state(self)
         
         # Re-enable sweep button after reconnection attempt
-        self.sweep_button.setEnabled(True)
+        if shiboken6.isValid(self.sweep_button):
+            self.sweep_button.setEnabled(True)

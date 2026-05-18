@@ -396,8 +396,8 @@ def delete_kit_dialog(self):
                         deleted_current_kit = True  # MARKER: current kit will be deleted
 
                     kit_path = get_calibration_path(
-                        f"calibration/kits/{kit_name_ini}",
-                        f"calibration/kits/{kit_name_ini}",
+                        f"modules/dut_measurement/calibration/kits/{kit_name_ini}",
+                        f"modules/dut_measurement/calibration/kits/{kit_name_ini}",
                         Path(__file__).resolve()
                     )
 
