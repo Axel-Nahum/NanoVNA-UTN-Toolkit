@@ -5,9 +5,9 @@ from datetime import datetime
 
 from pathlib import Path
 
-from NanoVNA_UTN_Toolkit.ui.calibration.errors import CalibrationErrors
-
 from PySide6.QtWidgets import QMessageBox
+
+from NanoVNA_UTN_Toolkit.calibration.errors import CalibrationErrors
 
 try:
     from NanoVNA_UTN_Toolkit.ui.utils.calibration.calibration_path_utils import get_calibration_path
@@ -27,7 +27,7 @@ except ImportError as e:
 
 # Import NanoVNAGraphics for the final step
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_window import NanoVNAGraphics
 except ImportError as e:
     logging.error("Failed to import NanoVNAGraphics: %s", e)
     NanoVNAGraphics = None  # Safe fallback

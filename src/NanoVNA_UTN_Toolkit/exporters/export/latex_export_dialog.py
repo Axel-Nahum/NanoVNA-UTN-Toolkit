@@ -376,7 +376,7 @@ class LaTeXExportDialog(QDialog):
             return
 
         # Import the GraphPreviewExportDialog
-        from NanoVNA_UTN_Toolkit.ui.export.graph_preview_dialog import GraphPreviewExportDialog
+        from NanoVNA_UTN_Toolkit.exporters.export.graph_preview_dialog import GraphPreviewExportDialog
 
         # Obtener los datos del parent
         parent = self.parent()

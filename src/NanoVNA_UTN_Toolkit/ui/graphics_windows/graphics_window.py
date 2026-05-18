@@ -39,9 +39,9 @@ from PySide6.QtGui import QIcon
 
 # Import exporters for saving data in different formats, with error handling to log issues without crashing the application
 
-from ..exporters.latex_exporter import LatexExporter
-from ..exporters.touchstone_exporter import TouchstoneExporter
-from .export import ExportDialog
+from ...exporters.latex_exporter import LatexExporter
+from ...exporters.touchstone_exporter import TouchstoneExporter
+from ...exporters.export import ExportDialog
 
 # Import dark-light mode toggle function with error handling to log issues without crashing the application
 
@@ -435,7 +435,7 @@ class NanoVNAGraphics(QMainWindow):
 # =================== MENU FUNCTION ==================
 
     def open_connection_window(self):
-        from NanoVNA_UTN_Toolkit.ui.connection_window import NanoVNAStatusApp
+        from NanoVNA_UTN_Toolkit.ui.connection_window.connection_window import NanoVNAStatusApp
 
         logging.info("[connection_windows.open_connection_window] Opening connection")
         

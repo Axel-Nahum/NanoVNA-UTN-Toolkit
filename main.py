@@ -16,7 +16,7 @@ from NanoVNA_UTN_Toolkit.compat import apply_patches
 apply_patches()
 
 from NanoVNA_UTN_Toolkit.utils import check_required_packages, cleanup_routine    
-from NanoVNA_UTN_Toolkit.ui.connection_window import NanoVNAStatusApp
+from NanoVNA_UTN_Toolkit.ui.connection_window.connection_window import NanoVNAStatusApp
 
 # ----------------------------
 # LOGGING

@@ -4,8 +4,8 @@ Connection status window for NanoVNA devices.
 import os
 import sys
 import logging
-from ..workers.device_worker import DeviceWorker
-from .log_handler import GuiLogHandler
+from ...workers.device_worker import DeviceWorker
+from ..log_handler import GuiLogHandler
 
 from pathlib import Path
 
@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon, QFont
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.welcome_windows import NanoVNAWelcome
+    from NanoVNA_UTN_Toolkit.ui.welcome_window.welcome_windows import NanoVNAWelcome
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")

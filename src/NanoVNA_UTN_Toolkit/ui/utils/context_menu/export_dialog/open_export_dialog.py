@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QApplication, QMessageBox
 )
 
-from NanoVNA_UTN_Toolkit.ui.export.export_dialog import ExportDialog
+from NanoVNA_UTN_Toolkit.exporters.export.export_dialog import ExportDialog
 
 def open_export_dialog(self, event):
     """Open the export dialog for the clicked graph."""

@@ -11,8 +11,8 @@ from PySide6.QtWidgets import (
     QApplication, QMessageBox
 )
 
-from NanoVNA_UTN_Toolkit.ui.calibration.methods import Methods
-from NanoVNA_UTN_Toolkit.ui.calibration.kits import KitsCalibrator
+from NanoVNA_UTN_Toolkit.calibration.methods import Methods
+from NanoVNA_UTN_Toolkit.calibration.kits import KitsCalibrator
 
 try:
     from NanoVNA_UTN_Toolkit.ui.utils.settings.settings_utils import get_settings

@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon, QColor
 
 try:
-    from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
+    from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_window import NanoVNAGraphics
 except ImportError as e:
     logging.error("Failed to import NanoVNAGraphics: %s", e)
     NanoVNAGraphics = None

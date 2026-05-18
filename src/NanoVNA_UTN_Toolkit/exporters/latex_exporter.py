@@ -257,7 +257,7 @@ class LatexExporter:
 
         try:
             # Import the dialog (lazy import to avoid circular dependencies)
-            from NanoVNA_UTN_Toolkit.ui.export.latex_export_dialog import LaTeXExportDialog
+            from NanoVNA_UTN_Toolkit.exporters.export.latex_export_dialog import LaTeXExportDialog
             
             # Create and show the dialog
             default_filename = measurement_name if measurement_name else "nanovna_report"

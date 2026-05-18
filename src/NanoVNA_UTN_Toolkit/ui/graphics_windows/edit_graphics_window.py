@@ -79,7 +79,7 @@ except ImportError as e:
     sys.exit(1)
 
 
-from NanoVNA_UTN_Toolkit.ui.graphics_window import NanoVNAGraphics
+from NanoVNA_UTN_Toolkit.ui.graphics_windows.graphics_window import NanoVNAGraphics
 
 class EditGraphics(QMainWindow):
     def __init__(self, nano_window: NanoVNAGraphics, freqs=None):
