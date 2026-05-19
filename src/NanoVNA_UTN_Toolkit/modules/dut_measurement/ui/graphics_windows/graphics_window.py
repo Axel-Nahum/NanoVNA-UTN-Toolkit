@@ -251,6 +251,11 @@ class NanoVNAGraphics(QMainWindow):
         export_touchstone_action = file_menu.addAction("Export Errors")
         export_touchstone_action.triggered.connect(lambda: export_errors(self))
 
+        file_menu.addSeparator()
+
+        exit_action = file_menu.addAction("Back to menu")
+        exit_action.triggered.connect(lambda: self.return_to_menu_window())
+
         graphics_markers = edit_menu.addAction("Graphics/Markers")
         graphics_markers.triggered.connect(lambda: edit_graphics_markers(self))
 
@@ -464,6 +469,23 @@ class NanoVNAGraphics(QMainWindow):
         """Generate timestamp for filenames"""
         from datetime import datetime
         return datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    def return_to_menu_window(self):
+
+        from NanoVNA_UTN_Toolkit.modules.menu_window import ModuleSelectionWindow
+
+        if self.vna_device:
+            self.menu_windows = (
+                ModuleSelectionWindow(vna_device=self.vna_device)
+            )
+        else:
+            self.menu_windows = (
+                ModuleSelectionWindow()
+            )
+
+        self.menu_windows.show()
+
+        self.close()
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)

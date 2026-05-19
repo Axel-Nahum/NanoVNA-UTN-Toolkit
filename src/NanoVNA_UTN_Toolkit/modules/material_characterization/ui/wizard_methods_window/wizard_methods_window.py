@@ -271,15 +271,10 @@ class CharacterizationWizard(QMainWindow):
         )
 
         if self.vna:
-
             self.welcome_windows = (
-                MaterialCharacterizationWelcome(
-                    vna_device=self.vna
-                )
+                MaterialCharacterizationWelcome(vna_device=self.vna)
             )
-
         else:
-
             self.welcome_windows = (
                 MaterialCharacterizationWelcome()
             )

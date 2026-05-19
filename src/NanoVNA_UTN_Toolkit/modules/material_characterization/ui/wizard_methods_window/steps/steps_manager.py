@@ -13,6 +13,10 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_win
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.methods.method_b.method_b_measurement import build_method_b_measurement
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.methods.method_c.method_c_measurement import build_method_c_measurement
 
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.methods.method_a.method_a_result import build_method_a_result
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.methods.method_b.method_b_result import build_method_b_result
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.methods.method_c.method_c_result import build_method_c_result
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def update_step_screen(self):
@@ -37,6 +41,9 @@ def update_step_screen(self):
 
             build_method_a_measurement(self)
 
+        elif self.current_step == 3:
+            build_method_a_result(self)
+
 # ------------------------------------------------------------------------------------------------------------------- #
     # METHOD B
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -55,6 +62,9 @@ def update_step_screen(self):
 
             build_method_b_measurement(self)
 
+        elif self.current_step == 3:
+            build_method_b_result(self)
+
 # ------------------------------------------------------------------------------------------------------------------- #
     # METHOD C
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -72,3 +82,6 @@ def update_step_screen(self):
         elif self.current_step == 2:
 
             build_method_c_measurement(self)
+
+        elif self.current_step == 3:
+            build_method_c_result(self)
