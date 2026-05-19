@@ -1,20 +1,31 @@
+"""
+Characterization wizard main window.
+"""
+
 import logging
 import sys
 import os
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QIcon
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
-    QApplication, QMainWindow, QWidget, QVBoxLayout, 
-    QHBoxLayout, QPushButton,QLabel, QComboBox,
-    QTextEdit
+    QApplication, QMainWindow, QWidget, QVBoxLayout,
+    QHBoxLayout, QPushButton, QLabel
 )
 
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.dark_light_mode.light_dark_mode import dark_light_config
+
+    from src.NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.introduction_screen import (
+        build_introduction_screen
+    )
+
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import (
+        update_step_screen
+    )
+
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -26,32 +37,33 @@ class CharacterizationWizard(QMainWindow):
 
         self.vna = vna_device
 
-        self.setWindowTitle("NanoVNA UTN Toolkit - Characterization Wizard")
+        self.setWindowTitle(
+            "NanoVNA UTN Toolkit - Characterization Wizard"
+        )
+
         self.setGeometry(200, 200, 950, 620)
 
-# ------------------------------------------------------------------------------------------------------------------------------------------ #
-
-        # Dark-Light mode settings
+# ------------------------------------------------------------------------------------------------------------------- #
+        # Dark-Light mode
+# ------------------------------------------------------------------------------------------------------------------- #
 
         dark_light_config(self)
 
-# ------------------------------------------------------------------------------------------------------------------------------------------ #
-
-        # === Store VNA device reference ===
+# ------------------------------------------------------------------------------------------------------------------- #
+        # Internal state
+# ------------------------------------------------------------------------------------------------------------------- #
 
         self.vna_device = vna_device
 
-        logging.info(
-            "[material_characterization_welcome.__init__] Initializing material characterization welcome window"
-        )
+        self.selected_method = None
 
-        # =========================
+        self.current_step = 0
+
+# ------------------------------------------------------------------------------------------------------------------- #
         # Window icon
-        # =========================
+# ------------------------------------------------------------------------------------------------------------------- #
 
         if getattr(sys, 'frozen', False):
-
-            # ---- EXE MODE ----
 
             base_path = sys._MEIPASS
 
@@ -61,20 +73,18 @@ class CharacterizationWizard(QMainWindow):
 
                 self.setWindowIcon(QIcon(icon_path))
 
-            else:
-
-                logging.getLogger(__name__).warning(
-                    f"icon.ico not found in exe: {icon_path}"
-                )
-
         else:
-
-            # ---- NORMAL PYTHON MODE ----
 
             base_path = os.path.dirname(__file__)
 
             icon_paths = [
-                os.path.join(base_path, '..', '..', '..', 'icon.ico'),
+                os.path.join(
+                    base_path,
+                    '..',
+                    '..',
+                    '..',
+                    'icon.ico'
+                ),
                 'icon.ico'
             ]
 
@@ -86,15 +96,9 @@ class CharacterizationWizard(QMainWindow):
 
                     break
 
-            else:
-
-                logging.getLogger(__name__).warning(
-                    "icon.ico not found in dev mode"
-                )
-
-        # =========================
+# ------------------------------------------------------------------------------------------------------------------- #
         # Central widget
-        # =========================
+# ------------------------------------------------------------------------------------------------------------------- #
 
         self.central_widget = QWidget()
 
@@ -104,22 +108,33 @@ class CharacterizationWizard(QMainWindow):
 
         self.main_layout.setContentsMargins(20, 20, 20, 20)
 
-        # =========================
-        # Top header
-        # =========================
-
-        self.header_layout = QHBoxLayout()
+# ------------------------------------------------------------------------------------------------------------------- #
+        # Title
+# ------------------------------------------------------------------------------------------------------------------- #
 
         self.title_label = QLabel("Characterization Methods")
+
         self.title_label.setStyleSheet("""
             font-size: 22px;
             font-weight: bold;
         """)
 
-        self.header_layout.addWidget(self.title_label)
-        self.header_layout.addStretch()
+        self.main_layout.addWidget(self.title_label)
 
-        self.back_button = QPushButton("Back")
+# ------------------------------------------------------------------------------------------------------------------- #
+        # Content layout
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        self.content_layout = QVBoxLayout()
+
+        self.main_layout.addLayout(self.content_layout)
+
+# ------------------------------------------------------------------------------------------------------------------- #
+        # Bottom navigation
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        self.bottom_layout = QHBoxLayout()
+        self.back_button = QPushButton("◀◀")
         self.back_button.setFixedSize(120, 35)
         self.back_button.setStyleSheet("""
             QPushButton {
@@ -129,34 +144,48 @@ class CharacterizationWizard(QMainWindow):
         """)
 
         self.back_button.clicked.connect(
-            lambda: self.return_to_previous_window()
+            self.go_to_previous_step
         )
 
-        self.header_layout.addWidget(self.back_button)
+        self.next_button = QPushButton("▶▶")
+        self.next_button.setEnabled(False)
+        self.next_button.setFixedSize(120, 35)
+        self.next_button.setStyleSheet("""
+            QPushButton {
+                font-size: 14px;
+                font-weight: bold;
+            }
+        """)
 
-        self.main_layout.addLayout(self.header_layout)
+        self.next_button.clicked.connect(
+            self.go_to_next_step
+        )
 
-        # =========================
-        # Content layout
-        # =========================
+        self.bottom_layout.addWidget(
+            self.back_button,
+            alignment=Qt.AlignLeft
+        )
 
-        self.content_layout = QVBoxLayout()
+        self.bottom_layout.addStretch(1)
 
-        self.main_layout.addLayout(self.content_layout)
+        self.bottom_layout.addWidget(
+            self.next_button,
+            alignment=Qt.AlignLeft
+        )
 
-        # =========================
-        # Internal state
-        # =========================
+        self.bottom_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.selected_method = None
+        self.bottom_layout.addStretch()
 
-        self.current_step = 0
+        self.main_layout.addSpacing(20)
 
-        # =========================
-        # Show first screen
-        # =========================
+        self.main_layout.addLayout(self.bottom_layout)
 
-        self.show_first_screen()
+# ------------------------------------------------------------------------------------------------------------------- #
+        # First screen
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        build_introduction_screen(self)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -196,274 +225,55 @@ class CharacterizationWizard(QMainWindow):
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
-    def return_to_previous_window(self):
+    def go_to_next_step(self):
 
-        """
-        Back button callback.
-        Add your navigation logic here.
-        """
+        self.current_step += 1
 
-        logging.info(
-            "[CharacterizationWizard.return_to_previous_window] Returning to previous window"
-        )
-
-        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.characterization_welcome.characterization_welcome import MaterialCharacterizationWelcome
-
-        """Open the material welcome window."""
-        # Log device transfer to welcome window
-        if self.vna:
-            device_type = type(self.vna).__name__
-            logging.info(f"[connection_window.open_material_characterization_module] Device {device_type} available - passing to welcome window")
-            self.welcome_windows = MaterialCharacterizationWelcome(vna_device=self.vna)
-        else:
-            logging.info("[connection_window.open_material_characterization_module] No device connected - using placeholder mode")
-            self.welcome_windows = MaterialCharacterizationWelcome()
-            
-        self.welcome_windows.show()
-        self.close() 
+        update_step_screen(self)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
-    def show_first_screen(self):
+    def go_to_previous_step(self):
 
-        """
-        Initial screen:
-        Characterization method selector + dynamic information.
-        """
+        if self.current_step > 0:
 
-        self.clear_content()
+            self.current_step -= 1
 
-        # =========================
-        # Reset state
-        # =========================
+            update_step_screen(self)
 
-        self.selected_method = None
+        else:
 
-        # =========================
-        # Main container
-        # =========================
+            self.return_to_previous_window()
 
-        top_container = QVBoxLayout()
+# ------------------------------------------------------------------------------------------------------------------- #
 
-        top_container.setAlignment(Qt.AlignTop)
+    def return_to_previous_window(self):
 
-        top_container.setSpacing(15)
-
-        # =========================
-        # Label
-        # =========================
-
-        method_label = QLabel("Select Characterization Method:")
-
-        method_label.setStyleSheet("""
-            font-size: 16px;
-            font-weight: bold;
-        """)
-
-        top_container.addWidget(method_label)
-
-        # =========================
-        # Dropdown
-        # =========================
-
-        self.method_dropdown = QComboBox()
-
-        self.method_dropdown.setEditable(False)
-
-        self.method_dropdown.setStyleSheet("""
-            QComboBox {
-                background-color: #3b3b3b;
-                color: white;
-                border: 2px solid white;
-                border-radius: 6px;
-                padding: 8px;
-                font-size: 14px;
-                min-width: 380px;
-                max-width: 450px;
-            }
-
-            QComboBox:hover {
-                background-color: #4d4d4d;
-            }
-
-            QComboBox::drop-down {
-                width: 0px;
-                border: none;
-                background: transparent;
-            }
-
-            QComboBox::down-arrow {
-                image: none;
-                width: 0px;
-                height: 0px;
-            }
-
-            QComboBox QAbstractItemView {
-                background-color: #3b3b3b;
-                color: white;
-                selection-background-color: #4d4d4d;
-                selection-color: white;
-                border: 1px solid white;
-            }
-        """)
-
-        # =========================
-        # Placeholder
-        # =========================
-
-        self.method_dropdown.addItem(
-            "Select Characterization Method"
+        logging.info(
+            "[CharacterizationWizard] Returning to previous window"
         )
 
-        item = self.method_dropdown.model().item(0)
-
-        item.setEnabled(False)
-
-        placeholder_color = QColor(120, 120, 120)
-
-        item.setForeground(placeholder_color)
-
-        # =========================
-        # Methods
-        # =========================
-
-        methods = [
-            "Method A",
-            "Method B",
-            "Method C"
-        ]
-
-        self.method_dropdown.addItems(methods)
-
-        top_container.addWidget(self.method_dropdown)
-
-        # =========================
-        # Description title
-        # =========================
-
-        description_title = QLabel("Method Description")
-
-        description_title.setStyleSheet("""
-            font-size: 15px;
-            font-weight: bold;
-            margin-top: 10px;
-        """)
-
-        top_container.addWidget(description_title)
-
-        # =========================
-        # Description box
-        # =========================
-
-        self.method_info = QTextEdit()
-
-        self.method_info.setReadOnly(True)
-
-        self.method_info.setMinimumHeight(260)
-
-        self.method_info.setStyleSheet("""
-            QTextEdit {
-                background-color: #2b2b2b;
-                color: #dddddd;
-                border: 2px solid #555555;
-                border-radius: 8px;
-                padding: 12px;
-                font-size: 14px;
-            }
-        """)
-
-        self.method_info.setText(
-            "Select a characterization method to display information."
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.characterization_welcome.characterization_welcome import (
+            MaterialCharacterizationWelcome
         )
 
-        top_container.addWidget(self.method_info)
+        if self.vna:
 
-        # =========================
-        # Method descriptions
-        # =========================
-
-        method_descriptions = {
-
-            "Method A": (
-
-                "Method A is optimized for fast broadband "
-                "characterization of passive RF devices.\n\n"
-
-                "This workflow prioritizes acquisition speed while "
-                "maintaining stable amplitude tracking across the "
-                "entire frequency range.\n\n"
-
-                "Typical applications include rapid verification "
-                "of filters, attenuators, and matching networks."
-            ),
-
-            "Method B": (
-
-                "Method B focuses on enhanced phase stability and "
-                "long-term repeatability.\n\n"
-
-                "The method applies adaptive correction algorithms "
-                "to reduce drift and connector mismatch effects "
-                "during extended measurement sessions.\n\n"
-
-                "This approach is recommended for precision "
-                "laboratory analysis and validation tasks."
-            ),
-
-            "Method C": (
-
-                "Method C is an advanced characterization technique "
-                "designed for complex multi-frequency analysis.\n\n"
-
-                "It combines dynamic response compensation with "
-                "frequency-dependent error correction models to "
-                "improve overall measurement accuracy.\n\n"
-
-                "This method is intended for high accuracy DUT "
-                "evaluation and detailed network response analysis."
-            )
-        }
-
-        # =========================
-        # Dropdown callback
-        # =========================
-
-        def on_method_changed(index):
-
-            if index == 0:
-
-                self.selected_method = None
-
-                self.method_info.setText(
-                    "Select a characterization method to display information."
-                )
-
-                return
-
-            selected_text = self.method_dropdown.itemText(index)
-
-            self.selected_method = selected_text
-
-            logging.info(
-                f"[CharacterizationWizard] Selected method: {selected_text}"
-            )
-
-            self.method_info.setText(
-                method_descriptions.get(
-                    selected_text,
-                    "No information available."
+            self.welcome_windows = (
+                MaterialCharacterizationWelcome(
+                    vna_device=self.vna
                 )
             )
 
-        self.method_dropdown.activated.connect(on_method_changed)
+        else:
 
-        # =========================
-        # Add layout
-        # =========================
+            self.welcome_windows = (
+                MaterialCharacterizationWelcome()
+            )
 
-        self.content_layout.addLayout(top_container)
+        self.welcome_windows.show()
 
-        self.current_step = 0
+        self.close()
 
 # ------------------------------------------------------------------------------------------------------------------- #
 

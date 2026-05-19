@@ -7,13 +7,8 @@ import sys
 import os
 
 from PySide6.QtWidgets import (
-    QApplication,
-    QWidget,
-    QPushButton,
-    QLabel,
-    QVBoxLayout,
-    QHBoxLayout,
-    QMainWindow,
+    QApplication, QWidget, QPushButton, QLabel,
+    QVBoxLayout, QHBoxLayout, QMainWindow,
 )
 
 from PySide6.QtCore import Qt
