@@ -10,30 +10,27 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QLabel, QVBoxLayout, QComboBox, QTextEdit
+    QLabel, QVBoxLayout, QComboBox, 
+    QTextEdit, QWidget
 )
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def build_introduction_screen(self):
 
+    self.title_label.setText("Characterization Methods")
+
     self.next_button.setEnabled(False)
 
     self.clear_content()
-
-    self.current_step = 0
-
-    self.selected_method = None
 
 # ------------------------------------------------------------------------------------------------------------------- #
     # Main layout
 # ------------------------------------------------------------------------------------------------------------------- #
 
     top_container = QVBoxLayout()
-
-    top_container.setAlignment(Qt.AlignTop)
-
     top_container.setSpacing(15)
+    top_container.setContentsMargins(0, 0, 0, 0)
 
 # ------------------------------------------------------------------------------------------------------------------- #
     # Method label
@@ -129,7 +126,7 @@ def build_introduction_screen(self):
 
     self.method_info.setReadOnly(True)
 
-    self.method_info.setMinimumHeight(260)
+    self.method_info.setMinimumHeight(350)
 
     self.method_info.setStyleSheet("""
         QTextEdit {
@@ -189,4 +186,7 @@ def build_introduction_screen(self):
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
-    self.content_layout.addLayout(top_container)
+    container = QWidget()
+    container.setLayout(top_container)
+
+    self.content_layout.addWidget(container, alignment=Qt.AlignTop)

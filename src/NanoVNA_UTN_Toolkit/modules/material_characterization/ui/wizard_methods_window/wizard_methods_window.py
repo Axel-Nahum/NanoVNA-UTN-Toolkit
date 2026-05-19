@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.dark_light_mode.light_dark_mode import dark_light_config
 
-    from src.NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.introduction_screen import (
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.introduction_screen import (
         build_introduction_screen
     )
 
@@ -119,7 +119,15 @@ class CharacterizationWizard(QMainWindow):
             font-weight: bold;
         """)
 
-        self.main_layout.addWidget(self.title_label)
+        # HEADER (FIJO)
+        self.header_layout = QVBoxLayout()
+
+        self.header_layout.addWidget(
+            self.title_label,
+            alignment=Qt.AlignTop
+        )
+
+        self.main_layout.addLayout(self.header_layout)
 
 # ------------------------------------------------------------------------------------------------------------------- #
         # Content layout
@@ -127,7 +135,7 @@ class CharacterizationWizard(QMainWindow):
 
         self.content_layout = QVBoxLayout()
 
-        self.main_layout.addLayout(self.content_layout)
+        self.main_layout.addLayout(self.content_layout, stretch=1)
 
 # ------------------------------------------------------------------------------------------------------------------- #
         # Bottom navigation
@@ -177,8 +185,6 @@ class CharacterizationWizard(QMainWindow):
 
         self.bottom_layout.addStretch()
 
-        self.main_layout.addSpacing(20)
-
         self.main_layout.addLayout(self.bottom_layout)
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -227,7 +233,14 @@ class CharacterizationWizard(QMainWindow):
 
     def go_to_next_step(self):
 
+        # si todavía no hay método seleccionado
+        if not self.selected_method:
+            return
+
         self.current_step += 1
+
+        # 🔥 ACA cambias el título SOLO UNA VEZ
+        self.title_label.setText(self.selected_method)
 
         update_step_screen(self)
 
