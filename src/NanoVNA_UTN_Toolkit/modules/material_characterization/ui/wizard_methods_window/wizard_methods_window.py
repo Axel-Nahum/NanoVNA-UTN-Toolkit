@@ -5,14 +5,8 @@ import os
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QLabel,
-    QComboBox,
+    QApplication, QMainWindow, QWidget, QVBoxLayout, 
+    QHBoxLayout, QPushButton,QLabel, QComboBox,
     QTextEdit
 )
 
@@ -213,7 +207,7 @@ class CharacterizationWizard(QMainWindow):
             "[CharacterizationWizard.return_to_previous_window] Returning to previous window"
         )
 
-        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.material_characterization_window.material_characterization_window import MaterialCharacterizationWelcome
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.characterization_welcome.characterization_welcome import MaterialCharacterizationWelcome
 
         """Open the material welcome window."""
         # Log device transfer to welcome window

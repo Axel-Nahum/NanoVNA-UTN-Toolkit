@@ -26,6 +26,9 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.welcome_window.welcome_windows import NanoVNAWelcome
+
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.characterization_welcome.characterization_welcome import MaterialCharacterizationWelcome
 
 # ------------------------------------------------------------------------------------------------------------ #
 
@@ -127,8 +130,6 @@ class ModuleSelectionWindow(QMainWindow):
 
     def open_dut_measurement_module(self):
 
-        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.welcome_window.welcome_windows import NanoVNAWelcome
-
         """Open the welcome window."""
         # Log device transfer to welcome window
         if self.vna:
@@ -143,8 +144,6 @@ class ModuleSelectionWindow(QMainWindow):
         self.close() 
 
     def open_material_characterization_module(self):
-
-        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.characterization_welcome.characterization_welcome import MaterialCharacterizationWelcome
 
         """Open the material welcome window."""
         # Log device transfer to welcome window
