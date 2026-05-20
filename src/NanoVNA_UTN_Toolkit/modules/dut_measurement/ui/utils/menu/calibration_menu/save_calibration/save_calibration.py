@@ -63,7 +63,7 @@ def save_kit_dialog(self):
     # Load configuration for calibration
 
     settings = get_settings(
-        "INI/calibration_config/calibration_config.ini",
+        "INI/dut_measurement/calibration_config/calibration_config.ini",
         "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
         Path(__file__).resolve()
     )
@@ -133,7 +133,7 @@ def save_kit_dialog(self):
             # Load configuration for calibration
 
             settings_calibration = get_settings(
-                "INI/calibration_config/calibration_config.ini",
+                "INI/dut_measurement/dut_measurement/calibration_config/calibration_config.ini",
                 "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
                 Path(__file__).resolve()
             )

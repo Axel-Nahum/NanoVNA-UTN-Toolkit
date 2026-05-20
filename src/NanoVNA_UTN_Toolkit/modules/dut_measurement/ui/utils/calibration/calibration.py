@@ -19,7 +19,7 @@ def update_calibration_label_from_method(self, parent = None, method=None):
 
     # Load configuration for calibration settings
     settings_calibration = get_settings(
-        "INI/calibration_config/calibration_config.ini",
+        "INI/dut_measurement/calibration_config/calibration_config.ini",
         "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
         Path(__file__).resolve()
     )

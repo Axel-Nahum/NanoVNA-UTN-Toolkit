@@ -566,7 +566,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
 
         # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
-            "INI/graphics_config/graphics_config.ini",
+            "INI/dut_measurement/graphics_config/graphics_config.ini",
             "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
@@ -663,7 +663,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
 
         # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
-            "INI/graphics_config/graphics_config.ini",
+            "INI/dut_measurement/graphics_config/graphics_config.ini",
             "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
@@ -1654,7 +1654,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
 
         # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
-            "INI/graphics_config/graphics_config.ini",
+            "INI/dut_measurement/graphics_config/graphics_config.ini",
             "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
@@ -1721,7 +1721,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
 
         # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
-            "INI/graphics_config/graphics_config.ini",
+            "INI/dut_measurement/graphics_config/graphics_config.ini",
             "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )
@@ -1746,7 +1746,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
 
         # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
-            "INI/graphics_config/graphics_config.ini",
+            "INI/dut_measurement/graphics_config/graphics_config.ini",
             "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )

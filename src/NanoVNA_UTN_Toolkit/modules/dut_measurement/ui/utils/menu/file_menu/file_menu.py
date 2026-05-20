@@ -209,7 +209,7 @@ def import_touchstone_data_dut(self):
 
     # Load configuration for calibration settings
     settings_calibration = get_settings(
-        "INI/calibration_config/calibration_config.ini",
+        "INI/dut_measurement/calibration_config/calibration_config.ini",
         "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
         Path(__file__).resolve()
     )
@@ -268,7 +268,7 @@ def export_errors(self):
 
     # Load configuration for calibration settings
     settings = get_settings(
-        "INI/calibration_config/calibration_config.ini",
+        "INI/dut_measurement/calibration_config/calibration_config.ini",
         "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
         Path(__file__).resolve()
     )

@@ -123,7 +123,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         )
 
         settings = get_settings(
-            "INI/dark_light_config/dark_light_config.ini",
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
             "ui/utils/settings/dark_light_mode/dark_light_config.ini",
             Path(__file__).resolve()
         )
@@ -405,7 +405,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
     def _get_current_calibration_name(self):
 
         settings_calibration = get_settings(
-            "INI/calibration_config/calibration_config.ini",
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )

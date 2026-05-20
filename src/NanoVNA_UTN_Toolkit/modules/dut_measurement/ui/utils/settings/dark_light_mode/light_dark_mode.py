@@ -20,7 +20,7 @@ def toggle_menu_dark_mode(self, light_dark_mode):
 
     # Load configuration for UI colors and styles
     settings = get_settings(
-        "INI/dark_light_config/dark_light_config.ini", 
+        "INI/dut_measurement/dark_light_config/dark_light_config.ini", 
         "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
             Path(__file__).resolve()
     )
@@ -512,7 +512,7 @@ def dark_light_config(self):
 
     # Load configuration for UI colors and styles
     settings = get_settings(
-        "INI/dark_light_config/dark_light_config.ini", 
+        "INI/dut_measurement/dark_light_config/dark_light_config.ini", 
         "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
             Path(__file__).resolve()
     )

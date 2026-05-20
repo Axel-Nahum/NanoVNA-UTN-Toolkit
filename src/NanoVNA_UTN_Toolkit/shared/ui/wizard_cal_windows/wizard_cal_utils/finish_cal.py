@@ -58,7 +58,7 @@ def save_calibration_config(self):
 
         # Load configuration for calibration settings
         settings = get_settings(
-            "INI/calibration_config/calibration_config.ini",
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )
@@ -201,7 +201,7 @@ def finish_wizard(self, parent = None):
 
     # Load configuration for calibration settings
     settings_calibration = get_settings(
-        "INI/calibration_config/calibration_config.ini",
+        "INI/dut_measurement/calibration_config/calibration_config.ini",
         "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
         Path(__file__).resolve()
     )
@@ -214,7 +214,7 @@ def finish_wizard(self, parent = None):
     
     # Load configuration for sweep settings and frequency range parameters
     settings = get_settings(
-        "INI/sweep_config/sweep_config.ini",
+        "INI/dut_measurement/sweep_config/sweep_config.ini",
         "modules/dut_measurement/ui/sweep_window/sweep_config/sweep_config.ini", 
         Path(__file__).resolve()        
     )

@@ -64,7 +64,7 @@ def load_sweep_configuration(self, parent = None):
     try:
         # Load configuration for sweep settings and frequency range parameters
         settings = get_settings(
-            "INI/sweep_config/sweep_config.ini",
+            "INI/dut_measurement/sweep_config/sweep_config.ini",
             "modules/dut_measurement/ui/sweep_window/sweep_config/sweep_config.ini", 
             Path(__file__).resolve()        
         )

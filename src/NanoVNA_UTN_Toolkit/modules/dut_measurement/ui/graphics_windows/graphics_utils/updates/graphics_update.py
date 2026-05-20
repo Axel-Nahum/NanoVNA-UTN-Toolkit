@@ -65,7 +65,7 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
 
         # Load configuration for calibration settings
         settings_calibration = get_settings(
-            "INI/calibration_config/calibration_config.ini",
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )

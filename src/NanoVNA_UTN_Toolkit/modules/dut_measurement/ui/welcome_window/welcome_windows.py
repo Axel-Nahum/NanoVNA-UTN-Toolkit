@@ -129,7 +129,7 @@ class NanoVNAWelcome(QMainWindow):
 
         # Load configuration for UI colors and styles
         settings = get_settings(
-            "INI/dark_light_config/dark_light_config.ini",
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
             "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
             Path(__file__).resolve()
         ) 
@@ -174,7 +174,7 @@ class NanoVNAWelcome(QMainWindow):
 
         # Load configuration for UI colors and styles
         settings = get_settings(
-            "INI/dark_light_config/dark_light_config.ini",
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
             "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
             Path(__file__).resolve()
         ) 
@@ -332,7 +332,7 @@ class NanoVNAWelcome(QMainWindow):
                 
                 # Load configuration for calibration settings
                 settings = get_settings(
-                    "INI/calibration_config/calibration_config.ini",
+                    "INI/dut_measurement/calibration_config/calibration_config.ini",
                     "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
                     Path(__file__).resolve()
                 )
@@ -386,7 +386,7 @@ class NanoVNAWelcome(QMainWindow):
         
         # Load configuration for calibration settings
         settings_calibration = get_settings(
-            "INI/calibration_config/calibration_config.ini",
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )
@@ -407,7 +407,7 @@ class NanoVNAWelcome(QMainWindow):
 
         # Load configuration for calibration settings
         settings_calibration = get_settings(
-            "INI/calibration_config/calibration_config.ini",
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )
@@ -605,7 +605,7 @@ class NanoVNAWelcome(QMainWindow):
                 # Use new calibration structure
                 # Load configuration for calibration settings
                 settings_calibration = get_settings(
-                    "INI/calibration_config/calibration_config.ini",
+                    "INI/dut_measurement/calibration_config/calibration_config.ini",
                     "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
                     Path(__file__).resolve()
                 )
@@ -695,7 +695,7 @@ class NanoVNAWelcome(QMainWindow):
 
         # Load configuration for calibration settings
         settings_calibration = get_settings(
-            "INI/calibration_config/calibration_config.ini",
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )
@@ -722,7 +722,7 @@ class NanoVNAWelcome(QMainWindow):
 
         # Load configuration for calibration settings
         settings_calibration = get_settings(
-            "INI/calibration_config/calibration_config.ini",
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )
@@ -761,7 +761,7 @@ class NanoVNAWelcome(QMainWindow):
 
         # Load configuration for calibration settings
         settings_calibration = get_settings(
-            "INI/calibration_config/calibration_config.ini",
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )

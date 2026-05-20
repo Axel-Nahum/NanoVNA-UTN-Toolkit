@@ -53,7 +53,7 @@ def toggle_db_times(self, event, new_mode):
 
         # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
-            "INI/graphics_config/graphics_config.ini",
+            "INI/dut_measurement/graphics_config/graphics_config.ini",
             "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
             Path(__file__).resolve()
         )

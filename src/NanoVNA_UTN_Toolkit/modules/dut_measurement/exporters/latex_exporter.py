@@ -564,7 +564,7 @@ class LatexExporter:
 
         # Load configuration for calibration settings
         settings_calibration = get_settings(
-            "INI/calibration_config/calibration_config.ini",
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini", 
             Path(__file__).resolve()
         )
@@ -580,7 +580,7 @@ class LatexExporter:
 
         # Load configuration for sweep settings and frequency range parameters
         settings_sweep = get_settings(
-            "INI/sweep_config/sweep_config.ini",
+            "INI/dut_measurement/sweep_config/sweep_config.ini",
             "modules/dut_measurement/ui/sweep_window/sweep_config/sweep_config.ini", 
             Path(__file__).resolve()        
         )
@@ -701,7 +701,7 @@ class LatexExporter:
 
             # Load configuration for calibration settings
             settings = get_settings(
-                "INI/calibration_config/calibration_config.ini",
+                "INI/dut_measurement/calibration_config/calibration_config.ini",
                 "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
                 Path(__file__).resolve()
             )
@@ -714,7 +714,7 @@ class LatexExporter:
             
             # Load configuration for measurement
             tracking_settings = get_settings(
-                "INI/measurement_numbers/measurement_numbers.ini",
+                "INI/dut_measurement/measurement_numbers/measurement_numbers.ini",
                 "modules/dut_measurement/calibration/measurement_numbers/measurement_numbers.ini", 
                 Path(__file__).resolve()
             )
