@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget, QPushButton,
     QHBoxLayout, QGroupBox, QComboBox
 )
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QAction, QIcon
 
 # Import calibration data storage
 try:
@@ -43,6 +43,14 @@ except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.app_icon import apply_window_icon
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ------------------------------------------------------------------------------------------------------------------ #
 
 class MaterialCharacterizationWelcome(QMainWindow):
@@ -65,59 +73,15 @@ class MaterialCharacterizationWelcome(QMainWindow):
             "[material_characterization_welcome.__init__] Initializing material characterization welcome window"
         )
 
-        # ---------------------------------------------------------------------------------------------------------- #
-        # Window Icon
-        # ---------------------------------------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+# Window Icon
+# ---------------------------------------------------------------------------------------------------------- #
 
-        if getattr(sys, 'frozen', False):
+        apply_window_icon(self)
 
-            base_path = sys._MEIPASS
-            icon_path = os.path.join(base_path, 'icon.ico')
-
-            if os.path.exists(icon_path):
-                self.setWindowIcon(QIcon(icon_path))
-
-        else:
-
-            base_path = os.path.dirname(__file__)
-
-            icon_paths = [
-                os.path.join(base_path, '..', '..', '..', 'icon.ico'),
-                'icon.ico'
-            ]
-
-            for path in icon_paths:
-                if os.path.exists(path):
-                    self.setWindowIcon(QIcon(path))
-                    break
-
-        # ---------------------------------------------------------------------------------------------------------- #
-        # Calibration Managers
-        # ---------------------------------------------------------------------------------------------------------- #
-
-        if OSMCalibrationManager:
-
-            self.osm_calibration = OSMCalibrationManager()
-
-            if vna_device and hasattr(vna_device, 'name'):
-                self.osm_calibration.device_name = vna_device.name
-
-        else:
-            self.osm_calibration = None
-
-        if THRUCalibrationManager:
-
-            self.thru_calibration = THRUCalibrationManager()
-
-            if vna_device and hasattr(vna_device, 'name'):
-                self.thru_calibration.device_name = vna_device.name
-
-        else:
-            self.thru_calibration = None
-
-        # ---------------------------------------------------------------------------------------------------------- #
-        # Window Configuration
-        # ---------------------------------------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+# Window Configuration
+# ---------------------------------------------------------------------------------------------------------- #
 
         self.setWindowTitle("NanoVNA UTN Toolkit - Material Characterization")
         self.setGeometry(100, 100, 1000, 460)
@@ -134,6 +98,22 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         main_layout.addStretch()
 
+        # Menus
+        self._create_menus()
+# ------------------------------------------------------------------------------------------------------------------ #
+
+    def _create_menus(self):
+
+        #menubar = self.menuBar()
+
+        """
+        # FILE
+        file_menu = menubar.addMenu("File")
+
+        exit_action = QAction("Back to menu", self)
+        exit_action.triggered.connect(self.return_to_menu_window)
+        file_menu.addAction(exit_action)
+        """
 # ------------------------------------------------------------------------------------------------------------------ #
 
     def _create_characterization_group(self, parent_layout):
@@ -238,12 +218,10 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         left_layout.addWidget(kit_selector_label)
 
-        self._load_calibration_kits()
+        self._load_characterization_kits()
 
         self.kit_dropdown = QComboBox()
-
         self.kit_dropdown.setFixedHeight(40)
-
         self.kit_dropdown.setStyleSheet("""
             QComboBox {
                 background-color: #3b3b3b;
@@ -280,9 +258,6 @@ class MaterialCharacterizationWelcome(QMainWindow):
         """)
 
         self.kit_dropdown.addItem("None")
-
-        for kit_name in self.kit_names:
-            self.kit_dropdown.addItem(kit_name)
 
         self._set_current_kit_selection()
 
@@ -422,29 +397,9 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
-    def _load_calibration_kits(self):
+    def _load_characterization_kits(self):
 
-        settings_calibration = get_settings(
-            "INI/calibration_config/calibration_config.ini",
-            "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
-            Path(__file__).resolve()
-        )
-
-        kit_groups = [
-            g for g in settings_calibration.childGroups()
-            if g.startswith("Kit_")
-        ]
-
-        self.kit_names = [
-            settings_calibration.value(f"{g}/kit_name", "")
-            for g in kit_groups
-        ]
-
-        self.kit_ids = [
-            int(settings_calibration.value(f"{g}/id", 0))
-            for g in kit_groups
-        ]
-
+       logging.info("[load_characterization_kits]")
 # ------------------------------------------------------------------------------------------------------------------ #
 
     def _get_current_calibration_name(self):
@@ -503,6 +458,23 @@ class MaterialCharacterizationWelcome(QMainWindow):
             self.welcome_windows = CharacterizationWizard()
 
         self.welcome_windows.show()
+
+        self.close()
+
+    def return_to_menu_window(self):
+
+        from NanoVNA_UTN_Toolkit.modules.menu_window import ModuleSelectionWindow
+        
+        if self.vna:
+            self.menu_windows = (
+                ModuleSelectionWindow(vna_device=self.vna)
+            )
+        else:
+            self.menu_windows = (
+                ModuleSelectionWindow()
+            )
+
+        self.menu_windows.show()
 
         self.close()
 

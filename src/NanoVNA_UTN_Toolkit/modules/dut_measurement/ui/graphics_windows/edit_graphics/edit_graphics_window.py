@@ -62,6 +62,13 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.app_icon import apply_window_icon
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_window import NanoVNAGraphics
 
@@ -69,32 +76,7 @@ class EditGraphics(QMainWindow):
     def __init__(self, nano_window: NanoVNAGraphics, freqs=None):
         super().__init__()
 
-        # Try to set application icon
-        if getattr(sys, 'frozen', False):
-            # ---- MODO EXE ----
-            base_path = sys._MEIPASS
-            icon_path = os.path.join(base_path, 'icon.ico')
-
-            if os.path.exists(icon_path):
-                self.setWindowIcon(QIcon(icon_path))
-            else:
-                logging.getLogger(__name__).warning(f"icon.ico not found in exe: {icon_path}")
-
-        else:
-            # ---- MODO PYTHON NORMAL ----
-            base_path = os.path.dirname(__file__)
-
-            icon_paths = [
-                os.path.join(base_path, '..', '..', '..', 'icon.ico'),
-                'icon.ico'
-            ]
-
-            for path in icon_paths:
-                if os.path.exists(path):
-                    self.setWindowIcon(QIcon(path))
-                    break
-            else:
-                logging.getLogger(__name__).warning("icon.ico not found in dev mode")
+        apply_window_icon(self)
 
 #------------------------------------------------------------------------------------------------------------------------------------------
 

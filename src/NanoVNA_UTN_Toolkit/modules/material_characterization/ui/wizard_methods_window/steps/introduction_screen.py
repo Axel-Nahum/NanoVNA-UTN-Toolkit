@@ -3,6 +3,7 @@ Introduction screen builder.
 """
 
 import logging
+import sys
 
 import json
 from pathlib import Path
@@ -149,8 +150,23 @@ def build_introduction_screen(self):
     # Descriptions
 # ------------------------------------------------------------------------------------------------------------------- #
 
+    def resource_path(relative_path):
+
+        if getattr(sys, 'frozen', False):
+            base_path = Path(sys._MEIPASS)
+
+        else:
+            base_path = Path(__file__).resolve().parents[6] / "NanoVNA_UTN_Toolkit"
+
+        return base_path / relative_path
+
+
     def load_method_descriptions():
-        path = Path(__file__).parent / "method_descriptions.json"
+
+        path = resource_path(
+            "modules/material_characterization/ui/wizard_methods_window/steps/method_descriptions.json"
+        )
+
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
 

@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QLabel
 )
 
-def build_method_b_calibration(window):
+def build_method_b_calibration(self):
 
     from PySide6.QtWidgets import QLabel
 
@@ -17,4 +17,4 @@ def build_method_b_calibration(window):
         font-weight: bold;
     """)
 
-    window.content_layout.addWidget(label)
+    self.content_layout.addWidget(label)

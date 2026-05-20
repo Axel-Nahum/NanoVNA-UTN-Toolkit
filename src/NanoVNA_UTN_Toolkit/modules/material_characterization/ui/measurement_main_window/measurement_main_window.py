@@ -20,6 +20,14 @@ except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.app_icon import apply_window_icon
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
 class MeasurementMainWindow(QMainWindow):
@@ -32,38 +40,12 @@ class MeasurementMainWindow(QMainWindow):
         self.setWindowTitle("NanoVNA UTN Toolkit - Measurement")
         self.setGeometry(200, 200, 1000, 650)
 
-        if getattr(sys, 'frozen', False):
+# ---------------------------------------------------------------------------------------------------------- #
+# Window Icon
+# ---------------------------------------------------------------------------------------------------------- #
 
-            base_path = sys._MEIPASS
+        apply_window_icon(self)
 
-            icon_path = os.path.join(base_path, 'icon.ico')
-
-            if os.path.exists(icon_path):
-
-                self.setWindowIcon(QIcon(icon_path))
-
-        else:
-
-            base_path = os.path.dirname(__file__)
-
-            icon_paths = [
-                os.path.join(
-                    base_path,
-                    '..',
-                    '..',
-                    '..',
-                    'icon.ico'
-                ),
-                'icon.ico'
-            ]
-
-            for path in icon_paths:
-
-                if os.path.exists(path):
-
-                    self.setWindowIcon(QIcon(path))
-
-                    break
 
 # ------------------------------------------------------------------------------------------------------------------- #
         # Dark-Light mode
