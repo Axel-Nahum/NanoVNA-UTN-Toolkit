@@ -36,7 +36,7 @@ spin_style = """
 """
 
 try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.settings_utils import get_settings
+    from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)

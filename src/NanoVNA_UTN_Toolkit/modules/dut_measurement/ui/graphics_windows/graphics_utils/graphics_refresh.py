@@ -14,7 +14,7 @@ from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.methods import Meth
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.kits import KitsCalibrator
 
 try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.settings_utils import get_settings
+    from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -22,7 +22,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.calibration.calibration_path_utils import get_calibration_path
+    from NanoVNA_UTN_Toolkit.shared.utils.calibration_path_utils import get_calibration_path
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)

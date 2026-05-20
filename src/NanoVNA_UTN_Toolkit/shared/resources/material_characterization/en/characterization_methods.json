@@ -1,0 +1,16 @@
+{
+  "methods": {
+    "method_a": {
+      "title": "Method A",
+      "description": "Comprehensive characterization procedure designed to extract the most complete system response..."
+    },
+    "method_b": {
+      "title": "Method B",
+      "description": "Fast characterization method optimized for speed..."
+    },
+    "method_c": {
+      "title": "Method C",
+      "description": "Reference verification method used to validate system stability and calibration consistency..."
+    }
+  }
+}

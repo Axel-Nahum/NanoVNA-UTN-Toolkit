@@ -4,29 +4,34 @@ Introduction screen builder.
 
 import logging
 import sys
-
 import json
 from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QLabel, QVBoxLayout, QComboBox, 
+    QLabel, QVBoxLayout, QComboBox,
     QTextEdit, QWidget
 )
+
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.load_resource import load_resource
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def build_introduction_screen(self):
 
     self.title_label.setText("Characterization Methods")
-
     self.next_button.setEnabled(False)
-
     self.clear_content()
 
 # ------------------------------------------------------------------------------------------------------------------- #
-    # Main layout
+# Main layout
 # ------------------------------------------------------------------------------------------------------------------- #
 
     top_container = QVBoxLayout()
@@ -34,12 +39,10 @@ def build_introduction_screen(self):
     top_container.setContentsMargins(0, 0, 0, 0)
 
 # ------------------------------------------------------------------------------------------------------------------- #
-    # Method label
+# Method label
 # ------------------------------------------------------------------------------------------------------------------- #
 
-    method_label = QLabel(
-        "Select Characterization Method:"
-    )
+    method_label = QLabel("Select Characterization Method:")
 
     method_label.setStyleSheet("""
         font-size: 16px;
@@ -49,11 +52,10 @@ def build_introduction_screen(self):
     top_container.addWidget(method_label)
 
 # ------------------------------------------------------------------------------------------------------------------- #
-    # Dropdown
+# Dropdown
 # ------------------------------------------------------------------------------------------------------------------- #
 
     self.method_dropdown = QComboBox()
-
     self.method_dropdown.setEditable(False)
 
     self.method_dropdown.setStyleSheet("""
@@ -85,32 +87,21 @@ def build_introduction_screen(self):
         }
     """)
 
-    self.method_dropdown.addItem(
-        "Select Characterization Method"
-    )
-
+    self.method_dropdown.addItem("Select Characterization Method")
     item = self.method_dropdown.model().item(0)
-
     item.setEnabled(False)
-
     item.setForeground(QColor(120, 120, 120))
 
-    methods = [
-        "Method A",
-        "Method B",
-        "Method C"
-    ]
-
+    methods = ["Method A", "Method B", "Method C"]
     self.method_dropdown.addItems(methods)
 
     top_container.addWidget(self.method_dropdown)
 
 # ------------------------------------------------------------------------------------------------------------------- #
-    # Description title
+# Description title
 # ------------------------------------------------------------------------------------------------------------------- #
 
     description_title = QLabel("Method Description")
-
     description_title.setStyleSheet("""
         font-size: 15px;
         font-weight: bold;
@@ -120,13 +111,11 @@ def build_introduction_screen(self):
     top_container.addWidget(description_title)
 
 # ------------------------------------------------------------------------------------------------------------------- #
-    # Description box
+# Description box
 # ------------------------------------------------------------------------------------------------------------------- #
 
     self.method_info = QTextEdit()
-
     self.method_info.setReadOnly(True)
-
     self.method_info.setMinimumHeight(350)
 
     self.method_info.setStyleSheet("""
@@ -147,31 +136,21 @@ def build_introduction_screen(self):
     top_container.addWidget(self.method_info)
 
 # ------------------------------------------------------------------------------------------------------------------- #
-    # Descriptions
+# Load JSON (FIXED FOR NEW STRUCTURE)
 # ------------------------------------------------------------------------------------------------------------------- #
 
-    def resource_path(relative_path):
+    current_lang = "en"
 
-        if getattr(sys, 'frozen', False):
-            base_path = Path(sys._MEIPASS)
+    raw_data = load_resource(
+        "material_characterization",
+        current_lang,
+        "characterization_methods.json",
+    )
 
-        else:
-            base_path = Path(__file__).resolve().parents[6] / "NanoVNA_UTN_Toolkit"
-
-        return base_path / relative_path
-
-
-    def load_method_descriptions():
-
-        path = resource_path(
-            "modules/material_characterization/ui/wizard_methods_window/steps/method_descriptions.json"
-        )
-
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+    method_descriptions = raw_data.get("methods", {})
 
 # ------------------------------------------------------------------------------------------------------------------- #
-    # Callback
+# Callback
 # ------------------------------------------------------------------------------------------------------------------- #
 
     def on_method_changed(index):
@@ -191,14 +170,21 @@ def build_introduction_screen(self):
             f"[CharacterizationWizard] Selected method: {selected_text}"
         )
 
-        description = method_descriptions.get(selected_text, "")
+        key_map = {
+            "Method A": "method_a",
+            "Method B": "method_b",
+            "Method C": "method_c",
+        }
+
+        key = key_map.get(selected_text)
+
+        description = ""
+        if key:
+            description = method_descriptions.get(key, {}).get("description", "")
+
         self.method_info.setText(description)
 
-    method_descriptions = load_method_descriptions()
-
-    self.method_dropdown.activated.connect(
-        on_method_changed
-    )
+    self.method_dropdown.activated.connect(on_method_changed)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 

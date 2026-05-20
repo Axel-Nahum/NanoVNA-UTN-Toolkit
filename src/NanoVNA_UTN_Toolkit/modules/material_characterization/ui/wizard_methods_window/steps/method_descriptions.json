@@ -1,7 +1,0 @@
-{
-  "Method A": "Comprehensive characterization procedure designed to extract the most complete system response. This method performs all measurement steps sequentially, ensuring maximum accuracy and robustness at the cost of longer execution time.",
-
-  "Method B": "Fast characterization method optimized for speed. Reduces measurement steps and provides a quick estimation of system behavior for preliminary analysis.",
-
-  "Method C": "Reference verification method used to validate system stability and calibration consistency against a baseline measurement."
-}
