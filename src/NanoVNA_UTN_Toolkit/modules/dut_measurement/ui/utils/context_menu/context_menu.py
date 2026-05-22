@@ -53,6 +53,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale import on_auto_scale_toggled
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # -------------------------------------------------------------------------------------------------------------------- #
 
 def handle_contextMenuEvent(self, event):
@@ -97,10 +105,6 @@ def handle_contextMenuEvent(self, event):
             graph_number = 1
             break
         current_widget = current_widget.parent()
-
-    # --- Read the current unit from INI ---
-    import os
-    from PySide6.QtCore import QSettings
 
     # Load configuration for graphics settings and visualization parameters
     settings = get_settings(
@@ -187,6 +191,16 @@ def handle_contextMenuEvent(self, event):
     smith_action = None
 
     #smith_action = menu.addAction("Smith Normalized")
+
+    # --- Auto Scale ---
+
+    auto_scale_action = menu.addAction("Auto Scale")
+    auto_scale_action.setCheckable(True)
+    if target_ax == self.ax_left:
+        auto_scale_action.setChecked(self.auto_scale_enabled_left)
+
+    elif target_ax == self.ax_right:
+        auto_scale_action.setChecked(self.auto_scale_enabled_right)
 
     # --- Export ---
     menu.addSeparator()
@@ -288,6 +302,18 @@ def handle_contextMenuEvent(self, event):
 
     elif selected_action == range_action and not is_smith_diagram:
         show_y_range_dialog(self, target_ax)
+
+    # --- Auto Sclae ---
+
+    if selected_action == auto_scale_action:
+
+        if target_ax == self.ax_left:
+            self.auto_scale_enabled_left = auto_scale_action.isChecked()
+
+        elif target_ax == self.ax_right:
+            self.auto_scale_enabled_right = auto_scale_action.isChecked()
+
+        on_auto_scale_toggled(self)
 
     # --- Smith Normalized ---
         

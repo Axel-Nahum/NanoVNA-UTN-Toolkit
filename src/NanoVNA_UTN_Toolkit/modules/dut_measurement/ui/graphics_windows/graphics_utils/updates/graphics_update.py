@@ -54,11 +54,19 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale import read_auto_scale_data
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ------------------------------------------------------------------------------------------------------------------------------ #
 
 def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param, 
                             tracecolor, markercolor, background_color_graphics, text_color, axis_color, linewidth, markersize,
-                            unit="dB", cursor_graph=None, cursor_graph_2 = None):
+                            unit="dB", cursor_graph=None, cursor_graph_2 = None, ax_type="left"):
     """Recreate a single plot with new data."""
     try:
         from matplotlib.lines import Line2D
@@ -141,14 +149,41 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             freq_range = freq_end - freq_start
             margin = freq_range * 0.05  # 5% margin on each side
             ax.set_xlim(freq_start - margin, freq_end + margin)
-            
-            # Set Y-axis limits with margins to provide visual spacing
-            y_min = np.min(magnitude_db)
-            y_max = np.max(magnitude_db)
-            y_range = y_max - y_min
-            y_margin = y_range * 0.05  # 5% margin on each side
-            ax.set_ylim(y_min - y_margin, y_max + y_margin)
-            ax.autoscale(False)  # Prevent matplotlib from overriding our xlim/ylim settings
+
+            data_config = read_auto_scale_data(self)
+
+            auto_scale_enabled_left = data_config[0]
+            auto_scale_enable_right = data_config[1]
+            ymin_left = data_config[2]
+            ymax_left = data_config[3]
+            ymin_right = data_config[4]
+            ymax_right = data_config[5]
+
+            if ax_type == "left":
+                if auto_scale_enabled_left:
+                    # Auto scale
+                    y_min = np.min(magnitude_db)
+                    y_max = np.max(magnitude_db)
+                    y_range = y_max - y_min
+                    y_margin = y_range * 0.05
+
+                    ax.set_ylim(y_min - y_margin, y_max + y_margin)
+                else:
+                    ax.set_ylim(ymin_left, ymax_left)
+            elif ax_type == "right":
+                if auto_scale_enable_right:
+                    # Auto scale
+                    y_min = np.min(magnitude_db)
+                    y_max = np.max(magnitude_db)
+                    y_range = y_max - y_min
+                    y_margin = y_range * 0.05
+
+                    ax.set_ylim(y_min - y_margin, y_max + y_margin)
+                else:
+                    ax.set_ylim(ymin_right, ymax_right)
+
+            ax.autoscale(False)
+
             ax.tick_params(axis='x', colors=f"{axis_color}")
             ax.tick_params(axis='y', colors=f"{axis_color}")
 
@@ -178,13 +213,40 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             freq_range = freq_end - freq_start
             margin = freq_range * 0.05  # 5% margin on each side
             ax.set_xlim(freq_start - margin, freq_end + margin)
-            # Set Y-axis limits with margins to provide visual spacing
-            y_min = np.min(phase_deg)
-            y_max = np.max(phase_deg)
-            y_range = y_max - y_min
-            y_margin = y_range * 0.05  # 5% margin on each side
-            ax.set_ylim(y_min - y_margin, y_max + y_margin)
-            ax.autoscale(False)  # Prevent matplotlib from overriding our xlim/ylim settings
+
+            data_config = read_auto_scale_data(self)
+
+            auto_scale_enabled_left = data_config[0]
+            auto_scale_enable_right = data_config[1]
+            ymin_left = data_config[2]
+            ymax_left = data_config[3]
+            ymin_right = data_config[4]
+            ymax_right = data_config[5]
+
+            if ax_type == "left":
+                if auto_scale_enabled_left:
+                    # Auto scale
+                    y_min = np.min(phase_deg)
+                    y_max = np.max(phase_deg)
+                    y_range = y_max - y_min
+                    y_margin = y_range * 0.05
+
+                    ax.set_ylim(y_min - y_margin, y_max + y_margin)
+                else:
+                    ax.set_ylim(ymin_left, ymax_left)
+            elif ax_type == "right":
+                if auto_scale_enable_right:
+                    # Auto scale
+                    y_min = np.min(phase_deg)
+                    y_max = np.max(phase_deg)
+                    y_range = y_max - y_min
+                    y_margin = y_range * 0.05
+
+                    ax.set_ylim(y_min - y_margin, y_max + y_margin)
+                else:
+                    ax.set_ylim(ymin_right, ymax_right)
+            ax.autoscale(False)
+
             ax.tick_params(axis='x', colors=f"{axis_color}")
             ax.tick_params(axis='y', colors=f"{axis_color}")
 
@@ -306,7 +368,8 @@ def update_plots_with_new_data(self, skip_reset=False):
             markersize=marker_size1,
             unit=unit_left,
             cursor_graph=self.cursor_left,
-            cursor_graph_2=self.cursor_left_2
+            cursor_graph_2=self.cursor_left_2,
+            ax_type="left"
         )
 
         # --- Recreate right panel plot ---
@@ -330,7 +393,8 @@ def update_plots_with_new_data(self, skip_reset=False):
             markersize=marker_size2,
             unit=unit_right,
             cursor_graph=self.cursor_right,
-            cursor_graph_2=self.cursor_right_2
+            cursor_graph_2=self.cursor_right_2,
+            ax_type="right"
         )
 
         # --- Update slider data references ---

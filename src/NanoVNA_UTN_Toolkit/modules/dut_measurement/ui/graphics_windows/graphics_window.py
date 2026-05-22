@@ -181,6 +181,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale import read_auto_scale_data
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 #-------------------- ABOUT DIALOG -------------------------------------------------------------------------#
 
 class NanoVNAGraphics(QMainWindow):
@@ -193,6 +201,13 @@ class NanoVNAGraphics(QMainWindow):
         # Store VNA device reference
         self.dut = dut
         self.vna_device = vna_device
+
+        # Auto Scale
+
+        data_config = read_auto_scale_data(self)
+
+        self.auto_scale_enabled_left = data_config[0]
+        self.auto_scale_enabled_right= data_config[1]
 
         # Log graphics window initialization
 

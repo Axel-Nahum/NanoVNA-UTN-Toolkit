@@ -1,3 +1,16 @@
+import logging
+import sys
+
+from pathlib import Path
+
+try:
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale import save_auto_scale_data
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 def show_y_range_dialog(self, target_ax):
     from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox
 
@@ -48,6 +61,8 @@ def show_y_range_dialog(self, target_ax):
 
                 ymin = float(ymin_text) if ymin_text else target_ax.get_ylim()[0]
                 ymax = float(ymax_text) if ymax_text else target_ax.get_ylim()[1]
+
+                save_auto_scale_data(self, ymin, ymax, target_ax)
 
                 target_ax.set_ylim(ymin, ymax)
                 target_ax.figure.canvas.draw_idle()
