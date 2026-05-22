@@ -28,6 +28,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.load_resource import load_resource
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
 class MeasurementMainWindow(QMainWindow):
@@ -79,7 +87,7 @@ class MeasurementMainWindow(QMainWindow):
         # Menus
         self._create_menus()
 
-    # ---------------------------------------------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------------- #
 
     def _create_menus(self):
 
@@ -110,7 +118,7 @@ class MeasurementMainWindow(QMainWindow):
         about_action = QAction("About", self)
         help_menu.addAction(about_action)
 
-    # ---------------------------------------------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------------- #
 
     def contextMenuEvent(self, event):
 

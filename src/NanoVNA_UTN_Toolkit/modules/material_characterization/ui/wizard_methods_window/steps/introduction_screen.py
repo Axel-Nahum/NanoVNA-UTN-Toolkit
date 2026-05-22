@@ -22,6 +22,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def build_introduction_screen(self):
@@ -136,18 +144,19 @@ def build_introduction_screen(self):
     top_container.addWidget(self.method_info)
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Load JSON (FIXED FOR NEW STRUCTURE)
+# Load JSON 
 # ------------------------------------------------------------------------------------------------------------------- #
 
     current_lang = "en"
 
-    raw_data = load_resource(
-        "material_characterization",
-        current_lang,
-        "characterization_methods.json",
+    resourceLoader = JsonResourceLoader(
+        self_window = self, 
+        module = "material_characterization", 
+        lang = current_lang, 
+        json_resource = "characterization_methods.json"
     )
 
-    method_descriptions = raw_data.get("methods", {})
+    method_descriptions = resourceLoader.load_characterization_method_resources()
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Callback

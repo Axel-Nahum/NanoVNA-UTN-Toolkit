@@ -1,0 +1,24 @@
+{
+  "material_characterization_ui": {
+    "module_overview": {
+      "title": "Module Overview",
+      "description": [
+        "The Material Characterization module allows the analysis and electromagnetic characterization of different materials using a NanoVNA.",
+        "The module supports characterization workflows with dedicated calibration kits adapted to each measurement method, improving accuracy and repeatability for specific applications.",
+        "Both solid and liquid materials can be characterized depending on the selected method and measurement setup.",
+        "Through the obtained S-parameters, the system enables the analysis and estimation of electromagnetic properties such as relative permittivity and permeability across frequency."
+      ]
+    },
+    "characterization_section": {
+      "title": "Material Characterization",
+      "method_selection_title": "Method Characterization Kit Selection:",
+      "default_method": "None",
+      "no_calibration_selected": "No characterization method selected",
+      "open_methods_button": "Open Characterization Methods",
+      "import_section_title": "Import Characterization Package:",
+      "import_description": "Import a complete characterization package that already contains its associated calibration and configuration data.",
+      "import_button": "Import Methods"
+    }
+  }
+}
+

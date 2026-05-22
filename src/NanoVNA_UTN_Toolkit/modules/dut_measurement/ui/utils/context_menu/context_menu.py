@@ -179,7 +179,7 @@ def handle_contextMenuEvent(self, event):
         target_fig.canvas.draw_idle()
 
     # --- Grid action (disabled for Smith Diagram) ---
-    grid_action = menu.addAction("Grid ✓" if current_state else "Grid")
+    grid_action = menu.addAction("Grid" if current_state else "Grid")
     grid_action.setCheckable(True)
     grid_action.setChecked(current_state)
     grid_action.setEnabled(not is_smith_diagram)

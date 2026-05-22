@@ -18,18 +18,6 @@ from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget, QPushButton,
     QHBoxLayout, QGroupBox, QComboBox
 )
-from PySide6.QtGui import QAction, QIcon
-
-# Import calibration data storage
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.calibration_manager import (
-        OSMCalibrationManager,
-        THRUCalibrationManager
-    )
-except ImportError as e:
-    logging.error("Failed to import calibration managers: %s", e)
-    OSMCalibrationManager = None
-    THRUCalibrationManager = None
 
 try:
     from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
@@ -51,6 +39,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ------------------------------------------------------------------------------------------------------------------ #
 
 class MaterialCharacterizationWelcome(QMainWindow):
@@ -60,7 +56,24 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         self.vna = vna_device
 
-# ------------------------------------------------------------------------------------------------------------------ #
+# ------------------------------------------------------------------------------------------------------------------- #
+# Load JSON 
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        current_lang = "en"
+
+        resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "material_characterization", 
+            lang = current_lang, 
+            json_resource = "characterization_welcome.json"
+        )
+
+        resourceLoader.load_characterization_welcome_resources()
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Dark Light Mode
+# ------------------------------------------------------------------------------------------------------------------- #
 
         # Dark-Light mode settings
         dark_light_config(self)
@@ -100,6 +113,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         # Menus
         self._create_menus()
+
 # ------------------------------------------------------------------------------------------------------------------ #
 
     def _create_menus(self):
@@ -151,29 +165,20 @@ class MaterialCharacterizationWelcome(QMainWindow):
         # DESCRIPTION GROUP
         # ---------------------------------------------------------------------------------------------------------- #
 
-        description_group = QGroupBox("Module Overview")
+        description_group = QGroupBox(f"{self.module_overview_title}")
         description_group.setStyleSheet(groupbox_style)
 
         description_layout = QVBoxLayout(description_group)
 
-        description_text = QLabel(
-            "The Material Characterization module allows the analysis and "
-            "electromagnetic characterization of different materials using a NanoVNA.\n\n"
-            "The module supports characterization workflows with dedicated calibration "
-            "kits adapted to each measurement method, improving accuracy and repeatability "
-            "for specific applications.\n\n"
-            "Both solid and liquid materials can be characterized depending on the selected "
-            "method and measurement setup.\n\n"
-            "Through the obtained S-parameters, the system enables the analysis and "
-            "estimation of electromagnetic properties such as relative permittivity "
-            "and permeability across frequency."
-        )
+        description_string = "\n\n".join(self.descriptions)
 
+        description_text = QLabel(description_string)
         description_text.setWordWrap(True)
+        description_text.setAlignment(Qt.AlignTop | Qt.AlignLeft)
 
         description_text.setStyleSheet(
-            "font-size: 13px; "
-            "color: #cccccc; "
+            "font-size: 13px;"
+            "color: #cccccc;"
             "padding: 10px;"
         )
 
@@ -185,7 +190,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         # MAIN CHARACTERIZATION GROUP
         # ---------------------------------------------------------------------------------------------------------- #
 
-        characterization_group = QGroupBox("Material Characterization")
+        characterization_group = QGroupBox(f"{self.characterization_title}")
         characterization_group.setStyleSheet(groupbox_style)
 
         characterization_layout = QVBoxLayout(characterization_group)
@@ -202,15 +207,14 @@ class MaterialCharacterizationWelcome(QMainWindow):
         section_layout = QHBoxLayout()
         section_layout.setSpacing(40)
 
-        # ---------------------------------------------------------------------------------------------------------- #
-        # LEFT SIDE - KIT SELECTION
-        # ---------------------------------------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+# LEFT SIDE - KIT SELECTION
+# ---------------------------------------------------------------------------------------------------------- #
 
         left_layout = QVBoxLayout()
         left_layout.setSpacing(10)
 
-        kit_selector_label = QLabel("Method Characterization Kit Selection:")
-
+        kit_selector_label = QLabel(f"{self.method_selection_title}")
         kit_selector_label.setStyleSheet(
             "font-weight: bold; "
             "font-size: 14px;"
@@ -288,20 +292,13 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         self._update_kit_info_display()
 
-        # ---------------------------------------------------------------------------------------------------------- #
-        # OPEN METHODS BUTTON
-        # ---------------------------------------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+# OPEN METHODS BUTTON
+# ---------------------------------------------------------------------------------------------------------- #
 
-        self.characterization_methods_button = QPushButton(
-            "Open Characterization Methods"
-        )
-
-        self.characterization_methods_button.clicked.connect(
-            self.open_characterization_methods
-        )
-
+        self.characterization_methods_button = QPushButton(f"{self.open_methods_button}")
+        self.characterization_methods_button.clicked.connect(self.open_characterization_methods)
         self.characterization_methods_button.setFixedHeight(45)
-
         self.characterization_methods_button.setStyleSheet(
             "font-size: 14px;"
         )
@@ -312,14 +309,14 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         section_layout.addLayout(left_layout)
 
-        # ---------------------------------------------------------------------------------------------------------- #
-        # RIGHT SIDE - IMPORT
-        # ---------------------------------------------------------------------------------------------------------- #
+# ---------------------------------------------------------------------------------------------------------- #
+# RIGHT SIDE - IMPORT
+# ---------------------------------------------------------------------------------------------------------- #
 
         right_layout = QVBoxLayout()
         right_layout.setSpacing(10)
 
-        import_title = QLabel("Import Characterization Package:")
+        import_title = QLabel(f"{self.import_section_title}")
 
         import_title.setStyleSheet(
             "font-weight: bold; "
@@ -328,10 +325,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         right_layout.addWidget(import_title)
 
-        import_description = QLabel(
-            "Import a complete characterization package that already "
-            "contains its associated calibration and configuration data."
-        )
+        import_description = QLabel(f"{self.import_description}")
 
         import_description.setWordWrap(True)
 
@@ -344,17 +338,10 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         right_layout.addStretch()
 
-        self.import_button = QPushButton("Import")
-
-        self.import_button.clicked.connect(
-            self.import_characterization_package
-        )
-
+        self.import_button = QPushButton(f"{self.import_button_text}")
+        self.import_button.clicked.connect(self.import_characterization_package)
         self.import_button.setFixedHeight(45)
-
-        self.import_button.setStyleSheet(
-            "font-size: 14px;"
-        )
+        self.import_button.setStyleSheet("font-size: 14px;")
 
         right_layout.addWidget(self.import_button)
 
@@ -391,9 +378,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
                 )
 
         else:
-            self.kit_info_label.setText(
-                "No calibration kit selected"
-            )
+            self.kit_info_label.setText(f"{self.no_calibration_selected}")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
