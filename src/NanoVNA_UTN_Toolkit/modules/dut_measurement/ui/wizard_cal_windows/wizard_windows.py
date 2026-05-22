@@ -18,7 +18,7 @@ from PySide6.QtWidgets import(QApplication, QMainWindow, QWidget,
 from PySide6.QtGui import QIcon
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.ui.wizard_cal_windows.wizard_cal_utils.calibration_dialog import save_calibration_dialog
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.calibration_dialog import save_calibration_dialog
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
@@ -50,7 +50,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.ui.wizard_cal_windows.wizard_cal_utils.screens import show_first_screen, next_step, previous_step
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.screens import show_first_screen, next_step, previous_step
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -58,7 +58,7 @@ except ImportError as e:
     sys.exit(1) 
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.ui.wizard_cal_windows.wizard_cal_utils.sweep_cal import update_device_limits
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.sweep_cal import update_device_limits
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -209,8 +209,8 @@ class CalibrationWizard(QMainWindow):
     #  
     def show_existing_measurements_on_chart(self):
         """Show all existing measurements on Smith chart to preserve state"""
-        from ....utils.smith_chart_utils import SmithChartManager
-        from ....utils.magnitude_chat_utils import MagnitudeChartManager
+        from .....utils.smith_chart_utils import SmithChartManager
+        from .....utils.magnitude_chat_utils import MagnitudeChartManager
         
         if not self.osm_calibration or not hasattr(self, 'current_ax'):
             return

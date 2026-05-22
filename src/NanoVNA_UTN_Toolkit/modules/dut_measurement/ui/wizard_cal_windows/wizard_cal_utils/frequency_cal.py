@@ -4,7 +4,7 @@ import sys
 from PySide6.QtWidgets import QToolTip
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.ui.wizard_cal_windows.wizard_cal_utils.sweep_cal import update_spinbox_range, unit_multiplier
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.sweep_cal import update_spinbox_range, unit_multiplier
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")

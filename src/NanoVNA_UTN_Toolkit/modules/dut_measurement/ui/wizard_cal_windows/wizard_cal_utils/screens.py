@@ -21,7 +21,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.ui.wizard_cal_windows.wizard_cal_utils.screens_utils import(clear_main_content, get_steps_for_method, show_current_step_measurement, 
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.screens_utils import(clear_main_content, get_steps_for_method, show_current_step_measurement, 
                                                                                         clear_content)
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
@@ -29,7 +29,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.ui.wizard_cal_windows.wizard_cal_utils.sweep_cal import(get_sweep_start_frequency, get_sweep_stop_frequency, get_sweep_steps, 
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.sweep_cal import(get_sweep_start_frequency, get_sweep_stop_frequency, get_sweep_steps, 
                                                                                       update_spinbox_range, update_device_limits, 
                                                                                       update_sweep_config, perform_calibration_measurement
                                                                                     )
@@ -39,14 +39,14 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.ui.wizard_cal_windows.wizard_cal_utils.frequency_cal import update_frequency_ranges, on_frequency_changed_range, get_frequency_limits
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.frequency_cal import update_frequency_ranges, on_frequency_changed_range, get_frequency_limits
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.ui.wizard_cal_windows.wizard_cal_utils.finish_cal import finish_wizard
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.finish_cal import finish_wizard
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")

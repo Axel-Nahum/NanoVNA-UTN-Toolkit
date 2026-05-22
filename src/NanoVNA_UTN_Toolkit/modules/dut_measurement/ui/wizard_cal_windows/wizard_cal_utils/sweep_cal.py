@@ -356,11 +356,6 @@ def perform_calibration_measurement(self, step, standard_name):
 
                 s21 = np.array(s21_data)
 
-                logging.info(f"[NP S21] DTYPE: {s21.dtype}")
-                logging.info(f"[NP S21] SHAPE: {s21.shape}")
-                logging.info(f"[NP S21] FIRST 10: {s21[:10]}")
-                s21 = np.array(s21_data)
-
                 logging.info(f"[CalibrationWizard] Got {len(freqs)} freq, {len(s11)} S11, and {len(s21)} S21 points")
                 
                 # Verify that we got the expected number of points for THRU

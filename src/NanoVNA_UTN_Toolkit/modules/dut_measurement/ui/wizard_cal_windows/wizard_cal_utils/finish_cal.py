@@ -41,7 +41,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.ui.wizard_cal_windows.wizard_cal_utils.sweep_cal import get_sweep_start_frequency, get_sweep_stop_frequency, get_sweep_steps
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.sweep_cal import get_sweep_start_frequency, get_sweep_stop_frequency, get_sweep_steps
                                                                                 
 except ImportError as e:
     import logging, sys

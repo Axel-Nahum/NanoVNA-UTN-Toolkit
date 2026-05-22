@@ -469,16 +469,6 @@ class THRUCalibrationManager:
         
         freqs = np.asarray(freqs, dtype=np.float64)
         s21 = np.asarray(s21, dtype=np.complex128)
-        
-        delta_L = 0.0064
-        c = 299792458.0
-        er_eff = 3.3
-
-        beta = 2.0 * np.pi * freqs * np.sqrt(er_eff) / c
-
-        phase_delta_L = beta * delta_L
-
-        s21 = s21 * np.exp(-1j * phase_delta_L)
 
         self.s11m = s11
         self.s21m = s21
