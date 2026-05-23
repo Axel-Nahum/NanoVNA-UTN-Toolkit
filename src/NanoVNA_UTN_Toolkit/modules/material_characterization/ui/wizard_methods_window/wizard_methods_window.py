@@ -216,7 +216,6 @@ class CharacterizationWizard(QMainWindow):
 
         self.current_step += 1
 
-        # 🔥 ACA cambias el título SOLO UNA VEZ
         self.title_label.setText(self.selected_method)
 
         update_step_screen(self)

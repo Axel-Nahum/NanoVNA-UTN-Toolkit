@@ -71,8 +71,8 @@ def on_frequency_changed_range(self):
     start_val_hz = self.start_freq_input.value() * unit_multiplier(self, self.start_freq_unit.currentText())
     stop_val_hz  = self.stop_freq_input.value()  * unit_multiplier(self, self.stop_freq_unit.currentText())
 
-    print(f"Start Frequency: {self.start_freq_input.value()}")
-    print(f"Stop Frequency: {self.stop_freq_input.value()}")
+    print(f"{self.dut_wizard_ui_start_freq} {self.start_freq_input.value()}")
+    print(f"{self.dut_wizard_ui_stop_freq} {self.stop_freq_input.value()}")
 
     # Use device limits if available, otherwise fallback to defaults
     if hasattr(self, 'freq_min_hz') and hasattr(self, 'freq_max_hz'):

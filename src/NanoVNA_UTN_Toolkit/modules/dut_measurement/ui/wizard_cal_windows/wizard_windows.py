@@ -73,6 +73,15 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
 class CalibrationWizard(QMainWindow):
@@ -96,7 +105,24 @@ class CalibrationWizard(QMainWindow):
 
         self.caller = caller
 
- #------------------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------- #
+# Load JSON 
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        current_lang = "en"
+
+        resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_wizard.json"
+        )
+
+        resourceLoader.load_dut_measurement_wizard_resources()
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Dark light Mode
+# ------------------------------------------------------------------------------------------------------------------- #
 
         # Dark-Light mode settings
 

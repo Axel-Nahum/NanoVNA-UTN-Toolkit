@@ -1,0 +1,28 @@
+{
+  "dut_measurement_wizard_ui": {
+    "intro_screen": {
+      "calibration_method_section": {
+        "title": "Calibration Methods:",
+        "label_calibration_method_selection": "Select Method",
+        "method_osm": "OSM (Open - Short - Match)",
+        "method_normalization_open": "Open Normalization",
+        "method_normalization_short": "Short Normalization",
+        "method_normalization_thru": "Normalization",
+        "method_1_port": "1-Port+N",
+        "method_E_R": "Enhanced-Response",
+        "description": []
+      },
+      "sweep_section": {
+        "title": "Sweep Configuration",
+        "start_frec": "Start Frequency:",
+        "stop_frec": "Stop Frequency:",
+        "steps": "Number of Steps:"
+      }
+    },
+    "steps" :{
+      "steps_title": "Method:"
+
+    }
+  }
+}
+

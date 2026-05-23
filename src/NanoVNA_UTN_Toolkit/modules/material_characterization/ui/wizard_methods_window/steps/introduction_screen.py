@@ -49,7 +49,7 @@ def build_introduction_screen(self):
 
     method_descriptions = resourceLoader.load_characterization_method_resources()
 
-    self.title_label.setText(f"{self.method_ui_title}")     # self.method_ui_title comes from load_characterization_method_resources method of the resourceLoader object
+    self.title_label.setText(f"{self.charac_wizard_ui_method_title}")     # self.method_ui_title comes from load_characterization_method_resources method of the resourceLoader object
     self.next_button.setEnabled(False)
     self.clear_content()
 
@@ -65,7 +65,7 @@ def build_introduction_screen(self):
 # Method label
 # ------------------------------------------------------------------------------------------------------------------- #
 
-    method_label = QLabel(f"{self.method_ui_select_label}")
+    method_label = QLabel(f"{self.charac_wizard_ui_method_select_label}")
 
     method_label.setStyleSheet("""
         font-size: 16px;
@@ -110,7 +110,7 @@ def build_introduction_screen(self):
         }
     """)
 
-    self.method_dropdown.addItem(f"{self.method_ui_dropdown_placeholder}")
+    self.method_dropdown.addItem(f"{self.charac_wizard_ui_method_dropdown_placeholder}")
     item = self.method_dropdown.model().item(0)
     item.setEnabled(False)
     item.setForeground(QColor(120, 120, 120))
@@ -121,26 +121,12 @@ def build_introduction_screen(self):
     top_container.addWidget(self.method_dropdown)
 
 # ------------------------------------------------------------------------------------------------------------------- #
-# Description title
-# ------------------------------------------------------------------------------------------------------------------- #
-
-    description_title = QLabel(f"{self.method_ui_dropdown_placeholder}")
-    description_title.setStyleSheet("""
-        font-size: 15px;
-        font-weight: bold;
-        margin-top: 10px;
-    """)
-
-    top_container.addWidget(description_title)
-
-# ------------------------------------------------------------------------------------------------------------------- #
 # Description box
 # ------------------------------------------------------------------------------------------------------------------- #
 
     self.method_info = QTextEdit()
     self.method_info.setReadOnly(True)
-    self.method_info.setMinimumHeight(350)
-
+    self.method_info.setMinimumHeight(395)
     self.method_info.setStyleSheet("""
         QTextEdit {
             background-color: #2b2b2b;
@@ -152,7 +138,7 @@ def build_introduction_screen(self):
         }
     """)
 
-    self.method_info.setText(f"{self.method_ui_empty_description}")
+    self.method_info.setText(f"{self.charac_wizard_ui_method_empty_description}")
 
     top_container.addWidget(self.method_info)
 

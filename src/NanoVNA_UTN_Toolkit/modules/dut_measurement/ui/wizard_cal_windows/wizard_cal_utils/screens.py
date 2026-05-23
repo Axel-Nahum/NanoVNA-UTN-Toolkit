@@ -141,6 +141,7 @@ def previous_step(self):
         show_step_screen(self, self.current_step - 1)
 
 def show_first_screen(self):
+    
     """Initial screen: Calibration Methods dropdown (aligned near top)."""
     clear_content(self)
 
@@ -161,7 +162,7 @@ def show_first_screen(self):
     top_container.setAlignment(Qt.AlignTop)
     top_container.addSpacing(20)
 
-    label = QLabel("Calibration Methods:")
+    label = QLabel(f"{self.dut_wizard_ui_title}")
     label.setStyleSheet("font-size: 16px; font-weight: bold;")
     label.setAlignment(Qt.AlignLeft)
 
@@ -169,7 +170,7 @@ def show_first_screen(self):
     self.freq_dropdown.setEditable(False)
 
     # Placeholder
-    self.freq_dropdown.addItem("Select Method")
+    self.freq_dropdown.addItem(f"{self.dut_wizard_ui_label_method_selection}")
     item = self.freq_dropdown.model().item(0)
     item.setEnabled(False)
     placeholder_color = QColor(120, 120, 120)
@@ -204,7 +205,7 @@ def show_first_screen(self):
     groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
     groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"
 
-    sweep_group = QGroupBox("Sweep Configuration")
+    sweep_group = QGroupBox(f"{self.dut_wizard_ui_sweep_title}")
     sweep_group.setStyleSheet(groupbox_style)
     sweep_layout = QFormLayout()
     
@@ -247,7 +248,7 @@ def show_first_screen(self):
     self.start_freq_unit.setCurrentText("kHz")
     start_freq_layout.addWidget(self.start_freq_unit)
     
-    sweep_layout.addRow("Start Frequency:", start_freq_layout)
+    sweep_layout.addRow(f"{self.dut_wizard_ui_start_freq}", start_freq_layout)
     
     # Stop frequency
     stop_freq_layout = QHBoxLayout()
@@ -288,7 +289,7 @@ def show_first_screen(self):
     self.stop_freq_unit.setCurrentText("GHz")
     stop_freq_layout.addWidget(self.stop_freq_unit)
     
-    sweep_layout.addRow("Stop Frequency:", stop_freq_layout)
+    sweep_layout.addRow(f"{self.dut_wizard_ui_stop_freq}", stop_freq_layout)
     
     # Number of steps (using smart datapoints spinbox)
     self.steps_input = SmartDatapointsSpinBox()  # Asumo que sigue siendo un QSpinBox
@@ -322,7 +323,7 @@ def show_first_screen(self):
             background-color: #5d5d5d;
         }
     """)
-    sweep_layout.addRow("Number of Steps:", self.steps_input)
+    sweep_layout.addRow(f"{self.dut_wizard_ui_steps}", self.steps_input)
     
     sweep_group.setLayout(sweep_layout)
     top_container.addWidget(sweep_group)
@@ -393,7 +394,7 @@ def show_step_screen(self, step, parent = None):
     self.left_panel_widget = QWidget()
     left_layout = QVBoxLayout(self.left_panel_widget)
     left_layout.setAlignment(Qt.AlignTop)
-    info_label = QLabel(f"Method: {self.selected_method}\nStep {step}/{len(steps)}")
+    info_label = QLabel(f"{self.dut_wizard_ui_steps_title} {self.selected_method}\nStep {step}/{len(steps)}")
     info_label.setAlignment(Qt.AlignCenter)
     info_label.setStyleSheet("font-size: 18px; font-weight: bold; padding: 8px;")
     left_layout.addWidget(info_label)

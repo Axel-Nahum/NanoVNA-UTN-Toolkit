@@ -165,12 +165,12 @@ class MaterialCharacterizationWelcome(QMainWindow):
         # DESCRIPTION GROUP
         # ---------------------------------------------------------------------------------------------------------- #
 
-        description_group = QGroupBox(f"{self.module_overview_title}")
+        description_group = QGroupBox(f"{self.charac_welcome_ui_module_overview_title}")
         description_group.setStyleSheet(groupbox_style)
 
         description_layout = QVBoxLayout(description_group)
 
-        description_string = "\n\n".join(self.descriptions)
+        description_string = "\n\n".join(self.charac_welcome_ui_descriptions)
 
         description_text = QLabel(description_string)
         description_text.setWordWrap(True)
@@ -190,7 +190,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         # MAIN CHARACTERIZATION GROUP
         # ---------------------------------------------------------------------------------------------------------- #
 
-        characterization_group = QGroupBox(f"{self.characterization_title}")
+        characterization_group = QGroupBox(f"{self.charac_welcome_ui_characterization_title}")
         characterization_group.setStyleSheet(groupbox_style)
 
         characterization_layout = QVBoxLayout(characterization_group)
@@ -214,7 +214,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         left_layout = QVBoxLayout()
         left_layout.setSpacing(10)
 
-        kit_selector_label = QLabel(f"{self.method_selection_title}")
+        kit_selector_label = QLabel(f"{self.charac_welcome_ui_method_selection_title}")
         kit_selector_label.setStyleSheet(
             "font-weight: bold; "
             "font-size: 14px;"
@@ -296,7 +296,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
 # OPEN METHODS BUTTON
 # ---------------------------------------------------------------------------------------------------------- #
 
-        self.characterization_methods_button = QPushButton(f"{self.open_methods_button}")
+        self.characterization_methods_button = QPushButton(f"{self.charac_welcome_ui_open_methods_button}")
         self.characterization_methods_button.clicked.connect(self.open_characterization_methods)
         self.characterization_methods_button.setFixedHeight(45)
         self.characterization_methods_button.setStyleSheet(
@@ -316,7 +316,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         right_layout = QVBoxLayout()
         right_layout.setSpacing(10)
 
-        import_title = QLabel(f"{self.import_section_title}")
+        import_title = QLabel(f"{self.charac_welcome_ui_import_section_title}")
 
         import_title.setStyleSheet(
             "font-weight: bold; "
@@ -325,7 +325,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         right_layout.addWidget(import_title)
 
-        import_description = QLabel(f"{self.import_description}")
+        import_description = QLabel(f"{self.charac_welcome_ui_import_description}")
 
         import_description.setWordWrap(True)
 
@@ -338,7 +338,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         right_layout.addStretch()
 
-        self.import_button = QPushButton(f"{self.import_button_text}")
+        self.import_button = QPushButton(f"{self.charac_welcome_ui_import_button_text}")
         self.import_button.clicked.connect(self.import_characterization_package)
         self.import_button.setFixedHeight(45)
         self.import_button.setStyleSheet("font-size: 14px;")
@@ -378,7 +378,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
                 )
 
         else:
-            self.kit_info_label.setText(f"{self.no_characterization_selected}")
+            self.kit_info_label.setText(f"{self.charac_welcome_ui_no_characterization_selected}")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 

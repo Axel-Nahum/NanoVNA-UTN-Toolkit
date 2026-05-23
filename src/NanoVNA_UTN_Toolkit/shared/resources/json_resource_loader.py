@@ -61,18 +61,57 @@ class JsonResourceLoader:
         module_overview = ui_data.get("module_overview", {})
         kit_section = ui_data.get("kit_section", {})
 
-        self.window.module_overview_title = module_overview.get("title", "")
-        self.window.label_calibration_button = module_overview.get("label_calibration_button")
-        self.window.descriptions = "".join(module_overview.get("description", []))
+        self.window.dut_welcome_ui_calibration_title = module_overview.get("title", "")
+        self.window.dut_welcome_ui_label_calibration_button = module_overview.get("label_calibration_button")
+        self.window.dut_welcome_ui_descriptions = "".join(module_overview.get("description", []))
 
-        self.window.kit_title = kit_section.get("title", "")
-        self.window.kit_selection_title = kit_section.get("kit_selection_title", "")
-        self.window.no_kit_selected = kit_section.get("no_kit_selected", "")
-        self.window.label_kit_button = kit_section.get("label_kit_button", "")
-        self.window.import_section_title = kit_section.get("import_section_title", "")
-        self.window.import_description = kit_section.get("import_description", "")
-        self.window.import_button_text = kit_section.get("import_button", "")
-    
+        self.window.dut_welcome_ui_kit_title = kit_section.get("title", "")
+        self.window.dut_welcome_ui_kit_selection_title = kit_section.get("kit_selection_title", "")
+        self.window.dut_welcome_ui_no_kit_selected = kit_section.get("no_kit_selected", "")
+        self.window.dut_welcome_ui_label_kit_button = kit_section.get("label_kit_button", "")
+        self.window.dut_welcome_ui_import_section_title = kit_section.get("import_section_title", "")
+        self.window.dut_welcome_ui_import_description = kit_section.get("import_description", "")
+        self.window.dut_welcome_ui_import_button_text = kit_section.get("import_button", "")
+
+
+    def load_dut_measurement_wizard_resources(self):
+
+        raw_data = self._load_json()
+
+        ui_data = raw_data.get("dut_measurement_wizard_ui", {})
+
+        intro_screen = ui_data.get("intro_screen", {})
+        steps_section = ui_data.get("steps", {})
+
+        calibration_section = intro_screen.get("calibration_method_section", {})
+        sweep_section = intro_screen.get("sweep_section", {})
+
+        # ---------------------------------------------------------------- #
+        # Method Selector Screen
+        # ---------------------------------------------------------------- #
+
+        self.window.dut_wizard_ui_title = calibration_section.get("title", "")
+        self.window.dut_wizard_ui_label_method_selection = calibration_section.get("label_calibration_method_selection", "")
+        self.window.dut_wizard_ui_descriptions = "".join(calibration_section.get("description", []))
+
+        self.window.dut_wizard_ui_osm = calibration_section.get("method_osm")
+        self.window.dut_wizard_ui_normalization_open = calibration_section.get("method_normalization_open")
+        self.window.dut_wizard_ui_normalization_short = calibration_section.get("method_normalization_short")
+        self.window.dut_wizard_ui_normalization_thru = calibration_section.get("method_normalization_thru")
+        self.window.dut_wizard_ui_1_port = calibration_section.get("method_1_port")
+        self.window.dut_wizard_ui_E_R = calibration_section.get("method_E_R")
+
+        self.window.dut_wizard_ui_sweep_title = sweep_section.get("title", "")
+        self.window.dut_wizard_ui_start_freq = sweep_section.get("start_frec", "")
+        self.window.dut_wizard_ui_stop_freq = sweep_section.get("stop_frec", "")
+        self.window.dut_wizard_ui_steps = sweep_section.get("steps", "")
+
+        # ---------------------------------------------------------------- #
+        # Steps Screen
+        # ---------------------------------------------------------------- #
+
+        self.window.dut_wizard_ui_steps_title = steps_section.get("steps_title", "")
+        
 # ------------------------------------------------------------------------------------------------------------------- #
 # Material Characterization Module
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -86,26 +125,26 @@ class JsonResourceLoader:
         module_overview = ui_data.get("module_overview", {})
         characterization_section = ui_data.get("characterization_section", {})
 
-        self.window.module_overview_title = module_overview.get("title", "")
-        self.window.descriptions = module_overview.get("description", [])
+        self.window.charac_welcome_ui_module_overview_title = module_overview.get("title", "")
+        self.window.charac_welcome_ui_descriptions = module_overview.get("description", [])
 
-        self.window.characterization_title = characterization_section.get("title", "")
-        self.window.method_selection_title = characterization_section.get("method_selection_title", "")
-        self.window.no_characterization_selected = characterization_section.get("no_method_selected", "")
-        self.window.open_methods_button = characterization_section.get("open_methods_button", "")
-        self.window.import_section_title = characterization_section.get("import_section_title", "")
-        self.window.import_description = characterization_section.get("import_description", "")
-        self.window.import_button_text = characterization_section.get("import_button", "")
+        self.window.charac_welcome_ui_characterization_title = characterization_section.get("title", "")
+        self.window.charac_welcome_ui_method_selection_title = characterization_section.get("method_selection_title", "")
+        self.window.charac_welcome_ui_no_characterization_selected = characterization_section.get("no_method_selected", "")
+        self.window.charac_welcome_ui_open_methods_button = characterization_section.get("open_methods_button", "")
+        self.window.charac_welcome_ui_import_section_title = characterization_section.get("import_section_title", "")
+        self.window.charac_welcome_ui_import_description = characterization_section.get("import_description", "")
+        self.window.charac_welcome_ui_import_button_text = characterization_section.get("import_button", "")
 
     def load_characterization_method_resources(self):
 
         raw_data = self._load_json()
 
-        self.window.method_ui_title = raw_data.get("title", "")
-        self.window.method_ui_select_label = raw_data.get("select_label", "")
-        self.window.method_ui_dropdown_placeholder = raw_data.get("dropdown_placeholder", "")
-        self.window.method_ui_label_description = raw_data.get("label_description", "")
-        self.window.method_ui_empty_description = raw_data.get("empty_description", "")
+        self.window.charac_wizard_ui_method_title = raw_data.get("title", "")
+        self.window.charac_wizard_ui_method_select_label = raw_data.get("select_label", "")
+        self.window.charac_wizard_ui_method_dropdown_placeholder = raw_data.get("dropdown_placeholder", "")
+        self.window.charac_wizard_ui_method_label_description = raw_data.get("label_description", "")
+        self.window.charac_wizard_ui_method_empty_description = raw_data.get("empty_description", "")
 
         return raw_data.get("methods", {})
 

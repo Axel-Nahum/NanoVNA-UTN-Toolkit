@@ -162,13 +162,13 @@ class NanoVNAWelcome(QMainWindow):
         groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
         groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; font-size: 30pt;}}"
         
-        calibration_group = QGroupBox(f"{self.module_overview_title}")
+        calibration_group = QGroupBox(f"{self.dut_welcome_ui_calibration_title}")
         calibration_group.setStyleSheet(groupbox_style)
         calibration_layout = QVBoxLayout(calibration_group)
         calibration_layout.setSpacing(15)
 
         # Calibration description
-        description_text = (f"{self.descriptions}")
+        description_text = (f"{self.dut_welcome_ui_descriptions}")
         
         description_label = QLabel(description_text)
         description_label.setWordWrap(True)
@@ -176,7 +176,7 @@ class NanoVNAWelcome(QMainWindow):
         calibration_layout.addWidget(description_label)
 
         # Calibration wizard button
-        self.calibration_wizard_button = QPushButton(f"{self.label_calibration_button}")
+        self.calibration_wizard_button = QPushButton(f"{self.dut_welcome_ui_label_calibration_button}")
         self.calibration_wizard_button.clicked.connect(self.open_calibration_wizard)
         self.calibration_wizard_button.setFixedHeight(50)
         self.calibration_wizard_button.setStyleSheet("font-size: 16px; margin: 10px;")
@@ -202,7 +202,7 @@ class NanoVNAWelcome(QMainWindow):
         groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
         groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"
         
-        measurements_group = QGroupBox(f"{self.kit_title}")
+        measurements_group = QGroupBox(f"{self.dut_welcome_ui_kit_title}")
         measurements_group.setStyleSheet(groupbox_style)
         measurements_layout = QVBoxLayout(measurements_group)
         measurements_layout.setSpacing(15)
@@ -224,7 +224,7 @@ class NanoVNAWelcome(QMainWindow):
         logging.info("[welcome_windows._create_calibration_kit_selector] Creating kit selector dropdown")
 
         # Add label for calibration kit selector
-        kit_selector_label = QLabel(f"{self.kit_selection_title}")
+        kit_selector_label = QLabel(f"{self.dut_welcome_ui_kit_selection_title}")
         kit_selector_label.setStyleSheet("font-weight: bold; font-size: 14px; margin-bottom: 10px;")
         parent_layout.addWidget(kit_selector_label)
 
@@ -366,7 +366,7 @@ class NanoVNAWelcome(QMainWindow):
             else:
                 self.kit_info_label.setText(f"Selected Kit: {self.selected_kit_name}\n(Kit details not found)")
         else:
-            self.kit_info_label.setText(f"{self.no_kit_selected}")
+            self.kit_info_label.setText(f"{self.dut_welcome_ui_no_kit_selected}")
             logging.info("[welcome_windows._update_kit_info_display] Cleared kit info - no selection")
 
     def _create_action_buttons(self, parent_layout):
@@ -381,7 +381,7 @@ class NanoVNAWelcome(QMainWindow):
         button_layout.setSpacing(20)
 
         # Graphics button
-        self.graphics_button = QPushButton(f"{self.label_kit_button}")
+        self.graphics_button = QPushButton(f"{self.dut_welcome_ui_label_kit_button}")
         self.graphics_button.clicked.connect(self.graphics_clicked)
         self.graphics_button.setFixedHeight(50)
         self.graphics_button.setStyleSheet("font-size: 16px; margin: 10px;")
