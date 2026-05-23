@@ -1,0 +1,25 @@
+{
+  "dut_measurement_ui": {
+    "module_overview": {
+      "title": "Calibration Wizard",
+      "label_calibration_button": "Open Calibration Wizard",
+      "description": [
+          "Calibration is essential for accurate VNA measurements. It removes systematic errors ",
+          "from cables, connectors, and the VNA itself by measuring known reference standards. ",
+          "The Calibration Wizard guides you through this process step-by-step, ensuring your ",
+          "measurements are precise and reliable."
+      ]
+    },
+    "kit_section": {
+      "title": "Calibration Kits",
+      "kit_selection_title": "Calibration Kit Selection",
+      "default_method": "None",
+      "no_kit_selected": "No calibration kit selected",
+      "label_kit_button": "Open Graphics Window",
+      "import_section_title": "Import Kit Package:",
+      "import_description": "Import a complete calibration kit with its associated calibration data.",
+      "import_button": "Import Calibration Kit"
+    }
+  }
+}
+

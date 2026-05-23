@@ -1,0 +1,18 @@
+{
+  "main_menu_ui": {
+    "header": {
+      "title": "NanoVNA-UTN Toolkit",
+      "description": "Select a module to continue."
+    },
+    "modules": {
+      "dut_measurement": {
+        "title": "DUT Measurement",
+        "description": "Measure and analyze DUT responses using NanoVNA data."
+      },
+      "materials_characterization": {
+        "title": "Materials Characterization",
+        "description": "Characterize material properties and compare characterization methods."
+      }
+    }
+  }
+}

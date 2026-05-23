@@ -13,7 +13,7 @@
       "title": "Material Characterization",
       "method_selection_title": "Method Characterization Kit Selection:",
       "default_method": "None",
-      "no_calibration_selected": "No characterization method selected",
+      "no_method_selected": "No characterization method selected",
       "open_methods_button": "Open Characterization Methods",
       "import_section_title": "Import Characterization Package:",
       "import_description": "Import a complete characterization package that already contains its associated calibration and configuration data.",

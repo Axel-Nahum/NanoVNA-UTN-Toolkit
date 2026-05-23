@@ -3,7 +3,6 @@ import sys
 import json
 import logging
 
-
 def resource_path(relative_path):
 
     if getattr(sys, 'frozen', False):

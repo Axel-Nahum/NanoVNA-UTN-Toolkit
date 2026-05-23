@@ -378,7 +378,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
                 )
 
         else:
-            self.kit_info_label.setText(f"{self.no_calibration_selected}")
+            self.kit_info_label.setText(f"{self.no_characterization_selected}")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 

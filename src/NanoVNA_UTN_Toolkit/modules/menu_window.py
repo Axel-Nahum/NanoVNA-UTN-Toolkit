@@ -29,6 +29,14 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.welcome_window.welcome_windows import NanoVNAWelcome
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.characterization_welcome.characterization_welcome import MaterialCharacterizationWelcome
@@ -42,7 +50,24 @@ class ModuleSelectionWindow(QMainWindow):
 
         self.vna = vna_device
 
-#------------------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------- #
+# Load JSON 
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        current_lang = "en"
+
+        resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "menu_resource", 
+            lang = current_lang, 
+            json_resource = "menu_resource.json"
+        )
+
+        resourceLoader.load_main_menu_resources()
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Dark light Mode
+# ------------------------------------------------------------------------------------------------------------------- #
 
         # Dark-Light mode settings
 
@@ -66,7 +91,7 @@ class ModuleSelectionWindow(QMainWindow):
         main_layout.setAlignment(Qt.AlignCenter)
         main_layout.setSpacing(70)
 
-        title = QLabel("NanoVNA-UTN Toolkit")
+        title = QLabel(f"{self.menu_title}")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("""
             font-size: 28px;
@@ -77,10 +102,10 @@ class ModuleSelectionWindow(QMainWindow):
         buttons_layout.setSpacing(60)
         buttons_layout.setAlignment(Qt.AlignCenter)
 
-        self.dut_button = QPushButton("DUT Measurement")
+        self.dut_button = QPushButton(f"{self.dut_measurement_title}")
         self.dut_button.setFixedSize(260, 120)
 
-        self.materials_button = QPushButton("Materials Characterization")
+        self.materials_button = QPushButton(f"{self.materials_characterization_title}")
         self.materials_button.setFixedSize(260, 120)
 
         self.dut_button.setStyleSheet("""

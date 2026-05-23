@@ -34,7 +34,22 @@ except ImportError as e:
 
 def build_introduction_screen(self):
 
-    self.title_label.setText("Characterization Methods")
+# ------------------------------------------------------------------------------------------------------------------- #
+# Load JSON 
+# ------------------------------------------------------------------------------------------------------------------- #
+
+    current_lang = "en"
+
+    resourceLoader = JsonResourceLoader(
+        self_window = self, 
+        module = "material_characterization", 
+        lang = current_lang, 
+        json_resource = "characterization_methods.json"
+    )
+
+    method_descriptions = resourceLoader.load_characterization_method_resources()
+
+    self.title_label.setText(f"{self.method_ui_title}")     # self.method_ui_title comes from load_characterization_method_resources method of the resourceLoader object
     self.next_button.setEnabled(False)
     self.clear_content()
 
@@ -50,7 +65,7 @@ def build_introduction_screen(self):
 # Method label
 # ------------------------------------------------------------------------------------------------------------------- #
 
-    method_label = QLabel("Select Characterization Method:")
+    method_label = QLabel(f"{self.method_ui_select_label}")
 
     method_label.setStyleSheet("""
         font-size: 16px;
@@ -95,7 +110,7 @@ def build_introduction_screen(self):
         }
     """)
 
-    self.method_dropdown.addItem("Select Characterization Method")
+    self.method_dropdown.addItem(f"{self.method_ui_dropdown_placeholder}")
     item = self.method_dropdown.model().item(0)
     item.setEnabled(False)
     item.setForeground(QColor(120, 120, 120))
@@ -109,7 +124,7 @@ def build_introduction_screen(self):
 # Description title
 # ------------------------------------------------------------------------------------------------------------------- #
 
-    description_title = QLabel("Method Description")
+    description_title = QLabel(f"{self.method_ui_dropdown_placeholder}")
     description_title.setStyleSheet("""
         font-size: 15px;
         font-weight: bold;
@@ -137,26 +152,9 @@ def build_introduction_screen(self):
         }
     """)
 
-    self.method_info.setText(
-        "Select a characterization method to display information."
-    )
+    self.method_info.setText(f"{self.method_ui_empty_description}")
 
     top_container.addWidget(self.method_info)
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Load JSON 
-# ------------------------------------------------------------------------------------------------------------------- #
-
-    current_lang = "en"
-
-    resourceLoader = JsonResourceLoader(
-        self_window = self, 
-        module = "material_characterization", 
-        lang = current_lang, 
-        json_resource = "characterization_methods.json"
-    )
-
-    method_descriptions = resourceLoader.load_characterization_method_resources()
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Callback
