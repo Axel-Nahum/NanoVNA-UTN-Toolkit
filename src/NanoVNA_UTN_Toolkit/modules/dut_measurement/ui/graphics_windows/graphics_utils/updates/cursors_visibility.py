@@ -651,10 +651,10 @@ def toggle_marker_visibility(self, marker_index, show=True):
         # --- Limpiar otros labels ---
         labels["val"].setText(f"{self.left_s_param if marker_index==0 else 'S11'}: -- + j--")
         labels["mag"].setText("|S11|: --")
-        labels["phase"].setText("Phase: --")
+        labels["phase"].setText(f"{self.measurement_ui_s_parameter_phase} --")
         labels["z"].setText("Z: -- + j--")
-        labels["il"].setText("IL: --")
-        labels["vswr"].setText("VSWR: --")
+        labels["il"].setText(f"{self.measurement_ui_dut_insertion_loss} --")
+        labels["vswr"].setText(f"{self.measurement_ui_dut_vswr} --")
 
         slider_2.ax.set_position([0.25,0.04,0.5,0.03])
 
@@ -733,10 +733,10 @@ def toggle_marker2_visibility(self, marker_index, show_markers):
         # --- Limpiar otros labels ---
         labels_2["val"].setText(f"{self.left_s_param if marker_index==0 else 'S11'}: -- + j--")
         labels_2["mag"].setText("|S11|: --")
-        labels_2["phase"].setText("Phase: --")
+        labels_2["phase"].setText(f"{self.measurement_ui_s_parameter_phase} --")
         labels_2["z"].setText("Z: -- + j--")
-        labels_2["il"].setText("IL: --")
-        labels_2["vswr"].setText("VSWR: --")
+        labels_2["il"].setText(f"{self.measurement_ui_dut_insertion_loss} --")
+        labels_2["vswr"].setText(f"{self.measurement_ui_dut_vswr} --")
 
         slider.ax.set_position([0.25,0.04,0.5,0.03])
 

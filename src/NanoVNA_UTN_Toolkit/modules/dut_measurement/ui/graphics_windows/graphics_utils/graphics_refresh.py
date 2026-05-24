@@ -123,7 +123,7 @@ def _reset_sweep_ui(self):
 
     if hasattr(self, "sweep_button"):
         self.sweep_button.setEnabled(True)
-        self.sweep_button.setText("Run Sweep")
+        self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
 
     if hasattr(self, "sweep_progress_bar"):
         self.sweep_progress_bar.setVisible(False)

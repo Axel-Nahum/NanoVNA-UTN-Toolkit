@@ -1,0 +1,103 @@
+{
+  "measurement_graphics_ui": {
+    "menu_bar": {
+      "file": "File",
+      "edit": "Edit",
+      "view": "View",
+      "sweep": "Sweep",
+      "calibration": "Calibration",
+      "help": "Help"
+    },
+
+    "top_bar": {
+      "button_connect": "Connect",
+      "button_reconnect": "Reconnect",
+      "button_disconnect": "Disconnect",
+      "button_run_sweep": "Run Sweep",
+      "button_stop_sweep": "Stop Sweep",
+
+      "sweep_info": "Sweep: {start_freq} - {stop_freq}, {points} points",
+
+      "calibration_status": {
+        "no_calibration": "No Calibration",
+        "wizard_calibration": "Calibration Wizard | Method: {calibration_method}",
+        "calibration_kit": "Calibration Kit | Name: {kit_name} | Method: {method}",
+        "imported_dut": "Imported DUT Calibration"
+      }
+    },
+
+    "plots": {
+      "s11_magnitude": {
+        "title_mag": "{parameter}\\ \\mathrm{{Magnitude\\ [dB]}}",
+        "title_phase": "{parameter}\\ Phase",
+        "waiting_text": "Waiting\\ for\\ sweep\\ data\\ ...",
+        "x_axis": "Frequency \\ [MHz]",
+        "y_axis": "|S11|"
+      },
+
+      "s11_phase": {
+        "waiting_text": "Waiting for sweep data . . .",
+        "x_axis": "Frequency [MHz]",
+        "y_axis": "Phase [°]"
+      },
+
+      "s21_magnitude": {
+        "title": "S21 Magnitude",
+        "waiting_text": "Waiting for sweep data . . .",
+        "x_axis": "Frequency [MHz]",
+        "y_axis": "|S21|"
+      },
+
+      "s21_phase": {
+        "title": "S21 Phase",
+        "waiting_text": "Waiting for sweep data . . .",
+        "x_axis": "Frequency [MHz]",
+        "y_axis": "Phase [°]"
+      }
+    },
+
+    "s_parameter_details": {
+      "title": "S-Parameter Details",
+
+      "frequency": "Frequency:",
+      "s11_complex": "S11:",
+      "s21_complex": "S21:",
+
+      "magnitude_s11": "|S11|s:",
+      "magnitude_s21": "|S21|s:",
+
+      "phase": "Phase:"
+    },
+
+    "dut_parameters": {
+      "title": "DUT Parameters",
+
+      "zin": "Zin (Z0):",
+      "return_loss": "RL:",
+      "insertion_loss": "IL:",
+      "vswr": "VSWR:",
+      "group_delay": "Group Delay:"
+    },
+
+    "status_messages": {
+      "waiting_for_connection": "Waiting for device connection...",
+      "device_connected": "Device connected",
+      "device_disconnected": "Device disconnected",
+
+      "waiting_for_sweep": "Waiting\\ for\\ sweep\\ data\\ ...",
+      "running_sweep": "Running sweep...",
+      "sweep_completed": "Sweep completed",
+
+      "calibration_loaded": "Calibration loaded",
+      "calibration_saved": "Calibration saved",
+      "calibration_cleared": "Calibration cleared",
+
+      "importing_dut": "Importing DUT data...",
+      "dut_loaded": "DUT data loaded"
+    },
+
+    "marker_diff": {
+      "label_diff": "Markers Diff"
+    }
+  }
+}

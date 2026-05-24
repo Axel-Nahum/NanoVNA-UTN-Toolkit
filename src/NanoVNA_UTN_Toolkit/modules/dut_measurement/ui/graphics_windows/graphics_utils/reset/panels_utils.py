@@ -21,7 +21,7 @@ def _clear_axis_and_show_message(self, panel_side='right', message_pos=(0.5, 0.5
         if hasattr(self, 'ax_right') and self.ax_right:
             self.ax_right.text(
                 message_pos[0], message_pos[1],
-                r"$\mathrm{Waiting\ for\ sweep\ data\ ...}$",
+                rf"$\mathrm{{{self.measurement_ui_magnitude_waiting_text}}}$",
                 transform=self.ax_right.transAxes,
                 ha='center', va='center',
                 fontsize=15, color='white'
@@ -39,7 +39,7 @@ def _clear_axis_and_show_message(self, panel_side='right', message_pos=(0.5, 0.5
         if hasattr(self, 'ax_left') and self.ax_left:
             self.ax_left.text(
                 message_pos[0], message_pos[1],
-                r"$\mathrm{Waiting\ for\ sweep\ data\ ...}$",
+                rf"$\mathrm{{{self.measurement_ui_magnitude_waiting_text}}}$",
                 transform=self.ax_left.transAxes,
                 ha='center', va='center',
                 fontsize=15, color='white'
@@ -65,13 +65,13 @@ def _clear_panel_labels(self, panel_side='left'):
         if "mag" in self.labels_left:
             self.labels_left["mag"].setText(f"|{self.left_s_param}|: --")
         if "phase" in self.labels_left:
-            self.labels_left["phase"].setText("Phase: --")
+            self.labels_left["phase"].setText(f"{self.measurement_ui_s_parameter_phase} --")
         if "z" in self.labels_left:
-            self.labels_left["z"].setText("Zin (Z0): -- + j--")
+            self.labels_left["z"].setText(f"{self.measurement_ui_dut_zin} -- + j--")
         if "il" in self.labels_left:
-            self.labels_left["il"].setText("IL: --")
+            self.labels_left["il"].setText(f"{self.measurement_ui_dut_insertion_loss} --")
         if "vswr" in self.labels_left:
-            self.labels_left["vswr"].setText("VSWR: --")
+            self.labels_left["vswr"].setText(f"{self.measurement_ui_dut_vswr} --")
         # Clear focus from frequency field
         if "freq" in self.labels_left:
             try:
@@ -89,13 +89,13 @@ def _clear_panel_labels(self, panel_side='left'):
         if "mag" in self.labels_right:
             self.labels_right["mag"].setText(f"|{self.right_s_param}|: --")
         if "phase" in self.labels_right:
-            self.labels_right["phase"].setText("Phase: --")
+            self.labels_right["phase"].setText(f"{self.measurement_ui_s_parameter_phase} --")
         if "z" in self.labels_right:
-            self.labels_right["z"].setText("Zin (Z0): -- + j--")
+            self.labels_right["z"].setText(f"{self.measurement_ui_dut_zin} -- + j--")
         if "il" in self.labels_right:
-            self.labels_right["il"].setText("IL: --")
+            self.labels_right["il"].setText(f"{self.measurement_ui_dut_insertion_loss} --")
         if "vswr" in self.labels_right:
-            self.labels_right["vswr"].setText("VSWR: --")
+            self.labels_right["vswr"].setText(f"{self.measurement_ui_dut_vswr} --")
         # Clear focus from frequency field
         if "freq" in self.labels_right:
             try:
@@ -113,13 +113,13 @@ def _clear_panel_labels(self, panel_side='left'):
         if "mag" in self.labels_left_2:
             self.labels_left_2["mag"].setText(f"|{self.left_s_param}|: --")
         if "phase" in self.labels_left_2:
-            self.labels_left_2["phase"].setText("Phase: --")
+            self.labels_left_2["phase"].setText(f"{self.measurement_ui_s_parameter_phase} --")
         if "z" in self.labels_left_2:
-            self.labels_left_2["z"].setText("Zin (Z0): -- + j--")
+            self.labels_left_2["z"].setText(f"{self.measurement_ui_dut_zin} -- + j--")
         if "il" in self.labels_left_2:
-            self.labels_left_2["il"].setText("IL: --")
+            self.labels_left_2["il"].setText(f"{self.measurement_ui_dut_insertion_loss} --")
         if "vswr" in self.labels_left_2:
-            self.labels_left_2["vswr"].setText("VSWR: --")
+            self.labels_left_2["vswr"].setText(f"{self.measurement_ui_dut_vswr} --")
         # Clear focus from frequency field
         if "freq" in self.labels_left_2:
             try:
@@ -137,13 +137,13 @@ def _clear_panel_labels(self, panel_side='left'):
         if "mag" in self.labels_right_2:
             self.labels_right_2["mag"].setText(f"|{self.right_s_param}|: --")
         if "phase" in self.labels_right_2:
-            self.labels_right_2["phase"].setText("Phase: --")
+            self.labels_right_2["phase"].setText(f"{self.measurement_ui_s_parameter_phase} --")
         if "z" in self.labels_right_2:
-            self.labels_right_2["z"].setText("Zin (Z0): -- + j--")
+            self.labels_right_2["z"].setText(f"{self.measurement_ui_dut_zin} -- + j--")
         if "il" in self.labels_right_2:
-            self.labels_right_2["il"].setText("IL: --")
+            self.labels_right_2["il"].setText(f"{self.measurement_ui_dut_insertion_loss} --")
         if "vswr" in self.labels_right_2:
-            self.labels_right_2["vswr"].setText("VSWR: --")
+            self.labels_right_2["vswr"].setText(f"{self.measurement_ui_dut_vswr} --")
         # Clear focus from frequency field
         if "freq" in self.labels_right_2:
             try:
@@ -153,13 +153,13 @@ def _clear_panel_labels(self, panel_side='left'):
                 pass  # Ignore if widget doesn't have these methods
             
         self.labels_right_2.get("phase")
-        self.labels_right_2["phase"].setText("Phase: --")
+        self.labels_right_2["phase"].setText(f"{self.measurement_ui_s_parameter_phase} --")
         self.labels_right_2.get("z")
-        self.labels_right_2["z"].setText("Zin (Z0): -- + j--")
+        self.labels_right_2["z"].setText(f"{self.measurement_ui_dut_zin} -- + j--")
         self.labels_right_2.get("il")
-        self.labels_right_2["il"].setText("IL: --")
+        self.labels_right_2["il"].setText(f"{self.measurement_ui_dut_insertion_loss} --")
         self.labels_right_2.get("vswr")
-        self.labels_right_2["vswr"].setText("VSWR: --")
+        self.labels_right_2["vswr"].setText(f"{self.measurement_ui_dut_vswr} --")
 
 def _clear_marker_fields_only(self):
     """Clear only marker information fields without affecting the graphs."""
@@ -174,12 +174,12 @@ def _clear_marker_fields_only(self):
             freq_left.setCursorPosition(0) 
             freq_left.deselect()
             freq_left.clearFocus()
-        self.labels_left.get("val") and self.labels_left["val"].setText("S11: -- + j--")
-        self.labels_left.get("mag") and self.labels_left["mag"].setText("|S11|: --")
-        self.labels_left.get("phase") and self.labels_left["phase"].setText("Phase: --")
-        self.labels_left.get("z") and self.labels_left["z"].setText("Zin (Z0): -- + j--")
-        self.labels_left.get("il") and self.labels_left["il"].setText("IL: --")
-        self.labels_left.get("vswr") and self.labels_left["vswr"].setText("VSWR: --")
+        self.labels_left.get("val") and self.labels_left["val"].setText(f"{self.measurement_ui_s_parameter_s11_complex} -- + j--")
+        self.labels_left.get("mag") and self.labels_left["mag"].setText(f"{self.measurement_ui_s_parameter_magnitude_s11} --")
+        self.labels_left.get("phase") and self.labels_left["phase"].setText(f"{self.measurement_ui_s_parameter_phase} --")
+        self.labels_left.get("z") and self.labels_left["z"].setText(f"{self.measurement_ui_dut_zin} -- + j--")
+        self.labels_left.get("il") and self.labels_left["il"].setText(f"{self.measurement_ui_dut_insertion_loss} --")
+        self.labels_left.get("vswr") and self.labels_left["vswr"].setText(f"{self.measurement_ui_dut_vswr} --")
 
     # --- Clear right panel marker information ---
     if hasattr(self, 'labels_right') and self.labels_right:
@@ -190,12 +190,12 @@ def _clear_marker_fields_only(self):
             freq_right.setCursorPosition(0) 
             freq_right.deselect()
             freq_right.clearFocus()
-        self.labels_right.get("val") and self.labels_right["val"].setText("S21: -- + j--")
-        self.labels_right.get("mag") and self.labels_right["mag"].setText("|S21|: --")
-        self.labels_right.get("phase") and self.labels_right["phase"].setText("Phase: --")
-        self.labels_right.get("z") and self.labels_right["z"].setText("Zin (Z0): -- + j--")
-        self.labels_right.get("il") and self.labels_right["il"].setText("IL: --")
-        self.labels_right.get("vswr") and self.labels_right["vswr"].setText("VSWR: --")
+        self.labels_right.get("val") and self.labels_right["val"].setText(f"{self.measurement_ui_s_parameter_s21_complex} -- + j--")
+        self.labels_right.get("mag") and self.labels_right["mag"].setText(f"{self.measurement_ui_s_parameter_magnitude_s21} --")
+        self.labels_right.get("phase") and self.labels_right["phase"].setText(f"{self.measurement_ui_s_parameter_phase} --")
+        self.labels_right.get("z") and self.labels_right["z"].setText(f"{self.measurement_ui_dut_zin} -- + j--")
+        self.labels_right.get("il") and self.labels_right["il"].setText(f"{self.measurement_ui_dut_insertion_loss} --")
+        self.labels_right.get("vswr") and self.labels_right["vswr"].setText(f"{self.measurement_ui_dut_vswr}--")
 
     # --- Clear left panel marker information ---
     if hasattr(self, 'labels_left_2') and self.labels_left_2:
@@ -204,12 +204,12 @@ def _clear_marker_fields_only(self):
             freq_left.setText("--")    # set "--"
             freq_left.deselect()       # remove selection
             freq_left.clearFocus()     # remove focus so it's not blue
-        self.labels_left_2.get("val") and self.labels_left_2["val"].setText("S11: -- + j--")
-        self.labels_left_2.get("mag") and self.labels_left_2["mag"].setText("|S11|: --")
-        self.labels_left_2.get("phase") and self.labels_left_2["phase"].setText("Phase: --")
-        self.labels_left_2.get("z") and self.labels_left_2["z"].setText("Zin (Z0): -- + j--")
-        self.labels_left_2.get("il") and self.labels_left_2["il"].setText("IL: --")
-        self.labels_left_2.get("vswr") and self.labels_left_2["vswr"].setText("VSWR: --")
+        self.labels_left_2.get("val") and self.labels_left_2["val"].setText(f"{self.measurement_ui_s_parameter_s11_complex} -- + j--")
+        self.labels_left_2.get("mag") and self.labels_left_2["mag"].setText(f"{self.measurement_ui_s_parameter_magnitude_s11} --")
+        self.labels_left_2.get("phase") and self.labels_left_2["phase"].setText(f"{self.measurement_ui_s_parameter_phase} --")
+        self.labels_left_2.get("z") and self.labels_left_2["z"].setText(f"{self.measurement_ui_dut_zin} -- + j--")
+        self.labels_left_2.get("il") and self.labels_left_2["il"].setText(f"{self.measurement_ui_dut_insertion_loss} --")
+        self.labels_left_2.get("vswr") and self.labels_left_2["vswr"].setText(f"{self.measurement_ui_dut_vswr} --")
 
     # --- Clear right panel marker information ---
     if hasattr(self, 'labels_right_2') and self.labels_right_2:
@@ -218,12 +218,12 @@ def _clear_marker_fields_only(self):
             freq_right.setText("--")   # set "--"
             freq_right.deselect()      # remove selection
             freq_right.clearFocus()    # remove focus so it's not blue
-        self.labels_right_2.get("val") and self.labels_right_2["val"].setText("S21: -- + j--")
-        self.labels_right_2.get("mag") and self.labels_right_2["mag"].setText("|S21|: --")
-        self.labels_right_2.get("phase") and self.labels_right_2["phase"].setText("Phase: --")
-        self.labels_right_2.get("z") and self.labels_right_2["z"].setText("Zin (Z0): -- + j--")
-        self.labels_right_2.get("il") and self.labels_right_2["il"].setText("IL: --")
-        self.labels_right_2.get("vswr") and self.labels_right_2["vswr"].setText("VSWR: --")
+        self.labels_right_2.get("val") and self.labels_right_2["val"].setText(f"{self.measurement_ui_s_parameter_s21_complex} -- + j--")
+        self.labels_right_2.get("mag") and self.labels_right_2["mag"].setText(f"{self.measurement_ui_s_parameter_magnitude_s21} --")
+        self.labels_right_2.get("phase") and self.labels_right_2["phase"].setText(f"{self.measurement_ui_s_parameter_phase} --")
+        self.labels_right_2.get("z") and self.labels_right_2["z"].setText(f"{self.measurement_ui_dut_zin} -- + j--")
+        self.labels_right_2.get("il") and self.labels_right_2["il"].setText(f"{self.measurement_ui_dut_insertion_loss} --")
+        self.labels_right_2.get("vswr") and self.labels_right_2["vswr"].setText(f"{self.measurement_ui_dut_vswr} --")
 
     # Do NOT clear the graphs - leave them with the actual data
     logging.info("[graphics_window._clear_marker_fields_only] Marker fields cleared, graphs preserved")

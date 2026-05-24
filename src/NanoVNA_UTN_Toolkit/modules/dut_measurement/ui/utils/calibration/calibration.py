@@ -35,10 +35,10 @@ def update_calibration_label_from_method(self, parent = None, method=None):
     settings_calibration.sync()
 
     if is_import_dut:
-        text = "DUT"
+        text = f"{self.measurement_ui_imported_dut}"
 
     elif no_calibration:
-        text = "No Calibration"
+        text = f"{self.measurement_ui_no_calibration}"
 
     elif kits_ok:
 
@@ -54,7 +54,7 @@ def update_calibration_label_from_method(self, parent = None, method=None):
             method_kit = settings_calibration.value(f"Kit_{i}/method", "---")
 
             if kit_name == selected_kit_name:
-                text = f"Calibration Kit | Name: {kit_name} and Method: {method_kit}"
+                text = self.measurement_ui_calibration_kit.format(kit_name=kit_name, method=method_kit)
                 kit_found = True
                 break
 
@@ -64,7 +64,7 @@ def update_calibration_label_from_method(self, parent = None, method=None):
             text = f"Calibration Kit: {selected_kit_name or 'Unknown'} (method not found)"
         
     elif calibration_wizard:
-        text = f"Calibration Wizard | Method: {calibration_method}"
+        text = self.measurement_ui_wizard_calibration.format(calibration_method=calibration_method)
 
     self.calibration_label.setText(text)
 

@@ -53,18 +53,16 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
     sweep_control_layout = QHBoxLayout()
 
     # Reconnect button
-    self.reconnect_button = QPushButton("Reconnect")
+    self.reconnect_button = QPushButton(f"{self.measurement_ui_button_reconnect}")
     self.reconnect_button.setMaximumWidth(100)
     self.reconnect_button.clicked.connect(lambda: reconnect_device(self))
 
     # Sweep button
-    self.sweep_button = QPushButton("Run Sweep")
+    self.sweep_button = QPushButton(f"{self.measurement_ui_button_run_sweep}")
     self.sweep_button.setMaximumWidth(120)
     self.sweep_button.clicked.connect(lambda: run_sweep(self))
 
-    self.sweep_info_label = QLabel(
-        "Sweep: 0.050 MHz - 1500.000 MHz, 101 points"
-    )
+    self.sweep_info_label = QLabel("Sweep: 0.050 MHz - 1500.000 MHz, 101 points")
     self.sweep_info_label.setStyleSheet("font-size: 12px;")
 
     # Initialize sweep configuration
@@ -120,8 +118,8 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
         "Initializing with empty plots - data will be loaded after first sweep"
     )
 
-    self.left_graph_type = left_graph_type
-    self.left_s_param = left_s_param
+    #self.left_graph_type = left_graph_type
+    #self.left_s_param = left_s_param
 
     # =================== LEFT PANEL ===================
 
@@ -232,7 +230,7 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
 
     # =================== MARKERS BUTTON ===================
 
-    self.markers_button = QPushButton("Markers Diff")
+    self.markers_button = QPushButton(f"{self.measurement_ui_marker_diff}")
 
     self.markers_button_layout = QHBoxLayout()
 

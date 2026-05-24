@@ -676,7 +676,7 @@ class GraphPreviewExportDialog(QDialog):
                     text = (
                         f"Marker {i+1}\n"
                         f"Freq: {nearest_val:.2f} {combo.currentText()}\n"
-                        f"Phase: {y:.3f}°"
+                        f"{self.measurement_ui_s_parameter_phase} {y:.3f}°"
                     )
 
                 ann_x, ann_y = self.marker_positions[graph_index][i] if self.marker_positions[graph_index][i] else (x, y)

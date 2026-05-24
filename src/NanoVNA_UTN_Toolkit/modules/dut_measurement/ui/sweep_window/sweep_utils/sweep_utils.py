@@ -49,7 +49,7 @@ def update_sweep_info_label(self, parent = None):
         else:
             freq_stop_str = f"{stop_val} Hz"
 
-        info_text = f"Sweep: {freq_start_str} - {freq_stop_str}, {self.segments} points"
+        info_text = self.measurement_ui_sweep_info.format(start_freq=freq_start_str, stop_freq=freq_stop_str, points=self.segments)
         if (parent != None):
             parent.sweep_info_label.setText(info_text)
         else:

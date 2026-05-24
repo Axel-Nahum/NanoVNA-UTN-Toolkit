@@ -84,7 +84,7 @@ def parse_frequency_input(text):
 # =================== LEFT PANEL ========================================================= #
 #############################################################################################
 
-def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram", s_param="S11",
+def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram", s_param="S11",
                       tracecolor="red", markercolor="red", marker2color="red", linewidth=2,
                       markersize=5, marker2size=5, marker_visible=True, marker_visible_2=False):
 
@@ -152,9 +152,9 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
 
         ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
 
-        ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=text_color)
+        ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$|%s|$" % s_param, color=text_color)
-        ax.set_title(r"$%s\ \mathrm{Magnitude}$" % s_param, color=text_color)
+        ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param)}$", color=f"{text_color}")
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
@@ -195,9 +195,9 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
 
         ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
-        ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=text_color)
+        ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
-        ax.set_title(r"$%s\ \mathrm{Phase}$" % s_param, color=text_color)
+        ax.set_title(rf"$\mathrm{{{self.measurement_ui_phase_title.format(parameter=s_param)}}}$", color=text_color)
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
@@ -234,7 +234,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     info_layout.setContentsMargins(0, 0, 0, 0)
 
     # --- Top QGroupBox with title ---
-    box_top = QGroupBox("S-Parameter Details")
+    box_top = QGroupBox(f"{self.measurement_ui_s_parameter_details_title}")
     box_top.setStyleSheet(groupbox_style)
     layout_top = QHBoxLayout(box_top)
     layout_top.setSpacing(20)
@@ -254,7 +254,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     hbox_freq.setAlignment(Qt.AlignLeft)
     hbox_freq.setContentsMargins(0, 0, 0, 0)
 
-    lbl_text = QLabel("Frequency:")
+    lbl_text = QLabel(f"{self.measurement_ui_s_parameter_frequency}")
     lbl_text.setStyleSheet("font-size:14px;")
     lbl_text.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     hbox_freq.addWidget(lbl_text)
@@ -324,7 +324,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     col_mag.addWidget(label_mag)
 
     # --- Column 4: Phase ---
-    label_phase = QLabel("Phase: --")
+    label_phase = QLabel(f"{self.measurement_ui_s_parameter_phase} --")
     label_phase.setStyleSheet("font-size:14px; padding:1px;")
     label_phase.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     col_phase = QVBoxLayout()
@@ -354,7 +354,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     layout_top.addLayout(center_layout)
 
     # --- Bottom QGroupBox ---
-    box_bottom = QGroupBox("DUT Parameters")
+    box_bottom = QGroupBox(f"{self.measurement_ui_dut_parameters_title}")
     box_bottom.setStyleSheet(groupbox_style)
     layout_bottom = QHBoxLayout(box_bottom)
     layout_bottom.setSpacing(40)  # increase spacing between labels
@@ -362,7 +362,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     layout_bottom.setAlignment(Qt.AlignCenter)  # center everything
 
     # --- Labels dentro del box_bottom ---
-    label_z = QLabel("Zin (Z0): -- + j--")
+    label_z = QLabel(f"{self.measurement_ui_dut_zin} -- + j--")
     label_z.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_z.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom.addWidget(label_z)
@@ -370,7 +370,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     label_sep = QLabel("-")
     layout_bottom.addWidget(label_sep)
 
-    label_il = QLabel("IL: -- dB")
+    label_il = QLabel(f"{self.measurement_ui_dut_insertion_loss} -- dB")
     label_il.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_il.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom.addWidget(label_il)
@@ -378,7 +378,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     label_sep = QLabel("-")
     layout_bottom.addWidget(label_sep)
 
-    label_vswr = QLabel("VSWR: --")
+    label_vswr = QLabel(f"{self.measurement_ui_dut_vswr} --")
     label_vswr.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_vswr.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom.addWidget(label_vswr)
@@ -409,7 +409,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     info_layout_2.setContentsMargins(0, 0, 0, 0)
 
     # --- Top QGroupBox with title ---
-    box_top_2 = QGroupBox("S-Parameter Details 2")
+    box_top_2 = QGroupBox(f"{self.measurement_ui_s_parameter_details_title} 2")
     box_top_2.setStyleSheet(groupbox_style)
     layout_top_2 = QHBoxLayout(box_top_2)
     layout_top_2.setSpacing(20)
@@ -428,7 +428,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     hbox_freq_2.setAlignment(Qt.AlignLeft)
     hbox_freq_2.setContentsMargins(0, 0, 0, 0)
 
-    lbl_text_2 = QLabel("Frequency:")
+    lbl_text_2 = QLabel(f"{self.measurement_ui_s_parameter_frequency}")
     lbl_text_2.setStyleSheet("font-size:14px;")
     lbl_text_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     hbox_freq_2.addWidget(lbl_text_2)
@@ -479,7 +479,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     col_mag_2.addWidget(label_mag_2)
 
     # --- Column 4: Phase ---
-    label_phase_2 = QLabel("Phase: --")
+    label_phase_2 = QLabel(f"{self.measurement_ui_s_parameter_phase} --")
     label_phase_2.setStyleSheet("font-size:14px; padding:1px;")
     label_phase_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     col_phase_2 = QVBoxLayout()
@@ -508,14 +508,14 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     layout_top_2.addLayout(center_layout_2)
 
     # --- Bottom QGroupBox ---
-    box_bottom_2 = QGroupBox("DUT Parameters 2")
+    box_bottom_2 = QGroupBox(f"{self.measurement_ui_dut_parameters_title} 2")
     box_bottom_2.setStyleSheet(groupbox_style)
     layout_bottom_2 = QHBoxLayout(box_bottom_2)
     layout_bottom_2.setSpacing(40)
     layout_bottom_2.setContentsMargins(10, 8, 10, 8)
     layout_bottom_2.setAlignment(Qt.AlignCenter)
 
-    label_z_2 = QLabel("Zin (Z0): -- + j--")
+    label_z_2 = QLabel(f"{self.measurement_ui_dut_zin} -- + j--")
     label_z_2.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_z_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom_2.addWidget(label_z_2)
@@ -523,7 +523,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     label_sep_2 = QLabel("-")
     layout_bottom_2.addWidget(label_sep_2)
 
-    label_il_2 = QLabel("IL: -- dB")
+    label_il_2 = QLabel(f"{self.measurement_ui_dut_insertion_loss} -- dB")
     label_il_2.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_il_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom_2.addWidget(label_il_2)
@@ -531,7 +531,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
     label_sep_2 = QLabel("-")
     layout_bottom_2.addWidget(label_sep_2)
 
-    label_vswr_2 = QLabel("VSWR: --")
+    label_vswr_2 = QLabel(f"{self.measurement_ui_dut_vswr} --")
     label_vswr_2.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_vswr_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom_2.addWidget(label_vswr_2)
@@ -617,16 +617,16 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
             f"{current_s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex) >= 0 else '-'} j{abs(np.imag(val_complex)):.3f}"
         )
         labels_dict["mag"].setText(f"|{current_s_param}|: {magnitude:.3f}")
-        labels_dict["phase"].setText(f"Phase: {phase_deg:.2f}°")
+        labels_dict["phase"].setText(f"{self.measurement_ui_s_parameter_phase} {phase_deg:.2f}°")
 
         z = (1 + val_complex) / (1 - val_complex)
         labels_dict["z"].setText(f"Z: {np.real(z):.2f} + j{np.imag(z):.2f}")
 
         il_db = -20 * np.log10(magnitude)
-        labels_dict["il"].setText(f"IL: {il_db:.2f} dB")
+        labels_dict["il"].setText(f"{self.measurement_ui_dut_insertion_loss} {il_db:.2f} dB")
 
         vswr_val = (1 + magnitude) / (1 - magnitude) if magnitude < 1 else np.inf
-        labels_dict["vswr"].setText(f"VSWR: {vswr_val:.2f}" if np.isfinite(vswr_val) else "VSWR: ∞")
+        labels_dict["vswr"].setText(f"{self.measurement_ui_dut_vswr} {vswr_val:.2f}" if np.isfinite(vswr_val) else f"{self.measurement_ui_dut_vswr} ∞")
 
         fig.canvas.draw_idle()
 
@@ -715,16 +715,16 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
             f"{current_s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex) >= 0 else '-'} j{abs(np.imag(val_complex)):.3f}"
         )
         labels_dict_2["mag"].setText(f"|{current_s_param}|: {magnitude:.3f}")
-        labels_dict_2["phase"].setText(f"Phase: {phase_deg:.2f}°")
+        labels_dict_2["phase"].setText(f"{self.measurement_ui_s_parameter_phase} {phase_deg:.2f}°")
 
         z = (1 + val_complex) / (1 - val_complex)
         labels_dict_2["z"].setText(f"Z: {np.real(z):.2f} + j{np.imag(z):.2f}")
 
         il_db = -20 * np.log10(magnitude)
-        labels_dict_2["il"].setText(f"IL: {il_db:.2f} dB")
+        labels_dict_2["il"].setText(f"{self.measurement_ui_dut_insertion_loss} {il_db:.2f} dB")
 
         vswr_val = (1 + magnitude) / (1 - magnitude) if magnitude < 1 else np.inf
-        labels_dict_2["vswr"].setText(f"VSWR: {vswr_val:.2f}" if np.isfinite(vswr_val) else "VSWR: ∞")
+        labels_dict_2["vswr"].setText(f"{self.measurement_ui_dut_vswr} {vswr_val:.2f}" if np.isfinite(vswr_val) else f"{self.measurement_ui_dut_vswr} ∞")
 
         fig.canvas.draw_idle()
 
@@ -1186,7 +1186,7 @@ def create_left_panel(window, S_data, freqs, settings, graph_type="Smith Diagram
 # =================== RIGHT PANEL ========================================================= #
 #############################################################################################
 
-def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Smith Diagram", s_param="S11",
+def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smith Diagram", s_param="S11",
                        tracecolor="red", markercolor="red", marker2color="red", linewidth=2, markersize=5, marker2size=5, marker_visible=True):
 
     background_color_graphics = settings.value("Graphic2/BackgroundColor", "red")
@@ -1250,9 +1250,9 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
 
         ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
-        ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=text_color)
+        ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$|%s|$" % s_param, color=text_color)
-        ax.set_title(r"$%s\ \mathrm{Magnitude}$" % s_param, color=text_color)
+        ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param)}$", color=text_color)
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
@@ -1292,9 +1292,9 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
 
         ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
-        ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=f"{text_color}")
+        ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=f"{text_color}")
         ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
-        ax.set_title(r"$\mathrm{%s\ Phase}$" % s_param, color=f"{text_color}")
+        ax.set_title(rf"$\mathrm{{{self.measurement_ui_phase_title.format(parameter=s_param)}}}$", color=f"{text_color}")
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
@@ -1328,7 +1328,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     info_layout.setContentsMargins(0, 0, 0, 0)
 
     # --- Top QGroupBox with title ---
-    box_top = QGroupBox("S-Parameter Details")
+    box_top = QGroupBox(f"{self.measurement_ui_s_parameter_details_title}")
     box_top.setStyleSheet(groupbox_style)
     layout_top = QHBoxLayout(box_top)
     layout_top.setSpacing(20)
@@ -1348,7 +1348,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     hbox_freq.setAlignment(Qt.AlignLeft)
     hbox_freq.setContentsMargins(0, 0, 0, 0)
 
-    lbl_text = QLabel("Frequency:")
+    lbl_text = QLabel(f"{self.measurement_ui_s_parameter_frequency}")
     lbl_text.setStyleSheet("font-size:14px;")
     lbl_text.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     hbox_freq.addWidget(lbl_text)
@@ -1417,7 +1417,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     col_mag.addWidget(label_mag)
 
     # --- Column 4: Phase ---
-    label_phase = QLabel("Phase: --")
+    label_phase = QLabel(f"{self.measurement_ui_s_parameter_phase} --")
     label_phase.setStyleSheet("font-size:14px; padding:1px;")
     label_phase.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     col_phase = QVBoxLayout()
@@ -1447,7 +1447,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     layout_top.addLayout(center_layout)
 
     # --- Bottom QGroupBox ---
-    box_bottom = QGroupBox("DUT Parameters")
+    box_bottom = QGroupBox(f"{self.measurement_ui_dut_parameters_title}")
     box_bottom.setStyleSheet(groupbox_style)
     layout_bottom = QHBoxLayout(box_bottom)
     layout_bottom.setSpacing(40) 
@@ -1455,7 +1455,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     layout_bottom.setAlignment(Qt.AlignCenter)  
 
     # --- Labels dentro del box_bottom ---
-    label_z = QLabel("Zin (Z0): -- + j--")
+    label_z = QLabel(f"{self.measurement_ui_dut_zin} -- + j--")
     label_z.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_z.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom.addWidget(label_z)
@@ -1463,7 +1463,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     label_sep = QLabel("-")
     layout_bottom.addWidget(label_sep)
 
-    label_il = QLabel("IL: -- dB")
+    label_il = QLabel(f"{self.measurement_ui_dut_insertion_loss} -- dB")
     label_il.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_il.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom.addWidget(label_il)
@@ -1471,7 +1471,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     label_sep = QLabel("-")
     layout_bottom.addWidget(label_sep)
 
-    label_vswr = QLabel("VSWR: --")
+    label_vswr = QLabel(f"{self.measurement_ui_dut_vswr} --")
     label_vswr.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_vswr.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom.addWidget(label_vswr)
@@ -1501,7 +1501,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     info_layout_2.setContentsMargins(0, 0, 0, 0)
 
     # --- Top QGroupBox with title ---
-    box_top_2 = QGroupBox("S-Parameter Details 2")
+    box_top_2 = QGroupBox(f"{self.measurement_ui_s_parameter_details_title} 2")
     box_top_2.setStyleSheet(groupbox_style)
     layout_top_2 = QHBoxLayout(box_top_2)
     layout_top_2.setSpacing(20)
@@ -1520,7 +1520,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     hbox_freq_2.setAlignment(Qt.AlignLeft)
     hbox_freq_2.setContentsMargins(0, 0, 0, 0)
 
-    lbl_text_2 = QLabel("Frequency:")
+    lbl_text_2 = QLabel(f"{self.measurement_ui_s_parameter_frequency}")
     lbl_text_2.setStyleSheet("font-size:14px;")
     lbl_text_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     hbox_freq_2.addWidget(lbl_text_2)
@@ -1571,7 +1571,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     col_mag_2.addWidget(label_mag_2)
 
     # --- Column 4: Phase ---
-    label_phase_2 = QLabel("Phase: --")
+    label_phase_2 = QLabel(f"{self.measurement_ui_s_parameter_phase} --")
     label_phase_2.setStyleSheet("font-size:14px; padding:1px;")
     label_phase_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     col_phase_2 = QVBoxLayout()
@@ -1600,14 +1600,14 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     layout_top_2.addLayout(center_layout_2)
 
     # --- Bottom QGroupBox ---
-    box_bottom_2 = QGroupBox("DUT Parameters 2")
+    box_bottom_2 = QGroupBox(f"{self.measurement_ui_dut_parameters_title} 2")
     box_bottom_2.setStyleSheet(groupbox_style)
     layout_bottom_2 = QHBoxLayout(box_bottom_2)
     layout_bottom_2.setSpacing(40)
     layout_bottom_2.setContentsMargins(10, 8, 10, 8)
     layout_bottom_2.setAlignment(Qt.AlignCenter)
 
-    label_z_2 = QLabel("Zin (Z0): -- + j--")
+    label_z_2 = QLabel(f"{self.measurement_ui_dut_zin} -- + j--")
     label_z_2.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_z_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom_2.addWidget(label_z_2)
@@ -1615,7 +1615,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     label_sep_2 = QLabel("-")
     layout_bottom_2.addWidget(label_sep_2)
 
-    label_il_2 = QLabel("IL: -- dB")
+    label_il_2 = QLabel(f"{self.measurement_ui_dut_insertion_loss} -- dB")
     label_il_2.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_il_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom_2.addWidget(label_il_2)
@@ -1623,7 +1623,7 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
     label_sep_2 = QLabel("-")
     layout_bottom_2.addWidget(label_sep_2)
 
-    label_vswr_2 = QLabel("VSWR: --")
+    label_vswr_2 = QLabel(f"{self.measurement_ui_dut_vswr} --")
     label_vswr_2.setStyleSheet("font-size:14px; padding:1px; border:none; background:transparent;")
     label_vswr_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     layout_bottom_2.addWidget(label_vswr_2)
@@ -1702,13 +1702,13 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
 
         labels_dict["val"].setText(f"{current_s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex)>=0 else '-'} j{abs(np.imag(val_complex)):.3f}")
         labels_dict["mag"].setText(f"|{current_s_param}|: {magnitude:.3f}")
-        labels_dict["phase"].setText(f"Phase: {phase_deg:.2f}°")
+        labels_dict["phase"].setText(f"{self.measurement_ui_s_parameter_phase} {phase_deg:.2f}°")
         z = (1 + val_complex)/(1 - val_complex)
         labels_dict["z"].setText(f"Z: {np.real(z):.2f} + j{np.imag(z):.2f}")
         il_db = -20*np.log10(magnitude)
-        labels_dict["il"].setText(f"IL: {il_db:.2f} dB")
+        labels_dict["il"].setText(f"{self.measurement_ui_dut_insertion_loss} {il_db:.2f} dB")
         vswr_val = (1 + magnitude)/(1 - magnitude) if magnitude < 1 else np.inf
-        labels_dict["vswr"].setText(f"VSWR: {vswr_val:.2f}" if np.isfinite(vswr_val) else "VSWR: ∞")
+        labels_dict["vswr"].setText(f"{self.measurement_ui_dut_vswr} {vswr_val:.2f}" if np.isfinite(vswr_val) else f"{self.measurement_ui_dut_vswr} ∞")
         fig.canvas.draw_idle()
 
         if not from_slider:
@@ -1800,16 +1800,16 @@ def create_right_panel(window, settings, S_data=None, freqs=None, graph_type="Sm
             f"{current_s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex) >= 0 else '-'} j{abs(np.imag(val_complex)):.3f}"
         )
         labels_dict_2["mag"].setText(f"|{current_s_param}|: {magnitude:.3f}")
-        labels_dict_2["phase"].setText(f"Phase: {phase_deg:.2f}°")
+        labels_dict_2["phase"].setText(f"{self.measurement_ui_s_parameter_phase} {phase_deg:.2f}°")
 
         z = (1 + val_complex) / (1 - val_complex)
         labels_dict_2["z"].setText(f"Z: {np.real(z):.2f} + j{np.imag(z):.2f}")
 
         il_db = -20 * np.log10(magnitude)
-        labels_dict_2["il"].setText(f"IL: {il_db:.2f} dB")
+        labels_dict_2["il"].setText(f"{self.measurement_ui_dut_insertion_loss} {il_db:.2f} dB")
 
         vswr_val = (1 + magnitude) / (1 - magnitude) if magnitude < 1 else np.inf
-        labels_dict_2["vswr"].setText(f"VSWR: {vswr_val:.2f}" if np.isfinite(vswr_val) else "VSWR: ∞")
+        labels_dict_2["vswr"].setText(f"{self.measurement_ui_dut_vswr} {vswr_val:.2f}" if np.isfinite(vswr_val) else f"{self.measurement_ui_dut_vswr} ∞")
 
         fig.canvas.draw_idle()
 

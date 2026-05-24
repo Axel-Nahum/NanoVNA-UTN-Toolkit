@@ -20,8 +20,14 @@
       }
     },
     "steps" :{
-      "steps_title": "Method:"
-
+      "steps_title": "Method:",
+      "instruction_text": "Connect {step_name} standard and press Measure",
+      "measure_label_button": "Measure",
+      "re-measure_label_button": "Re-measure",
+      "label_measure": "Ready to measure",
+      "calibration_status": "Calibration Status:",
+      "label_save_cal": "Save Calibration",
+      "label_finish_button": "Finish"
     }
   }
 }

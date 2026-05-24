@@ -48,7 +48,6 @@ from ...exporters.export import ExportDialog
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.dark_light_mode.light_dark_mode import toggle_menu_dark_mode, dark_light_config
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -58,7 +57,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -98,7 +96,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.file_menu.file_menu import export_errors, export_latex_pdf, export_touchstone_data
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -106,7 +103,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.file_menu.file_menu import import_touchstone_data_dut, import_touchstone_data_calibration
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -114,7 +110,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.calibration_menu import open_calibration_wizard, open_no_calibration, select_kit_dialog, handle_save_calibration, delete_kit_dialog
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -136,7 +131,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu import show_about_dialog
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -144,7 +138,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.context_menu import handle_contextMenuEvent
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -152,7 +145,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.frequency_difference.frequency_difference import show_frequency_difference_dialog
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -160,7 +152,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -168,7 +159,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu import open_report_url
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -176,7 +166,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.shared.utils.app_icon import apply_window_icon
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -184,7 +173,13 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale import read_auto_scale_data
 except ImportError as e:
-    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
+except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -218,7 +213,24 @@ class NanoVNAGraphics(QMainWindow):
         else:
             logging.warning("[graphics_window.__init__] No VNA device provided")
 
-#------------------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------- #
+# Load JSON 
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        current_lang = "en"
+
+        resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_graphics.json"
+        )
+
+        resourceLoader.load_measurement_graphics_resources()
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Dark light Mode
+# ------------------------------------------------------------------------------------------------------------------- #
 
         # Dark-Light mode settings
 
@@ -248,12 +260,12 @@ class NanoVNAGraphics(QMainWindow):
         # --- Menu ---
 
         menu_bar = self.menuBar()
-        file_menu = menu_bar.addMenu("File")
-        edit_menu = menu_bar.addMenu("Edit")
-        view_menu = menu_bar.addMenu("View")
-        sweep_menu = menu_bar.addMenu("Sweep")
-        calibration_menu = menu_bar.addMenu("Calibration")
-        help_menu = menu_bar.addMenu("Help")
+        file_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_file}")
+        edit_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_edit}")
+        view_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_view}")
+        sweep_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_sweep}")
+        calibration_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_calibration}")
+        help_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_help}")
 
         # --- File menu actions ---
 

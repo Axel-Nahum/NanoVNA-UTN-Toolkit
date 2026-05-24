@@ -441,12 +441,11 @@ def show_step_screen(self, step, parent = None):
     if self.thru_calibration:
         is_measured = self.thru_calibration.is_standard_measured(step_name.lower())
 
-    # Instrucciones del paso actual
     if is_measured:
         instruction_text = f"{step_name} standard already measured ✓"
         instruction_style = "font-size: 14px; padding: 8px; color: lightgreen;"
     else:
-        instruction_text = f"Connect {step_name} standard and press Measure"
+        instruction_text = f"{self.dut_wizard_ui_instruction_text.format(step_name=step_name)}"
         instruction_style = "font-size: 14px; padding: 8px; color: yellow;"
         
     instruction_label = QLabel(instruction_text)
@@ -456,7 +455,7 @@ def show_step_screen(self, step, parent = None):
     left_layout.addWidget(instruction_label)
     
     # Button to perform measurement
-    measure_button = QPushButton("Re-measure" if is_measured else "Measure")
+    measure_button = QPushButton(f"{self.dut_wizard_ui_re_measure_label_button}" if is_measured else f"{self.dut_wizard_ui_measure_label_button}")
     measure_button.setStyleSheet("font-size: 16px; padding: 10px; font-weight: bold;")
     measure_button.clicked.connect(lambda: perform_calibration_measurement(self, step, step_name))
     left_layout.addWidget(measure_button)
@@ -466,7 +465,7 @@ def show_step_screen(self, step, parent = None):
         status_text = f"{step_name} measurement complete"
         status_style = "font-size: 12px; padding: 4px; color: lightgreen;"
     else:
-        status_text = "Ready to measure"
+        status_text = f"{self.dut_wizard_ui_label_measure}"
         status_style = "font-size: 12px; padding: 4px;"
         
     self.status_label = QLabel(status_text)
@@ -475,10 +474,10 @@ def show_step_screen(self, step, parent = None):
     left_layout.addWidget(self.status_label)
     
     # Measurement completion status
-    if self.osm_calibration and self.selected_method == "OSM (Open - Short - Match)":
+    if self.osm_calibration and self.selected_method == "OSM (Open - Short - Match)" or self.selected_method == "1-Port+N" or self.selected_method == "Enhanced-Response":
         status = self.osm_calibration.get_completion_status()
         
-        status_label = QLabel("Calibration Status:")
+        status_label = QLabel(f"{self.dut_wizard_ui_calibration_status}")
         status_label.setStyleSheet("font-size: 16px; font-weight: bold; margin-top: 10px;")
         left_layout.addWidget(status_label)
         
@@ -499,12 +498,13 @@ def show_step_screen(self, step, parent = None):
             self.calibration_status_widgets[standard] = label
 
     # Measurement completion status
-    if self.thru_calibration and self.selected_method == "Normalization":
+    if self.thru_calibration and self.selected_method == "Normalization" or self.selected_method == "1-Port+N" or self.selected_method == "Enhanced-Response":
         status = self.thru_calibration.get_completion_status()
 
-        status_label = QLabel("Calibration Status:")
-        status_label.setStyleSheet("font-size: 16px; font-weight: bold; margin-top: 10px;")
-        left_layout.addWidget(status_label)
+        if self.selected_method == "Normalization":
+            status_label = QLabel(f"{self.dut_wizard_ui_calibration_status}")
+            status_label.setStyleSheet("font-size: 16px; font-weight: bold; margin-top: 10px;")
+            left_layout.addWidget(status_label)
         
         # Store references to status widgets for later updates
         self.calibration_status_widgets = {}
@@ -627,7 +627,7 @@ def show_step_screen(self, step, parent = None):
         else:
             self.save_button.setVisible(False)
             
-        self.next_button.setText("Finish")
+        self.next_button.setText(f"{self.dut_wizard_ui_label_finish_button}")
         try:
             self.next_button.clicked.disconnect()
         except Exception:
@@ -649,7 +649,7 @@ def show_step_screen(self, step, parent = None):
         else:
             self.save_button.setVisible(False)
             
-        self.next_button.setText("Finish")
+        self.next_button.setText(f"{self.dut_wizard_ui_label_finish_button}")
         try:
             self.next_button.clicked.disconnect()
         except Exception:
@@ -671,7 +671,7 @@ def show_step_screen(self, step, parent = None):
         else:
             self.save_button.setVisible(False)
             
-        self.next_button.setText("Finish")
+        self.next_button.setText(f"{self.dut_wizard_ui_label_finish_button}")
         try:
             self.next_button.clicked.disconnect()
         except Exception:

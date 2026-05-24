@@ -81,7 +81,6 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
-
 # ------------------------------------------------------------------------------------------------------------------- #
 
 class CalibrationWizard(QMainWindow):
@@ -195,7 +194,7 @@ class CalibrationWizard(QMainWindow):
         self.button_layout.addStretch()
 
         # Save Calibration button (will be shown only in final step)
-        self.save_button = QPushButton("Save Calibration")
+        self.save_button = QPushButton(f"{self.dut_wizard_ui_label_save_cal}")
         self.save_button.setFixedSize(130, 30)
         self.save_button.setStyleSheet("font-size: 12px; background-color: #4CAF50; color: white; font-weight: bold;")
         self.save_button.clicked.connect(lambda: save_calibration_dialog(self))

@@ -135,13 +135,13 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
 
             ax.plot(freqs / 1e6, magnitude_db, color=tracecolor, linewidth=linewidth)
 
-            ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=f"{text_color}")
+            ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=f"{text_color}")
             if unit == "dB":
                 ax.set_ylabel(r"$%s\ \mathrm{[dB]}$" % s_param, color=text_color)
-                ax.set_title(r"$%s\ \mathrm{Magnitude\ [dB]}$" % s_param, color=text_color)
+                ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param)}$", color=text_color)
             else:
                 ax.set_ylabel(r"$|%s|$" % s_param, color=f"{text_color}")
-                ax.set_title(r"$%s\ \mathrm{Magnitude}$" % s_param, color=text_color)
+                ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param)}$", color=text_color)
 
             # Set X-axis limits with margins to match actual frequency range of the sweep
             freq_start = freqs[0] / 1e6
@@ -203,9 +203,9 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
 
             ax.plot(freqs / 1e6, phase_deg, color=tracecolor, linewidth=linewidth)
 
-            ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$", color=f"{text_color}")
+            ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=f"{text_color}")
             ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
-            ax.set_title(r"$%s\ \mathrm{Phase}$" % s_param, color=f"{text_color}")
+            ax.set_title(rf"$\mathrm{{{self.measurement_ui_phase_title.format(parameter=s_param)}}}$", color=f"{text_color}")
             
             # Set X-axis limits with margins to match actual frequency range of the sweep
             freq_start = freqs[0] / 1e6
