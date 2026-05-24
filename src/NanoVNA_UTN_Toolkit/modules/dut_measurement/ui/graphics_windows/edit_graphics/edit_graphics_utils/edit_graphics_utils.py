@@ -367,7 +367,7 @@ def create_edit_tab1(self, tabs, nano_window):
             # Magnitude
             ax.set_xlabel(r"$\mathrm{Frequency\ [GHz]}$", color=f"{get_text_color()}")
             ax.set_ylabel(r"$|%s|$" % s_param1, color=f"{get_text_color()}")
-            ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param1)}$", color=f"{get_text_color()}")
+            ax.set_title("hola", color=f"{get_text_color()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color()}")
@@ -867,7 +867,7 @@ def create_edit_tab2(self, tabs, nano_window):
             # Magnitude
             ax.set_xlabel(r"$\mathrm{Frequency\ [GHz]}$", color=f"{get_text_color2()}")
             ax.set_ylabel(r"$|%s|$" % s_param2, color=f"{get_text_color2()}")
-            ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param2)}$", color=f"{get_text_color2()}")
+            ax.set_title("hola", color=f"{get_text_color2()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color2()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color2()}")
@@ -899,7 +899,7 @@ def create_edit_tab2(self, tabs, nano_window):
             # Phase
             ax.set_xlabel(r"$\mathrm{Frequency\ [GHz]}$", color=f"{get_text_color2()}")
             ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param2, color=f"{get_text_color2()}")
-            ax.set_title(rf"$\mathrm{{{self.measurement_ui_phase_title.format(parameter=s_param2)}}}$", color=f"{get_text_color2()}")
+            ax.set_title(rf"$\mathrm{{{self.nano_window.measurement_ui_phase_title.format(parameter=s_param2)}}}$", color=f"{get_text_color2()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color2()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color2()}")

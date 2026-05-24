@@ -67,6 +67,7 @@ class JsonResourceLoader:
 
         self.window.dut_welcome_ui_kit_title = kit_section.get("title", "")
         self.window.dut_welcome_ui_kit_selection_title = kit_section.get("kit_selection_title", "")
+        self.window.dut_welcome_ui_description_kit = kit_section.get("description_kit", "")
         self.window.dut_welcome_ui_no_kit_selected = kit_section.get("no_kit_selected", "")
         self.window.dut_welcome_ui_label_kit_button = kit_section.get("label_kit_button", "")
         self.window.dut_welcome_ui_import_section_title = kit_section.get("import_section_title", "")
@@ -133,11 +134,6 @@ class JsonResourceLoader:
         status_messages = ui_data.get("status_messages", {})
         marker_diff = ui_data.get("marker_diff", {})
 
-        s11_magnitude = plots.get("s11_magnitude", {})
-        s11_phase = plots.get("s11_phase", {})
-        s21_magnitude = plots.get("s21_magnitude", {})
-        s21_phase = plots.get("s21_phase", {})
-
         calibration_status = top_bar.get("calibration_status", {})
 
         # ---------------------------------------------------------------- #
@@ -172,11 +168,11 @@ class JsonResourceLoader:
         # Magnitude and Phase Plot
         # ---------------------------------------------------------------- #
 
-        self.window.measurement_ui_magnitude_title = s11_magnitude.get("title_mag", "")
-        self.window.measurement_ui_phase_title = s11_phase.get("title_phase", "")
-        self.window.measurement_ui_magnitude_waiting_text = s11_magnitude.get("waiting_text", "")
-        self.window.measurement_ui_magnitude_x_axis = s11_magnitude.get("x_axis", "")
-        self.window.measurement_ui_magnitude_y_axis = s11_magnitude.get("y_axis", "")
+        self.window.measurement_ui_magnitude_title = plots.get("title_mag", "")
+        self.window.measurement_ui_phase_title = plots.get("title_phase", "")
+        self.window.measurement_ui_magnitude_waiting_text = plots.get("waiting_text", "")
+        self.window.measurement_ui_magnitude_x_axis = plots.get("x_axis", "")
+        self.window.measurement_ui_magnitude_y_axis = plots.get("y_axis", "")
 
         # ---------------------------------------------------------------- #
         # S-Parameter Details

@@ -66,7 +66,7 @@ except ImportError as e:
 
 def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param, 
                             tracecolor, markercolor, background_color_graphics, text_color, axis_color, linewidth, markersize,
-                            unit="dB", cursor_graph=None, cursor_graph_2 = None, ax_type="left"):
+                            unit="dB", cursor_graph=None, cursor_graph_2 = None, ax_type="left", unit_mode="dB"):
     """Recreate a single plot with new data."""
     try:
         from matplotlib.lines import Line2D
@@ -120,7 +120,7 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
                 magnitude_db = 20 * np.log10(np.abs(s_data))
             elif unit == "Power ratio":
                 magnitude_db = np.abs(s_data)**2
-            elif unit == "Voltage ratio":
+            elif unit == "times":
                 magnitude_db = np.abs(s_data)
 
             cursor_graph.set_xdata([freqs[0] * 1e-6])
@@ -136,12 +136,13 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             ax.plot(freqs / 1e6, magnitude_db, color=tracecolor, linewidth=linewidth)
 
             ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=f"{text_color}")
+            
             if unit == "dB":
                 ax.set_ylabel(r"$%s\ \mathrm{[dB]}$" % s_param, color=text_color)
-                ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param)}$", color=text_color)
+                ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param, db_times=unit_mode)}$", color=text_color)
             else:
                 ax.set_ylabel(r"$|%s|$" % s_param, color=f"{text_color}")
-                ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param)}$", color=text_color)
+                ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param, db_times=unit_mode)}$", color=text_color)
 
             # Set X-axis limits with margins to match actual frequency range of the sweep
             freq_start = freqs[0] / 1e6
@@ -317,6 +318,16 @@ def update_plots_with_new_data(self, skip_reset=False):
         marker_size2 = config['marker_size2']
         marker2_size2 = config['marker2_size2']
 
+        # Load configuration for graphics settings and visualization parameters
+        settings = get_settings(
+            "INI/dut_measurement/graphics_config/graphics_config.ini",
+            "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
+            Path(__file__).resolve()
+        )
+
+        unit_left = settings.value("Graphic1/db_times", "dB")
+        unit_right = settings.value("Graphic2/db_times", "dB")
+
         # --- Determine which data to plot ---
         s_data_left = self.s11 if s_param_tab1 == "S11" else self.s21
         s_data_right = self.s11 if s_param_tab2 == "S11" else self.s21
@@ -369,12 +380,13 @@ def update_plots_with_new_data(self, skip_reset=False):
             unit=unit_left,
             cursor_graph=self.cursor_left,
             cursor_graph_2=self.cursor_left_2,
-            ax_type="left"
+            ax_type="left",
+            unit_mode=unit_left
         )
 
         # --- Recreate right panel plot ---
         logging.info(f"[graphics_window.update_plots_with_new_data] Recreating right plot: {graph_type_tab2} - {s_param_tab2} - {marker_color2}")
-        unit_right = get_graph_unit(self, 2)
+        #unit_right = get_graph_unit(self, 2)
 
         recreate_single_plot(
             self,
@@ -394,7 +406,8 @@ def update_plots_with_new_data(self, skip_reset=False):
             unit=unit_right,
             cursor_graph=self.cursor_right,
             cursor_graph_2=self.cursor_right_2,
-            ax_type="right"
+            ax_type="right",
+            unit_mode=unit_right
         )
 
         # --- Update slider data references ---

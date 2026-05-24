@@ -98,6 +98,8 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
                       
     freqs = freqs if freqs is not None else np.linspace(1e6, 100e6, 101)
 
+    unit_mode = settings.value("Graphic1/db_times", "dB")
+
     if S_data is None:
         phase = -2*np.pi*freqs/1e8
         S_data = 0.5 * np.exp(1j*phase)
@@ -154,7 +156,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$|%s|$" % s_param, color=text_color)
-        ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param)}$", color=f"{text_color}")
+        ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param, db_times=unit_mode)}$", color=f"{text_color}")
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
@@ -586,7 +588,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
                     mag_value = 20 * np.log10(magnitude)
                 elif unit_mode == "Power ratio":
                     mag_value = magnitude ** 2
-                elif unit_mode == "Voltage ratio":
+                elif unit_mode == "times":
                     mag_value = magnitude
                 else:
                     mag_value = magnitude
@@ -685,7 +687,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
                     mag_value = 20 * np.log10(magnitude)
                 elif unit_mode == "Power ratio":
                     mag_value = magnitude ** 2
-                elif unit_mode == "Voltage ratio":
+                elif unit_mode == "times":
                     mag_value = magnitude
                 else:
                     mag_value = magnitude
@@ -1192,7 +1194,8 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
     background_color_graphics = settings.value("Graphic2/BackgroundColor", "red")
     text_color = settings.value("Graphic2/TextColor", "red")
     axis_color = settings.value("Graphic2/AxisColor", "red")
-    
+    unit_mode = settings.value("Graphic2/db_times", "dB")
+
     # QGroupBox border styling based on dark/light mode
     groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
     groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1ex; padding-top: 10px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 5px 0 5px; }}"
@@ -1252,7 +1255,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$|%s|$" % s_param, color=text_color)
-        ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param)}$", color=text_color)
+        ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param, db_times=unit_mode)}$", color=f"{text_color}")
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
@@ -1673,7 +1676,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
                     mag_value = 20 * np.log10(magnitude)
                 elif unit_mode == "Power ratio":
                     mag_value = magnitude ** 2
-                elif unit_mode == "Voltage ratio":
+                elif unit_mode == "times":
                     mag_value = magnitude
                 else:
                     mag_value = magnitude
@@ -1766,7 +1769,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
                     mag_value = 20 * np.log10(magnitude)
                 elif unit_mode == "Power ratio":
                     mag_value = magnitude ** 2
-                elif unit_mode == "Voltage ratio":
+                elif unit_mode == "times":
                     mag_value = magnitude
                 else:
                     mag_value = magnitude

@@ -339,7 +339,7 @@ class ExportDialog(QDialog):
                 if graph == "Magnitude":
                     if unit == "dB":
                         text = f"Marker {marker_id}\nFreq: {freq_val:.2f} {freq_unit}\n|S|: {y_data[0]:.3f} {unit}"
-                    elif unit == "Voltage ratio":
+                    elif unit == "times":
                         text = f"Marker {marker_id}\nFreq: {freq_val:.2f} {freq_unit}\n|S|: {y_data[0]:.3f}"
                 else:
                     text = f"Marker {marker_id}\nFreq: {freq_val:.2f} {freq_unit}\n\u03C6: {y_data[0]:.3f}°"

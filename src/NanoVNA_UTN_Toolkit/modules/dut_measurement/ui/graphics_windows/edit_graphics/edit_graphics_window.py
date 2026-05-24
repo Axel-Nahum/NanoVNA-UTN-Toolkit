@@ -280,8 +280,25 @@ class EditGraphics(QMainWindow):
         # --- Tabs setup ---
         tabs = QTabWidget()
 
-        tab1_widget, trace_color, marker_color, marker2_color, background_color_graphics, text_color, axis_color, line_width, marker_size, marker2_size = create_edit_tab1(self, tabs=tabs, nano_window=nano_window)
-        tab2_widget, trace_color2, marker_color2, marker2_color2, background_color_graphics2, text_color2, axis_color2, line_width2, marker_size2, marker2_size2 = create_edit_tab2(self, tabs=tabs, nano_window=nano_window)
+        (
+            tab1_widget, trace_color, marker_color, marker2_color,
+            background_color_graphics, text_color, axis_color,
+            line_width, marker_size, marker2_size
+        ) = create_edit_tab1(
+            self,
+            tabs=tabs,
+            nano_window=nano_window
+        )
+
+        (
+            tab2_widget, trace_color2, marker_color2, marker2_color2,
+            background_color_graphics2, text_color2, axis_color2,
+            line_width2, marker_size2, marker2_size2
+        ) = create_edit_tab2(
+            self,
+            tabs=tabs,
+            nano_window=nano_window
+        )
 
         tabs.addTab(tab1_widget, "Graphic 1")
         tabs.addTab(tab2_widget, "Graphic 2")
@@ -379,6 +396,16 @@ class EditGraphics(QMainWindow):
         self.nano_window.ax_left.clear()
         self.nano_window.ax_right.clear()
 
+        # Load configuration for graphics settings and visualization parameters
+        settings = get_settings(
+            "INI/dut_measurement/graphics_config/graphics_config.ini",
+            "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
+            Path(__file__).resolve()
+        )
+
+        unit_left = settings.value("Graphic1/db_times", "dB")
+        unit_right = settings.value("Graphic2/db_times", "dB")
+
         recreate_single_plot(
             self,
             ax=self.nano_window.ax_left,
@@ -396,7 +423,8 @@ class EditGraphics(QMainWindow):
             markersize=marker_size,
             unit=unit_left,
             cursor_graph=self.nano_window.cursor_left,
-            cursor_graph_2=self.nano_window.cursor_left_2
+            cursor_graph_2=self.nano_window.cursor_left_2,
+            unit_mode=unit_left
         )
 
         recreate_single_plot(
@@ -416,7 +444,8 @@ class EditGraphics(QMainWindow):
             markersize=marker_size2,
             unit=unit_right,
             cursor_graph=self.nano_window.cursor_right,
-            cursor_graph_2=self.nano_window.cursor_right_2
+            cursor_graph_2=self.nano_window.cursor_right_2,
+            unit_mode=unit_right
         )
 
         force_marker_visibility(self.nano_window, marker_color_left=marker_color, marker_color_right=marker_color2, 
@@ -434,6 +463,8 @@ class EditGraphics(QMainWindow):
 
         self.nano_window.canvas_left.draw_idle()
         self.nano_window.canvas_right.draw_idle()
+
+        self.nano_window.resourceLoader.load_measurement_graphics_resources()
 
         self.nano_window.show()
         self.close()

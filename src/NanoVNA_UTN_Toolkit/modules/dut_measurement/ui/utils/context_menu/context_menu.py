@@ -361,8 +361,8 @@ def handle_contextMenuEvent(self, event):
     # --- Handle unit change (disabled for Smith Diagram) ---
     elif current_unit == "dB" and not is_smith_diagram:
         if selected_action == voltage_action:
-            toggle_db_times(self, event, "Voltage ratio")
-    elif current_unit in ("Power ratio", "Voltage ratio") and not is_smith_diagram:
+            toggle_db_times(self, event, "times")
+    elif current_unit == "times" and not is_smith_diagram:
         if selected_action == db_action:
             toggle_db_times(self, event, "dB")
 

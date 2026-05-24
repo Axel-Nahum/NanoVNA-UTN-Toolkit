@@ -219,14 +219,14 @@ class NanoVNAGraphics(QMainWindow):
 
         current_lang = "en"
 
-        resourceLoader = JsonResourceLoader(
+        self.resourceLoader = JsonResourceLoader(
             self_window = self, 
             module = "dut_measurement", 
             lang = current_lang, 
             json_resource = "dut_measurement_graphics.json"
         )
 
-        resourceLoader.load_measurement_graphics_resources()
+        self.resourceLoader.load_measurement_graphics_resources()
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Dark light Mode

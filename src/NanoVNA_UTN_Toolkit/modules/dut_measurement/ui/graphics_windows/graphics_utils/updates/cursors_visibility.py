@@ -122,7 +122,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                             mag_val = float(20 * np.log10(np.abs(val_complex)))
                                         elif unit_mode_left == "Power ratio":
                                             mag_val = float(np.abs(val_complex)**2)
-                                        elif unit_mode_left == "Voltage ratio":
+                                        elif unit_mode_left == "times":
                                             mag_val = float(np.abs(val_complex))
                                         else:
                                             mag_val = float(np.abs(val_complex))
@@ -258,7 +258,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                             mag_val = float(20 * np.log10(np.abs(val_complex)))
                                         elif unit_mode_right == "Power ratio":
                                             mag_val = float(np.abs(val_complex)**2)
-                                        elif unit_mode_right == "Voltage ratio":
+                                        elif unit_mode_right == "times":
                                             mag_val = float(np.abs(val_complex))
                                         else:
                                             mag_val = float(np.abs(val_complex))
@@ -407,7 +407,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                                 mag_val = float(20 * np.log10(np.abs(val_complex)))
                                             elif unit_mode_left == "Power ratio":
                                                 mag_val = float(np.abs(val_complex)**2)
-                                            elif unit_mode_left == "Voltage ratio":
+                                            elif unit_mode_left == "times":
                                                 mag_val = float(np.abs(val_complex))
                                             else:
                                                 mag_val = float(np.abs(val_complex))
@@ -539,7 +539,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                                 mag_val = float(20 * np.log10(np.abs(val_complex)))
                                             elif unit_mode_right == "Power ratio":
                                                 mag_val = float(np.abs(val_complex)**2)
-                                            elif unit_mode_right == "Voltage ratio":
+                                            elif unit_mode_right == "times":
                                                 mag_val = float(np.abs(val_complex))
                                             else:
                                                 mag_val = float(np.abs(val_complex))

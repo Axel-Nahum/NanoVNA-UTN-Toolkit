@@ -256,6 +256,16 @@ class View(QMainWindow):
             self.nano_window.ax_left.clear()
             self.nano_window.ax_right.clear()
 
+            # Load configuration for graphics settings and visualization parameters
+            settings = get_settings(
+                "INI/dut_measurement/graphics_config/graphics_config.ini",
+                "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
+                Path(__file__).resolve()
+            )
+
+            unit_left = settings.value("Graphic1/db_times", "dB")
+            unit_right = settings.value("Graphic2/db_times", "dB")
+
             recreate_single_plot(
                 self,
                 ax=self.nano_window.ax_left,
@@ -273,7 +283,8 @@ class View(QMainWindow):
                 markersize=marker_size1,
                 unit=unit_left,
                 cursor_graph=self.nano_window.cursor_left,
-                cursor_graph_2=self.nano_window.cursor_left_2
+                cursor_graph_2=self.nano_window.cursor_left_2,
+                unit_mode=unit_left
             )
 
             recreate_single_plot(
@@ -293,7 +304,8 @@ class View(QMainWindow):
                 markersize=marker_size2,
                 unit=unit_right,
                 cursor_graph=self.nano_window.cursor_right,
-                cursor_graph_2=self.nano_window.cursor_right_2
+                cursor_graph_2=self.nano_window.cursor_right_2,
+                unit_mode=unit_right
             )
 
             force_marker_visibility(self.nano_window, marker_color_left=marker_color1, marker_color_right=marker_color2, 

@@ -27,33 +27,11 @@
     },
 
     "plots": {
-      "s11_magnitude": {
-        "title_mag": "{parameter}\\ \\mathrm{{Magnitude\\ [dB]}}",
-        "title_phase": "{parameter}\\ Phase",
-        "waiting_text": "Waiting\\ for\\ sweep\\ data\\ ...",
-        "x_axis": "Frequency \\ [MHz]",
-        "y_axis": "|S11|"
-      },
-
-      "s11_phase": {
-        "waiting_text": "Waiting for sweep data . . .",
-        "x_axis": "Frequency [MHz]",
-        "y_axis": "Phase [°]"
-      },
-
-      "s21_magnitude": {
-        "title": "S21 Magnitude",
-        "waiting_text": "Waiting for sweep data . . .",
-        "x_axis": "Frequency [MHz]",
-        "y_axis": "|S21|"
-      },
-
-      "s21_phase": {
-        "title": "S21 Phase",
-        "waiting_text": "Waiting for sweep data . . .",
-        "x_axis": "Frequency [MHz]",
-        "y_axis": "Phase [°]"
-      }
+      "title_mag": "{parameter}\\ \\mathrm{{Magnitude\\ [{db_times}]}}",
+      "title_phase": "{parameter}\\ Phase",
+      "waiting_text": "Waiting\\ for\\ sweep\\ data\\ ...",
+      "x_axis": "Frequency \\ [MHz]",
+      "y_axis": "|S11|"
     },
 
     "s_parameter_details": {

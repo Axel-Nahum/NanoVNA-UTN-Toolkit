@@ -13,6 +13,7 @@
     "kit_section": {
       "title": "Calibration Kits",
       "kit_selection_title": "Calibration Kit Selection",
+      "description_kit": "Select a saved calibration kit from the dropdown menu and press Open.",
       "default_method": "None",
       "no_kit_selected": "No calibration kit selected",
       "label_kit_button": "Open Graphics Window",
