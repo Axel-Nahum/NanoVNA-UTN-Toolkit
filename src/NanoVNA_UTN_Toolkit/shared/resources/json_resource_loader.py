@@ -226,6 +226,67 @@ class JsonResourceLoader:
 
         self.window.measurement_ui_marker_diff = marker_diff.get("label_diff", "")
 
+    def load_measurement_menu_resources(self):
+
+        raw_data = self._load_json()
+
+        menu_data = raw_data.get("menu", {})
+
+        file_menu = menu_data.get("file_menu", {})
+        edit_menu = menu_data.get("edit_menu", {})
+        view_menu = menu_data.get("view_menu", {})
+        sweep_menu = menu_data.get("sweep_menu", {})
+        calibration_menu = menu_data.get("calibration_menu", {})
+        help_menu = menu_data.get("help_menu", {})
+
+        # ---------------------------------------------------------------- #
+        # File Menu
+        # ---------------------------------------------------------------- #
+
+        self.window.measurement_menu_import_touchstone_cal = file_menu.get("import_touchstone_cal", "")
+        self.window.measurement_menu_import_touchstone_dut = file_menu.get("import_touchstone_dut", "")
+        self.window.measurement_menu_export_pdf = file_menu.get("export_PDF", "")
+        self.window.measurement_menu_export_touchstone = file_menu.get("export_touchstone", "")
+        self.window.measurement_menu_export_errors = file_menu.get("export_errors", "")
+        self.window.measurement_menu_back_to_menu = file_menu.get("back_to_menu", "")
+
+        # ---------------------------------------------------------------- #
+        # Edit Menu
+        # ---------------------------------------------------------------- #
+
+        self.window.measurement_menu_graphics_markers = edit_menu.get("graphics_markers", "")
+
+        # ---------------------------------------------------------------- #
+        # View Menu
+        # ---------------------------------------------------------------- #
+
+        self.window.measurement_menu_graphics = view_menu.get("graphics", "")
+
+        # ---------------------------------------------------------------- #
+        # Sweep Menu
+        # ---------------------------------------------------------------- #
+
+        self.window.measurement_menu_sweep_option = sweep_menu.get("option", "")
+        self.window.measurement_menu_run_sweep = sweep_menu.get("run_sweep", "")
+
+        # ---------------------------------------------------------------- #
+        # Calibration Menu
+        # ---------------------------------------------------------------- #
+
+        self.window.measurement_menu_cal_wizard = calibration_menu.get("cal_wizard", "")
+        self.window.measurement_menu_no_calibration = calibration_menu.get("no_calibration", "")
+        self.window.measurement_menu_select_kit = calibration_menu.get("select_kit", "")
+        self.window.measurement_menu_save_kit = calibration_menu.get("save_kit", "")
+        self.window.measurement_menu_delete_kit = calibration_menu.get("delete_kit", "")
+
+        # ---------------------------------------------------------------- #
+        # Help Menu
+        # ---------------------------------------------------------------- #
+
+        self.window.measurement_menu_report = help_menu.get("report", "")
+        self.window.measurement_menu_about_en = help_menu.get("import Touchstone_dut", "")
+        self.window.measurement_menu_about_es = help_menu.get("export_PDF", "")
+
     def load_view_edit_ui_resources(self):
 
         raw_data = self._load_json()

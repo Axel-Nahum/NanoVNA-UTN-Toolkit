@@ -77,5 +77,37 @@
     "marker_diff": {
       "label_diff": "Markers Diff"
     }
+  },
+  "menu": {
+    "file_menu": {
+      "import_touchstone_cal": "Import Touchstone Data (Calibration)",
+      "import_touchstone_dut": "Import Touchstone Data (DUT)",
+      "export_PDF": "Export Latex PDF",
+      "export_touchstone": "Export Touchstone Data",
+      "export_errors": "Export Errors",
+      "back_to_menu": "Back to menu"
+    },
+    "edit_menu": {
+      "graphics_markers": "Graphics/Markers"
+    },
+    "view_menu": {
+      "graphics": "Graphics"
+    },
+    "sweep_menu": {
+      "option": "Options",
+      "run_sweep": "Run Sweep"
+    },
+    "calibration_menu": {
+      "cal_wizard": "Calibration Wizard",
+      "no_calibration": "No Calibration",
+      "select_kit": "Select Calibration (Kit)",
+      "save_kit": "Save Calibration (Kit)",
+      "delete_kit": "Delete Calibration (Kit)"
+    },
+    "help_menu": {
+      "report": "Report",
+      "import Touchstone_dut": "About [EN]",
+      "export_PDF": "About [ES]"
+    }
   }
 }

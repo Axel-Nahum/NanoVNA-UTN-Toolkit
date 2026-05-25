@@ -227,6 +227,7 @@ class NanoVNAGraphics(QMainWindow):
         )
 
         self.resourceLoader.load_measurement_graphics_resources()
+        self.resourceLoader.load_measurement_menu_resources()
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Dark light Mode
@@ -269,40 +270,40 @@ class NanoVNAGraphics(QMainWindow):
 
         # --- File menu actions ---
 
-        import_touchstone_action = file_menu.addAction("Import Touchstone Data (Calibration)")
+        import_touchstone_action = file_menu.addAction(f"{self.measurement_menu_import_touchstone_cal}")
         import_touchstone_action.triggered.connect(lambda: import_touchstone_data_calibration(self))
 
-        import_touchstone_action = file_menu.addAction("Import Touchstone Data (DUT)")
+        import_touchstone_action = file_menu.addAction(f"{self.measurement_menu_import_touchstone_dut}")
         import_touchstone_action.triggered.connect(lambda: import_touchstone_data_dut(self))
 
         file_menu.addSeparator()
 
-        export_pdf_action =  file_menu.addAction("Export Latex PDF")
+        export_pdf_action =  file_menu.addAction(f"{self.measurement_menu_export_pdf}")
         export_pdf_action.triggered.connect(lambda: export_latex_pdf(self))
 
-        export_touchstone_action = file_menu.addAction("Export Touchstone Data")
+        export_touchstone_action = file_menu.addAction(f"{self.measurement_menu_export_touchstone}")
         export_touchstone_action.triggered.connect(lambda: export_touchstone_data(self))
 
-        export_touchstone_action = file_menu.addAction("Export Errors")
+        export_touchstone_action = file_menu.addAction(f"{self.measurement_menu_export_errors}")
         export_touchstone_action.triggered.connect(lambda: export_errors(self))
 
         file_menu.addSeparator()
 
-        exit_action = file_menu.addAction("Back to menu")
+        exit_action = file_menu.addAction(f"{self.measurement_menu_back_to_menu}")
         exit_action.triggered.connect(lambda: self.return_to_menu_window())
 
-        graphics_markers = edit_menu.addAction("Graphics/Markers")
+        graphics_markers = edit_menu.addAction(f"{self.measurement_menu_graphics_markers}")
         graphics_markers.triggered.connect(lambda: edit_graphics_markers(self))
 
         # --- Help menu actions ---
 
-        report_action = help_menu.addAction("Report")
+        report_action = help_menu.addAction(f"{self.measurement_menu_report}")
         report_action.triggered.connect(lambda: open_report_url(self))
 
-        about_en_action = help_menu.addAction("About [EN]")
+        about_en_action = help_menu.addAction(f"{self.measurement_menu_about_en}")
         about_en_action.triggered.connect(lambda: show_about_dialog(self, 'en'))
 
-        about_es_action = help_menu.addAction("About [ES]")
+        about_es_action = help_menu.addAction(f"{self.measurement_menu_about_es}")
         about_es_action.triggered.connect(lambda: show_about_dialog(self, 'es'))
 
 #-------- Lock Markers ----------------------------------------------------------------------------#
@@ -338,32 +339,32 @@ class NanoVNAGraphics(QMainWindow):
 
 #-------- Other options ---------------------------------------------------------------------------- #
 
-        choose_graphics = view_menu.addAction("Graphics")
+        choose_graphics = view_menu.addAction(f"{self.measurement_menu_graphics}")
         choose_graphics.triggered.connect(lambda: open_view(self))  
 
-        sweep_options = sweep_menu.addAction("Options")
+        sweep_options = sweep_menu.addAction(f"{self.measurement_menu_sweep_option}")
         sweep_options.triggered.connect(lambda: open_sweep_options(self))
  
-        sweep_run = sweep_menu.addAction("Run Sweep")
+        sweep_run = sweep_menu.addAction(f"{self.measurement_menu_run_sweep}")
         sweep_run.triggered.connect(lambda: run_sweep(self))
 
-        calibrate_option = calibration_menu.addAction("Calibration Wizard")
+        calibrate_option = calibration_menu.addAction(f"{self.measurement_menu_cal_wizard}")
         calibrate_option.triggered.connect(lambda: open_calibration_wizard(self))
 
-        calibrate_option = calibration_menu.addAction("No Calibration")
+        calibrate_option = calibration_menu.addAction(f"{self.measurement_menu_no_calibration}")
         calibrate_option.triggered.connect(lambda: open_no_calibration(self))
 
         calibration_menu.addSeparator()
 
-        select_calibration = calibration_menu.addAction("Select Calibration (Kit)")
+        select_calibration = calibration_menu.addAction(f"{self.measurement_menu_select_kit}")
         select_calibration.triggered.connect(lambda: select_kit_dialog(self))
 
-        save_calibration = calibration_menu.addAction("Save Calibration (Kit)")
+        save_calibration = calibration_menu.addAction(f"{self.measurement_menu_save_kit}")
 
         # Connect the action to the handler
         save_calibration.triggered.connect(lambda: handle_save_calibration(self))
 
-        delete_calibration = calibration_menu.addAction("Delete Calibration (Kit)")
+        delete_calibration = calibration_menu.addAction(f"{self.measurement_menu_delete_kit}")
         delete_calibration.triggered.connect(lambda: delete_kit_dialog(self))
 
         apply_window_icon(self)
