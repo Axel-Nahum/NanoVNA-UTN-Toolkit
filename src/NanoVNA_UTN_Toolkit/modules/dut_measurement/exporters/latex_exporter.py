@@ -116,7 +116,7 @@ class LatexExporter:
     - S21 section: Magnitude, Phase
     """
     
-    def __init__(self, parent_widget=None, figures=None):
+    def __init__(self, measurement_self = None, parent_widget=None, figures=None):
         """
         Initialize the LaTeX exporter.
         
@@ -124,6 +124,7 @@ class LatexExporter:
             parent_widget: Parent widget for dialog boxes (optional)
         """
         self.parent_widget = parent_widget
+        self.measurement_self = measurement_self
 
         self.figures = figures
     
@@ -261,7 +262,7 @@ class LatexExporter:
             
             # Create and show the dialog
             default_filename = measurement_name if measurement_name else "nanovna_report"
-            dialog = LaTeXExportDialog(self.parent_widget, default_filename)
+            dialog = LaTeXExportDialog(measurement_self = self.measurement_self, parent=self.parent_widget, default_filename = default_filename)
             
             logger.info(f"Showing LaTeX export dialog with default filename: {default_filename}")
             

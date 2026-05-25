@@ -22,6 +22,12 @@ from NanoVNA_UTN_Toolkit.modules.dut_measurement.exporters.latex_exporter import
 # Set up logging
 logger = logging.getLogger(__name__)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 class LaTeXCheckerThread(QThread):
     """
@@ -69,7 +75,7 @@ class LaTeXExportDialog(QDialog):
     - Provides download link if no compiler found
     """
     
-    def __init__(self, parent=None, default_filename="nanovna_report"):
+    def __init__(self, measurement_self = None, parent=None, default_filename="nanovna_report"):
         """
         Initialize the LaTeX export dialog.
         
@@ -78,7 +84,27 @@ class LaTeXExportDialog(QDialog):
             default_filename: Default filename for the export
         """
         super().__init__(parent)
-        self.setWindowTitle("NanoVNA UTN Toolkit - LaTeX PDF Export Setup")
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Load JSON 
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        current_lang = "en"
+
+        self.resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_features.json"
+        )
+
+        self.resourceLoader.load_pdf_export_resources()  
+
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        self.measurement_self = measurement_self
+
+        self.setWindowTitle(f"{self.pdf_export_window_title}")
         self.setModal(True)
         self.setMinimumSize(500, 360)
         
@@ -87,11 +113,12 @@ class LaTeXExportDialog(QDialog):
         self.default_filename = default_filename
         self.checker_thread = None
         self.manual_compiler_path = None  # Store manually selected compiler
+
         
         logger.info("Initializing LaTeX Export Dialog")
         self._setup_ui()
         self._start_latex_check()
-    
+ 
     def _setup_ui(self):
         """Set up the user interface."""
         layout = QVBoxLayout(self)
@@ -109,11 +136,11 @@ class LaTeXExportDialog(QDialog):
     
     def _setup_latex_status_group(self, parent_layout):
         """Set up the LaTeX status group box."""
-        group = QGroupBox("LaTeX Compiler Status")
+        group = QGroupBox(f"{self.pdf_export_compiler_group_title}")
         layout = QVBoxLayout(group)
         
         # Status label
-        self.status_label = QLabel("Checking LaTeX installation...")
+        self.status_label = QLabel(f"{self.pdf_export_checking_installation}")
         self.status_label.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.status_label)
         
@@ -121,7 +148,7 @@ class LaTeXExportDialog(QDialog):
         self.details_text = QTextEdit()
         self.details_text.setMaximumHeight(100)
         self.details_text.setReadOnly(True)
-        self.details_text.setText("Scanning system for LaTeX compilers...")
+        self.details_text.setText(f"{self.pdf_export_scanning_system}")
         layout.addWidget(self.details_text)
         
         # Download link (initially hidden)
@@ -132,9 +159,9 @@ class LaTeXExportDialog(QDialog):
         
         # Manual compiler selection
         manual_layout = QHBoxLayout()
-        manual_layout.addWidget(QLabel("Or manually select compiler:"))
+        manual_layout.addWidget(QLabel(f"{self.pdf_export_manual_select_compiler}"))
         
-        self.manual_browse_button = QPushButton("Browse for Compiler...")
+        self.manual_browse_button = QPushButton(f"{self.pdf_export_browse_compiler_button}")
         self.manual_browse_button.clicked.connect(self._browse_manual_compiler)
         manual_layout.addWidget(self.manual_browse_button)
         manual_layout.addStretch()
@@ -145,7 +172,7 @@ class LaTeXExportDialog(QDialog):
     
     def _setup_output_path_group(self, parent_layout):
         """Set up the output path selection group."""
-        group = QGroupBox("Output Location")
+        group = QGroupBox(f"{self.pdf_export_output_group_title}")
         layout = QVBoxLayout(group)
 
         # Path selection
@@ -154,19 +181,19 @@ class LaTeXExportDialog(QDialog):
         layout.addSpacing(10)
 
         self.path_edit = QLineEdit()
-        self.path_edit.setPlaceholderText("Select output file location...")
+        self.path_edit.setPlaceholderText(f"{self.pdf_export_select_output_placeholder}")
         self.path_edit.setReadOnly(True)
 
         path_layout.addWidget(self.path_edit, alignment=Qt.AlignVCenter)
 
-        self.browse_button = QPushButton("Browse...")
+        self.browse_button = QPushButton(f"{self.pdf_export_browse_button}")
         self.browse_button.clicked.connect(self._browse_output_path)
         path_layout.addWidget(self.browse_button, alignment=Qt.AlignVCenter)
         
         layout.addLayout(path_layout)
         
         # Path info
-        self.path_info_label = QLabel("Please select where to save the PDF report.")
+        self.path_info_label = QLabel(f"{self.pdf_export_output_hint}")
         self.path_info_label.setStyleSheet("color: gray; font-size: 12px;")
         layout.addWidget(self.path_info_label)
         
@@ -180,11 +207,11 @@ class LaTeXExportDialog(QDialog):
         button_layout = QHBoxLayout()
         button_layout.addStretch()
         
-        self.cancel_button = QPushButton("Cancel")
+        self.cancel_button = QPushButton(f"{self.pdf_export_cancel_button}")
         self.cancel_button.clicked.connect(self.reject)
         button_layout.addWidget(self.cancel_button)
         
-        self.export_button = QPushButton("Export PDF")
+        self.export_button = QPushButton(f"{self.pdf_export_export_button}")
         self.export_button.setEnabled(False)
         self.export_button.clicked.connect(self.open_preview_dialog)
         self.export_button.setStyleSheet("""
@@ -218,7 +245,7 @@ class LaTeXExportDialog(QDialog):
             self.latex_available = True
             self.status_label.setText("LaTeX Compiler: Available")
             self.status_label.setStyleSheet("font-weight: bold; color: green;")
-            self.details_text.setText(f"Found working LaTeX compiler:\n{compiler_info}")
+            self.details_text.setText(f"{self.pdf_export_found_working_compiler}\n{compiler_info}")
             logger.info(f"LaTeX available: {compiler_info}")
         else:
             self.latex_available = False
@@ -323,7 +350,7 @@ class LaTeXExportDialog(QDialog):
                 reasons.append("no output path selected")
             
             reason_text = ", ".join(reasons)
-            self.export_button.setText(f"Cannot Export ({reason_text})")
+            self.export_button.setText(f"{self.pdf_export_disabled_button} ({reason_text})")
             logger.debug(f"Export button disabled: {reason_text}")
     
     def get_output_path(self):

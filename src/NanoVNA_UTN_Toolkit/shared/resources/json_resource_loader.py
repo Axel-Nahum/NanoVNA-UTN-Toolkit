@@ -74,7 +74,6 @@ class JsonResourceLoader:
         self.window.dut_welcome_ui_import_description = kit_section.get("import_description", "")
         self.window.dut_welcome_ui_import_button_text = kit_section.get("import_button", "")
 
-
     def load_dut_measurement_wizard_resources(self):
 
         raw_data = self._load_json()
@@ -417,6 +416,177 @@ class JsonResourceLoader:
         self.window.edit_graphics_g2_phase_y_s11 = eg_g2_phase.get("y_axis_s11", "")
         self.window.edit_graphics_g2_phase_y_s21 = eg_g2_phase.get("y_axis_s21", "")
         self.window.edit_graphics_g2_phase_title = eg_g2_mag.get("title_phase", "")
+
+    def load_pdf_export_resources(self):
+
+        raw_data = self._load_json()
+
+        pdf_export = raw_data.get("pdf_export", {})
+
+        latex_pdf_export_setup = pdf_export.get("latex_pdf_export_setup", {})
+        graph_preview = pdf_export.get("graph_preview", {})
+
+        compiler_status_group = latex_pdf_export_setup.get("compiler_status_group", {})
+        output_location_group = latex_pdf_export_setup.get("output_location_group", {})
+        setup_buttons = latex_pdf_export_setup.get("buttons", {})
+
+        top_messages = graph_preview.get("top_messages", {})
+        navigation_buttons = graph_preview.get("navigation_buttons", {})
+        markers = graph_preview.get("markers", {})
+        preview_buttons = graph_preview.get("buttons", {})
+        plots = graph_preview.get("plots", {})
+
+        s11_smith = plots.get("s11_smith", {})
+        s11_magnitude = plots.get("s11_magnitude", {})
+        s11_phase = plots.get("s11_phase", {})
+        s21_magnitude = plots.get("s21_magnitude", {})
+        s21_phase = plots.get("s21_phase", {})
+
+        # ---------------------------------------------------------------- #
+        # LaTeX PDF Export Setup
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_export_window_title = latex_pdf_export_setup.get("window_title", "")
+
+        # ---------------------------------------------------------------- #
+        # Compiler Status Group
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_export_compiler_group_title = compiler_status_group.get("title", "")
+
+        self.window.pdf_export_checking_installation = compiler_status_group.get("checking_installation", "")
+        self.window.pdf_export_scanning_system = compiler_status_group.get("scanning_system", "")
+
+        self.window.pdf_export_compiler_available = compiler_status_group.get("compiler_available", "")
+        self.window.pdf_export_compiler_not_found = compiler_status_group.get("compiler_not_found", "")
+
+        self.window.pdf_export_found_working_compiler = compiler_status_group.get("found_working_compiler", "")
+        self.window.pdf_export_manual_select_compiler = compiler_status_group.get("manual_select_compiler", "")
+
+        self.window.pdf_export_browse_compiler_button = compiler_status_group.get("browse_compiler_button", "")
+
+        # ---------------------------------------------------------------- #
+        # Output Location Group
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_export_output_group_title = output_location_group.get("title", "")
+
+        self.window.pdf_export_select_output_placeholder = output_location_group.get("select_output_placeholder", "")
+        self.window.pdf_export_browse_button = output_location_group.get("browse_button", "")
+
+        self.window.pdf_export_output_hint = output_location_group.get("output_hint", "")
+
+        # ---------------------------------------------------------------- #
+        # Setup Buttons
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_export_cancel_button = setup_buttons.get("cancel", "")
+        self.window.pdf_export_disabled_button = setup_buttons.get("export_disabled", "")
+        self.window.pdf_export_export_button = setup_buttons.get("export", "")
+
+        # ---------------------------------------------------------------- #
+        # Graph Preview
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_preview_window_title = graph_preview.get("window_title", "")
+
+        # ---------------------------------------------------------------- #
+        # Top Messages
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_preview_ready = top_messages.get("preview_ready", "")
+        self.window.pdf_preview_instruction = top_messages.get("preview_instruction", "")
+
+        # ---------------------------------------------------------------- #
+        # Navigation Buttons
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_preview_previous = navigation_buttons.get("previous", "")
+        self.window.pdf_preview_next = navigation_buttons.get("next", "")
+
+        # ---------------------------------------------------------------- #
+        # Markers
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_preview_marker_1 = markers.get("marker_1", "")
+        self.window.pdf_preview_marker_2 = markers.get("marker_2", "")
+
+        self.window.pdf_preview_frequency_unit = markers.get("frequency_unit", "")
+
+        # ---------------------------------------------------------------- #
+        # Preview Buttons
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_preview_generate_report = preview_buttons.get("generate_report", "")
+
+        # ---------------------------------------------------------------- #
+        # S11 Smith
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_preview_s11_smith_title = s11_smith.get("title", "")
+
+        # ---------------------------------------------------------------- #
+        # S11 Magnitude
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_preview_s11_magnitude_title = s11_magnitude.get("title", "")
+        self.window.pdf_preview_s11_magnitude_x_axis = s11_magnitude.get("x_axis", "")
+        self.window.pdf_preview_s11_magnitude_y_axis = s11_magnitude.get("y_axis", "")
+
+        # ---------------------------------------------------------------- #
+        # S11 Phase
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_preview_s11_phase_title = s11_phase.get("title", "")
+        self.window.pdf_preview_s11_phase_x_axis = s11_phase.get("x_axis", "")
+        self.window.pdf_preview_s11_phase_y_axis = s11_phase.get("y_axis", "")
+
+        # ---------------------------------------------------------------- #
+        # S21 Magnitude
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_preview_s21_magnitude_title = s21_magnitude.get("title", "")
+        self.window.pdf_preview_s21_magnitude_x_axis = s21_magnitude.get("x_axis", "")
+        self.window.pdf_preview_s21_magnitude_y_axis = s21_magnitude.get("y_axis", "")
+
+        # ---------------------------------------------------------------- #
+        # S21 Phase
+        # ---------------------------------------------------------------- #
+
+        self.window.pdf_preview_s21_phase_title = s21_phase.get("title", "")
+        self.window.pdf_preview_s21_phase_x_axis = s21_phase.get("x_axis", "")
+        self.window.pdf_preview_s21_phase_y_axis = s21_phase.get("y_axis", "")
+
+    def load_export_touchstone_resources(self):
+
+        raw_data = self._load_json()
+
+        export_touchstone = raw_data.get("export_touchstone", {})
+
+        buttons_labels = export_touchstone.get("buttons", {})
+        options_sxp = export_touchstone.get("options_sxp", {})
+
+        # ---------------------------------------------------------------- #
+        # Export Touchstone Setup
+        # ---------------------------------------------------------------- #
+
+        self.window.export_touchstone_window_title = export_touchstone.get("window_title", "")
+        self.window.export_touchstone_export_title = export_touchstone.get("export_title", "")
+
+        # ---------------------------------------------------------------- #
+        # Setup Buttons
+        # ---------------------------------------------------------------- #
+
+        self.window.export_touchstone_cancel_button = buttons_labels.get("cancel", "")
+        self.window.export_touchstone_export_button = buttons_labels.get("export", "")
+
+        # ---------------------------------------------------------------- #
+        # Options for .sxp
+        # ---------------------------------------------------------------- #
+
+        self.window.export_touchstone_s1p_option = options_sxp.get("s1p", "")
+        self.window.export_touchstone_s2p_option = options_sxp.get("s2p", "")
+        self.window.export_touchstone_info = options_sxp.get("info", "")
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Material Characterization Module

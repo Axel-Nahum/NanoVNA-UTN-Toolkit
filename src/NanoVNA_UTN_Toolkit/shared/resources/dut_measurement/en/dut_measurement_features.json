@@ -1,0 +1,100 @@
+{
+  "pdf_export": {
+    "latex_pdf_export_setup": {
+      "window_title": "NanoVNA UTN Toolkit - LaTeX PDF Export Setup",
+      "compiler_status_group": {
+        "title": "LaTeX Compiler Status",
+        "checking_installation": "Checking LaTeX installation...",
+        "scanning_system": "Scanning system for LaTeX compilers...",
+        "compiler_available": "LaTeX Compiler Available",
+        "compiler_not_found": "LaTeX Compiler Not Found",
+        "found_working_compiler": "Found working LaTeX compiler:",
+        "manual_select_compiler": "Or manually select compiler:",
+        "browse_compiler_button": "Browse for Compiler..."
+      },
+
+      "output_location_group": {
+        "title": "Output Location",
+        "select_output_placeholder": "Select output file location...",
+        "browse_button": "Browse...",
+        "output_hint": "Please select where to save the PDF report."
+      },
+      "buttons": {
+        "cancel": "Cancel",
+        "export_disabled": "Cannot Export",
+        "export": "Export PDF"
+      }
+    },
+
+    "graph_preview": {
+
+      "window_title": "Export Graph Preview",
+
+      "top_messages": {
+        "preview_ready": "Graph preview is ready.",
+        "preview_instruction": "Use the arrows below to explore all measurement views before exporting the PDF."
+      },
+
+      "navigation_buttons": {
+        "previous": "← Previous",
+        "next": "Next →"
+      },
+
+      "markers": {
+        "marker_1": "Marker 1",
+        "marker_2": "Marker 2",
+        "frequency_unit": "kHz"
+      },
+
+      "buttons": {
+        "generate_report": "Generate PDF Report"
+      },
+
+      "plots": {
+        "s11_smith": {
+            "title": "Smith Diagram - $S_{11}$"
+        },
+
+        "s11_magnitude": {
+            "title": "Magnitude $|S_{11}|$ (dB)",
+            "x_axis": "Frequency (MHz)",
+            "y_axis": "$|S_{11}|$ (dB)"
+        },
+
+        "s11_phase": {
+            "title": "Phase $S_{11}$ ($^\\circ$)",
+            "x_axis": "Frequency (MHz)",
+            "y_axis": "$\\phi_{S11}$ ($^\\circ$)"
+        },
+
+        "s21_magnitude": {
+            "title": "Magnitude $|S_{21}|$ (dB)",
+            "x_axis": "Frequency (MHz)",
+            "y_axis": "$|S_{21}|$ (dB)"
+        },
+
+        "s21_phase": {
+            "title": "Phase $S_{21}$ ($^\\circ$)",
+            "x_axis": "Frequency (MHz)",
+            "y_axis": "$\\phi_{S21}$ ($^\\circ$)"
+        }
+      }
+    }
+  },
+
+  "export_touchstone": {
+    "window_title": "Select Touchstone Format",
+    "export_title": "Choose Touchstone export format:",
+
+    "buttons": {
+      "cancel": "Cancel",
+      "export": "Export"
+    },
+    
+    "options_sxp": {
+      "s1p": "S1P Format - Single Port (S11 only)",
+      "s2p": "S2P Format - Two Port (S11 and S21)",
+      "info": "S1P files contain only S11 reflection data.\nS2P files contain both S11 and S21 transmission data."
+    }
+  }
+}

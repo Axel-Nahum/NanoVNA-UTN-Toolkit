@@ -8,6 +8,13 @@ Markers can be dragged independently for each graph.
 Deactivating a marker hides its cursor immediately.
 """
 
+import logging
+import sys
+
+import numpy as np
+import skrf as rf
+import copy
+
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox, QWidget,
     QCheckBox, QHBoxLayout, QLineEdit, QComboBox
@@ -18,10 +25,6 @@ from PySide6.QtGui import QGuiApplication
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
-import numpy as np
-import skrf as rf
-import logging
-import copy
 
 plt.rcParams['mathtext.fontset'] = 'cm'  
 plt.rcParams['text.usetex'] = False       
@@ -31,10 +34,35 @@ plt.rcParams['mathtext.rm'] = 'serif'
 
 logger = logging.getLogger(__name__)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 class GraphPreviewExportDialog(QDialog):
     def __init__(self, parent=None, freqs=None, s11_data=None, s21_data=None,
              measurement_name=None, output_path=None):
         super().__init__(parent)
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Load JSON 
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        current_lang = "en"
+
+        self.resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_features.json"
+        )
+
+        self.resourceLoader.load_pdf_export_resources()  
+
+# ------------------------------------------------------------------------------------------------------------------- #
+
         self.freqs = freqs
         self.s11_data = s11_data
         self.s21_data = s21_data
@@ -72,8 +100,8 @@ class GraphPreviewExportDialog(QDialog):
 
         # --- Instruction label
         label = QLabel(
-            "Graph preview is ready.\n"
-            "Use the arrows below to explore all measurement views before exporting the PDF."
+            f"{self.pdf_preview_ready}.\n"
+            f"{self.pdf_preview_instruction}"
         )
         label.setAlignment(Qt.AlignCenter)
         main_layout.addWidget(label)
@@ -87,8 +115,8 @@ class GraphPreviewExportDialog(QDialog):
         self.canvas.resizeEvent = self._on_canvas_resize
 
         # --- Previous / Next buttons ---
-        self.prev_button = NoEnterButton("← Previous")
-        self.next_button = NoEnterButton("Next →")
+        self.prev_button = NoEnterButton(f"{self.pdf_preview_previous}")
+        self.next_button = NoEnterButton(f"{self.pdf_preview_next}")
 
         self.prev_button.setFocusPolicy(Qt.NoFocus)
         self.next_button.setFocusPolicy(Qt.NoFocus)
@@ -119,9 +147,9 @@ class GraphPreviewExportDialog(QDialog):
         for i in range(5):
 
             # --- Marker checkboxes ---
-            marker1 = QCheckBox("Marker 1")
+            marker1 = QCheckBox(f"{self.pdf_preview_marker_1}")
             marker1.setStyleSheet("color: green; font-weight: bold; font-size: 12pt;")
-            marker2 = QCheckBox("Marker 2")
+            marker2 = QCheckBox(f"{self.pdf_preview_marker_2}")
             marker2.setStyleSheet("color: orange; font-weight: bold; font-size: 12pt;")
             marker1.stateChanged.connect(lambda _, idx=i: self._update_markers(idx))
             marker2.stateChanged.connect(lambda _, idx=i: self._update_markers(idx))
@@ -241,7 +269,7 @@ class GraphPreviewExportDialog(QDialog):
         main_layout.addSpacing(15)
 
         # --- Export button ---
-        self.export_button = QPushButton("Generate PDF Report")
+        self.export_button = QPushButton(f"{self.pdf_preview_generate_report}")
         self.export_button.setEnabled(False)
         self.export_button.setStyleSheet("""
             QPushButton {
@@ -405,7 +433,7 @@ class GraphPreviewExportDialog(QDialog):
             self.fig.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.1)
 
             # Set title for the Smith chart
-            self.ax.set_title(r"Smith Diagram - $S_{11}$", fontsize=12, pad=20)
+            self.ax.set_title(rf"{self.pdf_preview_s11_smith_title}", fontsize=12, pad=20)
             
             # Create a temporary network just for plotting the Smith chart background with labels
             dummy_freq = rf.Frequency(1, 10, 10, unit='GHz')
@@ -439,29 +467,29 @@ class GraphPreviewExportDialog(QDialog):
 
         elif index == 1:
             self.ax.plot(new_freqs, 20 * np.log10(np.abs(s11)), color="red", linewidth=1.3)
-            self.ax.set_xlabel(f"Frequency ({unit})", fontsize=12)
-            self.ax.set_title(r"Magnitude $|S_{11}|$ (dB)", fontsize=12, pad=12)
-            self.ax.set_ylabel(r"$|S_{11}|$ (dB)")
+            self.ax.set_xlabel(f"{self.pdf_preview_s11_magnitude_x_axis}", fontsize=12)
+            self.ax.set_title(rf"{self.pdf_preview_s11_magnitude_title}", fontsize=12, pad=12)
+            self.ax.set_ylabel(rf"{self.pdf_preview_s11_magnitude_y_axis}")
             self.ax.grid(True, linestyle="--", alpha=0.6)
 
         elif index == 2:
             self.ax.plot(new_freqs, np.angle(s11, deg=True), color="red", linewidth=1.3)
-            self.ax.set_title(r"Phase $S_{11}$ (°)", fontsize=12, pad=12)
-            self.ax.set_xlabel(f"Frequency ({unit})", fontsize=12)
-            self.ax.set_ylabel(r"$ \phi_{S_{11}} $ (°)", fontsize=12)
+            self.ax.set_title(rf"{self.pdf_preview_s11_phase_title}", fontsize=12, pad=12)
+            self.ax.set_xlabel(f"{self.pdf_preview_s11_phase_x_axis}", fontsize=12)
+            self.ax.set_ylabel(rf"{self.pdf_preview_s11_phase_y_axis}", fontsize=12)
             self.ax.grid(True, linestyle="--", alpha=0.6)
         elif index == 3:
             self.ax.plot(new_freqs, 20*np.log10(np.abs(s21)), color="blue", linewidth=1.3)
-            self.ax.set_title(r"Magnitude $|S_{21}|$ (dB)", fontsize=12, pad=12)
-            self.ax.set_xlabel(f"Frequency ({unit})", fontsize=12)
-            self.ax.set_ylabel(r"$|S_{21}|$ (dB)")
+            self.ax.set_title(rf"{self.pdf_preview_s21_magnitude_title}", fontsize=12, pad=12)
+            self.ax.set_xlabel(f"{self.pdf_preview_s21_magnitude_x_axis}", fontsize=12)
+            self.ax.set_ylabel(rf"{self.pdf_preview_s21_magnitude_y_axis}")
             self.ax.grid(True, linestyle="--", alpha=0.6)
         elif index == 4:
             phase_s21 = np.angle(np.exp(1j * freqs / 1e7), deg=True)
             self.ax.plot(new_freqs, phase_s21, color="blue", linewidth=1.3)
-            self.ax.set_title(r"Phase $S_{21}$ (°)", fontsize=12, pad=12)
-            self.ax.set_xlabel(f"Frequency ({unit})", fontsize=12)
-            self.ax.set_ylabel(r"$ \phi_{S_{21}} $ (°)", fontsize=12)
+            self.ax.set_title(rf"{self.pdf_preview_s21_phase_title}", fontsize=12, pad=12)
+            self.ax.set_xlabel(f"{self.pdf_preview_s21_phase_x_axis}", fontsize=12)
+            self.ax.set_ylabel(rf"{self.pdf_preview_s21_phase_y_axis}", fontsize=12)
             self.ax.grid(True, linestyle="--", alpha=0.6)
 
         self.canvas.draw()
@@ -474,7 +502,7 @@ class GraphPreviewExportDialog(QDialog):
 
     def update_validator(self, edit, combo):
         unit = combo.currentText()
-        edit.textChanged.connect(lambda t: edit.setText(block_comma(t)))
+        edit.textChanged.connect(lambda t: edit.setText(self.block_comma(t)))
         if unit == "kHz":
             validator = QDoubleValidator(50, 999, 2)
             validator.setLocale(QLocale.c())

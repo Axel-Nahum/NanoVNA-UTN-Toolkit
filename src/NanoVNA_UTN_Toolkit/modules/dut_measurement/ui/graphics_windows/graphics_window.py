@@ -229,6 +229,15 @@ class NanoVNAGraphics(QMainWindow):
         self.resourceLoader.load_measurement_graphics_resources()
         self.resourceLoader.load_measurement_menu_resources()
 
+        self.resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_features.json"
+        )
+
+        self.resourceLoader.load_export_touchstone_resources()
+
 # ------------------------------------------------------------------------------------------------------------------- #
 # Dark light Mode
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -443,7 +452,7 @@ class NanoVNAGraphics(QMainWindow):
         _clear_all_marker_fields(self)
         
         # Initialize exporters
-        self.latex_exporter = LatexExporter(parent_widget=self)
+        self.latex_exporter = LatexExporter(measurement_self = self, parent_widget=self)
         self.touchstone_exporter = TouchstoneExporter(parent_widget=self)
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------------ #

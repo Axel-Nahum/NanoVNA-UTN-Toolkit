@@ -9,7 +9,7 @@ def show_touchstone_format_dialog(self):
     """
 
     dialog = QDialog(self)
-    dialog.setWindowTitle("Select Touchstone Format")
+    dialog.setWindowTitle(f"{self.export_touchstone_window_title}")
     dialog.setFixedSize(350, 200)
     dialog.setModal(True)
 
@@ -19,7 +19,7 @@ def show_touchstone_format_dialog(self):
     layout.setContentsMargins(20, 20, 20, 20)
 
     # Title label
-    title_label = QLabel("Choose Touchstone export format:")
+    title_label = QLabel(f"{self.export_touchstone_export_title}")
     title_label.setStyleSheet("font-size: 14px; font-weight: bold;")
     layout.addWidget(title_label)
 
@@ -27,18 +27,18 @@ def show_touchstone_format_dialog(self):
     button_group = QButtonGroup(dialog)
 
     # S1P option
-    s1p_radio = QRadioButton("S1P Format - Single Port (S11 only)")
+    s1p_radio = QRadioButton(f"{self.export_touchstone_s1p_option}")
     s1p_radio.setChecked(True)  # Default selection
     button_group.addButton(s1p_radio, 1)
     layout.addWidget(s1p_radio)
 
     # S2P option  
-    s2p_radio = QRadioButton("S2P Format - Two Port (S11 and S21)")
+    s2p_radio = QRadioButton(f"{self.export_touchstone_s2p_option}")
     button_group.addButton(s2p_radio, 2)
     layout.addWidget(s2p_radio)
 
     # Info label
-    info_label = QLabel("S1P files contain only S11 reflection data.\nS2P files contain both S11 and S21 transmission data.")
+    info_label = QLabel(f"{self.export_touchstone_info}")
     info_label.setStyleSheet("font-size: 11px; color: #D0D0D0;")
     info_label.setWordWrap(True)
     layout.addWidget(info_label)
@@ -48,13 +48,13 @@ def show_touchstone_format_dialog(self):
     button_layout.addStretch()
 
     # Cancel button
-    cancel_button = QPushButton("Cancel")
+    cancel_button = QPushButton(f"{self.export_touchstone_cancel_button}")
     cancel_button.setMinimumWidth(80)
     cancel_button.clicked.connect(dialog.reject)
     button_layout.addWidget(cancel_button)
 
     # Export button
-    export_button = QPushButton("Export")
+    export_button = QPushButton(f"{self.export_touchstone_export_button}")
     export_button.setMinimumWidth(80)
     export_button.setDefault(True)
     export_button.clicked.connect(dialog.accept)
