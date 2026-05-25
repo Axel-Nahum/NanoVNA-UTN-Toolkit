@@ -90,11 +90,38 @@
       "cancel": "Cancel",
       "export": "Export"
     },
-    
+
     "options_sxp": {
       "s1p": "S1P Format - Single Port (S11 only)",
       "s2p": "S2P Format - Two Port (S11 and S21)",
       "info": "S1P files contain only S11 reflection data.\nS2P files contain both S11 and S21 transmission data."
+    }
+  },
+
+  "exporters": {
+    "window_title": "NanoVNA UTN Toolkit - Export Graph",
+    "exporters_preview": {
+      "title": "Preview:"
+    },
+    "buttons": {
+      "copy": "Copy to Clipboard",
+      "image": "Save as Image",
+      "CSV": "Save as CSV",
+      "close": "Close"
+    }
+  },
+
+  "set_range": {
+    "window_title": "NanoVNA UTN Toolkit - Set Y Range",
+
+    "range_y": {
+        "y_min": "Y min:",
+        "y_max": "Y max:"
+    },
+
+    "buttons": {
+        "apply": "Apply",
+        "close": "Close"
     }
   }
 }

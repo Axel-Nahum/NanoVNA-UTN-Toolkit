@@ -23,12 +23,36 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 class ExportDialog(QDialog):
     """Dialog for exporting graph data and images."""
     
     def __init__(self, parent=None, figure=None, left_graph=None, right_graph=None, freqs = None, show_markers_left=None, show_markers_right=None, 
         update_cursor_left = None, update_cursor_right = None):
         super().__init__(parent)
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Load JSON 
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        current_lang = "en"
+
+        self.resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_features.json"
+        )
+
+        self.resourceLoader.load_exporters_resources()
+
+# ------------------------------------------------------------------------------------------------------------------- #
 
         self.left_graph = left_graph
         self.right_grap = right_graph
@@ -197,14 +221,14 @@ class ExportDialog(QDialog):
         
     def setup_ui(self):
         """Set up the user interface for the export dialog."""
-        self.setWindowTitle("NanoVNA UTN Toolkit - Export Graph")
+        self.setWindowTitle(f"{self.exporters_window_title}")
         self.setModal(True)
         self.resize(600, 500)
         
         layout = QVBoxLayout(self)
         
         # Preview section
-        preview_label = QLabel("Preview:")
+        preview_label = QLabel(f"{self.exporters_preview_title}")
         layout.addWidget(preview_label)
         
         # Create and add preview image
@@ -222,17 +246,17 @@ class ExportDialog(QDialog):
         buttons_layout = QHBoxLayout()
         
         # Copy to clipboard button
-        copy_button = QPushButton("Copy to Clipboard")
+        copy_button = QPushButton(f"{self.exporters_copy_button}")
         copy_button.clicked.connect(self.copy_to_clipboard)
         buttons_layout.addWidget(copy_button)
         
         # Save as image button
-        save_image_button = QPushButton("Save as Image")
+        save_image_button = QPushButton(f"{self.exporters_image_button}")
         save_image_button.clicked.connect(self.save_as_image)
         buttons_layout.addWidget(save_image_button)
         
         # Save as CSV button
-        save_csv_button = QPushButton("Save as CSV")
+        save_csv_button = QPushButton(f"{self.exporters_csv_button}")
         save_csv_button.clicked.connect(self.save_as_csv)
         buttons_layout.addWidget(save_csv_button)
         
@@ -241,7 +265,7 @@ class ExportDialog(QDialog):
         # Close button
         close_layout = QHBoxLayout()
         close_layout.addStretch()
-        close_button = QPushButton("Close")
+        close_button = QPushButton(f"{self.exporters_close_button}")
         close_button.clicked.connect(self.close)
         close_layout.addWidget(close_button)
         layout.addLayout(close_layout)

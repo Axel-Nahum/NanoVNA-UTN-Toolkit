@@ -83,12 +83,19 @@ def save_kit_dialog(self):
     elif selected_method == "Enhanced-Response":
         prefix = "Enhanced Response"
 
-    name, ok = QInputDialog.getText(
-        self, 
-        'Save Calibration', 
-        f'Enter calibration name:\n\nMeasurements to save:',
-        text=f'{prefix}_Calibration_{self.get_current_timestamp()}'
-    )
+    dialog = QInputDialog(self)
+
+    dialog.setWindowTitle(f"{self.cal_kit_window_title_save}")
+    dialog.setLabelText(f"{self.cal_kit_window_save_text}")
+
+    dialog.setTextValue(f"{prefix}_Calibration_{self.get_current_timestamp()}")
+
+    dialog.setOkButtonText(f"{self.cal_kit_window_save}")
+    dialog.setCancelButtonText(f"{self.cal_kit_window_cancel}")
+
+    ok = dialog.exec()
+
+    name = dialog.textValue()
     
     if ok and name:
         try:

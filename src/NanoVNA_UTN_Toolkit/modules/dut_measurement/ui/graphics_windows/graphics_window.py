@@ -237,6 +237,16 @@ class NanoVNAGraphics(QMainWindow):
         )
 
         self.resourceLoader.load_export_touchstone_resources()
+        self.resourceLoader.load_set_range_resources()
+
+        self.resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_kits.json"
+        )
+
+        self.resourceLoader.load_cal_kits_resources()
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Dark light Mode

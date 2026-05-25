@@ -588,6 +588,136 @@ class JsonResourceLoader:
         self.window.export_touchstone_s2p_option = options_sxp.get("s2p", "")
         self.window.export_touchstone_info = options_sxp.get("info", "")
 
+    def load_exporters_resources(self):
+
+        raw_data = self._load_json()
+
+        exporters = raw_data.get("exporters", {})
+
+        exporters_preview = exporters.get("exporters_preview", {})
+        buttons = exporters.get("buttons", {})
+
+        # ---------------------------------------------------------------- #
+        # Exporters Window
+        # ---------------------------------------------------------------- #
+
+        self.window.exporters_window_title = exporters.get("window_title", "")
+
+        # ---------------------------------------------------------------- #
+        # Exporters Preview
+        # ---------------------------------------------------------------- #
+
+        self.window.exporters_preview_title = exporters_preview.get("title", "")
+
+        # ---------------------------------------------------------------- #
+        # Buttons
+        # ---------------------------------------------------------------- #
+
+        self.window.exporters_copy_button = buttons.get("copy", "")
+        self.window.exporters_image_button = buttons.get("image", "")
+        self.window.exporters_csv_button = buttons.get("CSV", "")
+        self.window.exporters_close_button = buttons.get("close", "")
+
+    def load_set_range_resources(self):
+
+        raw_data = self._load_json()
+
+        set_range = raw_data.get("set_range", {})
+
+        range_y = set_range.get("range_y", {})
+        buttons = set_range.get("buttons", {})
+
+        # ---------------------------------------------------------------- #
+        # Set Range Window
+        # ---------------------------------------------------------------- #
+
+        self.window.set_range_window_title = set_range.get("window_title", "")
+
+        # ---------------------------------------------------------------- #
+        # Set Range Y
+        # ---------------------------------------------------------------- #
+
+        self.window.set_range_y_min = range_y.get("y_min", "")
+        self.window.set_range_y_max = range_y.get("y_max", "")
+
+        # ---------------------------------------------------------------- #
+        # Buttons
+        # ---------------------------------------------------------------- #
+
+        self.window.set_range_apply = buttons.get("apply", "")
+        self.window.set_range_close = buttons.get("close", "")
+
+    def load_cal_kits_resources(self):
+
+        raw_data = self._load_json()
+
+        calibration_kits = raw_data.get("calibration_kits", {})
+
+        select_kit = calibration_kits.get("select_kit", {})
+        save_kit = calibration_kits.get("save_kit", {})
+        delete_kit = calibration_kits.get("delete_kit", {})
+
+        buttons_select = select_kit.get("buttons", {})
+        buttons_save = save_kit.get("buttons", {})
+        buttons_delete = delete_kit.get("buttons", {})
+
+        # ---------------------------------------------------------------- #
+        # Select Kit Window
+        # ---------------------------------------------------------------- #
+
+        self.window.cal_kit_window_title_select = select_kit.get("window_title", "")
+
+        # ---------------------------------------------------------------- #
+        # Select Text
+        # ---------------------------------------------------------------- #
+
+        self.window.cal_kit_window_select_text = select_kit.get("select_text", "")
+
+        # ---------------------------------------------------------------- #
+        # Buttons
+        # ---------------------------------------------------------------- #
+
+        self.window.cal_kit_window_cancel = buttons_select.get("cancel", "")
+        self.window.cal_kit_window_select = buttons_select.get("select", "")
+
+        # ---------------------------------------------------------------- #
+        # Delete Kit Window
+        # ---------------------------------------------------------------- #
+
+        self.window.cal_kit_window_title_delete = delete_kit.get("window_title", "")
+
+        # ---------------------------------------------------------------- #
+        # Delete Text
+        # ---------------------------------------------------------------- #
+
+        self.window.cal_kit_window_delete_text = delete_kit.get("delete_text", "")
+
+        # ---------------------------------------------------------------- #
+        # Buttons
+        # ---------------------------------------------------------------- #
+
+        self.window.cal_kit_window_cancel = buttons_delete.get("cancel", "")
+        self.window.cal_kit_window_delete = buttons_delete.get("delete", "")
+
+        # ---------------------------------------------------------------- #
+        # Save Kit Window
+        # ---------------------------------------------------------------- #
+
+        self.window.cal_kit_window_title_save = save_kit.get("window_title", "")
+
+        # ---------------------------------------------------------------- #
+        # Save Text
+        # ---------------------------------------------------------------- #
+
+        self.window.cal_kit_window_save_text = save_kit.get("save_text", "")
+
+        # ---------------------------------------------------------------- #
+        # Buttons
+        # ---------------------------------------------------------------- #
+
+        self.window.cal_kit_window_cancel = buttons_save.get("cancel", "")
+        self.window.cal_kit_window_save = buttons_save.get("save", "")
+
 # ------------------------------------------------------------------------------------------------------------------- #
 # Material Characterization Module
 # ------------------------------------------------------------------------------------------------------------------- #

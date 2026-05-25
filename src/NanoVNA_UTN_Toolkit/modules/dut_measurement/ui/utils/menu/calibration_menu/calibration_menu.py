@@ -94,7 +94,7 @@ def select_kit_dialog(self):
     
     # --- Create dialog ---
     dialog = QDialog(self)
-    dialog.setWindowTitle("NanoVNA UTN Toolkit - Calibration Wizard - Select a Calibration Kit")
+    dialog.setWindowTitle(f"{self.cal_kit_window_title_select}")
     dialog.setMinimumWidth(400)
 
     layout = QVBoxLayout(dialog)
@@ -108,7 +108,9 @@ def select_kit_dialog(self):
 
     # --- List widget for kits ---
     list_widget = QListWidget()
-    layout.addWidget(QLabel("Select a kit:"))
+    select_label = QLabel(f"{self.cal_kit_window_select_text}")
+    select_label.setStyleSheet("font-size: 9pt;")
+    layout.addWidget(select_label)
     layout.addWidget(list_widget)
 
     # --- Populate list ---
@@ -216,8 +218,8 @@ def select_kit_dialog(self):
 
     # --- Buttons ---
     btn_layout = QHBoxLayout()
-    btn_cancel = QPushButton("Cancel")
-    btn_select = QPushButton("Select")
+    btn_cancel = QPushButton(f"{self.cal_kit_window_cancel}")
+    btn_select = QPushButton(f"{self.cal_kit_window_select}")
     btn_layout.addWidget(btn_cancel)
     btn_layout.addWidget(btn_select)
     layout.addLayout(btn_layout)
@@ -264,7 +266,7 @@ def delete_kit_dialog(self):
 
     # --- Create dialog ---
     dialog = QDialog(self)
-    dialog.setWindowTitle("NanoVNA UTN Toolkit - Delete Calibration Kits")
+    dialog.setWindowTitle(f"{self.cal_kit_window_title_delete}")
     dialog.setMinimumWidth(400)
 
     layout = QVBoxLayout(dialog)
@@ -280,7 +282,7 @@ def delete_kit_dialog(self):
 
     # --- List widget for kits ---
     list_widget = QListWidget()
-    layout.addWidget(QLabel("Select kits to delete:"))
+    layout.addWidget(QLabel(f"{self.cal_kit_window_delete_text}"))
     layout.addWidget(list_widget)
 
     # --- Populate list ---
@@ -305,8 +307,8 @@ def delete_kit_dialog(self):
 
     # --- Buttons ---
     btn_layout = QHBoxLayout()
-    btn_cancel = QPushButton("Cancel")
-    btn_delete = QPushButton("Delete")
+    btn_cancel = QPushButton(f"{self.cal_kit_window_cancel}")
+    btn_delete = QPushButton(f"{self.cal_kit_window_delete}")
     btn_layout.addWidget(btn_cancel)
     btn_layout.addWidget(btn_delete)
     layout.addLayout(btn_layout)

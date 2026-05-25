@@ -21,30 +21,40 @@ def show_y_range_dialog(self, target_ax):
     if self.left_graph_type != "Smith Diagram" or self.right_graph_type != "Smith Diagram": 
 
         dlg = QDialog(self)
-        dlg.setWindowTitle("NanoVNA UTN Toolkit - Set Y Range")
-        dlg.setFixedSize(250, 150)
+        dlg.setWindowTitle(f"{self.set_range_window_title}")
+        dlg.setFixedSize(260, 160)
 
         layout = QVBoxLayout(dlg)
 
+        hint_label = QLabel("Enter the desired minimum and maximum Y-axis values:")
+        hint_label.setStyleSheet("color: gray; font-size: 9pt;")
+        hint_label.setWordWrap(True)
+
+        layout.addWidget(hint_label)
+
+        layout.addSpacing(10)
+
         # --- Inputs ---
         l1 = QHBoxLayout()
-        l1.addWidget(QLabel("Y min:"))
+        l1.addWidget(QLabel(f"Y min:"))
         ymin_edit = QLineEdit()
         ymin_edit.setPlaceholderText(str(target_ax.get_ylim()[0]))
         l1.addWidget(ymin_edit)
         layout.addLayout(l1)
 
         l2 = QHBoxLayout()
-        l2.addWidget(QLabel("Y max:"))
+        l2.addWidget(QLabel(f"{self.set_range_y_max}"))
         ymax_edit = QLineEdit()
         ymax_edit.setPlaceholderText(str(target_ax.get_ylim()[1]))
         l2.addWidget(ymax_edit)
         layout.addLayout(l2)
 
+        layout.addSpacing(10)
+
         # --- Buttons ---
         btn_layout = QHBoxLayout()
-        apply_btn = QPushButton("Apply")
-        cancel_btn = QPushButton("Cancel")
+        apply_btn = QPushButton(f"{self.set_range_apply}")
+        cancel_btn = QPushButton(f"{self.set_range_close}")
         btn_layout.addWidget(apply_btn)
         btn_layout.addWidget(cancel_btn)
         layout.addLayout(btn_layout)
