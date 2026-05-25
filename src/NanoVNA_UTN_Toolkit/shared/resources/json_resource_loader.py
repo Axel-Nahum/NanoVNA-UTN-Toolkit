@@ -168,8 +168,8 @@ class JsonResourceLoader:
         # Magnitude and Phase Plot
         # ---------------------------------------------------------------- #
 
-        self.window.measurement_ui_magnitude_title = plots.get("title_mag", "")
-        self.window.measurement_ui_phase_title = plots.get("title_phase", "")
+        self.window.measurement_ui_magnitude_title = plots.get("title_mag", "soy goy")
+        self.window.measurement_ui_phase_title = plots.get("title_phase", "goy sere")
         self.window.measurement_ui_magnitude_waiting_text = plots.get("waiting_text", "")
         self.window.measurement_ui_magnitude_x_axis = plots.get("x_axis", "")
         self.window.measurement_ui_magnitude_y_axis = plots.get("y_axis", "")
@@ -225,6 +225,137 @@ class JsonResourceLoader:
         # ---------------------------------------------------------------- #
 
         self.window.measurement_ui_marker_diff = marker_diff.get("label_diff", "")
+
+    def load_view_edit_ui_resources(self):
+
+        raw_data = self._load_json()
+
+        graphic_view = raw_data.get("graphic_view", {})
+        edit_graphics = raw_data.get("edit_graphics", {})
+
+        # ---------------------------------------------------------------- #
+        # Graphic View
+        # ---------------------------------------------------------------- #
+
+        self.window.graphic_view_window_title = graphic_view.get("window_title", "")
+
+        tabs = graphic_view.get("tabs", {})
+        self.window.graphic_view_tab_graphic_1 = tabs.get("graphic_1", "")
+        self.window.graphic_view_tab_graphic_2 = tabs.get("graphic_2", "")
+
+        groups = graphic_view.get("groups", {})
+        self.window.graphic_view_group_select_parameter = groups.get("select_parameter", "")
+        self.window.graphic_view_group_selector_graphic_1 = groups.get("selector_graphic_1", "")
+        self.window.graphic_view_group_selector_graphic_2 = groups.get("selector_graphic_2", "")
+
+        parameters = graphic_view.get("parameters", {})
+        self.window.graphic_view_param_s11 = parameters.get("s11", "")
+        self.window.graphic_view_param_s21 = parameters.get("s21", "")
+
+        graph_types = graphic_view.get("graph_types", {})
+        self.window.graphic_view_smith_diagram = graph_types.get("smith_diagram", "")
+        self.window.graphic_view_magnitude = graph_types.get("magnitude", "")
+        self.window.graphic_view_phase = graph_types.get("phase", "")
+
+        buttons = graphic_view.get("buttons", {})
+        self.window.graphic_view_cancel = buttons.get("cancel", "")
+        self.window.graphic_view_apply = buttons.get("apply", "")
+
+        graphic_1 = graphic_view.get("graphic_1", {})
+        graphic_2 = graphic_view.get("graphic_2", {})
+
+        g1_mag = graphic_1.get("magnitude", {})
+        g1_phase = graphic_1.get("phase", {})
+        g1_smith = graphic_1.get("smith_diagram", {})
+
+        self.window.graphic_view_g1_mag_x_axis = g1_mag.get("x_axis", "")
+        self.window.graphic_view_g1_mag_y_s11 = g1_mag.get("y_axis_s11", "")
+        self.window.graphic_view_g1_mag_y_s21 = g1_mag.get("y_axis_s21", "")
+
+        self.window.graphic_view_g1_phase_x_axis = g1_phase.get("x_axis", "")
+        self.window.graphic_view_g1_phase_y_s11 = g1_phase.get("y_axis_s11", "")
+        self.window.graphic_view_g1_phase_y_s21 = g1_phase.get("y_axis_s21", "")
+
+        self.window.graphic_view_g1_smith_real = g1_smith.get("real_axis", "")
+        self.window.graphic_view_g1_smith_imag = g1_smith.get("imaginary_axis", "")
+
+        g2_mag = graphic_2.get("magnitude", {})
+        g2_phase = graphic_2.get("phase", {})
+        g2_smith = graphic_2.get("smith_diagram", {})
+
+        self.window.graphic_view_g2_mag_x_axis = g2_mag.get("x_axis", "")
+        self.window.graphic_view_g2_mag_y_s11 = g2_mag.get("y_axis_s11", "")
+        self.window.graphic_view_g2_mag_y_s21 = g2_mag.get("y_axis_s21", "")
+
+        self.window.graphic_view_g2_phase_x_axis = g2_phase.get("x_axis", "")
+        self.window.graphic_view_g2_phase_y_s11 = g2_phase.get("y_axis_s11", "")
+        self.window.graphic_view_g2_phase_y_s21 = g2_phase.get("y_axis_s21", "")
+
+        self.window.graphic_view_g2_smith_real = g2_smith.get("real_axis", "")
+        self.window.graphic_view_g2_smith_imag = g2_smith.get("imaginary_axis", "")
+
+        # ---------------------------------------------------------------- #
+        # Edit Graphics
+        # ---------------------------------------------------------------- #
+
+        self.window.edit_graphics_window_title = edit_graphics.get("window_title", "")
+
+        tabs = edit_graphics.get("tabs", {})
+        self.window.edit_graphics_tab_graphic_1 = tabs.get("graphic_1", "")
+        self.window.edit_graphics_tab_graphic_2 = tabs.get("graphic_2", "")
+
+        groups = edit_graphics.get("groups", {})
+        self.window.edit_graphics_group_trace = groups.get("edit_trace", "")
+        self.window.edit_graphics_group_markers = groups.get("edit_markers", "")
+        self.window.edit_graphics_group_graphics = groups.get("edit_graphics", "")
+
+        trace = edit_graphics.get("trace", {})
+        self.window.edit_graphics_trace_color = trace.get("trace_color", "")
+        self.window.edit_graphics_trace_width = trace.get("trace_width", "")
+
+        markers = edit_graphics.get("markers", {})
+        self.window.edit_graphics_marker1_color = markers.get("marker_1_color", "")
+        self.window.edit_graphics_marker2_color = markers.get("marker_2_color", "")
+        self.window.edit_graphics_marker1_size = markers.get("marker_1_size", "")
+        self.window.edit_graphics_marker2_size = markers.get("marker_2_size", "")
+
+        graphics = edit_graphics.get("graphics", {})
+        self.window.edit_graphics_background_color = graphics.get("background_color", "")
+        self.window.edit_graphics_text_color = graphics.get("text_color", "")
+        self.window.edit_graphics_axis_color = graphics.get("axis_color", "")
+
+        buttons = edit_graphics.get("buttons", {})
+        self.window.edit_graphics_cancel = buttons.get("cancel", "")
+        self.window.edit_graphics_apply = buttons.get("apply", "")
+
+        eg_g1 = edit_graphics.get("graphic_1", {})
+        eg_g2 = edit_graphics.get("graphic_2", {})
+
+        eg_g1_mag = eg_g1.get("magnitude", {})
+        eg_g1_phase = eg_g1.get("phase", {})
+
+        self.window.edit_graphics_g1_mag_x_axis = eg_g1_mag.get("x_axis", "")
+        self.window.edit_graphics_g1_mag_y_s11 = eg_g1_mag.get("y_axis_s11", "")
+        self.window.edit_graphics_g1_mag_y_s21 = eg_g1_mag.get("y_axis_s21", "")
+        self.window.edit_graphics_g1_mag_title = eg_g1_mag.get("title_mag", "")
+
+        self.window.edit_graphics_g1_phase_x_axis = eg_g1_phase.get("x_axis", "")
+        self.window.edit_graphics_g1_phase_y_s11 = eg_g1_phase.get("y_axis_s11", "")
+        self.window.edit_graphics_g1_phase_y_s21 = eg_g1_phase.get("y_axis_s21", "")
+        self.window.edit_graphics_g1_phase_title = eg_g1_mag.get("title_phase", "")
+
+        eg_g2_mag = eg_g2.get("magnitude", {})
+        eg_g2_phase = eg_g2.get("phase", {})
+
+        self.window.edit_graphics_g2_mag_x_axis = eg_g2_mag.get("x_axis", "")
+        self.window.edit_graphics_g2_mag_y_s11 = eg_g2_mag.get("y_axis_s11", "")
+        self.window.edit_graphics_g2_mag_y_s21 = eg_g2_mag.get("y_axis_s21", "")
+        self.window.edit_graphics_g2_mag_title = eg_g2_mag.get("title_mag", "")
+
+        self.window.edit_graphics_g2_phase_x_axis = eg_g2_phase.get("x_axis", "")
+        self.window.edit_graphics_g2_phase_y_s11 = eg_g2_phase.get("y_axis_s11", "")
+        self.window.edit_graphics_g2_phase_y_s21 = eg_g2_phase.get("y_axis_s21", "")
+        self.window.edit_graphics_g2_phase_title = eg_g2_mag.get("title_phase", "")
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Material Characterization Module

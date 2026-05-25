@@ -85,7 +85,7 @@ def create_tab1(self):
     left_layout.setContentsMargins(0, 14, 0, 0)
 
     # --- Selector for S parameter ---
-    graphic_param_selector = QGroupBox(" Select Parameter ")
+    graphic_param_selector = QGroupBox(f"{self.graphic_view_group_select_parameter}")
     graphic_param_selector.setStyleSheet(groupbox_style)
     param_layout = QVBoxLayout()
     self.radio_s_tab1 = {}  
@@ -99,11 +99,11 @@ def create_tab1(self):
     left_layout.addWidget(graphic_param_selector)
 
     # --- Selector for graph type ---
-    graphic_type_selector = QGroupBox(" Selector Graphic 1 ")
+    graphic_type_selector = QGroupBox(f"{self.graphic_view_group_selector_graphic_1}")
     graphic_type_selector.setStyleSheet(groupbox_style)
     type_layout = QVBoxLayout()
     self.radio_buttons_tab1 = {} 
-    for option in ["Smith Diagram", "Magnitude", "Phase"]:
+    for option in [f"{self.graphic_view_smith_diagram}", f"{self.graphic_view_magnitude}", f"{self.graphic_view_phase}"]:
         rb = QRadioButton(option)
         rb.setStyleSheet(f"color: {label_color};")
         type_layout.addWidget(rb)
@@ -165,7 +165,7 @@ def create_tab1(self):
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.abs(data), color='blue', label=self.current_s_tab1)
 
-            ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$")
+            ax.set_xlabel(f"{self.graphic_view_g1_mag_x_axis}")
             ax.set_ylabel(r"$|%s|$" % self.current_s_tab1)
 
             ax.set_aspect('equal', 'box')    
@@ -188,7 +188,7 @@ def create_tab1(self):
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.angle(data, deg=True), color='blue', label=self.current_s_tab1)
 
-            ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$")
+            ax.set_xlabel(f"{self.graphic_view_g1_phase_x_axis}")
             ax.set_ylabel(r'$\phi_{%s}$ [°]' % self.current_s_tab1)
 
             ax.set_aspect('equal', 'box')    
@@ -265,7 +265,7 @@ def create_tab2(self):
     right_layout2.setContentsMargins(0, 14, 0, 0)
 
     # --- Selector for S parameter ---
-    graphic_param_selector = QGroupBox(" Select Parameter ")
+    graphic_param_selector = QGroupBox(f"{self.graphic_view_group_select_parameter}")
     graphic_param_selector.setStyleSheet(groupbox_style)
     param_layout = QVBoxLayout()
     self.radio_s_tab2 = {}
@@ -279,11 +279,11 @@ def create_tab2(self):
     right_layout2.addWidget(graphic_param_selector)
 
     # --- Selector for graph type ---
-    graphic_type_selector = QGroupBox(" Selector Graphic 2 ")
+    graphic_type_selector = QGroupBox(f"{self.graphic_view_group_selector_graphic_1}")
     graphic_type_selector.setStyleSheet(groupbox_style)
     type_layout = QVBoxLayout()
     self.radio_buttons_tab2 = {}
-    for option in ["Smith Diagram", "Magnitude", "Phase"]:
+    for option in [f"{self.graphic_view_smith_diagram}", f"{self.graphic_view_magnitude}", f"{self.graphic_view_phase}"]:
         rb = QRadioButton(option)
         type_layout.addWidget(rb)
         rb.setStyleSheet(f"color: {label_color};")
@@ -342,7 +342,7 @@ def create_tab2(self):
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.abs(data), color='blue', label=self.current_s_tab2)
 
-            ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$")
+            ax.set_xlabel(f"{self.graphic_view_g2_mag_x_axis}")
             ax.set_ylabel(r"$|%s|$" % self.current_s_tab2)
 
             ax.set_aspect('equal', 'box')  
@@ -364,7 +364,7 @@ def create_tab2(self):
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.angle(data, deg=True), color='blue', label=self.current_s_tab2)
 
-            ax.set_xlabel(r"$\mathrm{Frequency\ [MHz]}$")
+            ax.set_xlabel(f"{self.graphic_view_g2_phase_x_axis}")
             ax.set_ylabel(r'$\phi_{%s}$ [°]' % self.current_s_tab2)
             
             ax.set_aspect('equal', 'box')   

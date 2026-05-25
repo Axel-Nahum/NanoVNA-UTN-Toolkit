@@ -1,0 +1,144 @@
+{
+  "graphic_view": {
+    "window_title": "NanoVNA UTN Toolkit - Graphic View",
+
+    "tabs": {
+      "graphic_1": "Graphic 1",
+      "graphic_2": "Graphic 2"
+    },
+
+    "groups": {
+      "select_parameter": " Select Parameter ",
+      "selector_graphic_1": " Selector Graphic 1 ",
+      "selector_graphic_2": " Selector Graphic 2 "
+    },
+
+    "parameters": {
+      "s11": "S11",
+      "s21": "S21"
+    },
+
+    "graph_types": {
+      "smith_diagram": "Smith Diagram",
+      "magnitude": "Magnitude",
+      "phase": "Phase"
+    },
+
+    "buttons": {
+      "cancel": "Cancel",
+      "apply": "Apply"
+    },
+
+    "graphic_1": {
+      "magnitude": {
+        "x_axis": "Frequency [MHz]",
+        "y_axis_s11": "|S11|",
+        "y_axis_s21": "|S21|"
+      },
+
+      "phase": {
+        "x_axis": "Frequency [MHz]",
+        "y_axis_s11": "Phase S11 [°]",
+        "y_axis_s21": "Phase S21 [°]"
+      },
+
+      "smith_diagram": {
+        "real_axis": "Real",
+        "imaginary_axis": "Imaginary",
+        "s11_label": "S11",
+        "s21_label": "S21"
+      }
+    },
+
+    "graphic_2": {
+      "magnitude": {
+        "x_axis": "$\\mathrm{Frequency\\ [MHz]}$",
+        "y_axis_s11": "|S11|",
+        "y_axis_s21": "|S21|"
+      },
+
+      "phase": {
+        "x_axis": "$\\mathrm{Frequency\\ [MHz]}$",
+        "y_axis_s11": "Phase S11 [°]",
+        "y_axis_s21": "Phase S21 [°]"
+      },
+
+      "smith_diagram": {
+        "real_axis": "Real",
+        "imaginary_axis": "Imaginary",
+        "s11_label": "S11",
+        "s21_label": "S21"
+      }
+    }
+  },
+
+  "edit_graphics": {
+    "window_title": "NanoVNA UTN Toolkit - Edit Graphics",
+
+    "tabs": {
+      "graphic_1": "Graphic 1",
+      "graphic_2": "Graphic 2"
+    },
+
+    "groups": {
+      "edit_trace": " Edit Trace ",
+      "edit_markers": " Edit Markers ",
+      "edit_graphics": " Edit Graphics "
+    },
+
+    "trace": {
+      "trace_color": "Trace color:",
+      "trace_width": "Trace width (all):"
+    },
+
+    "markers": {
+      "marker_1_color": "Marker 1 color:",
+      "marker_2_color": "Marker 2 color:",
+      "marker_1_size": "Marker 1 size (all):",
+      "marker_2_size": "Marker 2 size (all):"
+    },
+
+    "graphics": {
+      "background_color": "Background Color:",
+      "text_color": "Text Color:",
+      "axis_color": "Axis Color:"
+    },
+
+    "buttons": {
+      "cancel": "Cancel",
+      "apply": "Apply"
+    },
+
+    "graphic_1": {
+      "magnitude": {
+        "x_axis": "$\\mathrm{Frequency\\ [GHz]}$",
+        "y_axis_s11": "|S11|",
+        "y_axis_s21": "|S21|",
+        "title_mag": "$%s\\ \\mathrm{Magnitude}$"
+      },
+
+      "phase": {
+        "x_axis": "$\\mathrm{Frequency\\ [GHz]}$",
+        "y_axis_s11": "Phase S11 [°]",
+        "y_axis_s21": "Phase S21 [°]",
+        "title_phase": "$\\mathrm{{{parameter}\\ Phase}}$"
+      }
+    },
+
+    "graphic_2": {
+      "magnitude": {
+        "x_axis": "$\\mathrm{Frequency\\ [GHz]}$",
+        "y_axis_s11": "|S11|",
+        "y_axis_s21": "|S21|",
+        "title_mag": "$%s\\ \\mathrm{Magnitude}$"
+      },
+
+      "phase": {
+        "x_axis": "$\\mathrm{Frequency\\ [GHz]}$",
+        "y_axis_s11": "Phase S11 [°]",
+        "y_axis_s21": "Phase S21 [°]",
+        "title_phase": "$\\mathrm{{{parameter}\\ Phase}}$"
+      }
+    }
+  }
+}

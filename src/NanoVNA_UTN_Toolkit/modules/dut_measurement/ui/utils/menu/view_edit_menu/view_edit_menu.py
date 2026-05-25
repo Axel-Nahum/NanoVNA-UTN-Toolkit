@@ -17,7 +17,8 @@ def open_view(self):
         self.view_window = None
 
     # Crear nueva instancia de View
-    self.view_window = View(nano_window=self)
+    self.view_window = View(nano_window=self,)
     self.view_window.show()
     self.view_window.raise_()
     self.view_window.activateWindow()
+    

@@ -126,7 +126,7 @@ def create_edit_tab1(self, tabs, nano_window):
     tab1_container.addWidget(layout_container_V)
     
     # --- Left Trace GroupBox ---
-    left_group_trace = QGroupBox(" Edit Trace ")
+    left_group_trace = QGroupBox(f"{self.edit_graphics_group_trace}")
     left_group_trace.setStyleSheet(groupbox_style)
     left_layout = QVBoxLayout(left_group_trace)
     left_layout.setAlignment(Qt.AlignTop)
@@ -135,7 +135,7 @@ def create_edit_tab1(self, tabs, nano_window):
 
     # --- Trace color ---
     trace_layout = QHBoxLayout()
-    lbl_trace = QLabel("Trace color:")
+    lbl_trace = QLabel(f"{self.edit_graphics_trace_color}")
     lbl_trace.setStyleSheet("font-size: 11pt;")
     btn_trace = QFrame()
     btn_trace.setFixedSize(26, 26)
@@ -146,12 +146,11 @@ def create_edit_tab1(self, tabs, nano_window):
 
      # --- Line width ---
     line_layout = QHBoxLayout()
-    lbl_line = QLabel("Trace width (all):")
+    lbl_line = QLabel(f"{self.edit_graphics_trace_width}")
     lbl_line.setStyleSheet("font-size: 11pt;")
     spin_line_tab1 = QSpinBox()
     spin_line_tab1.setRange(1, 10)
     spin_line_tab1.setValue(trace_size1)
-    spin_line_tab1.setStyle(QApplication.style())
     spin_line_tab1.setAlignment(Qt.AlignCenter)
     spin_line_tab1.setFrame(True)                
     spin_line_tab1.setFixedWidth(50)
@@ -160,7 +159,7 @@ def create_edit_tab1(self, tabs, nano_window):
     left_layout.addLayout(line_layout)
 
     # --- Left Marker GroupBox ---
-    left_group_marker = QGroupBox(" Edit Markers ")
+    left_group_marker = QGroupBox(f"{self.edit_graphics_group_markers}")
     left_group_marker.setStyleSheet(groupbox_style)
     left_group_marker.setMinimumHeight(200)
     left_group_marker.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
@@ -171,7 +170,7 @@ def create_edit_tab1(self, tabs, nano_window):
 
     # --- Marker color ---
     marker1_layout = QHBoxLayout()
-    lbl_marker1 = QLabel("Marker 1 color:")
+    lbl_marker1 = QLabel(f"{self.edit_graphics_marker1_color}")
     lbl_marker1.setStyleSheet("font-size: 11pt;")
     btn_marker1 = QFrame()
     btn_marker1.setFixedSize(26, 26)
@@ -181,7 +180,7 @@ def create_edit_tab1(self, tabs, nano_window):
     left_layout.addLayout(marker1_layout)
 
     marker2_layout = QHBoxLayout()
-    lbl_marker2 = QLabel("Marker 2 color:")
+    lbl_marker2 = QLabel(f"{self.edit_graphics_marker2_color}")
     lbl_marker2.setStyleSheet("font-size: 11pt;")
     btn_marker2 = QFrame()
     btn_marker2.setFixedSize(26, 26)
@@ -192,12 +191,11 @@ def create_edit_tab1(self, tabs, nano_window):
 
     # --- Marker size ---
     marker1_size_layout = QHBoxLayout()
-    lbl_marker1_size = QLabel("Marker 1 size (all):")
+    lbl_marker1_size = QLabel(f"{self.edit_graphics_marker2_size}")
     lbl_marker1_size.setStyleSheet("font-size: 11pt;")
     spin_marker1_tab1 = QSpinBox()
     spin_marker1_tab1.setRange(1, 20)
     spin_marker1_tab1.setValue(marker_size1)
-    spin_marker1_tab1.setStyle(QApplication.style())
     spin_marker1_tab1.setFrame(True)  
     spin_marker1_tab1.setAlignment(Qt.AlignCenter)             
     spin_marker1_tab1.setFixedWidth(50)
@@ -206,12 +204,11 @@ def create_edit_tab1(self, tabs, nano_window):
     left_layout.addLayout(marker1_size_layout)
 
     marker2_size_layout = QHBoxLayout()
-    lbl_marker2_size = QLabel("Marker 2 size (all):")
+    lbl_marker2_size = QLabel(f"{self.edit_graphics_marker1_size}")
     lbl_marker2_size.setStyleSheet("font-size: 11pt;")
     spin_marker2_tab1 = QSpinBox()
     spin_marker2_tab1.setRange(1, 20)
     spin_marker2_tab1.setValue(marker_size2)
-    spin_marker2_tab1.setStyle(QApplication.style())
     spin_marker2_tab1.setFrame(True)  
     spin_marker2_tab1.setAlignment(Qt.AlignCenter)             
     spin_marker2_tab1.setFixedWidth(50)
@@ -220,7 +217,7 @@ def create_edit_tab1(self, tabs, nano_window):
     left_layout.addLayout(marker2_size_layout)
 
     # --- Left Graphic GroupBox ---
-    left_group_graphics = QGroupBox(" Edit Graphics ")
+    left_group_graphics = QGroupBox(f"{self.edit_graphics_group_graphics}")
     left_group_graphics.setStyleSheet(groupbox_style)
     left_layout = QVBoxLayout(left_group_graphics)
     left_layout.setAlignment(Qt.AlignTop)
@@ -229,7 +226,7 @@ def create_edit_tab1(self, tabs, nano_window):
 
     # --- Brackground Color ---
     graphic_brackground_color_layout = QHBoxLayout()
-    lbl_graphic_color = QLabel("Background Color:")
+    lbl_graphic_color = QLabel(f"{self.edit_graphics_background_color}")
     lbl_graphic_color.setStyleSheet("font-size: 11pt;")
     btn_graphic = QFrame()
     btn_graphic.setFixedSize(26, 26)
@@ -240,7 +237,7 @@ def create_edit_tab1(self, tabs, nano_window):
 
     # --- Text Color ---
     text_color_layout = QHBoxLayout()
-    lbl_text_color = QLabel("Text Color:")
+    lbl_text_color = QLabel(f"{self.edit_graphics_text_color}")
     lbl_text_color.setStyleSheet("font-size: 11pt;")
     btn_text = QFrame()
     btn_text.setFixedSize(26, 26)
@@ -251,7 +248,7 @@ def create_edit_tab1(self, tabs, nano_window):
 
     # --- Axis Color ---
     axis_color_layout = QHBoxLayout()
-    lbl_axis_color = QLabel("Axis Color:")
+    lbl_axis_color = QLabel(f"{self.edit_graphics_axis_color}")
     lbl_axis_color.setStyleSheet("font-size: 11pt;")
     btn_axis = QFrame()
     btn_axis.setFixedSize(26, 26)
@@ -365,9 +362,9 @@ def create_edit_tab1(self, tabs, nano_window):
                 ax.plot(freqs / 1e-6, magnitude_db, color=get_trace_color(), label=s_param1)
 
             # Magnitude
-            ax.set_xlabel(r"$\mathrm{Frequency\ [GHz]}$", color=f"{get_text_color()}")
+            ax.set_xlabel(f"{self.edit_graphics_g1_mag_x_axis}", color=f"{get_text_color()}")
             ax.set_ylabel(r"$|%s|$" % s_param1, color=f"{get_text_color()}")
-            ax.set_title("hola", color=f"{get_text_color()}")
+            ax.set_title(self.edit_graphics_g1_mag_title % s_param1, color=f"{get_text_color()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color()}")
@@ -398,9 +395,9 @@ def create_edit_tab1(self, tabs, nano_window):
                 ax.plot(freqs / 1e-6, np.angle(S_data) * 180 / np.pi, color=get_trace_color(), label=s_param1)
 
             # Phase
-            ax.set_xlabel(r"$\mathrm{Frequency\ [GHz]}$", color=f"{get_text_color()}")
+            ax.set_xlabel(f"{self.edit_graphics_g1_phase_x_axis}", color=f"{get_text_color()}")
             ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param1, color=f"{get_text_color()}")
-            ax.set_title(rf"$\mathrm{{{self.measurement_ui_phase_title.format(parameter=s_param1)}}}$", color=f"{get_text_color()}")
+            ax.set_title(rf"$\mathrm{{{self.edit_graphics_g1_phase_title.format(parameter=s_param1)}}}$", color=f"{get_text_color()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color()}")
@@ -639,7 +636,7 @@ def create_edit_tab2(self, tabs, nano_window):
     tab2_container.addWidget(layout_container_V)
     
     # --- Left Trace GroupBox ---
-    left_group_trace = QGroupBox(" Edit Trace ")
+    left_group_trace = QGroupBox(f"{self.edit_graphics_group_trace}")
     left_group_trace.setStyleSheet(groupbox_style)
     left_layout = QVBoxLayout(left_group_trace)
     left_layout.setAlignment(Qt.AlignTop)
@@ -648,7 +645,7 @@ def create_edit_tab2(self, tabs, nano_window):
 
     # Trace color
     trace_layout = QHBoxLayout()
-    lbl_trace = QLabel("Trace color:")
+    lbl_trace = QLabel(f"{self.edit_graphics_trace_color}")
     lbl_trace.setStyleSheet("font-size: 11pt;")
     btn_trace = QFrame()
     btn_trace.setFixedSize(26, 26)
@@ -659,12 +656,11 @@ def create_edit_tab2(self, tabs, nano_window):
 
     # Trace width
     trace_layout = QHBoxLayout()
-    lbl_line = QLabel("Trace width (all):")
+    lbl_line = QLabel(f"{self.edit_graphics_trace_width}")
     lbl_line.setStyleSheet("font-size: 11pt;")
     spin_line_tab2 = QSpinBox()
     spin_line_tab2.setRange(1, 10)
     spin_line_tab2.setValue(line_width2)
-    spin_line_tab2.setStyle(QApplication.style())
     spin_line_tab2.setAlignment(Qt.AlignCenter)
     spin_line_tab2.setFrame(True)      
     spin_line_tab2.setFixedWidth(50)
@@ -673,9 +669,10 @@ def create_edit_tab2(self, tabs, nano_window):
     left_layout.addLayout(trace_layout)
 
     # --- Left Marker GroupBox ---
-    left_group_marker = QGroupBox(" Edit Markers ")
+    left_group_marker = QGroupBox(f"{self.edit_graphics_group_markers}")
     left_group_marker.setStyleSheet(groupbox_style)
     left_group_marker.setMinimumHeight(200)
+    left_group_marker.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
     left_layout = QVBoxLayout(left_group_marker)
     left_layout.setAlignment(Qt.AlignTop)
     left_layout.setSpacing(20)
@@ -683,7 +680,7 @@ def create_edit_tab2(self, tabs, nano_window):
 
     # Marker color
     marker1_layout = QHBoxLayout()
-    lbl_marker1 = QLabel("Marker 1 color:")
+    lbl_marker1 = QLabel(f"{self.edit_graphics_marker1_color}")
     lbl_marker1.setStyleSheet("font-size: 11pt;")
     btn_marker1 = QFrame()
     btn_marker1.setFixedSize(26, 26)
@@ -693,7 +690,7 @@ def create_edit_tab2(self, tabs, nano_window):
     left_layout.addLayout(marker1_layout)
 
     marker2_layout = QHBoxLayout()
-    lbl_marker2 = QLabel("Marker 2 color:")
+    lbl_marker2 = QLabel(f"{self.edit_graphics_marker2_color}")
     lbl_marker2.setStyleSheet("font-size: 11pt;")
     btn_marker2 = QFrame()
     btn_marker2.setFixedSize(26, 26)
@@ -704,12 +701,11 @@ def create_edit_tab2(self, tabs, nano_window):
 
     # Marker size
     marker1_size_layout = QHBoxLayout()
-    lbl_marker1_size = QLabel("Marker 1 size (all):")
+    lbl_marker1_size = QLabel(f"{self.edit_graphics_marker2_size}")
     lbl_marker1_size.setStyleSheet("font-size: 11pt;")
     spin_marker1_tab2 = QSpinBox()
     spin_marker1_tab2.setRange(1, 20)
     spin_marker1_tab2.setValue(marker_size1)
-    spin_marker1_tab2.setStyle(QApplication.style())
     spin_marker1_tab2.setAlignment(Qt.AlignCenter)
     spin_marker1_tab2.setFrame(True)  
     spin_marker1_tab2.setFixedWidth(50)
@@ -719,12 +715,11 @@ def create_edit_tab2(self, tabs, nano_window):
 
     # Marker size
     marker2_size_layout = QHBoxLayout()
-    lbl_marker2_size = QLabel("Marker 2 size (all):")
+    lbl_marker2_size = QLabel(f"{self.edit_graphics_marker1_size}")
     lbl_marker2_size.setStyleSheet("font-size: 11pt;")
     spin_marker2_tab2 = QSpinBox()
     spin_marker2_tab2.setRange(1, 20)
     spin_marker2_tab2.setValue(marker_size2)
-    spin_marker2_tab2.setStyle(QApplication.style())
     spin_marker2_tab2.setAlignment(Qt.AlignCenter)
     spin_marker2_tab2.setFrame(True)  
     spin_marker2_tab2.setFixedWidth(50)
@@ -733,7 +728,7 @@ def create_edit_tab2(self, tabs, nano_window):
     left_layout.addLayout(marker2_size_layout)
 
     # --- Left Graphic GroupBox ---
-    left_group_graphics = QGroupBox(" Edit Graphics ")
+    left_group_graphics = QGroupBox(f"{self.edit_graphics_group_graphics}")
     left_group_graphics.setStyleSheet(groupbox_style)
     left_layout = QVBoxLayout(left_group_graphics)
     left_layout.setAlignment(Qt.AlignTop)
@@ -742,7 +737,7 @@ def create_edit_tab2(self, tabs, nano_window):
 
     # --- Background Color ---
     graphic_brackground_color_layout = QHBoxLayout()
-    lbl_graphic_color = QLabel("Background Color:")
+    lbl_graphic_color = QLabel(f"{self.edit_graphics_background_color}")
     lbl_graphic_color.setStyleSheet("font-size: 11pt;")
     btn_graphic = QFrame()
     btn_graphic.setFixedSize(26, 26)
@@ -753,7 +748,7 @@ def create_edit_tab2(self, tabs, nano_window):
 
     # --- Text Color ---
     text_color_layout = QHBoxLayout()
-    lbl_text_color = QLabel("Text Color:")
+    lbl_text_color = QLabel(f"{self.edit_graphics_text_color}")
     lbl_text_color.setStyleSheet("font-size: 11pt;")
     btn_text = QFrame()
     btn_text.setFixedSize(26, 26)
@@ -764,7 +759,7 @@ def create_edit_tab2(self, tabs, nano_window):
 
     # --- Axis Color ---
     axis_color_layout = QHBoxLayout()
-    lbl_axis_color = QLabel("Axis Color:")
+    lbl_axis_color = QLabel(f"{self.edit_graphics_axis_color}")
     lbl_axis_color.setStyleSheet("font-size: 11pt;")
     btn_axis = QFrame()
     btn_axis.setFixedSize(26, 26)
@@ -865,9 +860,9 @@ def create_edit_tab2(self, tabs, nano_window):
                 ax.plot(freqs/1e-6, magnitude_db, color=get_trace_color2(), label=s_param2)
 
             # Magnitude
-            ax.set_xlabel(r"$\mathrm{Frequency\ [GHz]}$", color=f"{get_text_color2()}")
+            ax.set_xlabel(f"{self.edit_graphics_g2_mag_x_axis}", color=f"{get_text_color2()}")
             ax.set_ylabel(r"$|%s|$" % s_param2, color=f"{get_text_color2()}")
-            ax.set_title("hola", color=f"{get_text_color2()}")
+            ax.set_title(self.edit_graphics_g2_mag_title % s_param2, color=f"{get_text_color2()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color2()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color2()}")
@@ -897,9 +892,9 @@ def create_edit_tab2(self, tabs, nano_window):
                 ax.plot(freqs/1e-6, np.angle(S_data) * 180 / np.pi, color=get_trace_color2(), label=s_param2)
 
             # Phase
-            ax.set_xlabel(r"$\mathrm{Frequency\ [GHz]}$", color=f"{get_text_color2()}")
+            ax.set_xlabel(f"{self.edit_graphics_g2_phase_x_axis}", color=f"{get_text_color2()}")
             ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param2, color=f"{get_text_color2()}")
-            ax.set_title(rf"$\mathrm{{{self.nano_window.measurement_ui_phase_title.format(parameter=s_param2)}}}$", color=f"{get_text_color2()}")
+            ax.set_title(rf"$\mathrm{{{self.edit_graphics_g2_phase_title.format(parameter=s_param2)}}}$", color=f"{get_text_color2()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color2()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color2()}")
@@ -1047,9 +1042,7 @@ def create_edit_tab2(self, tabs, nano_window):
 
     tab2_container.addItem(QSpacerItem(0, 10, QSizePolicy.Minimum, QSizePolicy.Fixed))
 
-    # Line above the buttons
     line_above_buttons = QFrame()
-    line_above_buttons.setStyleSheet(f"""background-color: {qframe_color}; color: {qframe_color}""")
     line_above_buttons.setObjectName("separatorLine")
     line_above_buttons.setFixedHeight(2)
     tab2_container.addWidget(line_above_buttons)

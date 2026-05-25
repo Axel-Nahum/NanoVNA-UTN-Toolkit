@@ -497,6 +497,19 @@ class NanoVNAGraphics(QMainWindow):
 
         self.close()
 
+    def reload_graphics_resources(self):
+
+        current_lang = "en"
+
+        self.resourceLoader = JsonResourceLoader(
+            self_window=self,
+            module="dut_measurement",
+            lang=current_lang,
+            json_resource="dut_measurement_graphics.json"
+        )
+
+        self.resourceLoader.load_measurement_graphics_resources()
+
 if __name__ == "__main__":
     app = QApplication(sys.argv)
     window = NanoVNAGraphics()

@@ -79,6 +79,13 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ------------------------------------------------------------------------------------------------------------------ #
 
 class View(QMainWindow):
@@ -87,7 +94,26 @@ class View(QMainWindow):
 
         apply_window_icon(self)
 
-#------------------------------------------------------------------------------------------------------------------------------------------
+        self.nano_window = nano_window 
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Load JSON 
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        current_lang = "en"
+
+        self.resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_view_edit.json"
+        )
+
+        self.resourceLoader.load_view_edit_ui_resources()
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Dark light Mode
+# ------------------------------------------------------------------------------------------------------------------- #
 
         # Load configuration for UI colors and styles
         settings = get_settings(
@@ -105,9 +131,7 @@ class View(QMainWindow):
 
 #------------------------------------------------------------------------------------------------------------------------------------------
 
-        self.nano_window = nano_window 
-
-        self.setWindowTitle("NanoVNA UTN Toolkit - Graphic View")
+        self.setWindowTitle(f"{self.graphic_view_window_title}")
         self.setFixedSize(800, 500)
 
         # --- Frequency array placeholder ---
@@ -132,8 +156,8 @@ class View(QMainWindow):
 
         tab2_widget, self.fig_right, self.ax_right, self.canvas_right, self.right_panel2, self.update_graph_right, self.current_s_tab2, self.current_graph_tab2 = create_tab2(self)
 
-        tabs.addTab(tab1_widget, "Graphic 1")
-        tabs.addTab(tab2_widget, "Graphic 2")
+        tabs.addTab(tab1_widget, f"{self.graphic_view_tab_graphic_1}")
+        tabs.addTab(tab2_widget, f"{self.graphic_view_tab_graphic_2}")
 
         central_layout.addWidget(tabs)
 
@@ -148,8 +172,8 @@ class View(QMainWindow):
         # --- Buttons ---
         button_layout = QHBoxLayout()
         button_layout.addStretch()
-        btn_cancel = QPushButton("Cancel")
-        btn_apply = QPushButton("Apply")
+        btn_cancel = QPushButton(f"{self.graphic_view_cancel}")
+        btn_apply = QPushButton(f"{self.graphic_view_apply}")
         btn_cancel.clicked.connect(self.close)
         btn_apply.clicked.connect(lambda: self.on_apply_clicked())
 
@@ -267,7 +291,7 @@ class View(QMainWindow):
             unit_right = settings.value("Graphic2/db_times", "dB")
 
             recreate_single_plot(
-                self,
+                self.nano_window,
                 ax=self.nano_window.ax_left,
                 fig=self.nano_window.fig_left,
                 s_data=data_left,
@@ -284,11 +308,12 @@ class View(QMainWindow):
                 unit=unit_left,
                 cursor_graph=self.nano_window.cursor_left,
                 cursor_graph_2=self.nano_window.cursor_left_2,
-                unit_mode=unit_left
+                ax_type="left",
+                unit_mode=unit_left      
             )
 
             recreate_single_plot(
-                self,
+                self.nano_window,
                 ax=self.nano_window.ax_right,
                 fig=self.nano_window.fig_right,
                 s_data=data_right,
@@ -305,6 +330,7 @@ class View(QMainWindow):
                 unit=unit_right,
                 cursor_graph=self.nano_window.cursor_right,
                 cursor_graph_2=self.nano_window.cursor_right_2,
+                ax_type="right",
                 unit_mode=unit_right
             )
 
