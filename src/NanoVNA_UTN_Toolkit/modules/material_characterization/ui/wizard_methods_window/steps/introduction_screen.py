@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.load_resource import load_resource
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.load_resource import load_resource
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -30,6 +30,13 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def build_introduction_screen(self):
@@ -38,7 +45,13 @@ def build_introduction_screen(self):
 # Load JSON 
 # ------------------------------------------------------------------------------------------------------------------- #
 
-    current_lang = "en"
+    settings = get_settings(
+        "INI/preferences/preferences.ini",
+        "shared/utils/preferences/preferences.ini", 
+        Path(__file__).resolve()
+    )
+
+    current_lang = settings.value("Preferences/language", "en")
 
     resourceLoader = JsonResourceLoader(
         self_window = self, 

@@ -54,7 +54,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -64,7 +64,7 @@ except ImportError as e:
 # Import dark-light mode toggle function with error handling to log issues without crashing the application
 
 try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.dark_light_mode.light_dark_mode import dark_light_config
+    from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import dark_light_config
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -72,7 +72,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.app_icon import apply_window_icon
+    from NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon import apply_window_icon
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -100,7 +100,13 @@ class View(QMainWindow):
 # Load JSON 
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        current_lang = "en"
+        settings = get_settings(
+            "INI/preferences/preferences.ini",
+            "shared/utils/preferences/preferences.ini", 
+            Path(__file__).resolve()
+        )
+
+        current_lang = settings.value("Preferences/language", "en")
 
         self.resourceLoader = JsonResourceLoader(
             self_window = self, 
@@ -118,8 +124,8 @@ class View(QMainWindow):
         # Load configuration for UI colors and styles
         settings = get_settings(
             "INI/dut_measurement/dark_light_config/dark_light_config.ini", 
-            "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
-                Path(__file__).resolve()
+            "shared/utils/dark_light_mode/dark_light_config.ini", 
+            Path(__file__).resolve()
         )
 
         # QFrame

@@ -9,14 +9,14 @@ from datetime import datetime
 from PySide6.QtWidgets import QMessageBox
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.calibration_path_utils import get_calibration_path
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
 except ImportError as e:  
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")

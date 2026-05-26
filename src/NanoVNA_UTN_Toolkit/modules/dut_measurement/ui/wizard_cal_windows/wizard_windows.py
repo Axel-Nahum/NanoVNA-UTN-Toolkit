@@ -34,7 +34,7 @@ except ImportError as e:
     THRUCalibrationManager = None
 
 try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.dark_light_mode.light_dark_mode import dark_light_config
+    from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import dark_light_config
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -42,7 +42,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.calibration_path_utils import get_calibration_path
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -66,7 +66,7 @@ except ImportError as e:
     sys.exit(1)   
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.app_icon import apply_window_icon
+    from NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon import apply_window_icon
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -77,6 +77,13 @@ try:
     from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
 except ImportError as e:
     import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
+except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -108,7 +115,13 @@ class CalibrationWizard(QMainWindow):
 # Load JSON 
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        current_lang = "en"
+        settings = get_settings(
+            "INI/preferences/preferences.ini",
+            "shared/utils/preferences/preferences.ini", 
+            Path(__file__).resolve()
+        )
+
+        current_lang = settings.value("Preferences/language", "en")
 
         resourceLoader = JsonResourceLoader(
             self_window = self, 
@@ -129,7 +142,7 @@ class CalibrationWizard(QMainWindow):
 
 #------------------------------------------------------------------------------------------------------------------------------------------
 
-        self.setWindowTitle("NanoVNA UTN Toolkit - Calibration Wizard")
+        self.setWindowTitle("NanoVNA Toolkit - Calibration Wizard")
         self.setGeometry(150, 150, 1000, 600)
 
         apply_window_icon(self)

@@ -32,7 +32,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
@@ -55,7 +55,7 @@ def create_tab1(self):
     # Load configuration for UI colors and styles
     settings_dark_light = get_settings(
         "INI/dut_measurement/dark_light_config/dark_light_config.ini",
-        "ui/utils/settings/dark_light_mode/dark_light_config.ini",
+        "shared/utils/dark_light_mode/dark_light_config.ini", 
         Path(__file__).resolve()
     )  
 
@@ -235,7 +235,7 @@ def create_tab2(self):
     # Load configuration for UI colors and styles
     settings_dark_light = get_settings(
         "INI/dut_measurement/dark_light_config/dark_light_config.ini",
-        "ui/utils/settings/dark_light_mode/dark_light_config.ini",
+        "shared/utils/dark_light_mode/dark_light_config.ini", 
         Path(__file__).resolve()
     )  
 

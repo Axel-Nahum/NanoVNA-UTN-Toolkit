@@ -1,0 +1,18 @@
+{
+  "main_menu_ui": {
+    "header": {
+      "title": "NanoVNA Toolkit - Menu",
+      "description": "Seleccione un módulo para continuar."
+    },
+    "modules": {
+      "dut_measurement": {
+        "title": "Medición de DUT",
+        "description": "Mida y analice respuestas de DUT utilizando datos de NanoVNA."
+      },
+      "materials_characterization": {
+        "title": "Caracterización de Materiales",
+        "description": "Caracterice propiedades de materiales y compare métodos de caracterización."
+      }
+    }
+  }
+}

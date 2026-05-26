@@ -36,7 +36,7 @@ spin_style = """
 """
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -79,8 +79,8 @@ def create_edit_tab1(self, tabs, nano_window):
     # Load configuration for UI colors and styles
     settings_dark_light = get_settings(
         "INI/dut_measurement/dark_light_config/dark_light_config.ini", 
-        "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
-            Path(__file__).resolve()
+        "shared/utils/dark_light_mode/dark_light_config.ini", 
+        Path(__file__).resolve()
     ) 
 
     # QFrame
@@ -590,7 +590,7 @@ def create_edit_tab2(self, tabs, nano_window):
     # Load configuration for UI colors and styles
     settings_dark_light = get_settings(
        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
-        "ui/utils/settings/dark_light_mode/dark_light_config.ini",
+        "shared/utils/dark_light_mode/dark_light_config.ini", 
         Path(__file__).resolve()
     )  
 

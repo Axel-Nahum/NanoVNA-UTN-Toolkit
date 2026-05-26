@@ -16,7 +16,7 @@ from PySide6.QtCore import Qt, QSettings
 from PySide6.QtGui import QPixmap
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -41,7 +41,13 @@ class ExportDialog(QDialog):
 # Load JSON 
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        current_lang = "en"
+        settings = get_settings(
+            "INI/preferences/preferences.ini",
+            "shared/utils/preferences/preferences.ini", 
+            Path(__file__).resolve()
+        )
+
+        current_lang = settings.value("Preferences/language", "en")
 
         self.resourceLoader = JsonResourceLoader(
             self_window = self, 
@@ -67,8 +73,8 @@ class ExportDialog(QDialog):
         # Load configuration for UI colors and styles
         settings = get_settings(
             "INI/dut_measurement/dark_light_config/dark_light_config.ini", 
-            "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
-                Path(__file__).resolve()
+            "shared/utils/dark_light_mode/dark_light_config.ini", 
+            Path(__file__).resolve()
         )
 
         # QWidget

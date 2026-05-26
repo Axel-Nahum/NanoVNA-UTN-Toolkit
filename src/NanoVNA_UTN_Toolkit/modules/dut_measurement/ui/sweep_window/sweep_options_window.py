@@ -19,7 +19,7 @@ from pathlib import Path
 # Import dark-light mode toggle function with error handling to log issues without crashing the application
 
 try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.dark_light_mode.light_dark_mode import dark_light_config
+    from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import dark_light_config
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -27,7 +27,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -43,7 +43,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.app_icon import apply_window_icon
+    from NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon import apply_window_icon
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)

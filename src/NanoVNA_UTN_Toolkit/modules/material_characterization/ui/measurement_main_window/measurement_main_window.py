@@ -14,14 +14,14 @@ from PySide6.QtWidgets import (
 )
 
 try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.dark_light_mode.light_dark_mode import dark_light_config
+    from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import dark_light_config
     from NanoVNA_UTN_Toolkit.modules.menu_window import ModuleSelectionWindow
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.app_icon import apply_window_icon
+    from NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon import apply_window_icon
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -29,7 +29,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.load_resource import load_resource
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.load_resource import load_resource
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -45,7 +45,7 @@ class MeasurementMainWindow(QMainWindow):
 
         self.vna = vna_device
 
-        self.setWindowTitle("NanoVNA UTN Toolkit - Measurement")
+        self.setWindowTitle("NanoVNA Toolkit - Measurement")
         self.setGeometry(200, 200, 1000, 650)
 
 # ---------------------------------------------------------------------------------------------------------- #

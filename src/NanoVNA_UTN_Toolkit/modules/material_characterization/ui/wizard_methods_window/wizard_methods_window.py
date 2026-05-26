@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.dark_light_mode.light_dark_mode import dark_light_config
+    from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import dark_light_config
 
     from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.introduction_screen import (
         build_introduction_screen
@@ -29,7 +29,7 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.app_icon import apply_window_icon
+    from NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon import apply_window_icon
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
@@ -46,7 +46,7 @@ class CharacterizationWizard(QMainWindow):
         self.vna = vna_device
 
         self.setWindowTitle(
-            "NanoVNA UTN Toolkit - Characterization Wizard"
+            "NanoVNA Toolkit - Characterization Wizard"
         )
 
         self.setGeometry(200, 200, 950, 620)

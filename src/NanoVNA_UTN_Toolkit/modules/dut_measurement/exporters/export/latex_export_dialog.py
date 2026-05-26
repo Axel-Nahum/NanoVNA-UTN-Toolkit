@@ -29,6 +29,13 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 class LaTeXCheckerThread(QThread):
     """
     Background thread to check LaTeX installation without blocking the UI.
@@ -89,7 +96,13 @@ class LaTeXExportDialog(QDialog):
 # Load JSON 
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        current_lang = "en"
+        settings = get_settings(
+            "INI/preferences/preferences.ini",
+            "shared/utils/preferences/preferences.ini", 
+            Path(__file__).resolve()
+        )
+
+        current_lang = settings.value("Preferences/language", "en")
 
         self.resourceLoader = JsonResourceLoader(
             self_window = self, 

@@ -6,7 +6,7 @@ logging.basicConfig(level=logging.INFO)
 from pathlib import Path
 
 try:
-    from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
@@ -14,21 +14,18 @@ except ImportError as e:
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
-def toggle_menu_dark_mode(self, light_dark_mode):
-
-    logging.info(f"Entressss")   
+def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
 
     # Load configuration for UI colors and styles
     settings = get_settings(
         "INI/dut_measurement/dark_light_config/dark_light_config.ini", 
-        "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
-            Path(__file__).resolve()
+        "shared/utils/dark_light_mode/dark_light_config.ini",
+        Path(__file__).resolve()
     )
 
-    logging.info(f"SETTINGS: {settings.fileName()}")   
-
     if self.is_dark_mode:
-        light_dark_mode.setText("Light Mode 🔆")
+        if preference_menu == "False":
+            light_dark_mode.setText("Light Mode 🔆")
 
         # --- QWidget ---
         settings.setValue("Dark_Light/QWidget/background-color", "#3a3a3a")
@@ -235,9 +232,7 @@ def toggle_menu_dark_mode(self, light_dark_mode):
                 color: white;
                 border: 2px solid white;
                 border-radius: 6px;
-                padding: 8px;
-                font-size: 14px;
-                min-width: 200px;
+                padding-left: 8px;
             }
 
             QComboBox:hover {
@@ -278,7 +273,8 @@ def toggle_menu_dark_mode(self, light_dark_mode):
         settings.setValue("Dark_Light/text_light_dark", "Light Mode 🔆")
 
     else:
-        light_dark_mode.setText("Dark Mode 🌙")
+        if preference_menu == "False":
+            light_dark_mode.setText("Dark Mode 🌙")
 
         # --- QWidget ---
         settings.setValue("Dark_Light/QWidget/background-color", "#f0f0f0")
@@ -384,44 +380,45 @@ def toggle_menu_dark_mode(self, light_dark_mode):
             QWidget {
                 background-color: #f0f0f0;
             }
-            QMenu::separator {
-                height: 0.5px;           
-                background: black;   
-                margin: 4px 0px;      
-            }
+
             QTabWidget::pane {
-                background-color: #e0e0e0; 
+                background-color: #e0e0e0;
             }
+
+            QMenu::separator {
+                height: 0.5px;
+                background: black;
+                margin: 4px 0px;
+            }
+
             QTabBar::tab {
-                background-color: #dcdcdc;  
-                color: black;             
+                background-color: #dcdcdc;
+                color: black;
                 padding: 5px 12px;
                 border: none;
                 border-top-left-radius: 6px;
                 border-top-right-radius: 6px;
             }
+
             QTabBar::tab:selected {
-                background-color: #c8c8c8;  
+                background-color: #c8c8c8;
                 color: black;
             }
-            QRadioButton {
-                color: black;
-            }
+
             QSpinBox {
                 background-color: white;
                 color: black;
                 border: 1px solid #b0b0b0;
                 border-radius: 8px;
             }
-            QGroupBox:title {
-                color: black; 
-            }
-            QLabel {
-                color: black;
-            }
+
+            QGroupBox:title,
+            QLabel,
+            QRadioButton,
             QTextEdit {
                 color: black;
             }
+
             QLineEdit {
                 background-color: #ffffff;
                 color: black;
@@ -429,10 +426,12 @@ def toggle_menu_dark_mode(self, light_dark_mode):
                 border-radius: 6px;
                 padding: 4px;
             }
+
             QLineEdit:focus {
                 background-color: #f0f8ff;
                 border: 1px solid #4d90fe;
             }
+
             QPushButton {
                 background-color: #e0e0e0;
                 color: black;
@@ -440,67 +439,85 @@ def toggle_menu_dark_mode(self, light_dark_mode):
                 border-radius: 6px;
                 padding: 4px 10px;
             }
+
             QPushButton:hover {
                 background-color: #d0d0d0;
             }
+
             QPushButton:pressed {
                 background-color: #c0c0c0;
             }
+
+            QPushButton:disabled {
+                background-color: #f5f5f5;
+                color: #a0a0a0;
+                border: 1px solid #d0d0d0;
+            }
+
             QMenuBar {
                 background-color: #f0f0f0;
                 color: black;
             }
+
             QMenuBar::item {
                 background: transparent;
                 color: black;
                 padding: 4px 10px;
             }
+
             QMenuBar::item:selected {
                 background: #dcdcdc;
             }
+
             QMenu {
                 background-color: #f0f0f0;
                 color: black;
                 border: 1px solid #b0b0b0;
             }
+
             QMenu::item:selected {
                 background-color: #dcdcdc;
             }
-            QComboBox {{
-                background-color: #3b3b3b;
-                color: white;
-                border: 2px solid white;
+
+            QComboBox {
+                background-color: #ffffff;
+                color: black;
+                border: 2px solid black;
                 border-radius: 6px;
-                padding: 8px;
-                font-size: 14px;
-                min-width: 200px;            
-            }}
-            QComboBox:hover {{
-                background-color: #4d4d4d;
-            }}
-            QComboBox::drop-down {{
+                padding-left: 8px;
+            }
+
+            QComboBox:hover {
+                background-color: #e6e6e6;
+            }
+
+            QComboBox::drop-down {
                 width: 0px;
                 border: none;
                 background: transparent;
-            }}
-            QComboBox::down-arrow {{
+            }
+
+            QComboBox::down-arrow {
                 image: none;
                 width: 0px;
                 height: 0px;
-            }}
-            QComboBox QAbstractItemView {{
-                background-color: #3b3b3b;
-                color: white;             
-                selection-background-color: #4d4d4d; 
-                selection-color: white;
-                border: 1px solid white;
-            }}
-            QComboBox:focus {{
-                background-color: #4d4d4d;
-            }}
-            QComboBox::placeholder {{
-                color: #cccccc;
-            }}
+            }
+
+            QComboBox QAbstractItemView {
+                background-color: #ffffff;
+                color: black;
+                selection-background-color: #dcdcdc;
+                selection-color: black;
+                border: 1px solid black;
+            }
+
+            QComboBox:focus {
+                background-color: #f0f8ff;
+            }
+
+            QComboBox::placeholder {
+                color: #777777;
+            }
         """)
 
         self.is_dark_mode = True
@@ -513,8 +530,8 @@ def dark_light_config(self):
     # Load configuration for UI colors and styles
     settings = get_settings(
         "INI/dut_measurement/dark_light_config/dark_light_config.ini", 
-        "ui/utils/settings/dark_light_mode/dark_light_config.ini", 
-            Path(__file__).resolve()
+        "shared/utils/dark_light_mode/dark_light_config.ini", 
+        Path(__file__).resolve()
     )
 
     # QWidget
@@ -697,8 +714,6 @@ def dark_light_config(self):
             border: {combobox_border};
             border-radius: {combobox_border_radius};
             padding: 4px 8px;
-            min-height: 20px;
-            min-width: 60px;
         }}
 
         QComboBox:hover {{
@@ -844,5 +859,4 @@ def dark_light_config(self):
             color: {label_color};
             background-color: transparent;
         }}
-
     """)

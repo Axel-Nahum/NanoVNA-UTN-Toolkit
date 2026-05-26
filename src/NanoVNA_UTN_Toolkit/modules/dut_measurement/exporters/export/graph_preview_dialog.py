@@ -15,6 +15,8 @@ import numpy as np
 import skrf as rf
 import copy
 
+from pathlib import Path
+
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox, QWidget,
     QCheckBox, QHBoxLayout, QLineEdit, QComboBox
@@ -41,6 +43,13 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 class GraphPreviewExportDialog(QDialog):
     def __init__(self, parent=None, freqs=None, s11_data=None, s21_data=None,
              measurement_name=None, output_path=None):
@@ -50,7 +59,13 @@ class GraphPreviewExportDialog(QDialog):
 # Load JSON 
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        current_lang = "en"
+        settings = get_settings(
+            "INI/preferences/preferences.ini",
+            "shared/utils/preferences/preferences.ini", 
+            Path(__file__).resolve()
+        )
+
+        current_lang = settings.value("Preferences/language", "en")
 
         self.resourceLoader = JsonResourceLoader(
             self_window = self, 

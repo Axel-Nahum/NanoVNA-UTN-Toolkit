@@ -4,6 +4,8 @@ Device detection worker for threaded operations.
 import logging
 import sys
 
+from pathlib import Path
+
 import time
 from PySide6.QtCore import QObject, Signal
 
@@ -13,6 +15,13 @@ from ..utils.device_parser import parse_device_info, extract_extended_device_inf
 try:
     from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
 except ImportError as e:    
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
+except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -35,7 +44,13 @@ class DeviceWorker(QObject):
 # Load JSON 
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        current_lang = "en"
+        settings = get_settings(
+            "INI/preferences/preferences.ini",
+            "shared/utils/preferences/preferences.ini", 
+            Path(__file__).resolve()
+        )
+
+        current_lang = settings.value("Preferences/language", "en")
 
         self.resourceLoader = JsonResourceLoader(
             self_window = self, 

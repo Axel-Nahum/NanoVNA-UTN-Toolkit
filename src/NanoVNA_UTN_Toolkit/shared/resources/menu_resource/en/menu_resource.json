@@ -1,7 +1,7 @@
 {
   "main_menu_ui": {
     "header": {
-      "title": "NanoVNA-UTN Toolkit",
+      "title": "NanoVNA Toolkit - Menu",
       "description": "Select a module to continue."
     },
     "modules": {
