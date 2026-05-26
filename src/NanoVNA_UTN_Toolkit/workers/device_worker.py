@@ -1,12 +1,21 @@
 """
 Device detection worker for threaded operations.
 """
+import logging
+import sys
+
 import time
 from PySide6.QtCore import QObject, Signal
 
 from ..Hardware.Hardware import get_interfaces, get_VNA
 from ..utils.device_parser import parse_device_info, extract_extended_device_info
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
+except ImportError as e:    
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 class DeviceWorker(QObject):
     """Worker class for device detection operations in a separate thread."""
@@ -21,6 +30,21 @@ class DeviceWorker(QObject):
     def __init__(self):
         super().__init__()
         self.should_stop = False
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Load JSON 
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        current_lang = "en"
+
+        self.resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_connection.json"
+        )
+
+        self.resourceLoader.load_connection_resources()
     
     def stop(self):
         """Signal the worker to stop."""
@@ -39,7 +63,7 @@ class DeviceWorker(QObject):
                 return
                 
             # Step 1: Get interfaces
-            self.status_update.emit("Searching for available serial interfaces...")
+            self.status_update.emit(f"{self.searching_interfaces_message}")
             self.progress_update.emit(20)
             time.sleep(0.1)  # Small delay to show progress
             
@@ -50,7 +74,7 @@ class DeviceWorker(QObject):
                 
             if not interfaces:
                 self.progress_update.emit(100)
-                self.status_update.emit("No serial interfaces detected")
+                self.status_update.emit(f"{self.no_interfaces_message}")
                 self.device_error.emit("No NanoVNA device detected.")
                 self.finished.emit()
                 return
@@ -63,9 +87,9 @@ class DeviceWorker(QObject):
                 if self.should_stop:
                     return
                     
-                progress = 40 + (i + 1) * (50 / len(interfaces))
+                progress = 40 + (i + 1) * (10 / len(interfaces))
                 self.progress_update.emit(int(progress))
-                self.status_update.emit(f"Testing connection on {iface.port}...")
+                self.status_update.emit(f"{self.testing_interfaces_message} {iface.port} ...")
                 time.sleep(0.1)
                 
                 try:
@@ -77,7 +101,7 @@ class DeviceWorker(QObject):
                         
                     if vna:
                         self.progress_update.emit(80)
-                        self.status_update.emit("Reading firmware information...")
+                        self.status_update.emit(f"{self.reading_device_info_message}")
                         time.sleep(0.05)  # Reduced delay
                         
                         # Get device info
@@ -86,7 +110,7 @@ class DeviceWorker(QObject):
                             self.progress_update.emit(90)
                             parsed_info = parse_device_info(info_text)
                             
-                            self.status_update.emit("Reading device capabilities...")
+                            self.status_update.emit(f"{self.reading_device_capabilities_message}")
                             # Get extended device information in quick mode to avoid delays
                             extended_info = extract_extended_device_info(vna, quick_mode=True)
                             
@@ -104,7 +128,7 @@ class DeviceWorker(QObject):
                                 parsed_info['bandwidth'] = extended_info['bandwidth']
                             
                             self.progress_update.emit(100)
-                            self.status_update.emit("Device connected successfully")
+                            self.status_update.emit(f"{self.device_connected_message}")
                             self.device_found.emit(vna, parsed_info)
                             self.finished.emit()
                             return

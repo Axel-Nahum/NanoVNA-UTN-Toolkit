@@ -33,7 +33,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.shared.utils.settings_utils import get_settings
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -41,7 +40,6 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.dark_light_mode.light_dark_mode import dark_light_config
 except ImportError as e:
-    import logging, sys
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -49,7 +47,13 @@ except ImportError as e:
 try:
     from NanoVNA_UTN_Toolkit.shared.utils.app_icon import apply_window_icon
 except ImportError as e:
-    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
+except ImportError as e:    
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
@@ -67,13 +71,30 @@ class NanoVNAStatusApp(QMainWindow):
                 Path(__file__).resolve()
         )
 
-#------------------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------- #
+# Load JSON 
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        current_lang = "en"
+
+        self.resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_connection.json"
+        )
+
+        self.resourceLoader.load_connection_resources()
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Dark light Mode
+# ------------------------------------------------------------------------------------------------------------------- #
 
         # Dark-Light mode settings
 
         dark_light_config(self)
 
-#------------------------------------------------------------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------------------------------------- #
 
         # Qframe
         qframe_color = settings.value("Dark_Light/Qframe/background-color", "white")
@@ -98,7 +119,7 @@ class NanoVNAStatusApp(QMainWindow):
 
         apply_window_icon(self)
 
-        self.setWindowTitle("NanoVNA UTN Toolkit - Connection Window")
+        self.setWindowTitle(f"{self.device_info_title}")
         self.setGeometry(100, 100, 900, 700)
         
         # Main widget and layout
@@ -120,7 +141,7 @@ class NanoVNAStatusApp(QMainWindow):
         status_layout = QVBoxLayout(status_frame)
         
         # Connection status label
-        self.status_label = QLabel("Status: Starting...")
+        self.status_label = QLabel(f"{self.connection_status_starting}")
         self.status_label.setStyleSheet("font-size: 16px; font-weight: bold; color: orange; padding: 10px;")
         status_layout.addWidget(self.status_label)
         
@@ -151,35 +172,35 @@ class NanoVNAStatusApp(QMainWindow):
         groupbox_style = f"QGroupBox {{ border: 2px solid {color}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; font-size: 30pt;}}"
         
         # Device information section
-        self.device_group = QGroupBox("Device Information")
+        self.device_group = QGroupBox(f"{self.device_info_title}")
         self.device_group.setStyleSheet(groupbox_style)
         
         device_layout = QGridLayout(self.device_group)
         
         # Create labels for device information
-        self.board_label = QLabel("Board:")
-        self.board_value = QLabel("Not detected")
-        self.version_label = QLabel("Version:")
-        self.version_value = QLabel("Unknown")
-        self.build_time_label = QLabel("Build Time:")
-        self.build_time_value = QLabel("Unknown")
-        self.arch_label = QLabel("Architecture:")
-        self.arch_value = QLabel("Unknown")
-        self.platform_label = QLabel("Platform:")
-        self.platform_value = QLabel("Unknown")
+        self.board_label = QLabel(f"{self.device_info_board_label}")
+        self.board_value = QLabel(f"{self.device_info_board_value}")
+        self.version_label = QLabel(f"{self.device_info_version_label}")
+        self.version_value = QLabel(f"{self.device_info_version_value}")
+        self.build_time_label = QLabel(f"{self.device_info_built_time_label}")
+        self.build_time_value = QLabel(f"{self.device_info_built_time_value}")
+        self.arch_label = QLabel(f"{self.device_info_architecture_label}")
+        self.arch_value = QLabel(f"{self.device_info_architecture_value}")
+        self.platform_label = QLabel(f"{self.device_info_platform_label}")
+        self.platform_value = QLabel(f"{self.device_info_platform_value}")
         
         # Extended device information
-        self.serial_label = QLabel("Serial Number:")
-        self.serial_value = QLabel("Not available")
-        self.device_type_label = QLabel("Device Type:")
-        self.device_type_value = QLabel("Unknown")
+        self.serial_label = QLabel(f"{self.device_info_serial_label}")
+        self.serial_value = QLabel(f"{self.device_info_serial_value}")
+        self.device_type_label = QLabel(f"{self.device_info_type_label}")
+        self.device_type_value = QLabel(f"{self.device_info_type_value}")
         
         # Parameters section
-        self.params_label = QLabel("Parameters:")
-        self.params_value = QLabel("Not available")
+        self.params_label = QLabel(f"{self.device_info_parameters_label}")
+        self.params_value = QLabel(f"{self.device_info_parameters_value}")
         
         # Features section
-        self.features_label = QLabel("Features:")
+        self.features_label = QLabel(f"{self.device_info_features_label}")
         
         # Create scrollable features area
         self.features_scroll_area = QScrollArea()
@@ -190,7 +211,7 @@ class NanoVNAStatusApp(QMainWindow):
         self.features_scroll_area.setMaximumHeight(150)  # Limit max height
         
         # Create features content widget
-        self.features_content = QLabel("Not available")
+        self.features_content = QLabel(f"{self.device_info_features_value}")
         self.features_content.setWordWrap(True)
         self.features_content.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.features_content.setStyleSheet("padding: 5px; background-color: transparent; color: palette(text);")
@@ -277,24 +298,24 @@ class NanoVNAStatusApp(QMainWindow):
         # Layout horizontal para los primeros botones
         button_layout = QHBoxLayout()
 
-        self.refresh_btn = QPushButton("Refresh")
+        self.refresh_btn = QPushButton(f"{self.refresh_button_label}")
         self.refresh_btn.clicked.connect(self.manual_refresh)
         self.refresh_btn.setEnabled(True)
         self.refresh_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
         button_layout.addWidget(self.refresh_btn)
 
-        self.disconnect_btn = QPushButton("Disconnect")
+        self.disconnect_btn = QPushButton(f"{self.disconnect_button_label}")
         self.disconnect_btn.clicked.connect(self.manual_disconnect)
         self.disconnect_btn.setEnabled(False)  # Initially disabled
         self.disconnect_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
         button_layout.addWidget(self.disconnect_btn)
 
-        clear_btn = QPushButton("Clear Log")
+        clear_btn = QPushButton(f"{self.clear_log_button_label}")
         clear_btn.clicked.connect(self.console.clear)
         clear_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
         button_layout.addWidget(clear_btn)
 
-        self.stop_btn = QPushButton("Stop")
+        self.stop_btn = QPushButton(f"{self.stop_button_label}")
         self.stop_btn.clicked.connect(self.stop_detection)
         self.stop_btn.setEnabled(False)
         self.stop_btn.setStyleSheet("padding: 8px 16px; font-size: 12px;")
@@ -302,7 +323,7 @@ class NanoVNAStatusApp(QMainWindow):
 
         layout.addLayout(button_layout)
 
-        self.smith_btn = QPushButton("Open Menu")
+        self.smith_btn = QPushButton(f"{self.open_menu_button_label}")
         self.smith_btn.clicked.connect(self.open_selection_window)
         self.stop_btn.setEnabled(False)
         self.smith_btn.setStyleSheet("padding: 12px; font-size: 14px;")
@@ -522,7 +543,7 @@ class NanoVNAStatusApp(QMainWindow):
                 self.log_message(f"Error disconnecting: {str(e)}")
             finally:
                 self.vna = None
-                self.status_label.setText("Status: Disconnected")
+                self.status_label.setText(f"{self.connection_status_disconnected}")
                 self.status_label.setStyleSheet("color: red; font-size: 16px; font-weight: bold; padding: 10px;")
                 self.clear_device_info()
                 self.disconnect_btn.setEnabled(False)
@@ -530,7 +551,7 @@ class NanoVNAStatusApp(QMainWindow):
     def on_device_found(self, vna, device_info):
         """Handle successful device detection."""
         self.vna = vna
-        self.status_label.setText("Status: Connected")
+        self.status_label.setText(f"{self.connection_status_connected}")
         self.status_label.setStyleSheet("color: green; font-size: 16px; font-weight: bold; padding: 10px;")
         
         # Update device information display - pass VNA object for enhanced info

@@ -1,0 +1,69 @@
+{
+  "title": "NanoVNA UTN Toolkit - Connection Window",
+  "status": {
+    "label": "Status:",
+    "connected": "Status: Connected",
+    "starting": "Status: Starting...",
+    "disconnected": "Status: Disconnected"
+  },
+  "serialStatus": {
+      "labels": "Serial Status:",
+      "noInterfaces": "No serial interfaces detected",
+      "searchingInterfaces": "Searching for available serial interfaces...",
+      "testingInterfaces": "Testing connection on",
+      "readingDeviceInfo": "Reading firmware information...",
+      "readingDeviceCapabilities": "Reading device capabilities...",
+      "deviceConnected": "Device connected successfully"
+  },
+  "deviceInformation": {
+    "title": "Device Information",
+    "fields": {
+      "board": {
+        "label": "Board:",
+        "value": "Not detected"
+      },
+      "version": {
+        "label": "Version:",
+        "value": "Unknown"
+      },
+      "deviceType": {
+        "label": "Device Type:",
+        "value": "Unknown"
+      },
+      "serialNumber": {
+        "label": "Serial Number:",
+        "value": "Not available"
+      },
+      "platform": {
+        "label": "Platform:",
+        "value": "Unknown"
+      },
+      "architecture": {
+        "label": "Architecture:",
+        "value": "Unknown"
+      },
+      "buildTime": {
+        "label": "Build Time:",
+        "value": "Unknown"
+      },
+      "parameters": {
+        "label": "Parameters:",
+        "value": "Not available"
+      },
+      "features": {
+        "label": "Features:",
+        "value": "Not available"
+      }
+    }
+  },
+  "logs": {
+    "title": "LOGS:"
+  },
+  "buttons": {
+    "refresh": "Refresh",
+    "disconnect": "Disconnect",
+    "clearLog": "Clear Log",
+    "stop": "Stop",
+    "openMenu": "Open Menu"
+  }
+}
