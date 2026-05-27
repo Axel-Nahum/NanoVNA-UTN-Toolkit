@@ -54,7 +54,7 @@ from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.welcome_window.welcome_windo
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.characterization_welcome.characterization_welcome import MaterialCharacterizationWelcome
 
-# ------------------------------------------------------------------------------------------------------------ #
+# ------------------------------------------------------------------------------------------------------------------- #
 
 class ModuleSelectionWindow(QMainWindow):
 
