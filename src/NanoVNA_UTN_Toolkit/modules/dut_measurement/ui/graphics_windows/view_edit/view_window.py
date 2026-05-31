@@ -3,7 +3,6 @@ Graphic view window for NanoVNA devices.
 """
 
 import numpy as np
-import os
 import sys
 import logging 
 
@@ -13,7 +12,6 @@ from PySide6.QtWidgets import (
     QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
     QPushButton, QTabWidget, QFrame, QApplication, 
 )
-from PySide6.QtGui import QIcon
 
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.view_edit.view_graphics_utils.view_utils import create_tab1

@@ -268,6 +268,15 @@ class NanoVNAGraphics(QMainWindow):
 
         self.resourceLoader.load_cal_kits_resources()
 
+        self.resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_plot_manager.json"
+        )
+
+        self.resourceLoader.load_plot_manager_resources()
+
 # ------------------------------------------------------------------------------------------------------------------- #
 # Dark light Mode
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -302,8 +311,8 @@ class NanoVNAGraphics(QMainWindow):
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_file}")
         plot_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_plot}")
-        edit_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_edit}")
-        view_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_view}")
+        #edit_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_edit}")
+        #view_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_view}")
         sweep_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_sweep}")
         calibration_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_calibration}")
         help_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_help}")
@@ -332,8 +341,8 @@ class NanoVNAGraphics(QMainWindow):
         exit_action = file_menu.addAction(f"{self.measurement_menu_back_to_menu}")
         exit_action.triggered.connect(lambda: self.return_to_menu_window())
 
-        graphics_markers = edit_menu.addAction(f"{self.measurement_menu_graphics_markers}")
-        graphics_markers.triggered.connect(lambda: edit_graphics_markers(self))
+        #graphics_markers = edit_menu.addAction(f"{self.measurement_menu_graphics_markers}")
+        #graphics_markers.triggered.connect(lambda: edit_graphics_markers(self))
 
         # --- Plot menu actions ---
 
@@ -376,16 +385,16 @@ class NanoVNAGraphics(QMainWindow):
 
         text_light_dark = settings.value("Dark_Light/text_light_dark", "text_light_dark")
 
-        light_dark_mode = edit_menu.addAction(text_light_dark)
+        #light_dark_mode = edit_menu.addAction(text_light_dark)
 
         self.is_dark_mode = settings.value("Dark_Light/is_dark_mode", False, type=bool)
 
-        light_dark_mode.triggered.connect(lambda: toggle_menu_dark_mode(self, light_dark_mode))
+        #light_dark_mode.triggered.connect(lambda: toggle_menu_dark_mode(self, light_dark_mode))
 
 #-------- Other options ---------------------------------------------------------------------------- #
 
-        choose_graphics = view_menu.addAction(f"{self.measurement_menu_graphics}")
-        choose_graphics.triggered.connect(lambda: open_view(self))  
+        #choose_graphics = view_menu.addAction(f"{self.measurement_menu_graphics}")
+        #choose_graphics.triggered.connect(lambda: open_view(self))  
 
         sweep_options = sweep_menu.addAction(f"{self.measurement_menu_sweep_option}")
         sweep_options.triggered.connect(lambda: open_sweep_options(self))

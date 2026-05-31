@@ -818,6 +818,73 @@ class JsonResourceLoader:
         self.window.cal_kit_window_cancel = buttons_save.get("cancel", "")
         self.window.cal_kit_window_save = buttons_save.get("save", "")
 
+    def load_plot_manager_resources(self):
+
+        raw_data = self._load_json()
+
+        tools = raw_data.get("tools", {})
+        display = raw_data.get("display", {})
+        axis = raw_data.get("axis", {})
+        buttons = raw_data.get("buttons", {})
+        messages = raw_data.get("messages", {})
+
+        # --------------------------------------------------
+        # Titles
+        # --------------------------------------------------
+
+        self.window.plot_manager_title = raw_data.get("title", "")
+
+        self.window.graphics_tools_title = tools.get("title", "")
+        self.window.display_options_title = display.get("title", "")
+        self.window.axis_settings_title = axis.get("title", "")
+
+        # --------------------------------------------------
+        # Graphics Tools
+        # --------------------------------------------------
+
+        self.window.plot_view_button_label = tools.get("plotView", "")
+
+        self.window.graphics_markers_editor_button_label = tools.get("graphicsMarkersEditor", "")
+
+        # --------------------------------------------------
+        # Display Options
+        # --------------------------------------------------
+
+        self.window.graphic1_label = display.get("graphic1", "")
+        self.window.graphic2_label = display.get("graphic2", "")
+
+        self.window.show_grid_label = display.get("showGrid", "")
+
+        self.window.averaging_label = display.get("averaging", "")
+
+        # --------------------------------------------------
+        # Axis Settings
+        # --------------------------------------------------
+
+        self.window.auto_scale_label = axis.get("autoScale", "")
+
+        self.window.y_range_label = axis.get("yRange", "")
+
+        # --------------------------------------------------
+        # Buttons
+        # --------------------------------------------------
+
+        self.window.apply_button_label = buttons.get("apply", "")
+
+        self.window.cancel_button_label = buttons.get("cancel", "")
+
+        # --------------------------------------------------
+        # Messages
+        # --------------------------------------------------
+
+        self.window.warning_title = messages.get("warningTitle", "")
+
+        self.window.missing_graphic1_message = messages.get("missingGraphic1", "")
+
+        self.window.missing_graphic2_message = messages.get("missingGraphic2", "")
+
+        self.window.missing_both_graphics_message = messages.get("missingBothGraphics", "")
+
 # ------------------------------------------------------------------------------------------------------------------- #
 # Material Characterization Module
 # ------------------------------------------------------------------------------------------------------------------- #

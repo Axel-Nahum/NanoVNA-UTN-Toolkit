@@ -7,12 +7,11 @@ duplicated across multiple files (wizard_windows.py, graphics_window.py, graphic
 
 import logging
 import numpy as np
-import skrf as rf
+
+from pathlib import Path
+
 from matplotlib.lines import Line2D
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from PySide6.QtWidgets import QSizePolicy
-import matplotlib.pyplot as plt
-from typing import Optional, Dict, Tuple, List, Any
 
 import matplotlib.pyplot as plt
 
@@ -22,6 +21,15 @@ plt.rcParams['axes.labelsize'] = 12
 plt.rcParams['font.family'] = 'serif'     # Coincide con el estilo de LaTeX
 plt.rcParams['mathtext.rm'] = 'serif'     # Números y texto coherentes
 
+# Import get_settings 
+
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
+except ImportError as e:
+    import logging, sys
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
 
 class MagnitudeChartConfig:
     """Configuration class for magnitude chart styling and behavior."""
@@ -39,6 +47,15 @@ class MagnitudeChartConfig:
         self.markersize = 6
         self.marker_visible = True
 
+        # ----------------------------------------------------
+        # Plot Manager settings
+        # ----------------------------------------------------
+
+        self.settings = get_settings(
+            "INI/dut_measurement/plot_manager/plot_manager.ini",
+            "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager.ini",
+            Path(__file__).resolve()
+        )
 
 class MagnitudeChartBuilder:
     """Builder class for creating and customizing magnitude charts (|S21| vs frequency)."""
@@ -62,7 +79,10 @@ class MagnitudeChartBuilder:
         self.ax.title.set_color(self.config.text_color)
         self.fig.patch.set_facecolor(self.config.background_color)
         self.ax.set_facecolor(self.config.background_color)
-        self.ax.grid(True, linestyle="--", alpha=0.5)
+
+        current_state_grid = self.settings.value("grid/current_left_state", "true", type=bool)
+
+        self.ax.grid(current_state_grid, linestyle="--", alpha=0.5)
 
         self.ax.set_xlabel(r"$\mathrm{Frequency\ (MHz)}$")
         self.ax.set_ylabel(r"$|S_{21}|\ (\mathrm{dB})$")
@@ -198,7 +218,10 @@ class MagnitudeChartManager:
         ax.xaxis.label.set_color(self.config.text_color)
         ax.yaxis.label.set_color(self.config.text_color)
         ax.title.set_color(self.config.text_color)
-        ax.grid(True, linestyle="--", alpha=0.5)
+
+        current_state_grid = self.settings.value("grid/current_left_state", "true", type=bool)
+
+        ax.grid(current_state_grid, linestyle="--", alpha=0.5)
 
     def update_wizard_measurement(self, ax, freqs, s21_data, standard_name, canvas=None, color_map=None, in_dB=False):
         if color_map is None:
@@ -306,7 +329,10 @@ class MagnitudeChartManager:
                 ax.plot(freqs, magnitude, '-', color=color, linewidth=self.config.linewidth, label=standard_name.upper())
             ax.set_xlabel(r"$\mathrm{Frequency\ (Hz)}$")
             ax.set_ylabel(r"$|S_{21}|\ (\mathrm{dB})$" if in_dB else r"$|S_{21}|\ (\mathrm{dB})$")
-            ax.grid(True, linestyle="--", alpha=0.5)
+
+            current_state_grid = self.settings.value("grid/current_left_state", "true", type=bool)
+
+            ax.grid(current_state_grid, linestyle="--", alpha=0.5)
             ax.legend()
             if canvas:
                 canvas.draw()

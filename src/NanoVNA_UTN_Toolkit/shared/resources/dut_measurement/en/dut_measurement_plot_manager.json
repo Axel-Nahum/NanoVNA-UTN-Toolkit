@@ -1,0 +1,30 @@
+{
+    "title": "Plot Manager",
+    "tools": {
+        "title": "Graphics Tools",
+        "plotView": "Plot View",
+        "graphicsMarkersEditor": "Graphics & Markers Editor"
+    },
+    "display": {
+        "title": "Display Options",
+        "showGrid": "Show Grid:",
+        "averaging": "Averaging:",
+        "graphic1": "Graphic 1",
+        "graphic2": "Graphic 2"
+    },
+    "axis": {
+        "title": "Axis Settings (Y Limits)",
+        "autoScale": "Auto Scale:",
+        "yRange": "Y Range:"
+    },
+    "buttons": {
+        "apply": "Apply",
+        "cancel": "Cancel"
+    },
+    "messages": {
+        "warningTitle": "Warning",
+        "missingGraphic1": "Please enter both minimum and maximum Y-axis values for Graphic 1.",
+        "missingGraphic2": "Please enter both minimum and maximum Y-axis values for Graphic 2.",
+        "missingBothGraphics": "Please enter both minimum and maximum Y-axis values for Graphic 1 and Graphic 2."
+    }
+}

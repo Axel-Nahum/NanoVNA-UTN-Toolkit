@@ -67,6 +67,21 @@ except ImportError as e:
 def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param, 
                             tracecolor, markercolor, background_color_graphics, text_color, axis_color, linewidth, markersize,
                             unit="dB", cursor_graph=None, cursor_graph_2 = None, ax_type="left", unit_mode="dB"):
+    
+    # ----------------------------------------------------
+    # Plot Manager settings
+    # ----------------------------------------------------
+
+    self.settings = get_settings(
+        "INI/dut_measurement/plot_manager/plot_manager.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager.ini",
+        Path(__file__).resolve()
+    )
+
+    # ----------------------------------------------------
+    # Recreate plot based on graph type
+    # ----------------------------------------------------
+
     """Recreate a single plot with new data."""
     try:
         from matplotlib.lines import Line2D
@@ -190,9 +205,14 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
 
             for spine in ax.spines.values():
                 spine.set_color(f"{axis_color}")
+
+            current_state_grid = self.settings.value(f"grid/current_{ax_type}_state", False, type=bool)
                 
-            ax.grid(True, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
-            
+            ax.grid(False, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+            fig.canvas.draw_idle()
+
+            ax.grid(current_state_grid)
+
         elif graph_type == "Phase":
             # Plot phase
             phase_deg = np.angle(s_data) * 180 / np.pi
@@ -253,9 +273,13 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
 
             for spine in ax.spines.values():
                 spine.set_color(f"{axis_color}")
+
+            current_state_grid = self.settings.value(f"grid/current_{ax_type}_state", False, type=bool)
                 
-            ax.grid(True, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
-            
+            ax.grid(current_state_grid, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+
+            ax.grid(current_state_grid)
+
         elif graph_type == "VSWR":
             # Calculate and plot VSWR
             s_magnitude = np.abs(s_data)
@@ -264,8 +288,8 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             ax.set_xlabel('Frequency (MHz)')
             ax.set_ylabel('VSWR')
             ax.set_title(f'{s_param} VSWR')
-            ax.grid(True)
-            
+            ax.grid(current_state_grid, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+
         # Set axis properties
         ax.tick_params(axis='both', which='major', labelsize=8)
 

@@ -340,8 +340,6 @@ class EditGraphics(QMainWindow):
         self.nano_window.canvas_left.draw_idle()
         self.nano_window.canvas_right.draw_idle()
 
-        self.nano_window.resourceLoader.load_measurement_graphics_resources()
-
         self.nano_window.show()
         self.close()
 
