@@ -35,13 +35,12 @@ from pathlib import Path
 
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QMainWindow, QApplication
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QGuiApplication
 
 # Import exporters for saving data in different formats, with error handling to log issues without crashing the application
 
 from ...exporters.latex_exporter import LatexExporter
 from ...exporters.touchstone_exporter import TouchstoneExporter
-from ...exporters.export import ExportDialog
 
 # Import dark-light mode toggle function with error handling to log issues without crashing the application
 
@@ -122,6 +121,13 @@ except ImportError as e:
     sys.exit(1)
 
 try:
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.plot_menu.plot_menu import open_plot_settings
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.sweep_menu.sweep_menu import open_sweep_options
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
@@ -193,6 +199,14 @@ class NanoVNAGraphics(QMainWindow):
         self.setWindowTitle("NanoVNA Toolkit - Graphics Window")
         self.setGeometry(100, 100, 1300, 700)
 
+        screen = QGuiApplication.primaryScreen().availableGeometry()
+        window_geometry = self.frameGeometry()
+
+        center_point = screen.center()
+        window_geometry.moveCenter(center_point)
+
+        self.move(window_geometry.topLeft())
+
         # Store VNA device reference
         self.dut = dut
         self.vna_device = vna_device
@@ -218,7 +232,7 @@ class NanoVNAGraphics(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         settings = get_settings(
-            "INI/preferences/preferences.ini",
+            "INI/dut_measurement/preferences/preferences.ini",
             "shared/utils/preferences/preferences.ini", 
             Path(__file__).resolve()
         )
@@ -287,6 +301,7 @@ class NanoVNAGraphics(QMainWindow):
 
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_file}")
+        plot_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_plot}")
         edit_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_edit}")
         view_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_view}")
         sweep_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_sweep}")
@@ -319,6 +334,11 @@ class NanoVNAGraphics(QMainWindow):
 
         graphics_markers = edit_menu.addAction(f"{self.measurement_menu_graphics_markers}")
         graphics_markers.triggered.connect(lambda: edit_graphics_markers(self))
+
+        # --- Plot menu actions ---
+
+        plot_manager = plot_menu.addAction(f"{self.measurement_menu_plot_settings}")  
+        plot_manager.triggered.connect(lambda: open_plot_settings(self))
 
         # --- Help menu actions ---
 
@@ -526,7 +546,7 @@ class NanoVNAGraphics(QMainWindow):
     def reload_graphics_resources(self):
 
         settings = get_settings(
-            "INI/preferences/preferences.ini",
+            "INI/dut_measurement/preferences/preferences.ini",
             "shared/utils/preferences/preferences.ini", 
             Path(__file__).resolve()
         )

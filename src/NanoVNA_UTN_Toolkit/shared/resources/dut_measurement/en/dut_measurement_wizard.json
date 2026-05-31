@@ -2,7 +2,7 @@
   "dut_measurement_wizard_ui": {
     "intro_screen": {
       "calibration_method_section": {
-        "title": "Calibration Methods:",
+        "title": "Calibration Methods",
         "label_calibration_method_selection": "Select Method",
         "method_osm": "OSM (Open - Short - Match)",
         "method_normalization_open": "Open Normalization",

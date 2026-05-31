@@ -2,6 +2,7 @@
   "measurement_graphics_ui": {
     "menu_bar": {
       "file": "File",
+      "plot": "Plot",
       "edit": "Edit",
       "view": "View",
       "sweep": "Sweep",
@@ -86,6 +87,9 @@
       "export_touchstone": "Export Touchstone Data",
       "export_errors": "Export Errors",
       "back_to_menu": "Back to menu"
+    },
+    "plot_menu": {
+      "plot_settings": "Plot Settings"
     },
     "edit_menu": {
       "graphics_markers": "Graphics/Markers"

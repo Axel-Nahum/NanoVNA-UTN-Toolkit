@@ -108,7 +108,7 @@ def open_preferences_dialog(self):
     ])
 
     settings = get_settings(
-        "INI/preferences/preferences.ini",
+        "INI/dut_measurement/preferences/preferences.ini",
         "shared/utils/preferences/preferences.ini", 
         Path(__file__).resolve()
     )
@@ -230,7 +230,7 @@ def apply_preferences(self, dialog):
 def change_theme(self, theme, dialog):
 
     settings = get_settings(
-        "INI/preferences/preferences.ini",
+        "INI/dut_measurement/preferences/preferences.ini",
         "shared/utils/preferences/preferences.ini", 
         Path(__file__).resolve()
     )
@@ -258,7 +258,7 @@ def change_theme(self, theme, dialog):
 def change_language(self, language, dialog):
 
     settings = get_settings(
-        "INI/preferences/preferences.ini",
+        "INI/dut_measurement/preferences/preferences.ini",
         "shared/utils/preferences/preferences.ini", 
         Path(__file__).resolve()
     )

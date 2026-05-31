@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QGuiApplication
 
 try:
     from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import dark_light_config
@@ -68,7 +69,7 @@ class ModuleSelectionWindow(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         settings = get_settings(
-            "INI/preferences/preferences.ini",
+            "INI/dut_measurement/preferences/preferences.ini",
             "shared/utils/preferences/preferences.ini", 
             Path(__file__).resolve()
         )
@@ -96,6 +97,14 @@ class ModuleSelectionWindow(QMainWindow):
 
         self.setWindowTitle(f"{self.menu_title}")
         self.resize(850, 500)
+
+        screen = QGuiApplication.primaryScreen().availableGeometry()
+        window_geometry = self.frameGeometry()
+
+        center_point = screen.center()
+        window_geometry.moveCenter(center_point)
+
+        self.move(window_geometry.topLeft())
 
         logging.info("[ModuleSelectionWindow] Initializing launcher menu")
 

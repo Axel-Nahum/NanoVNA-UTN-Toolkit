@@ -85,7 +85,7 @@ class NanoVNAWelcome(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         settings = get_settings(
-            "INI/preferences/preferences.ini",
+            "INI/dut_measurement/preferences/preferences.ini",
             "shared/utils/preferences/preferences.ini",
             Path(__file__).resolve()
         )
@@ -306,8 +306,14 @@ class NanoVNAWelcome(QMainWindow):
         import_title.setStyleSheet("font-weight: bold; font-size: 14px;")
 
         import_description = QLabel(
-            "Import a previously saved calibration package (.cal or Touchstone files).\n"
-            "This restores calibration state without repeating the full procedure."
+            "Import a calibration kit used to correct measurement errors in the system.<br>"
+            "Files:<br>"
+            "<ul style='margin:0; padding-left:16px;'>"
+            "<li>open.s1p</li>"
+            "<li>short.s1p</li>"
+            "<li>load/match.s1p</li>"
+            "<li>thru.s2p</li>"
+            "</ul>"
         )
         import_description.setWordWrap(True)
         import_description.setStyleSheet("font-size: 12px; color: #cccccc;")

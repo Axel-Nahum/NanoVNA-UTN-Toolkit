@@ -15,7 +15,7 @@ from pathlib import Path
 from PySide6.QtWidgets import(QApplication, QMainWindow, QWidget, 
                                 QVBoxLayout, QHBoxLayout, QPushButton,
                              )
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QGuiApplication
 
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.calibration_dialog import save_calibration_dialog
@@ -116,7 +116,7 @@ class CalibrationWizard(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         settings = get_settings(
-            "INI/preferences/preferences.ini",
+            "INI/dut_measurement/preferences/preferences.ini",
             "shared/utils/preferences/preferences.ini", 
             Path(__file__).resolve()
         )
@@ -143,7 +143,17 @@ class CalibrationWizard(QMainWindow):
 #------------------------------------------------------------------------------------------------------------------------------------------
 
         self.setWindowTitle("NanoVNA Toolkit - Calibration Wizard")
-        self.setGeometry(150, 150, 1000, 600)
+        self.setGeometry(150, 150, 1150, 750)
+
+        self.setFixedSize(1170, 750)
+
+        screen = QGuiApplication.primaryScreen().availableGeometry()
+        window_geometry = self.frameGeometry()
+
+        center_point = screen.center()
+        window_geometry.moveCenter(center_point)
+
+        self.move(window_geometry.topLeft())
 
         apply_window_icon(self)
 
@@ -178,11 +188,11 @@ class CalibrationWizard(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
-        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout.setContentsMargins(20, 10, 20, 10)
 
         # Content area (this is where screens are placed)
         self.content_layout = QVBoxLayout()
-        self.main_layout.addLayout(self.content_layout)
+        self.main_layout.addLayout(self.content_layout, 1)
 
         # Step tracking
         self.current_step = 0
@@ -195,7 +205,7 @@ class CalibrationWizard(QMainWindow):
 
         # Bottom button layout
         self.button_layout = QHBoxLayout()
-        self.button_layout.setContentsMargins(0, 10, 0, 0)
+        self.button_layout.setContentsMargins(0, 5, 0, 0)
 
         # Back button (left)
         self.back_button = QPushButton("◀◀")
@@ -222,7 +232,7 @@ class CalibrationWizard(QMainWindow):
         self.next_button.setEnabled(False)  # start locked until user selects
         self.button_layout.addWidget(self.next_button)
 
-        self.main_layout.addLayout(self.button_layout)
+        self.main_layout.addLayout(self.button_layout, 0)
 
         # Show first screen
         show_first_screen(self)

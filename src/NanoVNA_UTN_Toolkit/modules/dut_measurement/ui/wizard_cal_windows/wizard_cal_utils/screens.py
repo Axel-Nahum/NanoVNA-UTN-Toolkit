@@ -4,8 +4,9 @@ import sys
 from pathlib import Path
 
 from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QMessageBox,
-    QGroupBox, QFormLayout, QDoubleSpinBox, QWidget, QPushButton
+    QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
+    QMessageBox,QGroupBox, QFormLayout, QDoubleSpinBox, 
+    QWidget, QPushButton, QFrame, QStyledItemDelegate
 )
 from PySide6.QtGui import QColor
 from PySide6.QtCore import Qt
@@ -53,6 +54,11 @@ except ImportError as e:
     sys.exit(1)
 
 # ------------------------------------------------------------------------------------------------------------------ #
+
+class CenterDelegate(QStyledItemDelegate):
+    def initStyleOption(self, option, index):
+        super().initStyleOption(option, index)
+        option.displayAlignment = Qt.AlignCenter
 
 def return_to_welcome(self):
     """Return to the welcome window"""
@@ -139,17 +145,15 @@ def previous_step(self):
         self.next_button.setEnabled(False)  
     else:
         show_step_screen(self, self.current_step - 1)
-
+        
 def show_first_screen(self):
-    
+
     """Initial screen: Calibration Methods dropdown (aligned near top)."""
     clear_content(self)
 
-    # Reset selection state
     self.selected_method = None
     self.next_button.setEnabled(False)
 
-    # --- 🔴 FIX: Reset button when returning to start ---
     self.next_button.setText("▶▶")
     try:
         self.next_button.clicked.disconnect()
@@ -157,209 +161,292 @@ def show_first_screen(self):
         pass
     self.next_button.clicked.connect(lambda: next_step(self))
 
-    # Container que mantiene el contenido arriba
     top_container = QVBoxLayout()
     top_container.setAlignment(Qt.AlignTop)
-    top_container.addSpacing(20)
+
+    settings = get_settings(
+        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+        "shared/utils/dark_light_mode/dark_light_config.ini",
+        Path(__file__).resolve()
+    )
+
+    groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
+    groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"
+    frame_style = f"QFrame {{ border: {groupbox_border}; border-radius: 8px; padding: 10px; }}"
+
+    # ================================================
+    # FRAME 1: Calibration Methods
+    # ================================================
+    methods_frame = QFrame()
+    methods_frame.setStyleSheet(frame_style)
+    methods_frame_layout = QVBoxLayout(methods_frame)
+    methods_frame_layout.setContentsMargins(10, 10, 10, 10)
 
     label = QLabel(f"{self.dut_wizard_ui_title}")
-    label.setStyleSheet("font-size: 16px; font-weight: bold;")
-    label.setAlignment(Qt.AlignLeft)
+    label.setStyleSheet("font-size: 18px; font-weight: bold; border: none;")
+    label.setAlignment(Qt.AlignCenter)
+
+    methods_description = QLabel(
+        "Calibration methods are used to correct measurement errors in the system. "
+        "They include techniques for reflection (S11) calibration and transmission (S21) calibration, "
+        "allowing accurate compensation of system imperfections."
+    )
+    methods_description.setStyleSheet("font-size: 13px; border: none;")
+    methods_description.setWordWrap(True)
 
     self.freq_dropdown = QComboBox()
-    self.freq_dropdown.setEditable(False)
+    self.freq_dropdown.setFixedWidth(600)
 
-    # Placeholder
-    self.freq_dropdown.addItem(f"{self.dut_wizard_ui_label_method_selection}")
-    item = self.freq_dropdown.model().item(0)
-    item.setEnabled(False)
-    placeholder_color = QColor(120, 120, 120)
-    item.setForeground(placeholder_color)
+    self.freq_dropdown.addItem(self.dut_wizard_ui_label_method_selection)
+    self.freq_dropdown.model().item(0).setEnabled(False)
+    self.freq_dropdown.setStyleSheet("""
+        QComboBox {
+            qproperty-alignment: 'AlignCenter';
+        }
+        QComboBox {
+            text-align: center;
+        }
+        """
+    )
+    self.freq_dropdown.setItemDelegate(CenterDelegate(self.freq_dropdown))
 
-    methods = [
+    self.freq_dropdown.addItems([
         "OSM (Open - Short - Match)",
         "Normalization",
         "1-Port+N",
         "Enhanced-Response"
-    ]
-    self.freq_dropdown.addItems(methods)
-    self.freq_dropdown.activated.connect(self.on_method_activated)
+    ])
 
-    top_container.addWidget(label)
-    
-    top_container.addSpacing(10)
+    self.freq_dropdown.currentIndexChanged.connect(
+        lambda index: (
+            setattr(
+                self,
+                "selected_method",
+                self.freq_dropdown.currentText()
+            ),
+            self.next_button.setEnabled(index > 0)
+        )
+    )
 
-    top_container.addWidget(self.freq_dropdown)
+    dropdown_layout = QHBoxLayout()
+    dropdown_layout.setContentsMargins(0, 0, 0, 0)
+    dropdown_layout.addStretch()
+    dropdown_layout.addWidget(self.freq_dropdown)
+    dropdown_layout.addStretch()
 
-    top_container.addSpacing(10)
-    
-    # Add sweep configuration section
+    # ================================================
+    # GROUPBOX (FIX REAL)
+    # ================================================
+    methods_group = QGroupBox("Calibration Methods by Parameter")
+    methods_group.setStyleSheet(groupbox_style)
+    methods_group_layout = QVBoxLayout(methods_group)
+    methods_group_layout.setContentsMargins(10, 10, 10, 10)
 
-    # Load configuration for UI colors and styles
-    settings = get_settings(
-        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
-        "shared/utils/dark_light_mode/dark_light_config.ini", 
-        Path(__file__).resolve()
-    ) 
+    # S11 / S21 container
+    methods_row = QWidget()
+    main_layout = QHBoxLayout(methods_row)
+    main_layout.setContentsMargins(0, 0, 0, 0)
+    main_layout.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
 
-    groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
-    groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"
+    def _lbl(text):
+        l = QLabel(text)
+        l.setAlignment(Qt.AlignCenter)
+        l.setStyleSheet("font-size: 13px; border: none;")
+        return l
+
+    # LEFT (S11)
+    s11_box = QVBoxLayout()
+    s11_box.setContentsMargins(0, 0, 0, 0)
+    s11_box.setSpacing(2)
+    s11_box.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+    s11_title = QLabel("S11 (reflection)")
+    s11_title.setStyleSheet("font-weight: bold; font-size: 13px; border: none;")
+    s11_title.setAlignment(Qt.AlignCenter)
+    s11_box.addWidget(s11_title)
+    s11_box.addWidget(_lbl("OSM (Open - Short - Match)"))
+    s11_box.addWidget(_lbl("Normalization Open or Short"))
+
+    # MIDDLE (S21)
+    s21_box = QVBoxLayout()
+    s21_box.setContentsMargins(0, 0, 0, 0)
+    s21_box.setSpacing(2)
+    s21_box.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+    s21_title = QLabel("S21 (transmission)")
+    s21_title.setStyleSheet("font-weight: bold; font-size: 13px; border: none;")
+    s21_title.setAlignment(Qt.AlignCenter)
+    s21_box.addWidget(s21_title)
+    s21_box.addWidget(_lbl("Normalization Thru"))
+
+    # RIGHT (S11 + S21)
+    s11_s21_box = QVBoxLayout()
+    s11_s21_box.setContentsMargins(0, 0, 0, 0)
+    s11_s21_box.setSpacing(2)
+    s11_s21_box.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+    s11_s21_title = QLabel("S11 (reflection) and S21 (transmission)")
+    s11_s21_title.setStyleSheet("font-weight: bold; font-size: 13px; border: none;")
+    s11_s21_title.setAlignment(Qt.AlignCenter)
+    s11_s21_box.addWidget(s11_s21_title)
+    s11_s21_box.addWidget(_lbl("1-Port+N"))
+    s11_s21_box.addWidget(_lbl("Enhanced-Response"))
+
+    # BUILD ROW
+    main_layout.addStretch()
+    main_layout.addLayout(s11_box)
+    main_layout.addSpacing(40)
+    main_layout.addLayout(s11_s21_box)
+    main_layout.addSpacing(40)
+    main_layout.addLayout(s21_box)
+    main_layout.addStretch()
+
+    methods_group_layout.addWidget(methods_row)
+
+    # ================================================
+    # FRAME ASSEMBLY
+    # ================================================
+    methods_frame_layout.addWidget(label)
+    methods_frame_layout.addWidget(methods_description)
+    methods_frame_layout.addSpacing(15)
+    methods_frame_layout.addLayout(dropdown_layout)
+
+    methods_frame_layout.addWidget(methods_group)
+
+    # ================================================
+    # FRAME 2: Sweep Settings (SIN CAMBIOS)
+    # ================================================
+    sweep_frame = QFrame()
+    sweep_frame.setStyleSheet(frame_style)
+    sweep_frame_layout = QVBoxLayout(sweep_frame)
+    sweep_frame_layout.setContentsMargins(15, 15, 15, 15)
+    sweep_frame_layout.setSpacing(10)
+
+    label_sweep_title = QLabel("Sweep Settings")
+    label_sweep_title.setStyleSheet("font-size: 18px; font-weight: bold; border: none;")
+    label_sweep_title.setAlignment(Qt.AlignCenter)
+
+    sweep_description = QLabel(
+        "Sweep settings define the frequency range and resolution used for all measurements. "
+        "The selected values directly affect both reflection and transmission results."
+    )
+    sweep_description.setStyleSheet("font-size: 13px; border: none;")
+    sweep_description.setWordWrap(True)
 
     sweep_group = QGroupBox(f"{self.dut_wizard_ui_sweep_title}")
     sweep_group.setStyleSheet(groupbox_style)
     sweep_layout = QFormLayout()
-    
-    # Start frequency
+
     start_freq_layout = QHBoxLayout()
     self.start_freq_input = QDoubleSpinBox()
     self.start_freq_input.setDecimals(4)
-    self.start_freq_input.setValue(50)  # 50 kHz inicial
-    self.start_freq_input.setStyleSheet("""
-        QDoubleSpinBox {
-            background-color: #3b3b3b;
-            color: white;
-            border: 2px solid white;
-            border-radius: 6px;
-            padding: 8px;
-            font-size: 14px;
-            min-width: 150px;
-        }
-        QDoubleSpinBox:hover {
-            background-color: #4d4d4d;
-        }
-        QDoubleSpinBox:focus {
-            background-color: #4d4d4d;
-            border: 2px solid #4CAF50;
-        }
-        QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
-            background-color: #4d4d4d;
-            border: 1px solid white;
-            border-radius: 3px;
-            width: 16px;
-        }
-        QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
-            background-color: #5d5d5d;
-        }
-    """)
+    self.start_freq_input.setValue(50)
     start_freq_layout.addWidget(self.start_freq_input)
-    
+
     self.start_freq_unit = QComboBox()
     self.start_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
     self.start_freq_unit.setCurrentText("kHz")
+    self.start_freq_unit.setItemDelegate(CenterDelegate(self.start_freq_unit))
     start_freq_layout.addWidget(self.start_freq_unit)
-    
-    sweep_layout.addRow(f"{self.dut_wizard_ui_start_freq}", start_freq_layout)
-    
-    # Stop frequency
+
+    label_start_freq = QLabel(f"{self.dut_wizard_ui_start_freq}")
+
+    label_start_freq.setStyleSheet("""
+        QLabel {
+            border: none;
+            background: transparent;
+        }
+    """)
+    sweep_layout.addRow(label_start_freq, start_freq_layout)
+
     stop_freq_layout = QHBoxLayout()
     self.stop_freq_input = QDoubleSpinBox()
     self.stop_freq_input.setDecimals(4)
     self.stop_freq_input.setValue(1.5)
-    self.stop_freq_input.setStyleSheet("""
-        QDoubleSpinBox {
-            background-color: #3b3b3b;
-            color: white;
-            border: 2px solid white;
-            border-radius: 6px;
-            padding: 8px;
-            font-size: 14px;
-            min-width: 150px;
-        }
-        QDoubleSpinBox:hover {
-            background-color: #4d4d4d;
-        }
-        QDoubleSpinBox:focus {
-            background-color: #4d4d4d;
-            border: 2px solid #4CAF50;
-        }
-        QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
-            background-color: #4d4d4d;
-            border: 1px solid white;
-            border-radius: 3px;
-            width: 16px;
-        }
-        QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {
-            background-color: #5d5d5d;
-        }
-    """)
     stop_freq_layout.addWidget(self.stop_freq_input)
-    
+
     self.stop_freq_unit = QComboBox()
     self.stop_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
     self.stop_freq_unit.setCurrentText("GHz")
+    self.stop_freq_unit.setItemDelegate(CenterDelegate(self.stop_freq_unit))
     stop_freq_layout.addWidget(self.stop_freq_unit)
-    
-    sweep_layout.addRow(f"{self.dut_wizard_ui_stop_freq}", stop_freq_layout)
-    
-    # Number of steps (using smart datapoints spinbox)
-    self.steps_input = SmartDatapointsSpinBox()  # Asumo que sigue siendo un QSpinBox
+
+    label_stop_freq = QLabel(f"{self.dut_wizard_ui_stop_freq}")
+    label_stop_freq.setStyleSheet(
+        """
+        QLabel {
+            border: none; 
+            background: transparent;
+            }
+        """
+    )
+
+    sweep_layout.addRow(label_stop_freq, stop_freq_layout)
+
+    self.steps_input = SmartDatapointsSpinBox()
     self.steps_input.setMinimum(1)
-    self.steps_input.setMaximum(32000)  # Default maximum, will be updated based on device
+    self.steps_input.setMaximum(32000)
     self.steps_input.setValue(101)
+
     self.steps_input.setStyleSheet("""
         QSpinBox {
-            background-color: #3b3b3b;
-            color: white;
-            border: 2px solid white;
-            border-radius: 6px;
-            padding: 8px;
+            background-color: #2e2e2e;
+            color: white;;
+            border-radius: 8px;
             font-size: 14px;
-            min-width: 150px;
+            min-height: 20px;
+            padding: 4px;
         }
-        QSpinBox:hover {
-            background-color: #4d4d4d;
-        }
-        QSpinBox:focus {
-            background-color: #4d4d4d;
-            border: 2px solid #4CAF50;
-        }
+        QSpinBox:hover { background-color: #4d4d4d; }
+        QSpinBox:focus { background-color: #4d4d4d; border: 2px solid #4CAF50; }
         QSpinBox::up-button, QSpinBox::down-button {
             background-color: #4d4d4d;
-            border: 1px solid white;
+            border: 1px solid #4a4a4a;
             border-radius: 3px;
             width: 16px;
         }
-        QSpinBox::up-button:hover, QSpinBox::down-button:hover {
-            background-color: #5d5d5d;
+        QSpinBox::up-button:hover, QSpinBox::down-button:hover { background-color: #5d5d5d; }
+                                   QSpinBox::up-arrow {
+            image: none;
+            border-left: 2px solid transparent;
+            border-right: 2px solid transparent;
+            border-bottom: 3px solid white;
+            width: 0px;
+            height: 0px;
+        }
+
+        QSpinBox::down-arrow {
+            image: none;
+            border-left: 2px solid transparent;
+            border-right: 2px solid transparent;
+            border-top: 3px solid white;
+            width: 0px;
+            height: 0px;
         }
     """)
-    sweep_layout.addRow(f"{self.dut_wizard_ui_steps}", self.steps_input)
-    
+
+    label_steps = QLabel(f"{self.dut_wizard_ui_steps}")
+    label_steps.setStyleSheet(
+        """
+        QLabel {
+            border: none;
+        }
+    """)
+
+    sweep_layout.addRow(label_steps, self.steps_input)
+
     sweep_group.setLayout(sweep_layout)
-    top_container.addWidget(sweep_group)
-    
-    # Connect widgets to update sweep configuration
-    self.start_freq_input.valueChanged.connect(lambda: update_sweep_config(self))
-    self.start_freq_unit.currentTextChanged.connect(lambda: update_sweep_config(self))
 
-    self.stop_freq_input.valueChanged.connect(lambda: update_sweep_config(self))
-    self.stop_freq_unit.currentTextChanged.connect(lambda: update_sweep_config(self))
+    sweep_frame_layout.addWidget(label_sweep_title)
+    sweep_frame_layout.addWidget(sweep_description)
+    sweep_frame_layout.addWidget(sweep_group)
 
-    self.steps_input.valueChanged.connect(lambda: update_sweep_config(self))
-
-    # Conectar rango dinámico según unidad
-    self.start_freq_unit.currentTextChanged.connect(
-        lambda unit: update_spinbox_range(self, self.start_freq_input, unit)
-    )
-    self.stop_freq_unit.currentTextChanged.connect(
-        lambda unit: update_spinbox_range(self, self.stop_freq_input, unit)
-    )
-
-    # Validación para evitar que el usuario ingrese valores fuera de rango manualmente
-    self.start_freq_input.editingFinished.connect(lambda: on_frequency_changed_range(self))
-    self.stop_freq_input.editingFinished.connect(lambda: on_frequency_changed_range(self))
-
-    # Update initial values and device limits
-    update_sweep_config(self)
-    update_device_limits(self)  # Configure SmartDatapointsSpinBox with device limits
-    
-    # Get frequency limits from device and configure frequency spinboxes
-    self.freq_min_hz, self.freq_max_hz = get_frequency_limits(self)
-    update_frequency_ranges(self)  # Configure frequency ranges based on device limits
+    # ================================================
+    # FINAL LAYOUT
+    # ================================================
+    top_container.addWidget(methods_frame)
+    top_container.addSpacing(10)
+    top_container.addWidget(sweep_frame)
 
     self.content_layout.addLayout(top_container)
 
-    # Show back button and configure it to return to welcome screen
     self.back_button.setVisible(True)
     self.back_button.setText("◀◀")
     try:
@@ -371,7 +458,7 @@ def show_first_screen(self):
         self.back_button.clicked.connect(lambda: return_to_welcome(self))
     elif self.caller == "graphics":
         self.back_button.clicked.connect(lambda: return_to_graphics(self))
-    
+
     self.current_step = 0
 
 def show_step_screen(self, step, parent = None):

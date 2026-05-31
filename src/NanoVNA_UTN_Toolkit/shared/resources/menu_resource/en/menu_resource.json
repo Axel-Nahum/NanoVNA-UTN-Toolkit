@@ -2,7 +2,7 @@
   "main_menu_ui": {
     "header": {
       "title": "NanoVNA Toolkit - Menu",
-      "description": "Select a module to continue."
+      "description": "Select a module to continue"
     },
     "modules": {
       "dut_measurement": {

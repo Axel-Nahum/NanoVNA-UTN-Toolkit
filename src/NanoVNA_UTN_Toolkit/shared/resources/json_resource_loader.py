@@ -232,6 +232,7 @@ class JsonResourceLoader:
         # ---------------------------------------------------------------- #
 
         self.window.measurement_ui_menu_file = menu_bar.get("file", "")
+        self.window.measurement_ui_menu_plot = menu_bar.get("plot", "")
         self.window.measurement_ui_menu_edit = menu_bar.get("edit", "")
         self.window.measurement_ui_menu_view = menu_bar.get("view", "")
         self.window.measurement_ui_menu_sweep = menu_bar.get("sweep", "")
@@ -259,8 +260,8 @@ class JsonResourceLoader:
         # Magnitude and Phase Plot
         # ---------------------------------------------------------------- #
 
-        self.window.measurement_ui_magnitude_title = plots.get("title_mag", "soy goy")
-        self.window.measurement_ui_phase_title = plots.get("title_phase", "goy sere")
+        self.window.measurement_ui_magnitude_title = plots.get("title_mag", "")
+        self.window.measurement_ui_phase_title = plots.get("title_phase", "")
         self.window.measurement_ui_magnitude_waiting_text = plots.get("waiting_text", "")
         self.window.measurement_ui_magnitude_x_axis = plots.get("x_axis", "")
         self.window.measurement_ui_magnitude_y_axis = plots.get("y_axis", "")
@@ -324,6 +325,7 @@ class JsonResourceLoader:
         menu_data = raw_data.get("menu", {})
 
         file_menu = menu_data.get("file_menu", {})
+        plot_menu = menu_data.get("plot_menu", {})
         edit_menu = menu_data.get("edit_menu", {})
         view_menu = menu_data.get("view_menu", {})
         sweep_menu = menu_data.get("sweep_menu", {})
@@ -340,6 +342,12 @@ class JsonResourceLoader:
         self.window.measurement_menu_export_touchstone = file_menu.get("export_touchstone", "")
         self.window.measurement_menu_export_errors = file_menu.get("export_errors", "")
         self.window.measurement_menu_back_to_menu = file_menu.get("back_to_menu", "")
+
+        # ---------------------------------------------------------------- #
+        # Plot Menu
+        # ---------------------------------------------------------------- #
+
+        self.window.measurement_menu_plot_settings = plot_menu.get("plot_settings", "")
 
         # ---------------------------------------------------------------- #
         # Edit Menu

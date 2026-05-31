@@ -46,7 +46,7 @@ def build_introduction_screen(self):
 # ------------------------------------------------------------------------------------------------------------------- #
 
     settings = get_settings(
-        "INI/preferences/preferences.ini",
+        "INI/dut_measurement/preferences/preferences.ini",
         "shared/utils/preferences/preferences.ini", 
         Path(__file__).resolve()
     )

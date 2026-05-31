@@ -124,6 +124,15 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
         # --- QComboBox placeholder ---
         settings.setValue("Dark_Light/QComboBox::placeholder/color", "#cccccc")
 
+        # --- QCheckBox ---
+        settings.setValue("Dark_Light/QCheckBox/color", "white")
+        settings.setValue("Dark_Light/QCheckBox/background-color", "#2e2e2e")
+        settings.setValue("Dark_Light/QCheckBox/border", "1px solid #4a4a4a")
+
+        # --- QCheckBox checked ---
+        settings.setValue("Dark_Light/QCheckBox_checked/background-color", "#4d90fe")
+        settings.setValue("Dark_Light/QCheckBox_checked/border", "1px solid #4d90fe")
+
         self.setStyleSheet("""
             QWidget {
                 background-color: #3a3a3a;
@@ -376,6 +385,15 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
         # --- QComboBox placeholder ---
         settings.setValue("Dark_Light/QComboBox::placeholder/color", "#cccccc")
 
+        # --- QCheckBox ---
+        settings.setValue("Dark_Light/QCheckBox/color", "black")
+        settings.setValue("Dark_Light/QCheckBox/background-color", "#ffffff")
+        settings.setValue("Dark_Light/QCheckBox/border", "1px solid #b0b0b0")
+
+        # --- QCheckBox checked ---
+        settings.setValue("Dark_Light/QCheckBox_checked/background-color", "#4d90fe")
+        settings.setValue("Dark_Light/QCheckBox_checked/border", "1px solid #4d90fe")
+
         self.setStyleSheet("""
             QWidget {
                 background-color: #f0f0f0;
@@ -612,11 +630,66 @@ def dark_light_config(self):
     combobox_focus_bg = settings.value("Dark_Light/QComboBox:focus/background-color", "#4d4d4d")
     combobox_placeholder_color = settings.value("Dark_Light/QComboBox::placeholder/color", "#cccccc")
 
+    # QCheckBox
+
+    checkbox_color = settings.value(
+        "Dark_Light/QCheckBox/color",
+        label_color
+    )
+
+    checkbox_bg = settings.value(
+        "Dark_Light/QCheckBox/background-color",
+        lineedit_bg
+    )
+
+    checkbox_border = settings.value(
+        "Dark_Light/QCheckBox/border",
+        "1px solid gray"
+    )
+
+    checkbox_checked_bg = settings.value(
+        "Dark_Light/QCheckBox_checked/background-color",
+        "#4d90fe"
+    )
+
+    checkbox_checked_border = settings.value(
+        "Dark_Light/QCheckBox_checked/border",
+        "1px solid #4d90fe"
+    )
+
     self.setStyleSheet(f"""
 
         /* QWidget */
         QWidget {{
             background-color: {background_color};
+        }}
+
+       /* QCheckBox */
+
+        QCheckBox {{
+            color: {checkbox_color};
+            spacing: 6px;
+        }}
+
+        QCheckBox::indicator {{
+            width: 14px;
+            height: 14px;
+        }}
+
+        QCheckBox::indicator:unchecked {{
+            background-color: {checkbox_bg};
+            border: {checkbox_border};
+            border-radius: 3px;
+        }}
+
+        QCheckBox::indicator:checked {{
+            background-color: {checkbox_checked_bg};
+            border: {checkbox_checked_border};
+            border-radius: 3px;
+        }}
+
+        QCheckBox::indicator:hover {{
+            border: 1px solid #6aa2ff;
         }}
 
         /* QTabWidget */
