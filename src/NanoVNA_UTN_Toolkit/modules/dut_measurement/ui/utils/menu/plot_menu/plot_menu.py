@@ -146,22 +146,19 @@ def open_plot_settings(self):
     grid.addWidget(g2, 0, 2)
 
     # SHOW GRID
-    grid1 = QCheckBox()
-    grid2 = QCheckBox()
+    self.grid1 = QCheckBox()
+    self.grid2 = QCheckBox()
 
     shw_grid_label = QLabel("Show Grid:")
     shw_grid_label.setStyleSheet("font-weight: bold; font-size: 15px; border: none;")
 
     grid.addWidget(shw_grid_label, 1, 0, alignment=Qt.AlignLeft)
-    grid.addWidget(grid1, 1, 1, alignment=Qt.AlignCenter)
-    grid.addWidget(grid2, 1, 2, alignment=Qt.AlignCenter)
+    grid.addWidget(self.grid1, 1, 1, alignment=Qt.AlignCenter)
+    grid.addWidget(self.grid2, 1, 2, alignment=Qt.AlignCenter)
 
     # AVERAGING
     avg1 = QComboBox()
     avg2 = QComboBox()
-
-    avg1.setStyleSheet("QComboBox { qproperty-alignment: 'AlignCenter'; }")
-    avg2.setStyleSheet("QComboBox { qproperty-alignment: 'AlignCenter'; }")
 
     delegate = CenterDelegate()
     avg1.setItemDelegate(delegate)
@@ -290,6 +287,8 @@ def open_plot_settings(self):
     apply_btn.setMinimumSize(100, 30)
     cancel_btn.setMinimumSize(100, 30)
 
+    apply_btn.clicked.connect(lambda: apply_plot_settings(self))
+
     actions.addStretch()
     actions.addWidget(apply_btn)
     actions.addWidget(cancel_btn)
@@ -310,9 +309,25 @@ def open_edit_graphics_markers(self):
     edit_graphics_markers(self)
     self.dialog.close()
 
-def apply_plot_settings(self, *args):
-    pass
+def apply_plot_settings(self):
+  
+    if self.grid1.isChecked():
+        current_state = True
+    else:
+        current_state = False
 
+    self.ax_left.grid(current_state)
+    self.fig_left.canvas.draw_idle()
+
+    if self.grid2.isChecked():
+        current_state = True
+    else:
+        current_state = False
+    
+    self.ax_right.grid(current_state)
+    self.fig_right.canvas.draw_idle()
+
+    self.dialog.accept()
 
 def edit_graphics(self):
     pass
