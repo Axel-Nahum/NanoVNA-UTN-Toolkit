@@ -5,6 +5,8 @@ import skrf as rf
 
 from pathlib import Path
 
+from scipy.signal import savgol_filter
+
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import (
     QApplication, QMessageBox
@@ -488,8 +490,8 @@ def run_sweep(self):
         # Read S11 data
         logging.info("[graphics_window.run_sweep] Reading S11 data...")
         s11_data = self.vna_device.readValues("data 0")
-        s11_med = np.array(s11_data)
-
+        s11_med = np.array(s11_data)                    # DEBUG: Log raw S11 data length before any processing
+        
         #s11_med[0] = s11_med[1]  # Fix first point if needed
 
         logging.info(f"[graphics_window.run_sweep] Got {len(s11_med)} S11 data points")
@@ -504,8 +506,8 @@ def run_sweep(self):
         # Read S21 data
         logging.info("[graphics_window.run_sweep] Reading S21 data...")
         s21_data = self.vna_device.readValues("data 1")
-        s21_med = np.array(s21_data)
-
+        s21_med = np.array(s21_data)                    # DEBUG: Log raw S21 data length before any processing
+ 
         logging.info(f"[graphics_window.run_sweep] Got {len(s21_med)} S21 data points")
         if len(s21_med) != self.segments:
             logging.warning(f"[graphics_window.run_sweep] Expected {self.segments} S21 points, but got {len(s21_med)}")

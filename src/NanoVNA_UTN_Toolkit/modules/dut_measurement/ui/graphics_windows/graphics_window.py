@@ -13,6 +13,8 @@ import logging
 import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 
+from src.NanoVNA_UTN_Toolkit.shared.utils.real_time.kalman_filter import ComplexKalman, SParameterKalman
+
 # Configure matplotlib for better integration with PySide6 and improved aesthetics
 
 plt.rcParams['mathtext.fontset'] = 'cm'  
@@ -210,6 +212,10 @@ class NanoVNAGraphics(QMainWindow):
         # Store VNA device reference
         self.dut = dut
         self.vna_device = vna_device
+
+        # kalman filters for real-time data smoothing
+        self.kf_s11 = ComplexKalman()
+        self.kf_s21 = ComplexKalman()
 
         # Auto Scale
 

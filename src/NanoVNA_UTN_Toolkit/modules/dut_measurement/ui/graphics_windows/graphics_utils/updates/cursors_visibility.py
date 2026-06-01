@@ -154,7 +154,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                             self.slider_left.observers.clear()
                         except:
                             pass
-                        self.slider_left.on_changed(lambda: left_slider_moved(self))
+                        self.slider_left.on_changed(lambda val: left_slider_moved(self, val))
                     
                     # Reconnect the slider to use our wrapper
                     if hasattr(self, 'slider_left') and self.slider_left:
@@ -290,7 +290,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                             self.slider_right.observers.clear()
                         except:
                             pass
-                        self.slider_right.on_changed(lambda: right_slider_moved(self))
+                        self.slider_right.on_changed(lambda val: right_slider_moved(self, val))
                         #self.right_slider_moved()
                     
                     # Reconnect the slider to use our wrapper
@@ -439,7 +439,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                 self.slider_left_2.observers.clear()
                             except:
                                 pass
-                            self.slider_left_2.on_changed(lambda: left_slider_moved_2(self))
+                            self.slider_left_2.on_changed(lambda val: left_slider_moved_2(self, val))
                         
                         # Reconnect the slider to use our wrapper
                         if hasattr(self, 'slider_left_2') and self.slider_left_2:
@@ -571,7 +571,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                 self.slider_right_2.observers.clear()
                             except:
                                 pass
-                            self.slider_right_2.on_changed(lambda: right_slider_moved_2(self))
+                            self.slider_right_2.on_changed(lambda val: right_slider_moved_2(self, val))
                             self.right_slider_moved_2(int(0))   # antes val
                         
                         # Reconnect the slider to use our wrapper

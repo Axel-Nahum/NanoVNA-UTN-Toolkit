@@ -3,12 +3,8 @@ import sys
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget,
-    QLabel,
-    QPushButton,
-    QProgressBar,
-    QVBoxLayout,
-    QHBoxLayout
+    QWidget, QLabel, QPushButton, QProgressBar,
+    QVBoxLayout, QHBoxLayout, QCheckBox
 )
 
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_utils import (
@@ -32,6 +28,13 @@ except ImportError as e:
 
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.reconect.reconect_button import reconnect_device
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import on_realtime_toggled
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
@@ -62,7 +65,13 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
     self.sweep_button.setMaximumWidth(120)
     self.sweep_button.clicked.connect(lambda: run_sweep(self))
 
-    self.sweep_info_label = QLabel("Sweep: 0.050 MHz - 1500.000 MHz, 101 points")
+    # Real Time checkbox
+    self.realtime_checkbox = QCheckBox("Real Time")
+    self.realtime_checkbox.toggled.connect(lambda checked: on_realtime_toggled(self, checked))
+
+    self.sweep_info_label = QLabel(
+        "Sweep: 0.050 MHz - 1500.000 MHz, 101 points"
+    )
     self.sweep_info_label.setStyleSheet("font-size: 12px;")
 
     # Initialize sweep configuration
@@ -88,8 +97,16 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
 
     sweep_control_layout.addWidget(self.reconnect_button)
     sweep_control_layout.addWidget(self.sweep_button)
+
+    sweep_control_layout.addSpacing(20)
+
+    sweep_control_layout.addWidget(self.realtime_checkbox)
+
+    sweep_control_layout.addSpacing(20)
+
     sweep_control_layout.addWidget(self.sweep_info_label)
     sweep_control_layout.addWidget(self.sweep_progress_bar)
+
     sweep_control_layout.addStretch()
 
     # Calibration label
@@ -142,7 +159,8 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
         self.update_left_data_2,
         self.update_left_s_param,
         self.freqs_edit_left,
-        self.freqs_edit_left_2
+        self.freqs_edit_left_2,
+        self.line_left
 
     ) = create_left_panel(
 
@@ -183,7 +201,8 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
         self.update_right_data,
         self.update_right_s_param,
         self.freqs_edit_right,
-        self.freqs_edit_right_2
+        self.freqs_edit_right_2,
+        self.line_right
 
     ) = create_right_panel(
 

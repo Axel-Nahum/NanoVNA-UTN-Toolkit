@@ -166,7 +166,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
 
-        ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
+        line, = ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$|%s|$" % s_param, color=text_color)
@@ -211,7 +211,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
 
-        ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
+        line, = ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
@@ -1200,7 +1200,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         nonlocal s_param
         s_param = new_s_param
     
-    return left_panel, info_panel, info_panel_2, fig, ax, canvas, slider, slider_2, cursor_graph, cursor_graph_2, labels_dict, labels_dict_2, update_cursor, update_cursor_2, update_data_references, update_data_references_2, update_s_param_only, freq_edited, freq_edited_2
+    return left_panel, info_panel, info_panel_2, fig, ax, canvas, slider, slider_2, cursor_graph, cursor_graph_2, labels_dict, labels_dict_2, update_cursor, update_cursor_2, update_data_references, update_data_references_2, update_s_param_only, freq_edited, freq_edited_2, line
 
 #############################################################################################
 # =================== RIGHT PANEL ========================================================= #
@@ -1283,7 +1283,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(canvas)
 
-        ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
+        line, = ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$|%s|$" % s_param, color=text_color)
@@ -1328,7 +1328,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(canvas)
 
-        ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
+        line, = ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=f"{text_color}")
         ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
@@ -2271,7 +2271,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         nonlocal s_param
         s_param = new_s_param
     
-    return right_panel, info_panel, info_panel_2, fig, ax, canvas, slider, slider_2, cursor_graph, cursor_graph_2, labels_dict, labels_dict_2, update_cursor, update_cursor_2, update_data_references, update_s_param_only, freq_edited, freq_edited_2
+    return right_panel, info_panel, info_panel_2, fig, ax, canvas, slider, slider_2, cursor_graph, cursor_graph_2, labels_dict, labels_dict_2, update_cursor, update_cursor_2, update_data_references, update_s_param_only, freq_edited, freq_edited_2, line
 
 class NoMouseSelectLineEdit(QLineEdit):
     def mousePressEvent(self, event):
