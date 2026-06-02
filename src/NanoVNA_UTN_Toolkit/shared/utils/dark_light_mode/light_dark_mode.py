@@ -1,5 +1,6 @@
 import sys
 import logging
+from turtle import color
 
 logging.basicConfig(level=logging.INFO)
 
@@ -796,6 +797,11 @@ def dark_light_config(self):
         QComboBox:focus {{
             background-color: {combobox_focus_bg};
             border: 1px solid #4d90fe;
+        }}
+
+        QComboBox:disabled {{   
+            color: gray;
+            background-color: #2a2a2a;
         }}
 
         QComboBox {{

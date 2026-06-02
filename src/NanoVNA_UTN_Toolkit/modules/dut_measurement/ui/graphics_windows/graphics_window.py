@@ -13,8 +13,6 @@ import logging
 import matplotlib.pyplot as plt
 import matplotlib.pyplot as plt
 
-from src.NanoVNA_UTN_Toolkit.shared.utils.real_time.kalman_filter import ComplexKalman, SParameterKalman
-
 # Configure matplotlib for better integration with PySide6 and improved aesthetics
 
 plt.rcParams['mathtext.fontset'] = 'cm'  
@@ -192,6 +190,13 @@ except ImportError as e:
     logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.shared.utils.real_time.kalman_filter.kalman_filter import ComplexKalman
+except ImportError as e:
+    logging.error("Failed to import required modules: %s", e)
+    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    sys.exit(1)
+
 #-------------------- ABOUT DIALOG -------------------------------------------------------------------------#
 
 class NanoVNAGraphics(QMainWindow):
@@ -213,9 +218,19 @@ class NanoVNAGraphics(QMainWindow):
         self.dut = dut
         self.vna_device = vna_device
 
+        settings = get_settings(
+            "INI/dut_measurement/kalman_filter/kalman_filter.ini",
+            "shared/utils/real_time/kalman_filter/kalman_filter.ini", 
+            Path(__file__).resolve()
+        )
+
+        process_noise = settings.value("KalmanFilter/process_noise", 0.0001, type=float)
+        measurement_noise_s11 = settings.value("KalmanFilter/measurement_noise_s11", 0.1, type=float)
+        measurement_noise_s21 = settings.value("KalmanFilter/measurement_noise_s21", 10.0, type=float)
+
         # kalman filters for real-time data smoothing
-        self.kf_s11 = ComplexKalman()
-        self.kf_s21 = ComplexKalman()
+        self.kf_s11 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise_s11)
+        self.kf_s21 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise_s21)
 
         # Auto Scale
 

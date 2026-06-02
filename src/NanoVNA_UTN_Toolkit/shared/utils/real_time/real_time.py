@@ -1,10 +1,13 @@
 import logging
+
 import numpy as np
 import skrf as rf
 
+from pathlib import Path
+
 from PySide6.QtCore import QObject, Signal, QThread, QTimer
 
-from .kalman_filter import SParameterKalman
+from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 
 # ------------------------------------------------------------------------------------------------------------------ #
 # WORKER
@@ -189,15 +192,35 @@ def _safe_stop_thread(thread):
 
 def _done(self, freqs, s11, s21, thread, worker, gen):
 
+    # ----------------------------------------------------
+    # Plot Manager settings
+    # ----------------------------------------------------
+
+    settings = get_settings(
+        "INI/dut_measurement/plot_manager/plot_manager.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager.ini",
+        Path(__file__).resolve()
+    )
+
+    is_kalman_enabled_left = settings.value("kalman/enabled_left", False, type=bool)
+    is_kalman_enabled_right = settings.value("kalman/enabled_right", False, type=bool)
+    is_kalman_enabled = is_kalman_enabled_left or is_kalman_enabled_right
+
     if gen != self._rt_generation:
         return
 
-    # guardar raw si querés debug
+    # data read from worker, now safe to stop thread and clean up worker references
     self.s11_raw = s11
     self.s21_raw = s21
 
-    s11_f = np.array([self.kf_s11.update(x) for x in s11])
-    s21_f = np.array([self.kf_s21.update(x) for x in s21])
+    # kalman filter for smoothing
+
+    if is_kalman_enabled:
+        s11_f = np.array([self.kf_s11.update(x) for x in s11])
+        s21_f = np.array([self.kf_s21.update(x) for x in s21])
+    else:
+        s11_f = s11
+        s21_f = s21
 
     self.freqs = freqs
     self.s11 = s11_f

@@ -19,9 +19,9 @@ class SParameterKalman:
         return float(self.kf.x[0])
     
 class ComplexKalman:
-    def __init__(self):
-        self.kf_real = SParameterKalman()
-        self.kf_imag = SParameterKalman()
+    def __init__(self, process_noise=0.0001, measurement_noise=10.0):
+        self.kf_real = SParameterKalman(process_noise, measurement_noise)
+        self.kf_imag = SParameterKalman(process_noise, measurement_noise)
 
     def update(self, value: complex):
         r = self.kf_real.update(np.real(value))
