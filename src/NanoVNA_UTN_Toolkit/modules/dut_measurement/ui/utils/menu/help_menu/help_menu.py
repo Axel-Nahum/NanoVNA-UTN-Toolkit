@@ -94,11 +94,11 @@ class AboutDialog(QDialog):
         """Load and display the appropriate README file based on language."""
         
         try:
-            # Get the project root directory (go up from ui/graphics_window.py to project root)
+            # Get the project root directory (go up from help_menu.py to repo root, where the README files live)
             if hasattr(sys, '_MEIPASS'):
                 project_root = sys._MEIPASS
             else:
-                project_root = Path(__file__).resolve().parents[6]
+                project_root = Path(__file__).resolve().parents[8]
             
             if self.language == 'es':
                 readme_path = os.path.join(project_root, "README_ES.md")
