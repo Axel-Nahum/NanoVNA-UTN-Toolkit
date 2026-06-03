@@ -2,6 +2,7 @@
 Material characterization setup window for NanoVNA devices.
 """
 
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import os
 import sys
@@ -31,21 +32,9 @@ except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     sys.exit(1)
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon import apply_window_icon
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 

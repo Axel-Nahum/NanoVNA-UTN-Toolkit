@@ -1,13 +1,9 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 from pathlib import Path
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 

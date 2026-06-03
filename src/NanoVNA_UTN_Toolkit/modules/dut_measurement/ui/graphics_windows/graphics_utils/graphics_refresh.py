@@ -1,3 +1,4 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 import numpy as np
@@ -15,59 +16,19 @@ from PySide6.QtWidgets import (
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.methods import Methods
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.kits import KitsCalibrator
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils", "get_calibration_path")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.graphics_update import update_plots_with_new_data
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+update_plots_with_new_data = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.graphics_update", "update_plots_with_new_data")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.sliders_reset import _reset_sliders_before_sweep
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+_reset_sliders_before_sweep = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.sliders_reset", "_reset_sliders_before_sweep")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.cursors_reset import _reset_markers_after_sweep
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+_reset_markers_after_sweep = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.cursors_reset", "_reset_markers_after_sweep")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.calibration.calibration import update_calibration_label_from_method
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+update_calibration_label_from_method = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.calibration.calibration", "update_calibration_label_from_method")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils import load_sweep_configuration
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+load_sweep_configuration = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils", "load_sweep_configuration")
 
 # ----------------------------------------------------------------------------------------------------------------- #
 

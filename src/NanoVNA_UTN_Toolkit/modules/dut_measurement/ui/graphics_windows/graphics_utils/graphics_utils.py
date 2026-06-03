@@ -1,3 +1,4 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import numpy as np
 import os
 import logging
@@ -23,13 +24,7 @@ from PySide6.QtCore import QSettings
 
 # Import get_settings 
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 

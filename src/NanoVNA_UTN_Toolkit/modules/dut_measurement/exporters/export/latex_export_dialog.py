@@ -5,6 +5,7 @@ This module provides a pre-export dialog that checks LaTeX installation,
 allows path selection, and validates the setup before proceeding with PDF export.
 """
 
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import os
 import sys
 import logging
@@ -22,19 +23,9 @@ from NanoVNA_UTN_Toolkit.modules.dut_measurement.exporters.latex_exporter import
 # Set up logging
 logger = logging.getLogger(__name__)
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
 class LaTeXCheckerThread(QThread):
     """

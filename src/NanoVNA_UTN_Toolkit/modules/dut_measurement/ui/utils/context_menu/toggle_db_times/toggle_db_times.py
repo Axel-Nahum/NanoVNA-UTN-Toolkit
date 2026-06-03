@@ -1,3 +1,4 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 from pathlib import Path
 
@@ -5,21 +6,9 @@ from PySide6.QtWidgets import (
     QApplication
 )
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.graphics_update import update_plots_with_new_data
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+update_plots_with_new_data = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.graphics_update", "update_plots_with_new_data")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 

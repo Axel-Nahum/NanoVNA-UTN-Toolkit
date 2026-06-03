@@ -1,3 +1,4 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 from pathlib import Path
@@ -10,27 +11,11 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QDoubleValidator
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.view_edit_menu.view_edit_menu import open_view, edit_graphics_markers
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+open_view, edit_graphics_markers = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.view_edit_menu.view_edit_menu", "open_view", "edit_graphics_markers")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale import save_auto_scale_data, on_auto_scale_toggled
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+save_auto_scale_data, on_auto_scale_toggled = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale", "save_auto_scale_data", "on_auto_scale_toggled")
 
 
 KALMAN_PRESETS = {

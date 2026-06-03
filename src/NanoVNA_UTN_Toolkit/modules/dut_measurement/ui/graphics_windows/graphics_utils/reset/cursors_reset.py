@@ -1,29 +1,14 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 
 from PySide6.QtCore import QTimer
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.panels_utils import _clear_marker_fields_only
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+_clear_marker_fields_only = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.panels_utils", "_clear_marker_fields_only")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.sliders_update import update_slider_ranges
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+update_slider_ranges = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.sliders_update", "update_slider_ranges")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.cursors_visibility import force_marker_visibility, force_marker_visibility_2
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+force_marker_visibility, force_marker_visibility_2 = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.cursors_visibility", "force_marker_visibility", "force_marker_visibility_2")
 
 # -------------------------------------------------------------------------------------------------------------------- #
 

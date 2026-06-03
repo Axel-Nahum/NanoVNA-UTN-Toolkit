@@ -1,14 +1,10 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 
 # Import load graph configuration
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.load_graph_config.load_graph_config import load_graph_configuration
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+load_graph_configuration = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.load_graph_config.load_graph_config", "load_graph_configuration")
 
 from PySide6.QtCore import QTimer
 

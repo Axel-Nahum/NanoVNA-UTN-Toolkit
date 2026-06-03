@@ -1,3 +1,4 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 
@@ -5,19 +6,9 @@ import numpy as np
 
 from pathlib import Path
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.sliders_update import left_slider_moved, left_slider_moved_2, right_slider_moved, right_slider_moved_2
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+left_slider_moved, left_slider_moved_2, right_slider_moved, right_slider_moved_2 = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.sliders_update", "left_slider_moved", "left_slider_moved_2", "right_slider_moved", "right_slider_moved_2")
 
 # ----------------------------------------------------------------------------------------------------------------------------------- #
 

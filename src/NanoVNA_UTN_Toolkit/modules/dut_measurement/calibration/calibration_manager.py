@@ -2,6 +2,7 @@
 Enhanced calibration manager module for NanoVNA-UTN-Toolkit.
 Handles OSM calibrations with persistent state and Touchstone export.
 """
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import os
 import sys
@@ -12,12 +13,7 @@ import skrf as rf
 
 from pathlib import Path
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils", "get_calibration_path")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 

@@ -1,3 +1,4 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 import os
@@ -12,26 +13,11 @@ from PySide6.QtCore import QSettings
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 from PySide6.QtGui import QColor
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils", "get_calibration_path")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.file_menu.export_touchstone.export_touchstone import show_touchstone_format_dialog
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+show_touchstone_format_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.file_menu.export_touchstone.export_touchstone", "show_touchstone_format_dialog")
 
 # ------------------------------------------------------------------------------------------------------------------------- #
 

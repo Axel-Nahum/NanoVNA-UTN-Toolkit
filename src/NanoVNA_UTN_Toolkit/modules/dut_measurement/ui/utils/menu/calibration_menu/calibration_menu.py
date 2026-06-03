@@ -1,3 +1,4 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import os
 import sys
@@ -15,33 +16,13 @@ from PySide6 import QtCore
 
 # Import get_settings 
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.save_calibration.save_calibration import show_calibration_warning, save_kit_dialog
-except ImportError as e:  
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+show_calibration_warning, save_kit_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.save_calibration.save_calibration", "show_calibration_warning", "save_kit_dialog")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.delete_calibration.delete_calibration import handle_all_kits_deleted, handle_deleted_current_kit
-except ImportError as e:  
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+handle_all_kits_deleted, handle_deleted_current_kit = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.delete_calibration.delete_calibration", "handle_all_kits_deleted", "handle_deleted_current_kit")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils", "get_calibration_path")
 
 # ---------------------------------------------------------------------------------------------------------------- #
 

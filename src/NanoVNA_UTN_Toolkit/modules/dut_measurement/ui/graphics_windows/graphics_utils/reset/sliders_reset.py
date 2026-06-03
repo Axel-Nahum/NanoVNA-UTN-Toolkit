@@ -1,15 +1,11 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 import os
 
 from PySide6.QtCore import QTimer
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.panels_utils import _clear_all_marker_fields
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+_clear_all_marker_fields = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.panels_utils", "_clear_all_marker_fields")
 
 def _reset_sliders_after_reconnect(self):
     """Reset sliders and show cursor information after successful device reconnection."""

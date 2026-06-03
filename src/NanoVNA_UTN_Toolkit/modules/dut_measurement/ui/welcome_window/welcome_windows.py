@@ -2,6 +2,7 @@
 Welcome setup window for NanoVNA devices.
 """
 
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import os
 import sys
@@ -28,12 +29,7 @@ except ImportError as e:
     logging.error("Failed to import NanoVNAGraphics: %s", e)
     NanoVNAGraphics = None
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_windows import CalibrationWizard
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+CalibrationWizard = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_windows", "CalibrationWizard")
 
 # Import calibration data storage
 try:
@@ -44,35 +40,13 @@ except ImportError as e:
     OSMCalibrationManager = None
     THRUCalibrationManager = None
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import dark_light_config
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+dark_light_config = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode", "dark_light_config")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon import apply_window_icon
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 

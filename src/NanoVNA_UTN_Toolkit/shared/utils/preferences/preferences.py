@@ -2,6 +2,7 @@
 This method contains the implementation of the Preferences dialog for the NanoVNA UTN Toolkit application.
 """
 
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 
@@ -12,26 +13,11 @@ from PySide6.QtWidgets import (
     QHBoxLayout, QComboBox, QFrame, QSizePolicy
 )
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import toggle_menu_dark_mode
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+toggle_menu_dark_mode = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode", "toggle_menu_dark_mode")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Open Preferences Dialog

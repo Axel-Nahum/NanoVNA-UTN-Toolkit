@@ -1,3 +1,4 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 
@@ -12,33 +13,13 @@ from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_ut
     create_right_panel
 )
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep, update_reconnect_button_state
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+run_sweep, update_reconnect_button_state = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh", "run_sweep", "update_reconnect_button_state")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.calibration.calibration import update_calibration_label_from_method
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+update_calibration_label_from_method = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.calibration.calibration", "update_calibration_label_from_method")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.reconect.reconect_button import reconnect_device
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+reconnect_device = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.reconect.reconect_button", "reconnect_device")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import on_realtime_toggled
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+on_realtime_toggled = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "on_realtime_toggled")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
@@ -262,12 +243,7 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
     )
 
 def _load_sweep_configuration(self):
-    try:
-        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils import load_sweep_configuration
-    except ImportError as e:
-        logging.error("Failed to import required modules: %s", e)
-        logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-        sys.exit(1)
+    load_sweep_configuration = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils", "load_sweep_configuration")
 
     load_sweep_configuration(self)
     

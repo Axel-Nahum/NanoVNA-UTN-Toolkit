@@ -1,23 +1,12 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import shiboken6
 
 from PySide6.QtWidgets import QMessageBox
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.sliders_reset import _reset_sliders_after_reconnect
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+_reset_sliders_after_reconnect = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.sliders_reset", "_reset_sliders_after_reconnect")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep, update_reconnect_button_state
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+run_sweep, update_reconnect_button_state = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh", "run_sweep", "update_reconnect_button_state")
 
 def reconnect_device(self):
     """Reconnect to the VNA device."""

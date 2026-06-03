@@ -1,3 +1,4 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import skrf as rf
 
@@ -9,57 +10,19 @@ from PySide6.QtWidgets import (
 
 # Import get_settings 
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.view_edit_menu.view_edit_menu import open_view
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+open_view = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.view_edit_menu.view_edit_menu", "open_view")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.set_range.set_range import show_y_range_dialog
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+show_y_range_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.set_range.set_range", "show_y_range_dialog")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.toggle_db_times.toggle_db_times import toggle_db_times
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+toggle_db_times = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.toggle_db_times.toggle_db_times", "toggle_db_times")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.export_dialog.open_export_dialog import open_export_dialog
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+open_export_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.export_dialog.open_export_dialog", "open_export_dialog")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.cursors_visibility import toggle_marker_visibility, toggle_marker2_visibility
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+toggle_marker_visibility, toggle_marker2_visibility = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.cursors_visibility", "toggle_marker_visibility", "toggle_marker2_visibility")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale import on_auto_scale_toggled
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+on_auto_scale_toggled = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale", "on_auto_scale_toggled")
 
 # -------------------------------------------------------------------------------------------------------------------- #
 

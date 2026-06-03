@@ -2,6 +2,7 @@
 Measurement main window (permittivity & permeability complex analysis).
 """
 
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import sys
 import logging
 import os
@@ -20,21 +21,9 @@ except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     sys.exit(1)
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon import apply_window_icon
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.load_resource import load_resource
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+load_resource = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.load_resource", "load_resource")
 
 # ------------------------------------------------------------------------------------------------------------------- #
 

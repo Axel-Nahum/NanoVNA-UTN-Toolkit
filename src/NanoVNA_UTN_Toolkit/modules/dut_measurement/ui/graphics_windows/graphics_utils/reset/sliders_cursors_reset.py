@@ -1,14 +1,10 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 
 from PySide6.QtCore import QTimer
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.panels_utils import _clear_marker_fields_only
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+_clear_marker_fields_only = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.panels_utils", "_clear_marker_fields_only")
 
 def reset_sliders_and_markers_for_graph_change(self):
     """Reset sliders and markers to leftmost position specifically for graph type changes."""

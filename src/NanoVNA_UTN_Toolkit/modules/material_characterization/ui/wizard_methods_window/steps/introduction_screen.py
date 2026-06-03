@@ -2,6 +2,7 @@
 Introduction screen builder.
 """
 
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 import json
@@ -14,28 +15,11 @@ from PySide6.QtWidgets import (
     QTextEdit, QWidget
 )
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.load_resource import load_resource
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+load_resource = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.load_resource", "load_resource")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
 # ------------------------------------------------------------------------------------------------------------------- #
 

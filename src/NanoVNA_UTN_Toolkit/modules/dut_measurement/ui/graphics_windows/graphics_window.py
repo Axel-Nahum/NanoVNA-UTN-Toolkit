@@ -4,6 +4,7 @@ Graphic view window for NanoVNA devices with dual info panels and cursors.
 
 #-------------------- IMPORTS -------------------------------------------------------------------------#  
 
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import os
 import sys
 import logging
@@ -44,37 +45,17 @@ from ...exporters.touchstone_exporter import TouchstoneExporter
 
 # Import dark-light mode toggle function with error handling to log issues without crashing the application
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import toggle_menu_dark_mode, dark_light_config
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+toggle_menu_dark_mode, dark_light_config = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode", "toggle_menu_dark_mode", "dark_light_config")
 
 # Import get_settings 
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
 # Import load graph configuration
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.load_graph_config.load_graph_config import load_graph_configuration
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+load_graph_configuration = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.load_graph_config.load_graph_config", "load_graph_configuration")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.panels_utils import _clear_all_marker_fields
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+_clear_all_marker_fields = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.panels_utils", "_clear_all_marker_fields")
 
 # Import calibration managers for handling OSM and THRU calibrations, with error handling to log issues without crashing the application
 
@@ -92,110 +73,35 @@ except ImportError as e:
     logging.error("Failed to import setup_graphics_window_body: %s", e)
     setup_graphics_window_body = None
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.file_menu.file_menu import export_errors, export_latex_pdf, export_touchstone_data
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+export_errors, export_latex_pdf, export_touchstone_data = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.file_menu.file_menu", "export_errors", "export_latex_pdf", "export_touchstone_data")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.file_menu.file_menu import import_touchstone_data_dut, import_touchstone_data_calibration
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+import_touchstone_data_dut, import_touchstone_data_calibration = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.file_menu.file_menu", "import_touchstone_data_dut", "import_touchstone_data_calibration")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.calibration_menu import open_calibration_wizard, open_no_calibration, select_kit_dialog, handle_save_calibration, delete_kit_dialog
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+open_calibration_wizard, open_no_calibration, select_kit_dialog, handle_save_calibration, delete_kit_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.calibration_menu", "open_calibration_wizard", "open_no_calibration", "select_kit_dialog", "handle_save_calibration", "delete_kit_dialog")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.view_edit_menu.view_edit_menu import open_view, edit_graphics_markers
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+open_view, edit_graphics_markers = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.view_edit_menu.view_edit_menu", "open_view", "edit_graphics_markers")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.plot_menu.plot_menu import open_plot_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+open_plot_settings = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.plot_menu.plot_menu", "open_plot_settings")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.sweep_menu.sweep_menu import open_sweep_options
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+open_sweep_options = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.sweep_menu.sweep_menu", "open_sweep_options")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu import show_about_dialog
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+show_about_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu", "show_about_dialog")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.context_menu import handle_contextMenuEvent
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+handle_contextMenuEvent = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.context_menu", "handle_contextMenuEvent")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.frequency_difference.frequency_difference import show_frequency_difference_dialog
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+show_frequency_difference_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.frequency_difference.frequency_difference", "show_frequency_difference_dialog")
     
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh import run_sweep
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+run_sweep = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh", "run_sweep")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu import open_report_url
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+open_report_url = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu", "open_report_url")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon import apply_window_icon
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale import read_auto_scale_data
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+read_auto_scale_data = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale", "read_auto_scale_data")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader import JsonResourceLoader
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.real_time.kalman_filter.kalman_filter import ComplexKalman
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+ComplexKalman = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.kalman_filter.kalman_filter", "ComplexKalman")
 
 #-------------------- ABOUT DIALOG -------------------------------------------------------------------------#
 

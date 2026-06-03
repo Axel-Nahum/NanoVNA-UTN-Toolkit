@@ -1,3 +1,4 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import os
 
@@ -9,21 +10,9 @@ from PySide6.QtWidgets import QMessageBox
 
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.errors import CalibrationErrors
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils", "get_calibration_path")
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
 # Import NanoVNAGraphics for the final step
 try:
@@ -32,13 +21,7 @@ except ImportError as e:
     logging.error("Failed to import NanoVNAGraphics: %s", e)
     NanoVNAGraphics = None  # Safe fallback
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.calibration.calibration import update_calibration_label_from_method
-except ImportError as e:
-    import logging, sys
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+update_calibration_label_from_method = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.calibration.calibration", "update_calibration_label_from_method")
 
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.sweep_cal import get_sweep_start_frequency, get_sweep_stop_frequency, get_sweep_steps
@@ -46,7 +29,7 @@ try:
 except ImportError as e:
     import logging, sys
     logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    logging.info("Please make sure you're running from the correct directory and install all dependencies with: pip install -r requirements.txt")
     sys.exit(1)
 
 # ------------------------------------------------------------------------------------------------------------------ #

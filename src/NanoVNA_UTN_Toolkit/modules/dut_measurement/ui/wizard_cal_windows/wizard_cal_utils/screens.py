@@ -1,3 +1,4 @@
+from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 
@@ -14,19 +15,14 @@ from PySide6.QtCore import Qt
 # Import SmartDatapointsSpinBox for intelligent datapoints navigation
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_options_window import SmartDatapointsSpinBox
 
-try:
-    from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.screens_utils import(clear_main_content, get_steps_for_method, show_current_step_measurement, 
                                                                                         clear_content)
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    logging.info("Please make sure you're running from the correct directory and install all dependencies with: pip install -r requirements.txt")
     sys.exit(1)
 
 try:
@@ -36,22 +32,12 @@ try:
                                                                                     )
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
+    logging.info("Please make sure you're running from the correct directory and install all dependencies with: pip install -r requirements.txt")
     sys.exit(1)
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.frequency_cal import update_frequency_ranges, on_frequency_changed_range, get_frequency_limits
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+update_frequency_ranges, on_frequency_changed_range, get_frequency_limits = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.frequency_cal", "update_frequency_ranges", "on_frequency_changed_range", "get_frequency_limits")
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.finish_cal import finish_wizard
-except ImportError as e:
-    logging.error("Failed to import required modules: %s", e)
-    logging.info("Please make sure you're running from the correct directory and all dependencies are installed.")
-    sys.exit(1)
+finish_wizard = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.finish_cal", "finish_wizard")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
