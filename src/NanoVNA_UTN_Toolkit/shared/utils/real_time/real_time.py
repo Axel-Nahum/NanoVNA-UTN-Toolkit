@@ -197,14 +197,12 @@ def _done(self, freqs, s11, s21, thread, worker, gen):
     # ----------------------------------------------------
 
     settings = get_settings(
-        "INI/dut_measurement/plot_manager/plot_manager.ini",
-        "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager.ini",
+        "INI/dut_measurement/signal_filters/plot_manager.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager/plot_manager.ini",
         Path(__file__).resolve()
     )
 
-    is_kalman_enabled_left = settings.value("kalman/enabled_left", False, type=bool)
-    is_kalman_enabled_right = settings.value("kalman/enabled_right", False, type=bool)
-    is_kalman_enabled = is_kalman_enabled_left or is_kalman_enabled_right
+    is_kalman_enabled = settings.value("kalman/enabled", False, type=bool)
 
     if gen != self._rt_generation:
         return

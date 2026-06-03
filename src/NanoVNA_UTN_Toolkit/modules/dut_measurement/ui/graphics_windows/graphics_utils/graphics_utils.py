@@ -89,7 +89,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
 
     self.settings = get_settings(
         "INI/dut_measurement/plot_manager/plot_manager.ini",
-        "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager/plot_manager.ini",
         Path(__file__).resolve()
     )
 
@@ -1210,7 +1210,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
 
     self.settings = get_settings(
         "INI/dut_measurement/plot_manager/plot_manager.ini",
-        "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager/plot_manager.ini",
         Path(__file__).resolve()
     )
 

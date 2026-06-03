@@ -12,6 +12,10 @@
         "graphic1": "Graphic 1",
         "graphic2": "Graphic 2"
     },
+    "kalman": {
+        "title": "Kalman Filter",
+        "enable": "Enable Kalman Filter:"
+    },
     "axis": {
         "title": "Axis Settings (Y Limits)",
         "autoScale": "Auto Scale:",

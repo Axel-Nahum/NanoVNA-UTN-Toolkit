@@ -34,7 +34,7 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
 
     self.settings = get_settings(
         "INI/dut_measurement/plot_manager/plot_manager.ini",
-        "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager/plot_manager.ini",
         Path(__file__).resolve()
     )
 

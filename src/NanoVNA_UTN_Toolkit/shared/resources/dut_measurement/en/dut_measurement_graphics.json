@@ -89,7 +89,8 @@
       "back_to_menu": "Back to menu"
     },
     "plot_menu": {
-      "plot_settings": "Plot Settings"
+      "plot_settings": "Plot Settings", 
+      "signal_filters": "Signal Filters"
     },
     "edit_menu": {
       "graphics_markers": "Graphics/Markers"

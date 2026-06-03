@@ -1,0 +1,51 @@
+{
+    "title": "Signal Filters",
+
+    "kalman": {
+        "title": "Kalman Filter",
+        "enable": "Enable Filter:",
+        "preset": "Filter Preset:",
+        "advanced": "Advanced...",
+        "disabledInfo": "Kalman filter is disabled.",
+
+        "presets": {
+            "off": "Off",
+            "light": "Light",
+            "medium": "Medium",
+            "strong": "Strong",
+            "custom": "Custom"
+        },
+
+        "advancedDialog": {
+            "title": "Kalman Filter - Advanced",
+            "customParameters": "Custom Parameters",
+
+            "processNoise": "Process Noise (Q)",
+            "processNoiseDescription": "Higher Q follows rapid signal variations. Lower Q produces stronger smoothing.",
+
+            "measurementNoise": "Measurement Noise (R)",
+            "measurementNoiseDescription": "Higher R removes more measurement noise. Lower R responds faster to changes.",
+
+            "apply": "Apply",
+            "cancel": "Cancel"
+        }
+    },
+
+    "buttons": {
+        "apply": "Apply",
+        "cancel": "Cancel"
+    },
+
+    "messages": {
+        "warningTitle": "Warning",
+
+        "missingValuesTitle": "Missing Values",
+        "missingValues": "Please enter both Q and R values.",
+
+        "invalidValuesTitle": "Invalid Values",
+        "invalidValues": "Q and R must be positive numbers.",
+
+        "missingKalmanValuesTitle": "Missing Kalman Values",
+        "missingKalmanValues": "Custom preset selected but no Q/R values were entered."
+    }
+}

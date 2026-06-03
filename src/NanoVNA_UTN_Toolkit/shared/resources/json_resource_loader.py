@@ -343,6 +343,7 @@ class JsonResourceLoader:
         # ---------------------------------------------------------------- #
 
         self.window.measurement_menu_plot_settings = plot_menu.get("plot_settings", "")
+        self.window.measurement_menu_signal_filters = plot_menu.get("signal_filters", "")
 
         # ---------------------------------------------------------------- #
         # Edit Menu
@@ -819,6 +820,7 @@ class JsonResourceLoader:
 
         tools = raw_data.get("tools", {})
         display = raw_data.get("display", {})
+        kalman = raw_data.get("kalman", {})
         axis = raw_data.get("axis", {})
         buttons = raw_data.get("buttons", {})
         messages = raw_data.get("messages", {})
@@ -853,6 +855,13 @@ class JsonResourceLoader:
         self.window.averaging_label = display.get("averaging", "")
 
         # --------------------------------------------------
+        # Kalman Smoothing
+        #---------------------------------------------------
+
+        self.window.kalman_filter_title = kalman.get("title", "")
+        self.window.kalman_enable_label = kalman.get("enable", "")
+
+        # --------------------------------------------------
         # Axis Settings
         # --------------------------------------------------
 
@@ -879,6 +888,124 @@ class JsonResourceLoader:
         self.window.missing_graphic2_message = messages.get("missingGraphic2", "")
 
         self.window.missing_both_graphics_message = messages.get("missingBothGraphics", "")
+
+    def load_signal_filters_resources(self):
+
+        raw_data = self._load_json()
+
+        kalman = raw_data.get("kalman", {})
+        advanced = kalman.get("advancedDialog", {})
+        presets = kalman.get("presets", {})
+        buttons = raw_data.get("buttons", {})
+        messages = raw_data.get("messages", {})
+
+        # --------------------------------------------------
+        # Window
+        # --------------------------------------------------
+
+        self.window.signal_filters_title = raw_data.get("title", "")
+
+        # --------------------------------------------------
+        # Kalman Filter
+        # --------------------------------------------------
+
+        self.window.kalman_filter_title = kalman.get("title", "")
+
+        self.window.kalman_enable_label = kalman.get("enable", "")
+
+        self.window.kalman_preset_label = kalman.get("preset", "")
+
+        self.window.kalman_advanced_button_label = kalman.get("advanced", "")
+
+        self.window.kalman_disabled_info = kalman.get("disabledInfo", "")
+
+        # --------------------------------------------------
+        # Presets
+        # --------------------------------------------------
+
+        self.window.kalman_off_preset = presets.get("off", "")
+
+        self.window.kalman_light_preset = presets.get("light", "")
+
+        self.window.kalman_medium_preset = presets.get("medium", "")
+
+        self.window.kalman_strong_preset = presets.get("strong", "")
+
+        self.window.kalman_custom_preset = presets.get("custom", "")
+
+        # --------------------------------------------------
+        # Advanced Dialog
+        # --------------------------------------------------
+
+        self.window.kalman_advanced_title = advanced.get("title", "")
+
+        self.window.kalman_custom_parameters_title = advanced.get(
+            "customParameters", ""
+        )
+
+        self.window.kalman_process_noise_label = advanced.get(
+            "processNoise", ""
+        )
+
+        self.window.kalman_process_noise_description = advanced.get(
+            "processNoiseDescription", ""
+        )
+
+        self.window.kalman_measurement_noise_label = advanced.get(
+            "measurementNoise", ""
+        )
+
+        self.window.kalman_measurement_noise_description = advanced.get(
+            "measurementNoiseDescription", ""
+        )
+
+        self.window.kalman_advanced_apply_button_label = advanced.get(
+            "apply", ""
+        )
+
+        self.window.kalman_advanced_cancel_button_label = advanced.get(
+            "cancel", ""
+        )
+
+        # --------------------------------------------------
+        # Main Buttons
+        # --------------------------------------------------
+
+        self.window.apply_button_label = buttons.get("apply", "")
+
+        self.window.cancel_button_label = buttons.get("cancel", "")
+
+        # --------------------------------------------------
+        # Messages
+        # --------------------------------------------------
+
+        self.window.warning_title = messages.get(
+            "warningTitle", ""
+        )
+
+        self.window.missing_values_title = messages.get(
+            "missingValuesTitle", ""
+        )
+
+        self.window.missing_values_message = messages.get(
+            "missingValues", ""
+        )
+
+        self.window.invalid_values_title = messages.get(
+            "invalidValuesTitle", ""
+        )
+
+        self.window.invalid_values_message = messages.get(
+            "invalidValues", ""
+        )
+
+        self.window.missing_kalman_values_title = messages.get(
+            "missingKalmanValuesTitle", ""
+        )
+
+        self.window.missing_kalman_values_message = messages.get(
+            "missingKalmanValues", ""
+        )
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Material Characterization Module

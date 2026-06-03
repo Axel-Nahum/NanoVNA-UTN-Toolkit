@@ -81,7 +81,9 @@ open_calibration_wizard, open_no_calibration, select_kit_dialog, handle_save_cal
 
 open_view, edit_graphics_markers = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.view_edit_menu.view_edit_menu", "open_view", "edit_graphics_markers")
 
-open_plot_settings = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.plot_menu.plot_menu", "open_plot_settings")
+open_plot_settings = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.plot_menu.plot_menu", "open_plot_manager")
+
+open_signal_filters = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.plot_menu.plot_menu", "open_signal_filter")
 
 open_sweep_options = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.sweep_menu.sweep_menu", "open_sweep_options")
 
@@ -125,18 +127,32 @@ class NanoVNAGraphics(QMainWindow):
         self.vna_device = vna_device
 
         settings = get_settings(
-            "INI/dut_measurement/kalman_filter/kalman_filter.ini",
-            "shared/utils/real_time/kalman_filter/kalman_filter.ini", 
+            "INI/dut_measurement/signal_filters/plot_config.ini",
+            "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
             Path(__file__).resolve()
         )
 
-        process_noise = settings.value("KalmanFilter/process_noise", 0.0001, type=float)
-        measurement_noise_s11 = settings.value("KalmanFilter/measurement_noise_s11", 0.1, type=float)
-        measurement_noise_s21 = settings.value("KalmanFilter/measurement_noise_s21", 10.0, type=float)
+        is_kalman_enabled = settings.value("Kalman/enabled", False, type=bool)
+
+        preset = settings.value("Kalman/preset", "default")
+
+        if preset == "Custom":
+            process_noise = settings.value("Kalman/custom_Q", 0.0001, type=float)
+            measurement_noise = settings.value("Kalman/custom_R", 10.0, type=float)
+        elif preset == "Light":
+            process_noise = settings.value("Kalman/Q", 0.01, type=float)
+            measurement_noise = settings.value("Kalman/R", 1.0, type=float)
+        elif preset == "Medium":
+            process_noise = settings.value("Kalman/Q", 0.001, type=float)
+            measurement_noise = settings.value("Kalman/R", 0.1, type=float)
+        elif preset == "Strong":
+            process_noise = settings.value("Kalman/Q", 0.0001, type=float)
+            measurement_noise = settings.value("Kalman/R", 0.01, type=float)
 
         # kalman filters for real-time data smoothing
-        self.kf_s11 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise_s11)
-        self.kf_s21 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise_s21)
+        if is_kalman_enabled:
+            self.kf_s11 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
+            self.kf_s21 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
 
         # Auto Scale
 
@@ -204,6 +220,15 @@ class NanoVNAGraphics(QMainWindow):
 
         self.resourceLoader.load_plot_manager_resources()
 
+        self.resourceLoader = JsonResourceLoader(
+            self_window = self, 
+            module = "dut_measurement", 
+            lang = current_lang, 
+            json_resource = "dut_measurement_signal_filters.json"
+        )
+
+        self.resourceLoader.load_signal_filters_resources()
+
 # ------------------------------------------------------------------------------------------------------------------- #
 # Dark light Mode
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -238,8 +263,6 @@ class NanoVNAGraphics(QMainWindow):
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_file}")
         plot_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_plot}")
-        #edit_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_edit}")
-        #view_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_view}")
         sweep_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_sweep}")
         calibration_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_calibration}")
         help_menu = menu_bar.addMenu(f"{self.measurement_ui_menu_help}")
@@ -275,6 +298,9 @@ class NanoVNAGraphics(QMainWindow):
 
         plot_manager = plot_menu.addAction(f"{self.measurement_menu_plot_settings}")  
         plot_manager.triggered.connect(lambda: open_plot_settings(self))
+
+        signal_filter = plot_menu.addAction(f"{self.measurement_menu_signal_filters}")  
+        signal_filter.triggered.connect(lambda: open_signal_filters(self))
 
         # --- Help menu actions ---
 
