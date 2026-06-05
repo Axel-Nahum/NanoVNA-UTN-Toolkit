@@ -24,6 +24,8 @@ handle_all_kits_deleted, handle_deleted_current_kit = safe_import("NanoVNA_UTN_T
 
 get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils", "get_calibration_path")
 
+stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
+
 # ---------------------------------------------------------------------------------------------------------------- #
 
 def open_calibration_wizard(self):
@@ -31,6 +33,13 @@ def open_calibration_wizard(self):
         from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_windows import CalibrationWizard
 
         logging.info("[wizard_windows.open_calibration_wizard] Opening calibration wizard")
+
+        stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
+
+        try:
+            stop_realtime(self)
+        except:
+            pass
         
         if self.vna_device:
             self.welcome_windows = CalibrationWizard(self.vna_device, parent = self, caller="graphics")
@@ -43,6 +52,11 @@ def open_calibration_wizard(self):
 def open_no_calibration(self):
 
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_window import NanoVNAGraphics
+
+    try:
+        stop_realtime(self)
+    except:
+        pass
 
     logging.info("[graphics_window.open_no_calibration] Opening no calibration")
 
@@ -190,13 +204,27 @@ def select_kit_dialog(self):
 
         dialog.accept()  
 
+        try:
+            stop_realtime(self)
+        except:
+            pass
+
         if self.vna_device:
             graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
         else:
             graphics_window = NanoVNAGraphics()
-        graphics_window.show()
-        self.close()
 
+        graphics_window.setGeometry(self.geometry())
+        graphics_window.show()
+        graphics_window.raise_()
+        graphics_window.activateWindow()
+
+        from PySide6.QtWidgets import QApplication
+        QApplication.processEvents()
+        QApplication.processEvents()  
+
+        self.close()
+        
     # --- Buttons ---
     btn_layout = QHBoxLayout()
     btn_cancel = QPushButton(f"{self.cal_kit_window_cancel}")
@@ -208,7 +236,7 @@ def select_kit_dialog(self):
     # --- Connect signals ---
     list_widget.itemClicked.connect(add_selected)
     btn_cancel.clicked.connect(dialog.reject)
-    btn_select.clicked.connect(select_kit)  # <--- sin paréntesis
+    btn_select.clicked.connect(select_kit)  
 
     dialog.exec()
 

@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget, QTextEdit, QPushButton,
     QHBoxLayout, QProgressBar, QFrame, QGridLayout, QGroupBox, QLabel, QScrollArea
 )
-from PySide6.QtGui import QIcon, QFont
+from PySide6.QtGui import QIcon, QFont, QGuiApplication
 
 ModuleSelectionWindow = safe_import("NanoVNA_UTN_Toolkit.modules.menu_window", "ModuleSelectionWindow")
     
@@ -98,7 +98,15 @@ class NanoVNAStatusApp(QMainWindow):
 
         self.setWindowTitle(f"{self.device_info_title}")
         self.setGeometry(100, 100, 900, 700)
-        
+
+        screen = QGuiApplication.primaryScreen().availableGeometry()
+        window_geometry = self.frameGeometry()
+
+        center_point = screen.center()
+        window_geometry.moveCenter(center_point)
+
+        self.move(window_geometry.topLeft())
+
         # Main widget and layout
         main_widget = QWidget()
         self.setCentralWidget(main_widget)

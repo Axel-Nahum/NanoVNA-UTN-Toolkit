@@ -105,6 +105,8 @@ JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_reso
 
 ComplexKalman = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.kalman_filter.kalman_filter", "ComplexKalman")
 
+on_realtime_toggled = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "on_realtime_toggled")
+
 #-------------------- ABOUT DIALOG -------------------------------------------------------------------------#
 
 class NanoVNAGraphics(QMainWindow):
@@ -121,6 +123,8 @@ class NanoVNAGraphics(QMainWindow):
         window_geometry.moveCenter(center_point)
 
         self.move(window_geometry.topLeft())
+
+        self.is_real_time_init = False
 
         # Store VNA device reference
         self.dut = dut
@@ -438,6 +442,10 @@ class NanoVNAGraphics(QMainWindow):
             left_s_param
         )
 
+        # ---------------- INIT REALTIME STATE ----------------
+
+        QTimer.singleShot(2000, lambda: on_realtime_toggled(self, False))
+
         self.markers = [
             {"cursor": self.cursor_left, "cursor_2": self.cursor_left_2, "slider": self.slider_left, "slider_2": self.slider_left_2, "label": self.labels_left, "label_2": self.labels_left_2, "update_cursor": self.update_cursor, "update_cursor_2": self.update_cursor_2},
             {"cursor": self.cursor_right, "cursor_2": self.cursor_right_2, "slider": self.slider_right, "slider_2": self.slider_right_2, "label": self.labels_right, "label_2": self.labels_right_2, "update_cursor": self.update_right_cursor, "update_cursor_2": self.update_right_cursor_2}
@@ -452,6 +460,10 @@ class NanoVNAGraphics(QMainWindow):
         # Initialize exporters
         self.latex_exporter = LatexExporter(measurement_self = self, parent_widget=self)
         self.touchstone_exporter = TouchstoneExporter(parent_widget=self)
+
+        self.sweep_button.setEnabled(False)
+
+        self.is_real_time_init = True
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------------ #
 

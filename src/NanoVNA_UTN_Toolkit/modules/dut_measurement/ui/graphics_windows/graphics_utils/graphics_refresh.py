@@ -84,7 +84,7 @@ def update_reconnect_button_state(self):
 
 def _reset_sweep_ui(self):
 
-    if hasattr(self, "sweep_button"):
+    if hasattr(self, "sweep_button") and self.is_real_time_init == True:
         self.sweep_button.setEnabled(True)
         self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
 

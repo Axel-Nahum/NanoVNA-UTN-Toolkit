@@ -14,6 +14,8 @@ get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.c
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
+stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
+
 # Import NanoVNAGraphics for the final step
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_window import NanoVNAGraphics
@@ -73,6 +75,12 @@ def open_graphics_window(self):
         logging.info("Opening NanoVNAGraphics window after calibration completion")
         
         if NanoVNAGraphics:
+
+            try:
+                stop_realtime(self)
+            except:
+                pass
+
             # Create graphics window with VNA device if available
             if self.vna_device:
                 graphics_window = NanoVNAGraphics(vna_device=self.vna_device)

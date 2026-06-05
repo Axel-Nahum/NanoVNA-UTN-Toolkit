@@ -5,6 +5,7 @@ import sys
 from pathlib import Path
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
+stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
@@ -40,11 +41,25 @@ def handle_deleted_current_kit(self):
 
     settings.sync()
 
+    try:
+        stop_realtime(self)
+    except:
+        pass
+
     if self.vna_device:
         graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
     else:
         graphics_window = NanoVNAGraphics()
+
+    graphics_window.setGeometry(self.geometry())
     graphics_window.show()
+    graphics_window.raise_()
+    graphics_window.activateWindow()
+
+    from PySide6.QtWidgets import QApplication
+    QApplication.processEvents()
+    QApplication.processEvents()  
+
     self.close()
 
 def handle_all_kits_deleted(self):
@@ -87,6 +102,11 @@ def handle_all_kits_deleted(self):
         settings.remove("id")
         settings.endGroup()
         settings.sync()
+
+    try:
+        stop_realtime(self)
+    except:
+        pass
 
     # --- Reopen graphics window in no-calibration mode ---
     if self.vna_device:

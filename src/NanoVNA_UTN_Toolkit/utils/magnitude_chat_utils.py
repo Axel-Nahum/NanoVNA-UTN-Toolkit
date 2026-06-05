@@ -75,9 +75,7 @@ class MagnitudeChartBuilder:
         self.fig.patch.set_facecolor(self.config.background_color)
         self.ax.set_facecolor(self.config.background_color)
 
-        current_state_grid = self.settings.value("grid/current_left_state", "true", type=bool)
-
-        self.ax.grid(current_state_grid, linestyle="--", alpha=0.5)
+        self.ax.grid(True, linestyle="--", alpha=0.5)
 
         self.ax.set_xlabel(r"$\mathrm{Frequency\ (MHz)}$")
         self.ax.set_ylabel(r"$|S_{21}|\ (\mathrm{dB})$")
@@ -214,9 +212,7 @@ class MagnitudeChartManager:
         ax.yaxis.label.set_color(self.config.text_color)
         ax.title.set_color(self.config.text_color)
 
-        current_state_grid = self.settings.value("grid/current_left_state", "true", type=bool)
-
-        ax.grid(current_state_grid, linestyle="--", alpha=0.5)
+        ax.grid(True, linestyle="--", alpha=0.5)
 
     def update_wizard_measurement(self, ax, freqs, s21_data, standard_name, canvas=None, color_map=None, in_dB=False):
         if color_map is None:
@@ -325,9 +321,7 @@ class MagnitudeChartManager:
             ax.set_xlabel(r"$\mathrm{Frequency\ (Hz)}$")
             ax.set_ylabel(r"$|S_{21}|\ (\mathrm{dB})$" if in_dB else r"$|S_{21}|\ (\mathrm{dB})$")
 
-            current_state_grid = self.settings.value("grid/current_left_state", "true", type=bool)
-
-            ax.grid(current_state_grid, linestyle="--", alpha=0.5)
+            ax.grid(True, linestyle="--", alpha=0.5)
             ax.legend()
             if canvas:
                 canvas.draw()

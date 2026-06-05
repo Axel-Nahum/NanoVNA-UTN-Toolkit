@@ -515,8 +515,32 @@ def apply_signal_filters(self):
     measurement_noise = r
 
     # kalman filters for real-time data smoothing
-    if enabled:
-        self.kf_s11 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
-        self.kf_s21 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
+    
+    self.kf_s11 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
+    self.kf_s21 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
+
+    sf_settings = get_settings(
+        "INI/dut_measurement/signal_filters/signal_filters.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
+        Path(__file__).resolve()
+    )
+
+    preset = sf_settings.value("kalman/preset", "Default")
+
+    if preset == "Custom":
+        q = sf_settings.value("kalman/custom_Q", 0.01, type=float)
+        r = sf_settings.value("kalman/custom_R", 1.0, type=float)
+    else:
+        q = sf_settings.value("kalman/Q", 0.01, type=float)
+        r = sf_settings.value("kalman/R", 1.0, type=float)
+
+    if preset == "Off":
+        self.kalman_label.setText(
+            "Kalman filter is disabled"
+        )
+    else:
+        self.kalman_label.setText(
+            f"Kalman Filter: {preset} - Q = {q:.3f} · R = {r:.3f}"
+        )
 
     self.sf_dialog.accept()

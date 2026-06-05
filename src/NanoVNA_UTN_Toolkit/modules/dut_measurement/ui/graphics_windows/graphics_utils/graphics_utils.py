@@ -814,6 +814,9 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
     dragging_1 = {"active": False}
     dragging_2 = {"active": False}
 
+    # --- Inicializar ---
+    update_cursor(0)
+
     def on_pick(event):
         if event.artist == cursor_graph:
             dragging_1["active"] = True

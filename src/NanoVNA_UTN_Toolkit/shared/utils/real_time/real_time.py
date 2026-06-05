@@ -7,7 +7,9 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Signal, QThread, QTimer
 
-from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
+from NanoVNA_UTN_Toolkit.utils import safe_import
+
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 # WORKER
@@ -71,16 +73,15 @@ class SweepWorker(QObject):
 
 def on_realtime_toggled(self, enabled):
 
-    self.sweep_button.setEnabled(not enabled)
-
-    if enabled:
+    if not enabled:
+        self.sweep_button.setEnabled(False)
         logging.info("[real_time] ENABLED")
         self._rt_generation = getattr(self, "_rt_generation", 0) + 1
         start_realtime(self)
     else:
+        self.sweep_button.setEnabled(True)
         logging.info("[real_time] DISABLED")
         stop_realtime(self)
-
 
 # ------------------------------------------------------------------------------------------------------------------ #
 # START / STOP
@@ -99,7 +100,6 @@ def start_realtime(self):
     self._rt_timer = QTimer(self)
     self._rt_timer.timeout.connect(lambda: _trigger(self))
     self._rt_timer.start(self.realtime_interval_ms)
-
 
 def stop_realtime(self):
 
@@ -197,8 +197,8 @@ def _done(self, freqs, s11, s21, thread, worker, gen):
     # ----------------------------------------------------
 
     settings = get_settings(
-        "INI/dut_measurement/signal_filters/plot_manager.ini",
-        "modules/dut_measurement/ui/utils/menu/plot_menu/plot_manager/plot_manager.ini",
+        "INI/dut_measurement/signal_filters/signal_filters.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
         Path(__file__).resolve()
     )
 

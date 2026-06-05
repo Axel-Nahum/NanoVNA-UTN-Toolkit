@@ -80,6 +80,13 @@ def return_to_graphics(self):
         # Import graphic window
         from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_window import NanoVNAGraphics
 
+        stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
+
+        try:
+            stop_realtime(self)
+        except:
+            pass
+
         # Create graphics window with VNA device if available
         self.graphics_window = NanoVNAGraphics(vna_device=self.vna_device) if self.vna_device else NanoVNAGraphics()
         

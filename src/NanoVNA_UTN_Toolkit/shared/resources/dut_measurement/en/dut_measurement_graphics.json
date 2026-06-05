@@ -63,7 +63,7 @@
       "device_connected": "Device connected",
       "device_disconnected": "Device disconnected",
 
-      "waiting_for_sweep": "Waiting\\ for\\ sweep\\ data\\ ...",
+      "waiting_for_sweep": "Starting \\ continuous \\ acquisition \\ …",
       "running_sweep": "Running sweep...",
       "sweep_completed": "Sweep completed",
 

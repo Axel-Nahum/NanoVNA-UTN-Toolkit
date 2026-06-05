@@ -48,6 +48,8 @@ apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon"
 
 JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
 
+stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
+
 # ------------------------------------------------------------------------------------------------------------------ #
 
 class NanoVNAWelcome(QMainWindow):
@@ -755,6 +757,14 @@ class NanoVNAWelcome(QMainWindow):
         settings_calibration.sync()
 
         logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
+
+        stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
+
+        try:
+            stop_realtime(self)
+        except:
+            pass
+
         if self.vna_device:
             self.welcome_windows = CalibrationWizard(self.vna_device, caller="welcome")
         else:
@@ -792,6 +802,11 @@ class NanoVNAWelcome(QMainWindow):
             settings_calibration.setValue("Calibration/CalibrationWizard", False)
             settings_calibration.sync()
             logging.info("[welcome_windows.graphics_clicked] No calibration kit selected - proceeding without calibration")
+
+        try:
+            stop_realtime(self)
+        except:
+            pass
 
         # Open graphics window
         if self.vna_device:
