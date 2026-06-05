@@ -115,7 +115,7 @@ class NanoVNAGraphics(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("NanoVNA Toolkit - Graphics Window")
-        self.setGeometry(100, 100, 1300, 700)
+        self.setGeometry(100, 100, 1310, 710)
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
         window_geometry = self.frameGeometry()

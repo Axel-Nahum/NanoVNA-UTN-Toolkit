@@ -163,7 +163,11 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
     # ---------- RIGHT SIDE ----------
     self.sweep_progress_bar = QProgressBar()
     self.sweep_progress_bar.setMinimumWidth(170)
-    self.sweep_progress_bar.setVisible(False)
+    self.sweep_progress_bar.setMaximumWidth(170)
+    self.sweep_progress_bar.setRange(0, 100)
+    self.sweep_progress_bar.setValue(0)
+
+    self.sweep_progress_bar.setVisible(True)
     self.sweep_progress_bar.setStyleSheet("""
         QProgressBar {
             border: 2px solid grey;

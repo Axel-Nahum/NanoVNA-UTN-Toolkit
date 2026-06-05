@@ -42,7 +42,19 @@ class SweepWorker(QObject):
             freqs = np.linspace(self.start_freq_hz, self.stop_freq_hz, self.segments)
 
             self.vna_device.datapoints = self.segments
-            self.vna_device.resetSweep(self.start_freq_hz, self.stop_freq_hz)
+
+            self.start_freq_hz_old = self.start_freq_hz
+            self.stop_freq_hz_old = self.stop_freq_hz
+
+            # Load configuration for sweep settings and frequency range parameters
+            settings_sweep = get_settings(
+                "INI/dut_measurement/sweep_config/sweep_config.ini",
+                "modules/dut_measurement/ui/sweep_window/sweep_config/sweep_config.ini", 
+                Path(__file__).resolve()        
+            )
+
+            new_start_freq_hz = settings_sweep.value("Frequency/StartFreqHz", "50000", type=float)
+            new_stop_freq_hz = settings_sweep.value("Frequency/StopFreqHz", "1500000", type=float)
 
             if self._abort:
                 return

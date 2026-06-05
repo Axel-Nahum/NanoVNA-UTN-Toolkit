@@ -68,23 +68,20 @@ class SweepWorker(QObject):
             if not self.vna_device.connected():
                 self.vna_device.connect()
 
-            self.progress.emit(25)
-
             self.vna_device.datapoints = self.segments
 
-            self.progress.emit(40)
+            self.progress.emit(25)
 
             self.vna_device.resetSweep(
                 self.start_freq,
                 self.stop_freq
             )
 
-            self.progress.emit(60)
+            self.progress.emit(50)
 
-            import time
-            time.sleep(0.15)
 
             freqs = np.array(self.vna_device.read_frequencies())
+            self.progress.emit(75)
             s11 = np.array(self.vna_device.readValues("data 0"))
             s21 = np.array(self.vna_device.readValues("data 1"))
 
@@ -128,6 +125,7 @@ def run_sweep(self):
     _reset_sliders_before_sweep(self)
 
     self.sweep_button.setEnabled(False)
+    self.sweep_button.setText("Sweeping...")
     self.sweep_progress_bar.setVisible(True)
     self.sweep_progress_bar.setValue(0)
 
@@ -157,11 +155,6 @@ def run_sweep(self):
 
     self.thread.start()
 
-
-# =========================================================
-# FINISHED CALLBACK (AQUÍ VA TODO LO DEL "VIEJO")
-# =========================================================
-
 def on_sweep_finished(self, result):
 
     logging.info("[on_sweep_finished] processing data")
@@ -169,10 +162,6 @@ def on_sweep_finished(self, result):
     freqs = np.array(result["freqs"])
     s11_med = np.array(result["s11"])
     s21_med = np.array(result["s21"])
-
-    # -------------------------------------------------
-    # CALIBRATION (lo del código viejo pero limpio)
-    # -------------------------------------------------
 
     settings = get_settings(
         "INI/dut_measurement/calibration_config/calibration_config.ini",
@@ -286,10 +275,71 @@ def on_sweep_finished(self, result):
     update_plots_with_new_data(self, skip_reset=True)
 
     _reset_markers_after_sweep(self)
+    
+    # Additional reset specifically for Run Sweep to ensure cursor info is updated
+    def final_run_sweep_cursor_reset():
+        try:
+            if self.cursor_left and getattr(self.cursor_left, "ax", None):
+                self.update_cursor_info(self.cursor_left)
+        except Exception as e:
+            logging.warning("[graphics_window.run_sweep] Cursor left invalid: %s", e)
 
-    self.sweep_button.setEnabled(True)
+        try:
+            logging.info("[graphics_window.run_sweep] FINAL: Ensuring cursor information is displayed after run sweep")
+            
+            # Force sliders to leftmost position
+            if hasattr(self, 'slider_left') and self.slider_left:
+                self.slider_left.set_val(0)
+            if hasattr(self, 'slider_left_2') and self.slider_left_2:
+                self.slider_left_2.set_val(0)
+            if hasattr(self, 'slider_right') and self.slider_right:
+                self.slider_right.set_val(0)
+            if hasattr(self, 'slider_right_2') and self.slider_right_2:
+                self.slider_right_2.set_val(0)
+            
+            # Force cursor information update
+            if hasattr(self, 'update_cursor') and callable(self.update_cursor):
+                self.update_cursor(0)
+                logging.info("[graphics_window.run_sweep] FINAL: Left cursor info updated to show minimum frequency data")
+
+            if hasattr(self, 'update_cursor_2') and callable(self.update_cursor_2):
+                self.update_cursor_2(0)
+                logging.info("[graphics_window.run_sweep] FINAL: Left cursor info updated to show minimum frequency data")
+            
+            if hasattr(self, 'update_right_cursor') and callable(self.update_right_cursor):
+                self.update_right_cursor(0)
+                logging.info("[graphics_window.run_sweep] FINAL: Right cursor info updated to show minimum frequency data")
+            
+            if hasattr(self, 'update_right_cursor_2') and callable(self.update_right_cursor_2):
+                self.update_right_cursor_2(0)
+                logging.info("[graphics_window.run_sweep] FINAL: Right cursor info updated to show minimum frequency data")
+                
+            # Force canvas redraw
+            if hasattr(self, 'canvas_left') and self.canvas_left:
+                self.canvas_left.draw()
+            if hasattr(self, 'canvas_right') and self.canvas_right:
+                self.canvas_right.draw()
+    
+        except Exception as e:
+            logging.warning(f"[graphics_window.run_sweep] Error in final cursor reset: {e}")
+    
+    # Execute final reset after 200ms to ensure everything is configured
+    QTimer.singleShot(200, final_run_sweep_cursor_reset)
+    
+    #self.sweep_button.setEnabled(True)
     self.sweep_progress_bar.setVisible(False)
     self.reconnect_button.setEnabled(True)
+
+    self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
+
+    if hasattr(self, "sweep_button"):
+        if self._initial_sweep_done:  
+            self._initial_sweep_done = True
+            self.sweep_button.setEnabled(True)
+
+    if hasattr(self, "sweep_progress_bar"):
+        self.sweep_progress_bar.setVisible(False)
+        self.sweep_progress_bar.setValue(0)
 
     def _final_cursor_fix():
         try:
@@ -309,6 +359,11 @@ def on_sweep_finished(self, result):
             logging.warning(f"[_final_cursor_fix] {e}")
 
     QTimer.singleShot(200, _final_cursor_fix)
+
+    self.slider_left.set_val(0)
+    self.slider_left_2.set_val(0)
+    self.slider_right.set_val(0)
+    self.slider_right_2.set_val(0)
 
 # =========================================================
 # ERROR HANDLER
