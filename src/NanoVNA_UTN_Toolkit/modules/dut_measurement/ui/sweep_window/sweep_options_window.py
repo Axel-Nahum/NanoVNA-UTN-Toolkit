@@ -23,7 +23,7 @@ dark_light_config = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mod
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-load_sweep_configuration = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils", "load_sweep_configuration")
+load_sweep_configuration, update_sweep_info_label = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils", "load_sweep_configuration", "update_sweep_info_label")
 
 apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
 
@@ -166,7 +166,7 @@ class SweepOptionsWindow(QMainWindow):
         # Flag to prevent auto-saving during initialization
         self._loading_settings = True
         
-        self.init_ui(parent)
+        self.init_ui(self.main_window)
         self.load_settings()
         
         # Enable auto-saving after initialization is complete
@@ -738,6 +738,8 @@ class SweepOptionsWindow(QMainWindow):
 
         load_sweep_configuration(self, parent)
 
+        update_sweep_info_label(self, parent)
+
         # Close window without confirmation message
         self.close()
         
@@ -801,11 +803,10 @@ class SweepOptionsWindow(QMainWindow):
         # Ensure parent graphics_window is updated with final configuration
         if self.parent() and hasattr(self.parent(), 'load_sweep_configuration'):
             logging.info("[sweep_options_window.closeEvent] Final update to parent graphics_window configuration")
-        load_sweep_configuration(self)
+        load_sweep_configuration(self, parent = self.main_window)
         
         # Call parent closeEvent
         super().closeEvent(event)
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
