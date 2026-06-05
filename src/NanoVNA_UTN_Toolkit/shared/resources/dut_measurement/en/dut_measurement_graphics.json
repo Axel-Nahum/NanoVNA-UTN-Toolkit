@@ -30,7 +30,7 @@
     "plots": {
       "title_mag": "{parameter}\\ \\mathrm{{Magnitude\\ [{db_times}]}}",
       "title_phase": "{parameter}\\ Phase",
-      "waiting_text": "Waiting\\ for\\ sweep\\ data\\ ...",
+      "waiting_text": "Starting \\ continuous \\ acquisition \\ …",
       "x_axis": "Frequency \\ [MHz]",
       "y_axis": "|S11|"
     },
@@ -63,7 +63,7 @@
       "device_connected": "Device connected",
       "device_disconnected": "Device disconnected",
 
-      "waiting_for_sweep": "Starting \\ continuous \\ acquisition \\ …",
+      "waiting_for_sweep": "Waiting\\ for\\ sweep\\ data\\ ...",
       "running_sweep": "Running sweep...",
       "sweep_completed": "Sweep completed",
 

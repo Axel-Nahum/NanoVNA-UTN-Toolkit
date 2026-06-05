@@ -34,9 +34,10 @@ get_calibration_path = safe_import(
     "get_calibration_path"
 )
 
+load_sweep_configuration = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils", "load_sweep_configuration")
+
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.methods import Methods
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.kits import KitsCalibrator
-
 
 # =========================================================
 # WORKER (THREAD)
@@ -44,7 +45,7 @@ from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.kits import KitsCal
 
 class SweepWorker(QObject):
 
-    finished = Signal(dict)
+    finished = Signal(object)
     error = Signal(str)
     progress = Signal(int)
 
@@ -61,16 +62,30 @@ class SweepWorker(QObject):
         try:
             self.progress.emit(10)
 
+            if not self.vna_device:
+                raise RuntimeError("No VNA device")
+
+            if not self.vna_device.connected():
+                self.vna_device.connect()
+
+            self.progress.emit(25)
+
             self.vna_device.datapoints = self.segments
-            self.vna_device.resetSweep(self.start_freq, self.stop_freq)
 
             self.progress.emit(40)
 
+            self.vna_device.resetSweep(
+                self.start_freq,
+                self.stop_freq
+            )
+
+            self.progress.emit(60)
+
+            import time
+            time.sleep(0.15)
+
             freqs = np.array(self.vna_device.read_frequencies())
             s11 = np.array(self.vna_device.readValues("data 0"))
-
-            self.progress.emit(70)
-
             s21 = np.array(self.vna_device.readValues("data 1"))
 
             self.progress.emit(100)
@@ -84,12 +99,18 @@ class SweepWorker(QObject):
         except Exception as e:
             self.error.emit(str(e))
 
-
 # =========================================================
 # MAIN THREAD FUNCTIONS
 # =========================================================
 
 def run_sweep(self):
+
+    load_sweep_configuration(self)
+
+    if not hasattr(self, "start_freq_hz"):
+        logging.warning("start_freq_hz not ready, delaying sweep")
+        QTimer.singleShot(200, lambda: run_sweep(self))
+        return
 
     logging.info("[run_sweep] starting sweep")
 
@@ -127,8 +148,8 @@ def run_sweep(self):
     self.thread.started.connect(self.worker.run)
 
     self.worker.progress.connect(self.sweep_progress_bar.setValue)
-    self.worker.finished.connect(self.on_sweep_finished)
-    self.worker.error.connect(self.on_sweep_error)
+    self.worker.finished.connect(lambda result: on_sweep_finished(self, result))
+    self.worker.error.connect(lambda msg: on_sweep_error(self, msg))
 
     self.worker.finished.connect(self.thread.quit)
     self.worker.finished.connect(self.worker.deleteLater)
@@ -270,8 +291,24 @@ def on_sweep_finished(self, result):
     self.sweep_progress_bar.setVisible(False)
     self.reconnect_button.setEnabled(True)
 
-    QTimer.singleShot(200, self._final_cursor_fix)
+    def _final_cursor_fix():
+        try:
+            for attr in ('slider_left', 'slider_left_2', 'slider_right', 'slider_right_2'):
+                slider = getattr(self, attr, None)
+                if slider:
+                    slider.set_val(0)
+            for fn_name in ('update_cursor', 'update_cursor_2', 'update_right_cursor', 'update_right_cursor_2'):
+                fn = getattr(self, fn_name, None)
+                if callable(fn):
+                    fn(0)
+            for canvas_name in ('canvas_left', 'canvas_right'):
+                canvas = getattr(self, canvas_name, None)
+                if canvas:
+                    canvas.draw()
+        except Exception as e:
+            logging.warning(f"[_final_cursor_fix] {e}")
 
+    QTimer.singleShot(200, _final_cursor_fix)
 
 # =========================================================
 # ERROR HANDLER

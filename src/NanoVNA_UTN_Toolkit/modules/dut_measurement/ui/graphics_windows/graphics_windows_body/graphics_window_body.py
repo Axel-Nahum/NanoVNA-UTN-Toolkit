@@ -15,11 +15,12 @@ from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_ut
 
 from pathlib import Path
 
-run_sweep, update_reconnect_button_state = safe_import(
+update_reconnect_button_state = safe_import(
     "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh",
-    "run_sweep",
     "update_reconnect_button_state"
 )
+
+run_sweep = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh_thread", "run_sweep")
 
 update_calibration_label_from_method = safe_import(
     "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.calibration.calibration",

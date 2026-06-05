@@ -12,12 +12,18 @@ from PySide6.QtCore import QTimer
 
 def _clear_axis_and_show_message(self, panel_side='right', message_pos=(0.5, 0.5)):
     """Clear axis and show waiting message for a specific panel."""
-    
+
+    if self.realtime_checkbox.isChecked():
+        measurement_ui_text = self.measurement_ui_waiting_for_sweep
+
+    else:
+        measurement_ui_text = self.measurement_ui_magnitude_waiting_text
+
     if panel_side == 'right':
         if hasattr(self, 'ax_right') and self.ax_right:
             self.ax_right.text(
                 message_pos[0], message_pos[1],
-                rf"$\mathrm{{{self.measurement_ui_magnitude_waiting_text}}}$",
+                rf"$\mathrm{{{measurement_ui_text}}}$",
                 transform=self.ax_right.transAxes,
                 ha='center', va='center',
                 fontsize=15, color='white'
@@ -35,7 +41,7 @@ def _clear_axis_and_show_message(self, panel_side='right', message_pos=(0.5, 0.5
         if hasattr(self, 'ax_left') and self.ax_left:
             self.ax_left.text(
                 message_pos[0], message_pos[1],
-                rf"$\mathrm{{{self.measurement_ui_magnitude_waiting_text}}}$",
+                rf"$\mathrm{{{measurement_ui_text}}}$",
                 transform=self.ax_left.transAxes,
                 ha='center', va='center',
                 fontsize=15, color='white'
