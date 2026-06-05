@@ -79,6 +79,7 @@ def on_realtime_toggled(self, enabled):
         self._rt_generation = getattr(self, "_rt_generation", 0) + 1
         start_realtime(self)
     else:
+        self._initial_sweep_done = True
         self.sweep_button.setEnabled(True)
         logging.info("[real_time] DISABLED")
         stop_realtime(self)

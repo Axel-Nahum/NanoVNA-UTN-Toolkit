@@ -26,6 +26,8 @@ get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.c
 
 stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
 
+update_calibration_label_from_method = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.calibration.calibration", "update_calibration_label_from_method")
+
 # ---------------------------------------------------------------------------------------------------------------- #
 
 def open_calibration_wizard(self):
@@ -177,11 +179,11 @@ def select_kit_dialog(self):
     # --- Select button action ---
     def select_kit():
         if not selected_name[0]:
-            return  # No hay kit seleccionado
+            return
         name = selected_name[0]
         kit_info = kits_info[name]
 
-        kit_name_with_id = f"{name}_{kit_info['id']}" 
+        kit_name_with_id = f"{name}_{kit_info['id']}"
 
         if kit_info["method"] == "OSM (Open - Short - Match)":
             parameter = "S11"
@@ -190,7 +192,6 @@ def select_kit_dialog(self):
         else:
             parameter = "S11, S21"
 
-        # Guardar en [Calibration]
         settings.beginGroup("Calibration")
         settings.setValue("Name", kit_name_with_id)
         settings.setValue("id", kit_info["id"])
@@ -202,28 +203,10 @@ def select_kit_dialog(self):
         settings.endGroup()
         settings.sync()
 
-        dialog.accept()  
+        dialog.accept()
 
-        try:
-            stop_realtime(self)
-        except:
-            pass
-
-        if self.vna_device:
-            graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
-        else:
-            graphics_window = NanoVNAGraphics()
-
-        graphics_window.setGeometry(self.geometry())
-        graphics_window.show()
-        graphics_window.raise_()
-        graphics_window.activateWindow()
-
-        from PySide6.QtWidgets import QApplication
-        QApplication.processEvents()
-        QApplication.processEvents()  
-
-        self.close()
+        # Solo actualizar el label, sin recrear la ventana
+        update_calibration_label_from_method(self)
         
     # --- Buttons ---
     btn_layout = QHBoxLayout()

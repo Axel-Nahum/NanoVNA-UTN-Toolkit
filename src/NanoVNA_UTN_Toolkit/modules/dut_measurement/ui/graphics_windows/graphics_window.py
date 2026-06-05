@@ -93,7 +93,8 @@ handle_contextMenuEvent = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measureme
 
 show_frequency_difference_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.frequency_difference.frequency_difference", "show_frequency_difference_dialog")
     
-run_sweep = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh", "run_sweep")
+#run_sweep = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh", "run_sweep")
+run_sweep = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh_thread", "run_sweep")
 
 open_report_url = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu", "open_report_url")
 
@@ -125,6 +126,7 @@ class NanoVNAGraphics(QMainWindow):
         self.move(window_geometry.topLeft())
 
         self.is_real_time_init = False
+        self._initial_sweep_done = False
 
         # Store VNA device reference
         self.dut = dut
@@ -463,7 +465,7 @@ class NanoVNAGraphics(QMainWindow):
 
         self.sweep_button.setEnabled(False)
 
-        self.is_real_time_init = True
+        #self._initial_sweep_done = True
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------------ #
 

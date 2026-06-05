@@ -19,6 +19,8 @@ get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.c
 
 show_touchstone_format_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.file_menu.export_touchstone.export_touchstone", "show_touchstone_format_dialog")
 
+open_error_visualizer = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.file_menu.export_errors.error_visualizer", "open_error_visualizer")
+
 # ------------------------------------------------------------------------------------------------------------------------- #
 
 def import_touchstone_data_calibration(self):
@@ -250,150 +252,7 @@ def export_errors(self):
 
     """
 
-    # Export error 
-
-    # Load configuration for calibration settings
-    settings = get_settings(
-        "INI/dut_measurement/calibration_config/calibration_config.ini",
-        "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
-        Path(__file__).resolve()
-    )
-
-    kit_ok = settings.value(f"Calibration/Kits", False, type=bool)
-    no_calibration = settings.value(f"Calibration/NoCalibration", False, type=bool)
-
-    method = settings.value(f"Calibration/Method", "Normalization")
-
-    if not no_calibration and not kit_ok:
-
-        if method == "OSM (Open - Short - Match)":
-            src_folder = get_calibration_path(
-                "modules/dut_measurement/calibration/osm_results/osm_errors",
-                "modules/dut_measurement/calibration/osm_results/osm_errors",
-                Path(__file__).resolve()
-            )
-
-        elif method == "Normalization":
-            src_folder = get_calibration_path(
-                "modules/dut_measurement/calibration/thru_results/normalization_errors",
-                "modules/dut_measurement/calibration/thru_results/normalization_errors",
-                Path(__file__).resolve()
-            )
-
-        elif method == "1-Port+N":
-            src_folder = get_calibration_path(
-                "modules/dut_measurement/modules/dut_measurement/calibration/thru_results/1-Port+N_errors",
-                "modules/dut_measurement/modules/dut_measurement/calibration/thru_results/1-Port+N_errors",
-                Path(__file__).resolve()
-            )
-
-        elif method == "Enhanced-Response":
-            src_folder = get_calibration_path(
-                "modules/dut_measurement/calibration/thru_results/enhanced_response_errors",
-                "modules/dut_measurement/calibration/thru_results/enhanced_response_errors",
-                Path(__file__).resolve()
-            )
-
-        else:
-            return
-            
-        # --- Copy ---
-        if os.path.exists(src_folder):
-
-            default_folder_name = os.path.basename(src_folder)
-
-            dest_path, _ = QFileDialog.getSaveFileName(
-                self,
-                "Save errors folder as",
-                default_folder_name,
-                "All Files (*)"
-            )
-
-            if not dest_path:
-                return
-
-            shutil.copytree(src_folder, dest_path, dirs_exist_ok=True)
-        else:
-            return
-
-        QMessageBox.information(
-            self,
-            "Export completed",
-            "Errors were exported successfully."
-        )
-
-    elif not no_calibration and kit_ok: 
-        if getattr(sys, 'frozen', False):
-
-            appdata = os.getenv("APPDATA")
-            kits_path = os.path.join(
-                appdata,
-                "NanoVNA-UTN-Toolkit",
-                "Calibration",
-                "kits"
-            )
-
-            settings.beginGroup("Calibration")
-            kit_name = settings.value("Name")
-            settings.endGroup()
-
-            if not kit_name:
-                return
-
-            base_name = re.sub(r'_\d+$', '', kit_name)
-
-            source_folder = os.path.join(kits_path, base_name)
-
-            if not os.path.exists(source_folder):
-                QMessageBox.warning(
-                    self,
-                    "Kit not found",
-                    "The selected kit folder was not found."
-                )
-                return
-
-        else:
-            ui_dir = os.path.dirname(os.path.dirname(__file__))
-            kits_path = os.path.join(ui_dir, "Calibration", "kits")
-
-            settings.beginGroup("Calibration")
-            kit_name = settings.value("Name")
-            settings.endGroup()
-
-            if not kit_name:
-                return
-
-            base_name = re.sub(r'_\d+$', '', kit_name)
-            source_folder = os.path.join(kits_path, base_name)
-
-            if not os.path.exists(source_folder):
-                QMessageBox.warning(
-                    self,
-                    "Kit not found",
-                    "The selected kit folder was not found."
-                )
-                return
-
-        # --- Copy ---
-        default_folder_name = os.path.basename(source_folder)
-
-        dest_path, _ = QFileDialog.getSaveFileName(
-            self,
-            "Save kit folder as",
-            default_folder_name,
-            "All Files (*)"
-        )
-
-        if not dest_path:
-            return
-
-        shutil.copytree(source_folder, dest_path, dirs_exist_ok=True)
-
-        QMessageBox.information(
-            self,
-            "Export completed",
-            "Kit was exported successfully."
-        )
+    open_error_visualizer(self)
 
 def export_latex_pdf(self):
     """

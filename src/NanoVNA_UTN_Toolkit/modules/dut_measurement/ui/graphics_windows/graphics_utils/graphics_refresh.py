@@ -8,7 +8,7 @@ from pathlib import Path
 
 from scipy.signal import savgol_filter
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, QObject, Signal, QThread
 from PySide6.QtWidgets import (
     QApplication, QMessageBox
 )
@@ -32,6 +32,61 @@ load_sweep_configuration = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurem
 
 # ----------------------------------------------------------------------------------------------------------------- #
 
+class SweepWorker(QObject):
+
+    finished = Signal(object)
+    error = Signal(str)
+    progress = Signal(int)
+
+    def __init__(self, vna_device, start_freq, stop_freq, segments):
+        super().__init__()
+
+        self.vna_device = vna_device
+        self.start_freq = start_freq
+        self.stop_freq = stop_freq
+        self.segments = segments
+
+    def run(self):
+
+        try:
+
+            self.progress.emit(20)
+
+            self.vna_device.datapoints = self.segments
+            self.vna_device.resetSweep(
+                self.start_freq,
+                self.stop_freq
+            )
+
+            self.progress.emit(40)
+
+            freqs = np.array(
+                self.vna_device.read_frequencies()
+            )
+
+            self.progress.emit(60)
+
+            s11 = np.array(
+                self.vna_device.readValues("data 0")
+            )
+
+            self.progress.emit(80)
+
+            s21 = np.array(
+                self.vna_device.readValues("data 1")
+            )
+
+            self.progress.emit(100)
+
+            self.finished.emit({
+                "freqs": freqs,
+                "s11": s11,
+                "s21": s21
+            })
+
+        except Exception as e:
+            self.error.emit(str(e))
+            
 def update_reconnect_button_state(self):
     """Update the reconnect button state based on device connection."""
     if not self.vna_device:
@@ -84,9 +139,12 @@ def update_reconnect_button_state(self):
 
 def _reset_sweep_ui(self):
 
-    if hasattr(self, "sweep_button") and self.is_real_time_init == True:
-        self.sweep_button.setEnabled(True)
-        self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
+    self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
+
+    if hasattr(self, "sweep_button"):
+        if self._initial_sweep_done:  
+            self._initial_sweep_done = True
+            self.sweep_button.setEnabled(True)
 
     if hasattr(self, "sweep_progress_bar"):
         self.sweep_progress_bar.setVisible(False)
@@ -659,7 +717,7 @@ def run_sweep(self):
                     self.canvas_left.draw()
                 if hasattr(self, 'canvas_right') and self.canvas_right:
                     self.canvas_right.draw()
-                    
+      
             except Exception as e:
                 logging.warning(f"[graphics_window.run_sweep] Error in final cursor reset: {e}")
         
