@@ -8,7 +8,7 @@ import sys
 import os
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QPushButton, QLabel
@@ -45,6 +45,14 @@ class CharacterizationWizard(QMainWindow):
         )
 
         self.setGeometry(200, 200, 950, 620)
+
+        screen = QGuiApplication.primaryScreen().availableGeometry()
+        window_geometry = self.frameGeometry()
+
+        center_point = screen.center()
+        window_geometry.moveCenter(center_point)
+
+        self.move(window_geometry.topLeft())
 
 # ------------------------------------------------------------------------------------------------------------------- #
         # Dark-Light mode

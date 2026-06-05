@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget, QPushButton,
     QHBoxLayout, QGroupBox, QComboBox
 )
+from PySide6.QtGui import QGuiApplication
 
 try:
     from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
@@ -93,6 +94,14 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         self.setWindowTitle("NanoVNA Toolkit - Material Characterization")
         self.setGeometry(100, 100, 1000, 460)
+
+        screen = QGuiApplication.primaryScreen().availableGeometry()
+        window_geometry = self.frameGeometry()
+
+        center_point = screen.center()
+        window_geometry.moveCenter(center_point)
+
+        self.move(window_geometry.topLeft())
 
         central_widget = QWidget()
         self.setCentralWidget(central_widget)

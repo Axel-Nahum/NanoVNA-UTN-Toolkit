@@ -8,7 +8,7 @@ import logging
 import os
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QIcon
+from PySide6.QtGui import QAction, QGuiApplication
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, 
     QLabel, QMenu, QApplication
@@ -36,6 +36,14 @@ class MeasurementMainWindow(QMainWindow):
 
         self.setWindowTitle("NanoVNA Toolkit - Measurement")
         self.setGeometry(200, 200, 1000, 650)
+
+        screen = QGuiApplication.primaryScreen().availableGeometry()
+        window_geometry = self.frameGeometry()
+
+        center_point = screen.center()
+        window_geometry.moveCenter(center_point)
+
+        self.move(window_geometry.topLeft())
 
 # ---------------------------------------------------------------------------------------------------------- #
 # Window Icon
