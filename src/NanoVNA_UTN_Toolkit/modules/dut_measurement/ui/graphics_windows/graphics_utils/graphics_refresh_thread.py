@@ -79,6 +79,7 @@ class SweepWorker(QObject):
 
             self.progress.emit(50)
 
+            self.vna_device.setSweep(self.start_freq, self.stop_freq)
 
             freqs = np.array(self.vna_device.read_frequencies())
             self.progress.emit(75)
