@@ -53,60 +53,55 @@ def update_sweep_info_label(self, parent = None):
     except Exception as e:
         logging.error(f"[graphics_window.update_sweep_info_label] Error updating label: {e}")
 
-def load_sweep_configuration(self, parent = None):
-    """Load sweep configuration from sweep options config file."""
-    
+def load_sweep_configuration(self, parent=None):
     try:
-        # Load configuration for sweep settings and frequency range parameters
         settings = get_settings(
             "INI/dut_measurement/sweep_config/sweep_config.ini",
             "modules/dut_measurement/ui/sweep_window/sweep_config/sweep_config.ini", 
             Path(__file__).resolve()        
         )
 
-        logging.info(f"[graphics_window.load_sweep_configuration] Config file found and opened successfully")
-
-        # Use consistent defaults with sweep_options_window.py
-        default_start_hz = 50e3   # 50 kHz
-        default_stop_hz = 1.5e9   # 1.5 GHz 
-        default_segments = 101    # Default segments
+        default_start_hz = 50e3
+        default_stop_hz  = 1.5e9
+        default_segments = 101
         
-        # Read values with proper defaults
         start_freq_val = settings.value("Frequency/StartFreqHz", default_start_hz)
-        stop_freq_val = settings.value("Frequency/StopFreqHz", default_stop_hz)
-        segments_val = settings.value("Frequency/Segments", default_segments)
+        stop_freq_val  = settings.value("Frequency/StopFreqHz",  default_stop_hz)
+        segments_val   = settings.value("Frequency/Segments",    default_segments)
+        start_unit     = settings.value("Frequency/StartUnit",   "kHz")
+        stop_unit      = settings.value("Frequency/StopUnit",    "GHz")
 
         settings.sync()
 
-        # Debug: log what we read from file
-        logging.info(f"[graphics_window.load_sweep_configuration] Raw values from config: "
-                    f"StartFreqHz={start_freq_val}, StopFreqHz={stop_freq_val}, Segments={segments_val}")
-
         try:
-            self.start_freq_hz = int(float(str(start_freq_val)))
-            self.stop_freq_hz = int(float(str(stop_freq_val)))
-            self.segments = int(str(segments_val))
+            start_freq_hz = int(float(str(start_freq_val)))
+            stop_freq_hz  = int(float(str(stop_freq_val)))
+            segments      = int(str(segments_val))
         except (ValueError, TypeError) as e:
-            logging.error(f"[graphics_window.load_sweep_configuration] Error parsing values: {e}")
-            self.start_freq_hz = int(default_start_hz)
-            self.stop_freq_hz = int(default_stop_hz)
-            self.segments = default_segments
+            logging.error(f"[load_sweep_configuration] Error parsing values: {e}")
+            start_freq_hz = int(default_start_hz)
+            stop_freq_hz  = int(default_stop_hz)
+            segments      = default_segments
 
-        logging.info(f"[graphics_window.load_sweep_configuration] Loaded sweep config: "
-                    f"{self.start_freq_hz/1e6:.3f} MHz - {self.stop_freq_hz/1e6:.3f} MHz, "
-                    f"{self.segments} points")
+        # ← el fix: escribir siempre en el target correcto
+        target = parent if parent is not None else self
 
-        self.start_unit = settings.value("Frequency/StartUnit", "kHz")
-        self.stop_unit = settings.value("Frequency/StopUnit", "GHz")
+        target.start_freq_hz = start_freq_hz
+        target.stop_freq_hz  = stop_freq_hz
+        target.segments      = segments
+        target.start_unit    = start_unit
+        target.stop_unit     = stop_unit
 
-        update_sweep_info_label(self, parent)
+        logging.info(f"[load_sweep_configuration] Loaded into {'parent' if parent else 'self'}: "
+                     f"{start_freq_hz/1e6:.3f} MHz - {stop_freq_hz/1e6:.3f} MHz, {segments} pts")
+
+        update_sweep_info_label(target, parent)
 
     except Exception as e:
-        logging.error(f"[graphics_window.load_sweep_configuration] Error loading sweep config: {e}")
-        # Fallback defaults
-        self.start_freq_hz = 50000
-        self.stop_freq_hz = int(1.5e9)
-        self.segments = 101
-
+        logging.error(f"[load_sweep_configuration] Error: {e}")
+        target = parent if parent is not None else self
+        target.start_freq_hz = 50000
+        target.stop_freq_hz  = int(1.5e9)
+        target.segments = 101
 
 
