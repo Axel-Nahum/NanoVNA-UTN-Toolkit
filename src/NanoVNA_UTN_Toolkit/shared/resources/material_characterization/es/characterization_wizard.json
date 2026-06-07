@@ -1,0 +1,79 @@
+{
+  "nav": {
+    "export": "Exportar imagen"
+  },
+  "sidebar": {
+    "title": "Pasos",
+    "config": "Configuración",
+    "result": "Resultado"
+  },
+  "config": {
+    "title": "Configuración de la Medición",
+    "device_template": "Dispositivo conectado: {name}   |   Rango de frecuencia: {fmin} – {fmax}   |   Puntos válidos: {points}",
+    "no_device": "No hay un nanoVNA conectado (se usan límites por defecto).",
+    "sweep_title": "Configuración del Barrido",
+    "start_freq": "Frecuencia inicial:",
+    "stop_freq": "Frecuencia final:",
+    "points": "Cantidad de puntos:",
+    "sample_title": "Muestra",
+    "unknown_name": "Nombre del líquido incógnita:",
+    "unknown_placeholder": "ej. agua de red, solución de glicerina…",
+    "temperature": "Temperatura de medición:",
+    "temperature_help": "Todos los líquidos (los dos líquidos de referencia y la muestra) deben estar a esta misma temperatura estable. Se usa para calcular la permitividad conocida de los líquidos de referencia, por lo que el resultado es la permitividad de la muestra a esta temperatura.",
+    "references_title": "Líquidos de Referencia",
+    "reference_1": "Referencia 1:",
+    "reference_2": "Referencia 2:",
+    "fixed_note": "En esta versión los líquidos de referencia son fijos (la selección configurable y la importación externa llegan en una versión futura)."
+  },
+  "liquids": {
+    "water": "Agua destilada",
+    "ipa": "Alcohol Isopropílico (IPA)"
+  },
+  "standards": {
+    "title_template": "Paso {index}/{total}: {name}",
+    "measure_button": "Medir",
+    "remeasure_button": "Medir de nuevo",
+    "status_ready": "Listo para medir",
+    "status_done": "medido",
+    "status_success": "{name} medido correctamente",
+    "temperature_reminder": "Temperatura configurada: {temp:.1f} °C",
+    "show_indicative": "Mostrar referencia indicativa",
+    "expected_label": "esperado",
+    "indicative_label": "indicativa (modelo nominal)",
+    "open": {
+      "name": "Open (sonda en aire)",
+      "instruction": "Conectá la sonda al NanoVNA y mantenela en aire (sin sumergir en ningún líquido). Luego presioná Medir. Esperado: un circuito abierto, Γ ≈ +1 (borde derecho de la carta de Smith)."
+    },
+    "short": {
+      "name": "Short (cortocircuito)",
+      "instruction": "Formá un cortocircuito coplanar en la cara de la sonda que contacte A LA VEZ el conductor interno (central) y el externo, con presión firme y sin gap de aire. Podés usar un disco conductor pulido presionado y centrado contra la cara, o un material blando (espuma / goma EVA) forrado en papel de aluminio que al comprimirse contacte ambos conductores. La calidad del short es CRÍTICA: un short pobre corrompe toda la calibración. Un buen short debería leerse cerca de Γ ≈ -1 (borde izquierdo de la carta de Smith) con módulo cercano a 1 en toda la banda. Luego presioná Medir."
+    },
+    "reference": {
+      "name": "Líquido de referencia: {liquid}",
+      "instruction": "Sumergí la sonda en {liquid}, asegurándote de que no haya burbujas de aire en la cara de la sonda y de que el líquido esté a la temperatura configurada. Luego presioná Medir. La curva punteada (del mismo color) es una referencia indicativa de un modelo de sonda nominal; usá la casilla para mostrarla u ocultarla."
+    },
+    "dut": {
+      "name": "Líquido incógnita",
+      "instruction": "Sumergí la sonda en el líquido incógnita, evitá burbujas de aire en la cara de la sonda y mantené la misma temperatura que las referencias. Luego presioná Medir."
+    }
+  },
+  "result": {
+    "title": "Resultado de Permitividad",
+    "compute_failed": "No se pudo calcular la permitividad. Verificá que todos los patrones de calibración y el líquido incógnita se hayan medido con el mismo barrido.",
+    "default_sample": "el líquido incógnita",
+    "summary_template": "Muestra: {sample}\nε′ medio = {er_real:.2f}\nTangente de pérdidas media = {tand:.3f}",
+    "all_gap": "No se pudo seleccionar una permitividad físicamente válida en este barrido. Verificá los patrones de calibración y los líquidos de referencia.",
+    "warnings_title": "Advertencias:",
+    "chart_title": "εr — {sample}",
+    "real_label": "ε′ (parte real — almacenamiento de energía)",
+    "loss_label": "ε″ (parte imaginaria — pérdidas)",
+    "axes_caption": "ε′ = parte real (almacenamiento de energía) · ε″ = parte imaginaria (pérdidas dieléctricas). Las curvas grises tenues son las otras raíces candidatas.",
+    "intermediate_title": "Datos intermedios (ecuación de 5to orden)",
+    "frequency_label": "Frecuencia:",
+    "equation_general": "Forma general:  Gn·x^5 + x^2 + third_term = 0   (x = εr^(1/2),  εr = x^2)",
+    "no_root": "sin raíz física",
+    "export_title": "Guardar figura de permitividad",
+    "export_ok_title": "Guardado",
+    "export_ok": "Figura guardada en:\n{path}"
+  }
+}

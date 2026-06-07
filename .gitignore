@@ -205,3 +205,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Material characterization generated measurement results (runtime outputs)
+src/NanoVNA_UTN_Toolkit/modules/material_characterization/calibration/probe_results/

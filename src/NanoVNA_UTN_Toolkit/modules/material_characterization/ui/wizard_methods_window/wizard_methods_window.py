@@ -25,6 +25,11 @@ try:
         update_step_screen
     )
 
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import get as get_technique
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.permittivity_probe_calibration import (
+        PermittivityProbeCalibration
+    )
+
 except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     sys.exit(1)
@@ -66,9 +71,30 @@ class CharacterizationWizard(QMainWindow):
 
         self.vna_device = vna_device
 
+        # Localized technique name (kept for MeasurementMainWindow compatibility)
         self.selected_method = None
+        # Stable technique id used for step dispatch
+        self.selected_technique_id = None
 
         self.current_step = 0
+
+        # Label shown on the Next button when on the final (result) step.
+        self.finish_button_text = "Finish ✓"
+
+        # --- Session state ------------------------------------------------ #
+        self.perm_calibration = PermittivityProbeCalibration()
+        self.sweep_start_freq = 50_000          # 50 kHz
+        self.sweep_stop_freq = 1_500_000_000    # 1.5 GHz
+        self.sweep_steps = 101
+        self.temperature_c = 25.0
+        self.temperature_warnings = []
+        self.unknown_liquid_name = ""
+        self.epsilon_result = None
+        # Plot handles populated by measurement screens.
+        self.current_fig = None
+        self.current_ax = None
+        self.current_canvas = None
+        self.status_label = None
 
 # ------------------------------------------------------------------------------------------------------------------- #
         # Window icon
@@ -213,13 +239,18 @@ class CharacterizationWizard(QMainWindow):
 
     def go_to_next_step(self):
 
-        # si todavía no hay método seleccionado
-        if not self.selected_method:
+        # No technique selected yet -> stay on the intro screen.
+        if not self.selected_technique_id:
+            return
+
+        descriptor = get_technique(self.selected_technique_id)
+
+        # On the final (result) step, Next acts as "Finish".
+        if self.current_step >= len(descriptor.steps):
+            self.finish_characterization()
             return
 
         self.current_step += 1
-
-        self.title_label.setText(self.selected_method)
 
         update_step_screen(self)
 
@@ -236,6 +267,34 @@ class CharacterizationWizard(QMainWindow):
         else:
 
             self.return_to_previous_window()
+
+# ------------------------------------------------------------------------------------------------------------------- #
+
+    # Sweep getters consumed by the measurement runner.
+    def get_sweep_start_frequency(self):
+        return self.sweep_start_freq
+
+    def get_sweep_stop_frequency(self):
+        return self.sweep_stop_freq
+
+    def get_sweep_steps(self):
+        return self.sweep_steps
+
+# ------------------------------------------------------------------------------------------------------------------- #
+
+    def finish_characterization(self):
+        """Open the measurement results window and close the wizard."""
+        logging.info("[CharacterizationWizard] Finishing -> opening MeasurementMainWindow")
+
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.measurement_main_window import (
+            MeasurementMainWindow
+        )
+
+        self.measurement_window = MeasurementMainWindow(
+            vna_device=self.vna_device, wizard_window=self
+        )
+        self.measurement_window.show()
+        self.close()
 
 # ------------------------------------------------------------------------------------------------------------------- #
 

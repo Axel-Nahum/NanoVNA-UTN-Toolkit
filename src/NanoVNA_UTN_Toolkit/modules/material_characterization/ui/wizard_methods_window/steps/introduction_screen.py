@@ -1,83 +1,55 @@
 """
-Introduction screen builder.
+Introduction screen builder (technique selection).
+
+EN: First wizard screen. Populates the technique dropdown from the technique
+    registry (``all_descriptors()``) and shows each technique's localized
+    description. Selecting a technique stores both ``selected_technique_id``
+    (stable id used for dispatch) and ``selected_method`` (localized name kept
+    for compatibility with the downstream MeasurementMainWindow).
+
+ES: Primera pantalla del asistente. Arma el desplegable de tecnicas desde el
+    registro (``all_descriptors()``) y muestra la descripcion localizada de
+    cada tecnica. Al seleccionar una tecnica se guarda ``selected_technique_id``
+    (id estable para el despacho) y ``selected_method`` (nombre localizado, que
+    se conserva por compatibilidad con la MeasurementMainWindow posterior).
 """
 
-from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
-import sys
-import json
-from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
-from PySide6.QtWidgets import (
-    QLabel, QVBoxLayout, QComboBox,
-    QTextEdit, QWidget
-)
+from PySide6.QtGui import QColor, QPixmap
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QTextEdit, QVBoxLayout, QWidget
 
-load_resource = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.load_resource", "load_resource")
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text, image_path
+from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import all_descriptors
 
-JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
+logger = logging.getLogger(__name__)
 
-get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
+# Example setup photos shown in the method detail (per technique).
+_TECHNIQUE_PHOTOS = {
+    "open_coax_liquids": ["probe_setup_example_1.png", "probe_setup_example_2.png"],
+}
 
-# ------------------------------------------------------------------------------------------------------------------- #
 
 def build_introduction_screen(self):
+    texts = load_text("characterization_methods.json")
+    methods = texts.get("methods", {})
 
-# ------------------------------------------------------------------------------------------------------------------- #
-# Load JSON 
-# ------------------------------------------------------------------------------------------------------------------- #
-
-    settings = get_settings(
-        "INI/dut_measurement/preferences/preferences.ini",
-        "shared/utils/preferences/preferences.ini", 
-        Path(__file__).resolve()
-    )
-
-    current_lang = settings.value("Preferences/language", "en")
-
-    resourceLoader = JsonResourceLoader(
-        self_window = self, 
-        module = "material_characterization", 
-        lang = current_lang, 
-        json_resource = "characterization_methods.json"
-    )
-
-    method_descriptions = resourceLoader.load_characterization_method_resources()
-
-    self.title_label.setText(f"{self.charac_wizard_ui_method_title}")     # self.method_ui_title comes from load_characterization_method_resources method of the resourceLoader object
+    self.title_label.setText(texts.get("title", "Characterization Methods"))
+    self.next_button.setText("▶▶")
     self.next_button.setEnabled(False)
     self.clear_content()
 
-# ------------------------------------------------------------------------------------------------------------------- #
-# Main layout
-# ------------------------------------------------------------------------------------------------------------------- #
+    top = QVBoxLayout()
+    top.setSpacing(15)
+    top.setContentsMargins(0, 0, 0, 0)
 
-    top_container = QVBoxLayout()
-    top_container.setSpacing(15)
-    top_container.setContentsMargins(0, 0, 0, 0)
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Method label
-# ------------------------------------------------------------------------------------------------------------------- #
-
-    method_label = QLabel(f"{self.charac_wizard_ui_method_select_label}")
-
-    method_label.setStyleSheet("""
-        font-size: 16px;
-        font-weight: bold;
-    """)
-
-    top_container.addWidget(method_label)
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Dropdown
-# ------------------------------------------------------------------------------------------------------------------- #
+    method_label = QLabel(texts.get("select_label", "Select Characterization Method:"))
+    method_label.setStyleSheet("font-size: 16px; font-weight: bold;")
+    top.addWidget(method_label)
 
     self.method_dropdown = QComboBox()
     self.method_dropdown.setEditable(False)
-
     self.method_dropdown.setStyleSheet("""
         QComboBox {
             background-color: #3b3b3b;
@@ -89,41 +61,32 @@ def build_introduction_screen(self):
             min-width: 380px;
             max-width: 450px;
         }
-
-        QComboBox:hover {
-            background-color: #4d4d4d;
-        }
-
-        QComboBox::drop-down {
-            width: 0px;
-            border: none;
-            background: transparent;
-        }
-
-        QComboBox::down-arrow {
-            image: none;
-            width: 0px;
-            height: 0px;
-        }
+        QComboBox:hover { background-color: #4d4d4d; }
+        QComboBox::drop-down { width: 0px; border: none; background: transparent; }
+        QComboBox::down-arrow { image: none; width: 0px; height: 0px; }
     """)
 
-    self.method_dropdown.addItem(f"{self.charac_wizard_ui_method_dropdown_placeholder}")
-    item = self.method_dropdown.model().item(0)
-    item.setEnabled(False)
-    item.setForeground(QColor(120, 120, 120))
+    # Placeholder first item: selectable (selecting it disables Next).
+    self.method_dropdown.addItem(texts.get("dropdown_placeholder", "Select Characterization Method"))
+    placeholder_item = self.method_dropdown.model().item(0)
+    placeholder_item.setForeground(QColor(120, 120, 120))
 
-    methods = ["Method A", "Method B", "Method C"]
-    self.method_dropdown.addItems(methods)
+    # One entry per registered technique. Store ids parallel to the combo.
+    descriptors = all_descriptors()
+    self._technique_ids = [None]  # index 0 = placeholder
+    for desc in descriptors:
+        name = methods.get(desc.name_token, {}).get("title", desc.id)
+        self.method_dropdown.addItem(name)
+        self._technique_ids.append(desc.id)
 
-    top_container.addWidget(self.method_dropdown)
+    top.addWidget(self.method_dropdown)
 
-# ------------------------------------------------------------------------------------------------------------------- #
-# Description box
-# ------------------------------------------------------------------------------------------------------------------- #
+    # Detail area: description text (left) + example setup photos (right).
+    detail_row = QHBoxLayout()
 
     self.method_info = QTextEdit()
     self.method_info.setReadOnly(True)
-    self.method_info.setMinimumHeight(395)
+    self.method_info.setMinimumHeight(360)
     self.method_info.setStyleSheet("""
         QTextEdit {
             background-color: #2b2b2b;
@@ -134,51 +97,55 @@ def build_introduction_screen(self):
             font-size: 14px;
         }
     """)
+    self.method_info.setText(texts.get("empty_description", ""))
+    detail_row.addWidget(self.method_info, stretch=3)
 
-    self.method_info.setText(f"{self.charac_wizard_ui_method_empty_description}")
+    photos_col = QVBoxLayout()
+    self._method_photo_labels = [QLabel(), QLabel()]
+    for lbl in self._method_photo_labels:
+        lbl.setAlignment(Qt.AlignCenter)
+        lbl.setVisible(False)
+        photos_col.addWidget(lbl)
+    photos_col.addStretch(1)
+    photos_container = QWidget()
+    photos_container.setLayout(photos_col)
+    detail_row.addWidget(photos_container, stretch=2)
 
-    top_container.addWidget(self.method_info)
+    top.addLayout(detail_row)
 
-# ------------------------------------------------------------------------------------------------------------------- #
-# Callback
-# ------------------------------------------------------------------------------------------------------------------- #
+    def _show_photos(technique_id):
+        files = _TECHNIQUE_PHOTOS.get(technique_id, [])
+        for lbl, fname in zip(self._method_photo_labels, files + [None, None]):
+            if fname:
+                pix = QPixmap(image_path(fname))
+                if not pix.isNull():
+                    lbl.setPixmap(pix.scaledToWidth(320, Qt.SmoothTransformation))
+                    lbl.setVisible(True)
+                    continue
+            lbl.clear()
+            lbl.setVisible(False)
 
     def on_method_changed(index):
-
-        if index == 0:
+        if index <= 0 or index >= len(self._technique_ids):
+            self.selected_technique_id = None
             self.selected_method = None
-            self.method_info.setText("")
+            self.method_info.setText(texts.get("empty_description", ""))
+            _show_photos(None)
             self.next_button.setEnabled(False)
             return
 
-        selected_text = self.method_dropdown.itemText(index)
-        self.selected_method = selected_text
-
+        technique_id = self._technique_ids[index]
+        self.selected_technique_id = technique_id
+        self.selected_method = self.method_dropdown.itemText(index)
         self.next_button.setEnabled(True)
 
-        logging.info(
-            f"[CharacterizationWizard] Selected method: {selected_text}"
-        )
-
-        key_map = {
-            "Method A": "method_a",
-            "Method B": "method_b",
-            "Method C": "method_c",
-        }
-
-        key = key_map.get(selected_text)
-
-        description = ""
-        if key:
-            description = method_descriptions.get(key, {}).get("description", "")
-
+        description = methods.get(technique_id, {}).get("description", "")
         self.method_info.setText(description)
+        _show_photos(technique_id)
+        logger.info("[CharacterizationWizard] Selected technique: %s", technique_id)
 
     self.method_dropdown.activated.connect(on_method_changed)
 
-# ------------------------------------------------------------------------------------------------------------------- #
-
     container = QWidget()
-    container.setLayout(top_container)
-
+    container.setLayout(top)
     self.content_layout.addWidget(container, alignment=Qt.AlignTop)

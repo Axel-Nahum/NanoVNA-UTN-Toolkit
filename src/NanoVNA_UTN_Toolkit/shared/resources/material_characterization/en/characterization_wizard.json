@@ -1,0 +1,79 @@
+{
+  "nav": {
+    "export": "Export image"
+  },
+  "sidebar": {
+    "title": "Steps",
+    "config": "Configuration",
+    "result": "Result"
+  },
+  "config": {
+    "title": "Measurement Configuration",
+    "device_template": "Connected device: {name}   |   Frequency range: {fmin} – {fmax}   |   Valid points: {points}",
+    "no_device": "No nanoVNA connected (using default limits).",
+    "sweep_title": "Sweep Configuration",
+    "start_freq": "Start Frequency:",
+    "stop_freq": "Stop Frequency:",
+    "points": "Number of Points:",
+    "sample_title": "Sample",
+    "unknown_name": "Unknown liquid name:",
+    "unknown_placeholder": "e.g. tap water, glycerin solution…",
+    "temperature": "Measurement temperature:",
+    "temperature_help": "All liquids (the two reference liquids and the sample) must be at this same, stable temperature. It is used to compute the reference liquids' known permittivity, so the result is the sample's permittivity at this temperature.",
+    "references_title": "Reference Liquids",
+    "reference_1": "Reference 1:",
+    "reference_2": "Reference 2:",
+    "fixed_note": "In this version the reference liquids are fixed (configurable selection and external import arrive in a future version)."
+  },
+  "liquids": {
+    "water": "Distilled Water",
+    "ipa": "Isopropyl Alcohol (IPA)"
+  },
+  "standards": {
+    "title_template": "Step {index}/{total}: {name}",
+    "measure_button": "Measure",
+    "remeasure_button": "Measure again",
+    "status_ready": "Ready to measure",
+    "status_done": "measured",
+    "status_success": "{name} successfully measured",
+    "temperature_reminder": "Configured temperature: {temp:.1f} °C",
+    "show_indicative": "Show indicative reference",
+    "expected_label": "expected",
+    "indicative_label": "indicative (nominal model)",
+    "open": {
+      "name": "Open (probe in air)",
+      "instruction": "Connect the probe to the NanoVNA and keep it in air (not immersed in any liquid). Then press Measure. \nExpected: an open circuit, Γ ≈ +1 (right edge of the Smith chart)."
+    },
+    "short": {
+      "name": "Short",
+      "instruction": "Form a coplanar short circuit on the probe face that contacts BOTH the inner (center) and outer conductors at the same time, with firm pressure and no air gap. You can use a polished conductive disc pressed and centered against the face, or a soft pad (foam / EVA) wrapped in aluminium foil that contacts both conductors when compressed. The short quality is CRITICAL: a poor short corrupts the whole calibration. A good short should read close to Γ ≈ -1 (left edge of the Smith chart) with magnitude near 1 across the whole band. Then press Measure."
+    },
+    "reference": {
+      "name": "Reference liquid: {liquid}",
+      "instruction": "Immerse the probe in {liquid}, making sure there are no air bubbles on the probe face and the liquid is at the configured temperature. Then press Measure. The dotted curve (same color) is an indicative reference from a nominal probe model; use the checkbox to show or hide it."
+    },
+    "dut": {
+      "name": "Unknown liquid",
+      "instruction": "Immerse the probe in the unknown liquid, avoid air bubbles on the probe face, and keep the same temperature as the references. Then press Measure."
+    }
+  },
+  "result": {
+    "title": "Permittivity Result",
+    "compute_failed": "Could not compute permittivity. Please check that all calibration standards and the unknown liquid were measured on the same sweep.",
+    "default_sample": "the unknown liquid",
+    "summary_template": "Sample: {sample}\nMean ε′ = {er_real:.2f}\nMean loss tangent = {tand:.3f}",
+    "all_gap": "No physically valid permittivity could be selected on this sweep. Check the calibration standards and the reference liquids.",
+    "warnings_title": "Warnings:",
+    "chart_title": "εr — {sample}",
+    "real_label": "ε′ (real part — energy storage)",
+    "loss_label": "ε″ (imaginary part — losses)",
+    "axes_caption": "ε′ = real part (energy storage) · ε″ = imaginary part (dielectric losses). Faint grey curves are the other candidate roots.",
+    "intermediate_title": "Intermediate data (5th-order equation)",
+    "frequency_label": "Frequency:",
+    "equation_general": "General form:  Gn·x^5 + x^2 + third_term = 0   (x = εr^(1/2),  εr = x^2)",
+    "no_root": "no physical root",
+    "export_title": "Save permittivity figure",
+    "export_ok_title": "Saved",
+    "export_ok": "Figure saved to:\n{path}"
+  }
+}

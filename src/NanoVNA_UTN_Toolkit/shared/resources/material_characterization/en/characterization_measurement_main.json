@@ -1,0 +1,29 @@
+{
+  "window_title": "Material Characterization - Results",
+  "title": "Permittivity Results",
+  "info": {
+    "technique": "Technique:",
+    "temperature": "Temperature:",
+    "references": "Reference liquids:",
+    "sweep": "Sweep:"
+  },
+  "table": {
+    "frequency": "Frequency",
+    "eps_real": "epsilon_r'",
+    "eps_imag": "epsilon_r''",
+    "loss_tangent": "tan delta"
+  },
+  "no_result": "No permittivity result is available. Please complete the wizard.",
+  "export": {
+    "epsilon_title": "εr — {sample}",
+    "export_epsilon": "Export εr image",
+    "export_s11": "Export S11 image",
+    "dialog_title": "Save figure",
+    "ok_title": "Saved",
+    "ok_message": "Figure saved to:\n{path}"
+  },
+  "menu": {
+    "file": "File",
+    "back_to_menu": "Back to menu"
+  }
+}

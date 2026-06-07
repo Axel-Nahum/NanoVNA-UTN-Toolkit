@@ -1,0 +1,29 @@
+{
+  "window_title": "Caracterización de Materiales - Resultados",
+  "title": "Resultados de Permitividad",
+  "info": {
+    "technique": "Técnica:",
+    "temperature": "Temperatura:",
+    "references": "Líquidos de referencia:",
+    "sweep": "Barrido:"
+  },
+  "table": {
+    "frequency": "Frecuencia",
+    "eps_real": "epsilon_r'",
+    "eps_imag": "epsilon_r''",
+    "loss_tangent": "tan delta"
+  },
+  "no_result": "No hay un resultado de permitividad disponible. Complete el asistente.",
+  "export": {
+    "epsilon_title": "εr — {sample}",
+    "export_epsilon": "Exportar imagen εr",
+    "export_s11": "Exportar imagen S11",
+    "dialog_title": "Guardar figura",
+    "ok_title": "Guardado",
+    "ok_message": "Figura guardada en:\n{path}"
+  },
+  "menu": {
+    "file": "Archivo",
+    "back_to_menu": "Volver al menú"
+  }
+}

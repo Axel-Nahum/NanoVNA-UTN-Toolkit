@@ -1,0 +1,13 @@
+{
+  "title": "Métodos de Caracterización",
+  "select_label": "Seleccione el método de caracterización:",
+  "dropdown_placeholder": "Seleccione el método de caracterización",
+  "label_description": "Descripción del método",
+  "empty_description": "Seleccione un método de caracterización para mostrar la información.",
+  "methods": {
+    "open_coax_liquids": {
+      "title": "Sonda coaxial open-ended (líquidos)",
+      "description": "Mide la permitividad relativa compleja (epsilon_r) de un líquido utilizando una sonda coaxial open-ended en un NanoVNA.\n\nEl asistente te guiará a través de una calibración con cuatro patrones (Open en aire, Short y dos líquidos de referencia de permitividad conocida) a una temperatura elegida, luego mide el líquido incógnita y calcula epsilon_r en función de la frecuencia.\n\nLíquidos de referencia en esta versión: Agua destilada y Alcohol Isopropílico (IPA)."
+    }
+  }
+}
