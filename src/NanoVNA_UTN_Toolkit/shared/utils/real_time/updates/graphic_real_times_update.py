@@ -107,8 +107,19 @@ def update_plots_realtime(self):
                 logging.error(f"[update_plots_realtime] update_left_data_2: {e}")
 
         if hasattr(self, "update_right_data") and self.update_right_data:
+
+            old = getattr(self, "_last_update_right_data", None)
+
+            if old is not self.update_right_data:
+                logging.error(
+                    f"update_right_data changed "
+                    f"{id(old)} -> {id(self.update_right_data)}"
+                )
+                self._last_update_right_data = self.update_right_data
+
             try:
-                self.update_right_data(s_data_right, self.freqs)
+                #self.update_right_data(s_data_right, self.freqs)
+                pass
             except Exception as e:
                 logging.error(f"[update_plots_realtime] update_right_data: {e}")
 

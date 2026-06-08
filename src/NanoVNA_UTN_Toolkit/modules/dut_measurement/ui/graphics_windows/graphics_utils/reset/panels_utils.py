@@ -15,7 +15,6 @@ def _clear_axis_and_show_message(self, panel_side='right', message_pos=(0.5, 0.5
 
     if self.realtime_checkbox.isChecked():
         measurement_ui_text = self.measurement_ui_waiting_for_sweep
-
     else:
         measurement_ui_text = self.measurement_ui_magnitude_waiting_text
 

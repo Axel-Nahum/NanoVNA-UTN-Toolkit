@@ -535,10 +535,12 @@ def apply_signal_filters(self):
         r = sf_settings.value("kalman/R", 1.0, type=float)
 
     if preset == "Off":
+        self.sweep_button.setEnabled(False)
         self.kalman_label.setText(
             "Kalman filter is disabled"
         )
     else:
+        self.sweep_button.setEnabled(True)
         self.kalman_label.setText(
             f"Kalman Filter: {preset} - Q = {q:.3f} · R = {r:.3f}"
         )

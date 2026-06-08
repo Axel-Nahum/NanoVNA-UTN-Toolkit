@@ -150,6 +150,19 @@ def run_sweep(self):
 
     _reset_sliders_before_sweep(self)
 
+    sf_settings = get_settings(
+        "INI/dut_measurement/signal_filters/signal_filters.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
+        Path(__file__).resolve()
+    )
+
+    preset = sf_settings.value("kalman/preset", "Default")
+
+    if preset != "Off" and not self.realtime_checkbox.isChecked():
+        # Reset Kalman
+        if hasattr(self, 'kf_s11'): self.kf_s11.reset()
+        if hasattr(self, 'kf_s21'): self.kf_s21.reset()
+
     self.sweep_button.setText("Sweeping...")
     self.sweep_button.setEnabled(False)
     self.sweep_progress_bar.setVisible(True)
@@ -371,31 +384,40 @@ def on_sweep_finished(self, result):
         self.sweep_progress_bar.setVisible(False)
         self.sweep_progress_bar.setValue(0)
 
-    self.sweep_button.setEnabled(True)
+    sf_settings = get_settings(
+        "INI/dut_measurement/signal_filters/signal_filters.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
+        Path(__file__).resolve()
+    )
 
-    def _final_cursor_fix():
-        try:
-            for attr in ('slider_left', 'slider_left_2', 'slider_right', 'slider_right_2'):
-                slider = getattr(self, attr, None)
-                if slider:
-                    slider.set_val(0)
-            for fn_name in ('update_cursor', 'update_cursor_2', 'update_right_cursor', 'update_right_cursor_2'):
-                fn = getattr(self, fn_name, None)
-                if callable(fn):
-                    fn(0)
-            for canvas_name in ('canvas_left', 'canvas_right'):
-                canvas = getattr(self, canvas_name, None)
-                if canvas:
-                    canvas.draw()
-        except Exception as e:
-            logging.warning(f"[_final_cursor_fix] {e}")
+    preset = sf_settings.value("kalman/preset", "Default")
 
-    QTimer.singleShot(200, _final_cursor_fix)
+    if preset == "Off":
+        self.sweep_button.setEnabled(False)
+    else:
+        self.sweep_button.setEnabled(True)
 
-    self.slider_left.set_val(0)
-    self.slider_left_2.set_val(0)
-    self.slider_right.set_val(0)
-    self.slider_right_2.set_val(0)
+    if self.realtime_checkbox.isChecked():
+        self.sweep_button.setEnabled(True)
+
+    try:
+        if hasattr(self, 'update_cursor') and callable(self.update_cursor):
+            self.update_cursor(0)
+        if hasattr(self, 'update_cursor_2') and callable(self.update_cursor_2):
+            self.update_cursor_2(0)
+        if hasattr(self, 'update_right_cursor') and callable(self.update_right_cursor):
+            self.update_right_cursor(0)
+        if hasattr(self, 'update_right_cursor_2') and callable(self.update_right_cursor_2):
+            self.update_right_cursor_2(0)
+        self.canvas_left.draw_idle()
+        self.canvas_right.draw_idle()
+    except Exception as e:
+        logging.warning(f"[on_sweep_finished] cursor init: {e}")
+
+        self.slider_left.set_val(0)
+        self.slider_left_2.set_val(0)
+        self.slider_right.set_val(0)
+        self.slider_right_2.set_val(0)
 
 # =========================================================
 # ERROR HANDLER

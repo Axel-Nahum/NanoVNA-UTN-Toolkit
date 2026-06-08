@@ -74,6 +74,19 @@ class SweepWorker(QObject):
 
 def on_realtime_toggled(self, enabled):
 
+    sf_settings = get_settings(
+        "INI/dut_measurement/signal_filters/signal_filters.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
+        Path(__file__).resolve()
+    )
+
+    preset = sf_settings.value("kalman/preset", "Default")
+
+    if preset == "Off" and not self.realtime_checkbox.isChecked():
+        self.sweep_button.setEnabled(False)
+    else:
+        self.sweep_button.setEnabled(True)
+
     if not enabled: 
         self.sweep_button.setText(f"{self.measurement_ui_button_reset_kalman}")
         logging.info("[real_time] ENABLED")
@@ -213,7 +226,6 @@ def _done(self, freqs, s11, s21, thread, worker, gen):
     self.s21_raw = s21
 
     # kalman filter for smoothing
-
     if is_kalman_enabled:
         s11_f = np.array([self.kf_s11.update(x) for x in s11])
         s21_f = np.array([self.kf_s21.update(x) for x in s21])

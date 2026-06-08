@@ -2063,6 +2063,9 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         canvas=None, fig=None, show_graphic2_marker1=False, show_graphic2_marker2=True, marker1=None, marker2=None,
         info_panel=None, info_panel_2=None, new_s_param=None):
 
+        logging.error(f"fig={fig}")
+        logging.error(f"canvas={canvas}")
+
         """Update S_data and freqs and recreate slider safely using remove_slider()."""
         nonlocal S_data, freqs, s_param
         S_data = new_s_data
