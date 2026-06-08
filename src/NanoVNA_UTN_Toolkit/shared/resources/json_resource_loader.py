@@ -259,6 +259,7 @@ class JsonResourceLoader:
         self.window.measurement_ui_magnitude_title = plots.get("title_mag", "")
         self.window.measurement_ui_phase_title = plots.get("title_phase", "")
         self.window.measurement_ui_magnitude_waiting_text = plots.get("waiting_text", "")
+        self.window.measurement_ui_reset_real_time_text = plots.get("reset_text", "")
         self.window.measurement_ui_magnitude_x_axis = plots.get("x_axis", "")
         self.window.measurement_ui_magnitude_y_axis = plots.get("y_axis", "")
 

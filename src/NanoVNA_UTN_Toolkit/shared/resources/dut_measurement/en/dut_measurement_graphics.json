@@ -32,6 +32,7 @@
       "title_mag": "{parameter}\\ \\mathrm{{Magnitude\\ [{db_times}]}}",
       "title_phase": "{parameter}\\ Phase",
       "waiting_text": "Starting \\ continuous \\ acquisition \\ …",
+      "reset_text": "Resetting \\ Kalman \\ …",
       "x_axis": "Frequency \\ [MHz]",
       "y_axis": "|S11|"
     },

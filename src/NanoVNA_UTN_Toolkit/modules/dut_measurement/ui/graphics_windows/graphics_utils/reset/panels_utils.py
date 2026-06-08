@@ -16,7 +16,11 @@ def _clear_axis_and_show_message(self, panel_side='right', message_pos=(0.5, 0.5
     if self.realtime_checkbox.isChecked():
         measurement_ui_text = self.measurement_ui_waiting_for_sweep
     else:
-        measurement_ui_text = self.measurement_ui_magnitude_waiting_text
+        if self.is_real_time_init == False:
+            self.is_real_time_init == True
+            measurement_ui_text = self.measurement_ui_magnitude_waiting_text
+        else:
+            measurement_ui_text = self.measurement_ui_reset_real_time_text
 
     if panel_side == 'right':
         if hasattr(self, 'ax_right') and self.ax_right:

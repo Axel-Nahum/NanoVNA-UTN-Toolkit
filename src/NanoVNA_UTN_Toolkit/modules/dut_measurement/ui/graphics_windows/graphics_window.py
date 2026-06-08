@@ -132,6 +132,8 @@ class NanoVNAGraphics(QMainWindow):
         self.dut = dut
         self.vna_device = vna_device
 
+        # flag reset real time
+
         settings = get_settings(
             "INI/dut_measurement/signal_filters/plot_config.ini",
             "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
@@ -421,7 +423,7 @@ class NanoVNAGraphics(QMainWindow):
                     
             if is_connected:
                 logging.info("[graphics_window.__init__] Device ready - scheduling auto-sweep")
-                QTimer.singleShot(1000, lambda: run_sweep(self))  # Delay to allow UI to load
+                QTimer.singleShot(500, lambda: run_sweep(self))  # Delay to allow UI to load
             else:
                 logging.warning("[graphics_window.__init__] Device not available for auto-sweep")
         else:
@@ -463,8 +465,6 @@ class NanoVNAGraphics(QMainWindow):
         # Initialize exporters
         self.latex_exporter = LatexExporter(measurement_self = self, parent_widget=self)
         self.touchstone_exporter = TouchstoneExporter(parent_widget=self)
-
-        #self._initial_sweep_done = True
 
 # ------------------------------------------------------------------------------------------------------------------------------------------------------------ #
 

@@ -90,33 +90,12 @@ class SweepWorker(QObject):
             s11 = np.array(self.vna_device.readValues("data 0"))
             s21 = np.array(self.vna_device.readValues("data 1"))
 
-            # ----------------------------------------------------
-            # Plot Manager settings
-            # ----------------------------------------------------
-
-            settings = get_settings(
-                "INI/dut_measurement/signal_filters/signal_filters.ini",
-                "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
-                Path(__file__).resolve()
-            )
-
-            is_kalman_enabled = settings.value("kalman/enabled", False, type=bool)
-
-            # kalman filter for smoothing
-
-            if is_kalman_enabled:
-                s11_f = np.array([self.parent.kf_s11.update(x) for x in s11])
-                s21_f = np.array([self.parent.kf_s21.update(x) for x in s21])
-            else:
-                s11_f = s11
-                s21_f = s21
-
             self.progress.emit(100)
 
             self.finished.emit({
                 "freqs": freqs,
-                "s11": s11_f,
-                "s21": s21_f
+                "s11": s11,
+                "s21": s21
             })
 
         except Exception as e:
@@ -304,9 +283,30 @@ def on_sweep_finished(self, result):
     # STORE DATA
     # -------------------------------------------------
 
+    # ----------------------------------------------------
+    # Plot Manager settings
+    # ----------------------------------------------------
+
+    settings = get_settings(
+        "INI/dut_measurement/signal_filters/signal_filters.ini",
+        "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
+        Path(__file__).resolve()
+    )
+
+    is_kalman_enabled = settings.value("kalman/enabled", False, type=bool)
+
+    # kalman filter for smoothing
+
+    if is_kalman_enabled:
+        s11_f = np.array([self.kf_s11.update(x) for x in s11])
+        s21_f = np.array([self.kf_s21.update(x) for x in s21])
+    else:
+        s11_f = s11
+        s21_f = s21
+
     self.freqs = freqs
-    self.s11 = s11
-    self.s21 = s21
+    self.s11 = s11_f
+    self.s21 = s21_f
 
     # -------------------------------------------------
     # UPDATE UI
