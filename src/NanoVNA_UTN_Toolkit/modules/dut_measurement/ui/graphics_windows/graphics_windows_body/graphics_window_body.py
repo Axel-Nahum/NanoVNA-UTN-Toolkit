@@ -64,11 +64,11 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
     self.reconnect_button.clicked.connect(lambda: reconnect_device(self))
     top_grid.addWidget(self.reconnect_button, 0, 0, Qt.AlignLeft)
 
-    self.sweep_button = QPushButton(f"{self.measurement_ui_button_run_sweep}")
+    self.sweep_button = QPushButton(f"Sweeping...")
     self.sweep_button.setEnabled(False)
-    self.sweep_button.setMaximumWidth(120)
+    self.sweep_button.setMaximumWidth(95)
     self.sweep_button.clicked.connect(lambda: run_sweep(self))
-    self.sweep_button.setEnabled(False)
+    self.sweep_button.setFixedWidth(95)
     top_grid.addWidget(self.sweep_button, 0, 1, Qt.AlignLeft)
 
     settings_sweep = get_settings(

@@ -186,7 +186,6 @@ def run_sweep(self):
         _reset_sliders_before_sweep(self)
         
         # Disable sweep button and show progress bar
-        self.sweep_button.setEnabled(False)
         self.sweep_button.setText("Sweeping...")
         self.sweep_progress_bar.setVisible(True)
         self.sweep_progress_bar.setValue(0)

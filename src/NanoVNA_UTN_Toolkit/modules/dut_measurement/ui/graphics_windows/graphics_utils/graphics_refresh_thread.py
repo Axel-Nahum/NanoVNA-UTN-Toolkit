@@ -150,8 +150,8 @@ def run_sweep(self):
 
     _reset_sliders_before_sweep(self)
 
-    self.sweep_button.setEnabled(False)
     self.sweep_button.setText("Sweeping...")
+    self.sweep_button.setEnabled(False)
     self.sweep_progress_bar.setVisible(True)
     self.sweep_progress_bar.setValue(0)
 
@@ -357,7 +357,10 @@ def on_sweep_finished(self, result):
     self.sweep_progress_bar.setVisible(False)
     self.reconnect_button.setEnabled(True)
 
-    self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
+    if getattr(self, '_rt_active', False):
+        self.sweep_button.setText(f"{self.measurement_ui_button_reset_kalman}")
+    else:
+        self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
 
     if hasattr(self, "sweep_button"):
         if self._initial_sweep_done:  
@@ -367,6 +370,8 @@ def on_sweep_finished(self, result):
     if hasattr(self, "sweep_progress_bar"):
         self.sweep_progress_bar.setVisible(False)
         self.sweep_progress_bar.setValue(0)
+
+    self.sweep_button.setEnabled(True)
 
     def _final_cursor_fix():
         try:

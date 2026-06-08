@@ -106,7 +106,7 @@ JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_reso
 
 ComplexKalman = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.kalman_filter.kalman_filter", "ComplexKalman")
 
-on_realtime_toggled = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "on_realtime_toggled")
+start_realtime, on_realtime_toggled = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "start_realtime", "on_realtime_toggled")
 
 #-------------------- ABOUT DIALOG -------------------------------------------------------------------------#
 
@@ -446,7 +446,8 @@ class NanoVNAGraphics(QMainWindow):
 
         # ---------------- INIT REALTIME STATE ----------------
 
-        QTimer.singleShot(2000, lambda: on_realtime_toggled(self, False))
+        self._rt_generation = 0
+        QTimer.singleShot(1500, lambda: start_realtime(self))
 
         self.markers = [
             {"cursor": self.cursor_left, "cursor_2": self.cursor_left_2, "slider": self.slider_left, "slider_2": self.slider_left_2, "label": self.labels_left, "label_2": self.labels_left_2, "update_cursor": self.update_cursor, "update_cursor_2": self.update_cursor_2},
@@ -462,8 +463,6 @@ class NanoVNAGraphics(QMainWindow):
         # Initialize exporters
         self.latex_exporter = LatexExporter(measurement_self = self, parent_widget=self)
         self.touchstone_exporter = TouchstoneExporter(parent_widget=self)
-
-        self.sweep_button.setEnabled(False)
 
         #self._initial_sweep_done = True
 

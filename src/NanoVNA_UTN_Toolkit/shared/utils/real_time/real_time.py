@@ -74,14 +74,13 @@ class SweepWorker(QObject):
 
 def on_realtime_toggled(self, enabled):
 
-    if not enabled:
-        self.sweep_button.setEnabled(False)
+    if not enabled: 
+        self.sweep_button.setText(f"{self.measurement_ui_button_reset_kalman}")
         logging.info("[real_time] ENABLED")
         self._rt_generation = getattr(self, "_rt_generation", 0) + 1
         start_realtime(self)
     else:
-        self._initial_sweep_done = True
-        self.sweep_button.setEnabled(True)
+        self.sweep_button.setText(self.measurement_ui_button_run_sweep)
         logging.info("[real_time] DISABLED")
         stop_realtime(self)
 

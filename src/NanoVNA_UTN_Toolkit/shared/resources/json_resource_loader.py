@@ -242,6 +242,7 @@ class JsonResourceLoader:
         self.window.measurement_ui_button_reconnect = top_bar.get("button_reconnect", "")
         self.window.measurement_ui_button_disconnect = top_bar.get("button_disconnect", "")
         self.window.measurement_ui_button_run_sweep = top_bar.get("button_run_sweep", "")
+        self.window.measurement_ui_button_reset_kalman = top_bar.get("button_reset_kalman", "")
         self.window.measurement_ui_button_stop_sweep = top_bar.get("button_stop_sweep", "")
 
         self.window.measurement_ui_sweep_info = top_bar.get("sweep_info", "")
@@ -363,6 +364,7 @@ class JsonResourceLoader:
 
         self.window.measurement_menu_sweep_option = sweep_menu.get("option", "")
         self.window.measurement_menu_run_sweep = sweep_menu.get("run_sweep", "")
+        self.window.measurement_menu_reset_kalman = sweep_menu.get("reset_kalman", "")
 
         # ---------------------------------------------------------------- #
         # Calibration Menu

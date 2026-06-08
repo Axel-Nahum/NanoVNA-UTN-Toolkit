@@ -15,6 +15,7 @@
       "button_reconnect": "Reconnect",
       "button_disconnect": "Disconnect",
       "button_run_sweep": "Run Sweep",
+      "button_reset_kalman": "Reset Kalman",
       "button_stop_sweep": "Stop Sweep",
 
       "sweep_info": "Sweep: {start_freq} - {stop_freq}, {points} points",
@@ -100,7 +101,8 @@
     },
     "sweep_menu": {
       "option": "Options",
-      "run_sweep": "Run Sweep"
+      "run_sweep": "Run Sweep",
+      "reset_kalman": "Reset Kalman"
     },
     "calibration_menu": {
       "cal_wizard": "Calibration Wizard",
