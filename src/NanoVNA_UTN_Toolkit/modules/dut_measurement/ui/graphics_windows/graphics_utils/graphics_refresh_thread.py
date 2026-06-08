@@ -49,13 +49,15 @@ class SweepWorker(QObject):
     error = Signal(str)
     progress = Signal(int)
 
-    def __init__(self, vna_device, start_freq, stop_freq, segments):
+    def __init__(self, vna_device, start_freq, stop_freq, segments, parent = None, ):
         super().__init__()
 
         self.vna_device = vna_device
         self.start_freq = start_freq
         self.stop_freq = stop_freq
         self.segments = segments
+
+        self.parent = parent
 
     def run(self):
 
@@ -82,16 +84,39 @@ class SweepWorker(QObject):
             self.vna_device.setSweep(self.start_freq, self.stop_freq)
 
             freqs = np.array(self.vna_device.read_frequencies())
+
             self.progress.emit(75)
+
             s11 = np.array(self.vna_device.readValues("data 0"))
             s21 = np.array(self.vna_device.readValues("data 1"))
+
+            # ----------------------------------------------------
+            # Plot Manager settings
+            # ----------------------------------------------------
+
+            settings = get_settings(
+                "INI/dut_measurement/signal_filters/signal_filters.ini",
+                "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
+                Path(__file__).resolve()
+            )
+
+            is_kalman_enabled = settings.value("kalman/enabled", False, type=bool)
+
+            # kalman filter for smoothing
+
+            if is_kalman_enabled:
+                s11_f = np.array([self.parent.kf_s11.update(x) for x in s11])
+                s21_f = np.array([self.parent.kf_s21.update(x) for x in s21])
+            else:
+                s11_f = s11
+                s21_f = s21
 
             self.progress.emit(100)
 
             self.finished.emit({
                 "freqs": freqs,
-                "s11": s11,
-                "s21": s21
+                "s11": s11_f,
+                "s21": s21_f
             })
 
         except Exception as e:
@@ -139,7 +164,8 @@ def run_sweep(self):
         self.vna_device,
         self.start_freq_hz,
         self.stop_freq_hz,
-        self.segments
+        self.segments,
+        parent=self,
     )
 
     self.worker.moveToThread(self.thread)
