@@ -79,33 +79,13 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
 
     freq_start = settings_sweep.value("Frequency/StartFreqHz", "50000", type=float)
     freq_stop = settings_sweep.value("Frequency/StopFreqHz", "1000000", type=float)
-    steps = settings_sweep.value("Frequency/Segments", "101", type=float)
+    steps = settings_sweep.value("Frequency/Segments", "101", type=int)
     unit_start = settings_sweep.value("Frequency/StartUnit", "KHz")
     unit_stop = settings_sweep.value("Frequency/StopUnit", "MHz")
 
-    # START
-    if unit_start.lower() == "hz":
-        freq_start_display = round(freq_start, 3)
-    elif unit_start.lower() == "khz":
-        freq_start_display = round(freq_start / 1e3, 3)
-    elif unit_start.lower() == "mhz":
-        freq_start_display = round(freq_start / 1e6, 3)
-    elif unit_start.lower() == "ghz":
-        freq_start_display = round(freq_start / 1e9, 3)
-    else:
-        freq_start_display = freq_start
-
-    # STOP
-    if unit_stop.lower() == "hz":
-        freq_stop_display = round(freq_stop, 2)
-    elif unit_stop.lower() == "khz":
-        freq_stop_display = round(freq_stop / 1e3, 2)
-    elif unit_stop.lower() == "mhz":
-        freq_stop_display = round(freq_stop / 1e6, 2)
-    elif unit_stop.lower() == "ghz":
-        freq_stop_display = round(freq_stop / 1e9, 2)
-    else:
-        freq_stop_display = freq_stop
+    _divs = {"hz": 1, "khz": 1e3, "mhz": 1e6, "ghz": 1e9}
+    freq_start_display = f"{freq_start / _divs.get(unit_start.lower(), 1):g}"
+    freq_stop_display  = f"{freq_stop  / _divs.get(unit_stop.lower(),  1):g}"
 
     self.sweep_info_label = QLabel(f"Sweep: {freq_start_display} {unit_start} - {freq_stop_display} {unit_stop}, {steps} points")
     self.sweep_info_label.setStyleSheet("font-size: 12px; margin-left: 12px;")

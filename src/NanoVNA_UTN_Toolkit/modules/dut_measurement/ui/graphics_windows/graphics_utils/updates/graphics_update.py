@@ -22,9 +22,11 @@ toggle_marker_visibility, toggle_marker2_visibility = safe_import("NanoVNA_UTN_T
 
 read_auto_scale_data = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale", "read_auto_scale_data")
 
+get_freq_display_unit = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils", "get_freq_display_unit")
+
 # ------------------------------------------------------------------------------------------------------------------------------ #
 
-def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param, 
+def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
                             tracecolor, markercolor, background_color_graphics, text_color, axis_color, linewidth, markersize,
                             unit="dB", cursor_graph=None, cursor_graph_2 = None, ax_type="left", unit_mode="dB"):
     
@@ -54,6 +56,8 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
         )
 
         settings_calibration.setValue("Calibration/isImportDut", False)
+
+        freq_div, freq_unit = get_freq_display_unit(self)
 
         fig.patch.set_facecolor(f"{background_color_graphics}")
         ax.set_facecolor(f"{background_color_graphics}")
@@ -100,7 +104,7 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             elif unit == "times":
                 magnitude_db = np.abs(s_data)
 
-            cursor_graph.set_xdata([freqs[0] * 1e-6])
+            cursor_graph.set_xdata([freqs[0] / freq_div])
             cursor_graph.set_ydata([magnitude_db[0]])
 
             fig.canvas.draw_idle()
@@ -108,11 +112,11 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             cursor_x = cursor_graph.get_xdata()[0]
             cursor_y = cursor_graph.get_ydata()[0]
 
-            logging.info(f"[Cursor] Frequency: {cursor_x:.6f} MHz, Magnitude: {cursor_y:.3f} {unit}")
+            logging.info(f"[Cursor] Frequency: {cursor_x:.6f} {freq_unit}, Magnitude: {cursor_y:.3f} {unit}")
 
-            data_line, = ax.plot(freqs / 1e6, magnitude_db, color=tracecolor, linewidth=linewidth)
+            data_line, = ax.plot(freqs / freq_div, magnitude_db, color=tracecolor, linewidth=linewidth)
 
-            ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=f"{text_color}")
+            ax.set_xlabel(rf"$\mathrm{{Frequency\ ({freq_unit})}}$", color=f"{text_color}")
             
             if unit == "dB":
                 ax.set_ylabel(r"$%s\ \mathrm{[dB]}$" % s_param, color=text_color)
@@ -122,8 +126,8 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
                 ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param, db_times=unit_mode)}$", color=text_color)
 
             # Set X-axis limits with margins to match actual frequency range of the sweep
-            freq_start = freqs[0] / 1e6
-            freq_end = freqs[-1] / 1e6
+            freq_start = freqs[0] / freq_div
+            freq_end = freqs[-1] / freq_div
             freq_range = freq_end - freq_start
             margin = freq_range * 0.05  # 5% margin on each side
             ax.set_xlim(freq_start - margin, freq_end + margin)
@@ -181,20 +185,20 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             if np.mean(phase_deg) < -90:
                 phase_deg += 360
 
-            cursor_graph.set_xdata([freqs[0] * 1e-6])
+            cursor_graph.set_xdata([freqs[0] / freq_div])
             cursor_graph.set_ydata([phase_deg[0]])
 
             fig.canvas.draw_idle()
 
-            data_line, = ax.plot(freqs / 1e6, phase_deg, color=tracecolor, linewidth=linewidth)
+            data_line, = ax.plot(freqs / freq_div, phase_deg, color=tracecolor, linewidth=linewidth)
 
-            ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=f"{text_color}")
+            ax.set_xlabel(rf"$\mathrm{{Frequency\ ({freq_unit})}}$", color=f"{text_color}")
             ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
             ax.set_title(rf"$\mathrm{{{self.measurement_ui_phase_title.format(parameter=s_param)}}}$", color=f"{text_color}")
-            
+
             # Set X-axis limits with margins to match actual frequency range of the sweep
-            freq_start = freqs[0] / 1e6
-            freq_end = freqs[-1] / 1e6
+            freq_start = freqs[0] / freq_div
+            freq_end = freqs[-1] / freq_div
             freq_range = freq_end - freq_start
             margin = freq_range * 0.05  # 5% margin on each side
             ax.set_xlim(freq_start - margin, freq_end + margin)
@@ -248,8 +252,8 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             # Calculate and plot VSWR
             s_magnitude = np.abs(s_data)
             vswr = (1 + s_magnitude) / (1 - s_magnitude)
-            ax.plot(freqs / 1e6, vswr, color=tracecolor, linewidth=linewidth)
-            ax.set_xlabel('Frequency (MHz)')
+            ax.plot(freqs / freq_div, vswr, color=tracecolor, linewidth=linewidth)
+            ax.set_xlabel(f'Frequency ({freq_unit})')
             ax.set_ylabel('VSWR')
             ax.set_title(f'{s_param} VSWR')
             ax.grid(current_state_grid, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)

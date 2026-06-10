@@ -4,6 +4,8 @@ import numpy as np
 
 force_marker_visibility = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.cursors_visibility", "force_marker_visibility")
 
+get_freq_display_unit = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils", "get_freq_display_unit")
+
 force_marker_visibility, force_marker_visibility_2 = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.cursors_visibility", "force_marker_visibility", "force_marker_visibility_2")
 
 def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_color_left, marker_color_right, 
@@ -59,6 +61,8 @@ def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_colo
         # Create new cursors at position (0,0) - they will be positioned correctly later
         # Make them invisible initially to avoid the "fixed cursor" problem
 
+        freq_div, _ = get_freq_display_unit(self)
+
         if graph_type_1 == "Smith Diagram":
             if hasattr(self, 'ax_left') and self.ax_left:
                 self.cursor_left = self.ax_left.plot(self.s11.real[0], self.s11.imag[0], 'o', color=marker_color_left, markersize=marker1_size_left, 
@@ -70,18 +74,18 @@ def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_colo
         elif graph_type_1 == "Magnitude":
             if hasattr(self, 'ax_left') and self.ax_left:
                 _y0_left_mag = self.line_left.get_ydata()[0] if (hasattr(self, 'line_left') and self.line_left is not None) else np.abs(self.s11[0])
-                self.cursor_left = self.ax_left.plot(self.freqs[0] / 1e6, _y0_left_mag, 'o', color=marker_color_left, markersize=marker1_size_left,
+                self.cursor_left = self.ax_left.plot(self.freqs[0] / freq_div, _y0_left_mag, 'o', color=marker_color_left, markersize=marker1_size_left,
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
-                self.cursor_left_2 = self.ax_left.plot(self.freqs[0] / 1e6, _y0_left_mag, 'o', color=marker2_color_left, markersize=marker2_size_left,
+                self.cursor_left_2 = self.ax_left.plot(self.freqs[0] / freq_div, _y0_left_mag, 'o', color=marker2_color_left, markersize=marker2_size_left,
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
         elif graph_type_1 == "Phase":
             if hasattr(self, 'ax_left') and self.ax_left:
                 _y0_left = self.line_left.get_ydata()[0] if (hasattr(self, 'line_left') and self.line_left is not None) else 0
-                self.cursor_left = self.ax_left.plot(self.freqs[0] / 1e6, _y0_left, 'o', color=marker_color_left, markersize=marker1_size_left,
+                self.cursor_left = self.ax_left.plot(self.freqs[0] / freq_div, _y0_left, 'o', color=marker_color_left, markersize=marker1_size_left,
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
-                self.cursor_left_2 = self.ax_left.plot(self.freqs[0] / 1e6, _y0_left, 'o', color=marker2_color_left, markersize=marker2_size_left,
+                self.cursor_left_2 = self.ax_left.plot(self.freqs[0] / freq_div, _y0_left, 'o', color=marker2_color_left, markersize=marker2_size_left,
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
         if graph_type_2 == "Smith Diagram":
@@ -95,18 +99,18 @@ def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_colo
         elif graph_type_2 == "Magnitude":
             if hasattr(self, 'ax_right') and self.ax_right:
                 _y0_right_mag = self.line_right.get_ydata()[0] if (hasattr(self, 'line_right') and self.line_right is not None) else np.abs(self.s11[0])
-                self.cursor_right = self.ax_right.plot(self.freqs[0] / 1e6, _y0_right_mag, 'o', color=marker_color_right, markersize=marker1_size_right,
+                self.cursor_right = self.ax_right.plot(self.freqs[0] / freq_div, _y0_right_mag, 'o', color=marker_color_right, markersize=marker1_size_right,
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
-                self.cursor_right_2 = self.ax_right.plot(self.freqs[0] / 1e6, _y0_right_mag, 'o', color=marker2_color_right, markersize=marker2_size_right,
+                self.cursor_right_2 = self.ax_right.plot(self.freqs[0] / freq_div, _y0_right_mag, 'o', color=marker2_color_right, markersize=marker2_size_right,
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
         elif graph_type_2 == "Phase":
             if hasattr(self, 'ax_right') and self.ax_right:
                 _y0_right = self.line_right.get_ydata()[0] if (hasattr(self, 'line_right') and self.line_right is not None) else 0
-                self.cursor_right = self.ax_right.plot(self.freqs[0] / 1e6, _y0_right, 'o', color=marker_color_right, markersize=marker1_size_right,
+                self.cursor_right = self.ax_right.plot(self.freqs[0] / freq_div, _y0_right, 'o', color=marker_color_right, markersize=marker1_size_right,
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
-                self.cursor_right_2 = self.ax_right.plot(self.freqs[0] / 1e6, _y0_right, 'o', color=marker2_color_right, markersize=marker2_size_right,
+                self.cursor_right_2 = self.ax_right.plot(self.freqs[0] / freq_div, _y0_right, 'o', color=marker2_color_right, markersize=marker2_size_right,
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
         
         # Update markers list with new cursor references

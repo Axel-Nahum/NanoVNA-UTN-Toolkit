@@ -10,6 +10,8 @@ get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_
 
 left_slider_moved, left_slider_moved_2, right_slider_moved, right_slider_moved_2 = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.sliders_update", "left_slider_moved", "left_slider_moved_2", "right_slider_moved", "right_slider_moved_2")
 
+get_freq_display_unit = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils", "get_freq_display_unit")
+
 # ----------------------------------------------------------------------------------------------------------------------------------- #
 
 def force_marker_visibility(self, marker_color_left, marker_color_right, marker1_size_left, marker1_size_right):
@@ -88,7 +90,8 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                 if graph_type_left == "Smith Diagram":
                                     self.cursor_left.set_data([float(np.real(val_complex))], [float(np.imag(val_complex))])
                                 else:
-                                    freq_mhz = float(self.freqs[index] / 1e6)
+                                    _fq_div, _ = get_freq_display_unit(self)
+                                    freq_mhz = float(self.freqs[index] / _fq_div)
                                     y_val = None
                                     # Read Y directly from the plotted line so the cursor always
                                     # matches the trace (avoids phase-wrapping and unit mismatches)
@@ -199,7 +202,8 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                 if graph_type_right == "Smith Diagram":
                                     self.cursor_right.set_data([float(np.real(val_complex))], [float(np.imag(val_complex))])
                                 else:
-                                    freq_mhz = float(self.freqs[index] / 1e6)
+                                    _fq_div, _ = get_freq_display_unit(self)
+                                    freq_mhz = float(self.freqs[index] / _fq_div)
                                     y_val = None
                                     if hasattr(self, 'line_right') and self.line_right is not None:
                                         try:
@@ -320,7 +324,8 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                 if graph_type_left == "Smith Diagram":
                                     self.cursor_left_2.set_data([float(np.real(val_complex))], [float(np.imag(val_complex))])
                                 else:
-                                    freq_mhz = float(self.freqs[index] / 1e6)
+                                    _fq_div, _ = get_freq_display_unit(self)
+                                    freq_mhz = float(self.freqs[index] / _fq_div)
                                     y_val = None
                                     if hasattr(self, 'line_left') and self.line_left is not None:
                                         try:
@@ -426,7 +431,8 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                 if graph_type_right == "Smith Diagram":
                                     self.cursor_right_2.set_data([float(np.real(val_complex))], [float(np.imag(val_complex))])
                                 else:
-                                    freq_mhz = float(self.freqs[index] / 1e6)
+                                    _fq_div, _ = get_freq_display_unit(self)
+                                    freq_mhz = float(self.freqs[index] / _fq_div)
                                     y_val = None
                                     if hasattr(self, 'line_right') and self.line_right is not None:
                                         try:

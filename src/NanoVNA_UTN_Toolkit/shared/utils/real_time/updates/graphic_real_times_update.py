@@ -23,6 +23,12 @@ except ImportError as e:
     logging.error("Failed to import required modules: %s", e)
     sys.exit(1)
 
+try:
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils import get_freq_display_unit
+except ImportError:
+    def get_freq_display_unit(self):
+        return 1e6, 'MHz'
+
 # ----------------------------------------------------------------------------------
 
 def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit, ax_type):
@@ -42,8 +48,11 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
     else:
         return
 
-    x_data = freqs / 1e6
+    freq_div, freq_unit = get_freq_display_unit(self)
+    x_data = freqs / freq_div
     line.set_data(x_data, y_data)
+
+    ax.set_xlabel(f'Frequency ({freq_unit})')
 
     freq_start = x_data[0]
     freq_end   = x_data[-1]

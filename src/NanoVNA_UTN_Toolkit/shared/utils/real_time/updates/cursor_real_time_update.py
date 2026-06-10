@@ -1,6 +1,12 @@
 import numpy as np
 import logging
 
+try:
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils import get_freq_display_unit
+except ImportError:
+    def get_freq_display_unit(self):
+        return 1e6, 'MHz'
+
 def compute_y(val, graph_type, unit):
 
     if graph_type == "Magnitude":
@@ -34,6 +40,7 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
             return
 
         freqs = self.freqs
+        freq_div, _ = get_freq_display_unit(self)
         n = len(freqs)
 
         def get_idx(slider_name):
@@ -54,7 +61,7 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
         # ================= LEFT =================
         if hasattr(self, "cursor_left") and self.cursor_left:
             idx = get_idx("slider_left")
-            x = freqs[idx] / 1e6
+            x = freqs[idx] / freq_div
             if graph_left == "Phase":
                 y = _get_y_from_line(self.line_left, idx) or compute_y(s_left[idx], graph_left, unit_left)
             else:
@@ -63,7 +70,7 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
 
         if hasattr(self, "cursor_left_2") and self.cursor_left_2:
             idx = get_idx("slider_left_2")
-            x = freqs[idx] / 1e6
+            x = freqs[idx] / freq_div
             if graph_left == "Phase":
                 y = _get_y_from_line(self.line_left, idx) or compute_y(s_left[idx], graph_left, unit_left)
             else:
@@ -73,7 +80,7 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
         # ================= RIGHT =================
         if hasattr(self, "cursor_right") and self.cursor_right:
             idx = get_idx("slider_right")
-            x = freqs[idx] / 1e6
+            x = freqs[idx] / freq_div
             if graph_right == "Phase":
                 y = _get_y_from_line(self.line_right, idx) or compute_y(s_right[idx], graph_right, unit_right)
             else:
@@ -82,7 +89,7 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
 
         if hasattr(self, "cursor_right_2") and self.cursor_right_2:
             idx = get_idx("slider_right_2")
-            x = freqs[idx] / 1e6
+            x = freqs[idx] / freq_div
             if graph_right == "Phase":
                 y = _get_y_from_line(self.line_right, idx) or compute_y(s_right[idx], graph_right, unit_right)
             else:

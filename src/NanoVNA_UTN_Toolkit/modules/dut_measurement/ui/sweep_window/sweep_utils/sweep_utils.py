@@ -25,24 +25,19 @@ def update_sweep_info_label(self, parent = None):
         logging.info(f"[update_sweep_info_label] start_val={start_val}, stop_val={stop_val}")
         logging.info(f"[update_sweep_info_label] start_unit={start_unit}, stop_unit={stop_unit}")
 
-        # Convert to proper units
-        if start_unit.lower() == "khz":
-            freq_start_str = f"{start_val/1e3:.1f} kHz"
-        elif start_unit.lower() == "mhz":
-            freq_start_str = f"{start_val/1e6:.3f} MHz"
-        elif start_unit.lower() == "ghz":
-            freq_start_str = f"{start_val/1e9:.3f} GHz"
-        else:
-            freq_start_str = f"{start_val} Hz"
+        # Convert to the stored unit, stripping trailing zeros so the label
+        # shows exactly what the user typed in sweep options (e.g. "1.5 GHz"
+        # instead of "1.500 GHz", "1500 MHz" instead of "1500.000 MHz").
+        _unit_divisors = {"hz": 1, "khz": 1e3, "mhz": 1e6, "ghz": 1e9}
+        _unit_labels   = {"hz": "Hz", "khz": "kHz", "mhz": "MHz", "ghz": "GHz"}
 
-        if stop_unit.lower() == "khz":
-            freq_stop_str = f"{stop_val/1e3:.1f} kHz"
-        elif stop_unit.lower() == "mhz":
-            freq_stop_str = f"{stop_val/1e6:.3f} MHz"
-        elif stop_unit.lower() == "ghz":
-            freq_stop_str = f"{stop_val/1e9:.3f} GHz"
-        else:
-            freq_stop_str = f"{stop_val} Hz"
+        start_div = _unit_divisors.get(start_unit.lower(), 1)
+        start_lbl = _unit_labels.get(start_unit.lower(), start_unit)
+        freq_start_str = f"{start_val / start_div:g} {start_lbl}"
+
+        stop_div = _unit_divisors.get(stop_unit.lower(), 1)
+        stop_lbl = _unit_labels.get(stop_unit.lower(), stop_unit)
+        freq_stop_str = f"{stop_val / stop_div:g} {stop_lbl}"
 
         info_text = parent.measurement_ui_sweep_info.format(start_freq=freq_start_str, stop_freq=freq_stop_str, points=self.segments)
         if (parent != None):
@@ -52,6 +47,30 @@ def update_sweep_info_label(self, parent = None):
         logging.info(f"[graphics_window.update_sweep_info_label] Updated info: {info_text}")
     except Exception as e:
         logging.error(f"[graphics_window.update_sweep_info_label] Error updating label: {e}")
+
+def get_freq_display_unit(self):
+    """
+    Return (divisor, unit_str) for frequency axis display.
+    Reads directly from the sweep INI so it always reflects the latest config.
+    Rules: both GHz → GHz/1e9 | both kHz → kHz/1e3 | otherwise → MHz/1e6.
+    """
+    try:
+        settings = get_settings(
+            "INI/dut_measurement/sweep_config/sweep_config.ini",
+            "modules/dut_measurement/ui/sweep_window/sweep_config/sweep_config.ini",
+            Path(__file__).resolve()
+        )
+        s = settings.value("Frequency/StartUnit", "MHz").lower()
+        e = settings.value("Frequency/StopUnit",  "MHz").lower()
+    except Exception:
+        s = getattr(self, 'start_unit', 'MHz').lower()
+        e = getattr(self, 'stop_unit',  'MHz').lower()
+
+    if s == 'ghz' and e == 'ghz':
+        return 1e9, 'GHz'
+    if s == 'khz' and e == 'khz':
+        return 1e3, 'kHz'
+    return 1e6, 'MHz'
 
 def load_sweep_configuration(self, parent=None):
     try:

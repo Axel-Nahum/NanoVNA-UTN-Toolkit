@@ -123,8 +123,10 @@ class SweepOptionsWindow(QMainWindow):
 
 #------------------------------------------------------------------------------------------------------------------------------------------
 
-        self.last_start_value = 50   
-        self.last_stop_value  = 1.5 
+        self.last_start_value = 50
+        self.last_stop_value  = 1.5
+        self._prev_start_unit = "kHz"
+        self._prev_stop_unit  = "GHz"
 
         self.main_window = parent
 
