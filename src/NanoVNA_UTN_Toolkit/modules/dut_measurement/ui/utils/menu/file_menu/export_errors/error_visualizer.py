@@ -119,23 +119,30 @@ def _resolve_kit_base_name(kit_name: str) -> str:
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _DualCanvas(QWidget):
-    """Two matplotlib axes side by side: magnitude (dB) and phase (°)."""
+    """Two independent matplotlib canvases side by side: magnitude (dB) and phase (°)."""
 
     def __init__(self, is_dark: bool = True, parent=None):
         super().__init__(parent)
         self._is_dark = is_dark
         self._setup_rcparams()
 
-        self.fig = Figure(figsize=(9, 3.6), tight_layout=True)
-        self.ax_mag   = self.fig.add_subplot(1, 2, 1)
-        self.ax_phase = self.fig.add_subplot(1, 2, 2)
+        self.fig_mag   = Figure(figsize=(4.5, 3.6))
+        self.fig_phase = Figure(figsize=(4.5, 3.6))
 
-        self.canvas = FigureCanvas(self.fig)
-        self.canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.ax_mag   = self.fig_mag.add_subplot(111)
+        self.ax_phase = self.fig_phase.add_subplot(111)
 
-        layout = QVBoxLayout(self)
+        self.canvas_mag   = FigureCanvas(self.fig_mag)
+        self.canvas_phase = FigureCanvas(self.fig_phase)
+
+        self.canvas_mag.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.canvas_phase.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+        layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(self.canvas)
+        layout.setSpacing(20)
+        layout.addWidget(self.canvas_mag)
+        layout.addWidget(self.canvas_phase)
 
         self._apply_theme()
 
@@ -147,18 +154,18 @@ class _DualCanvas(QWidget):
         rcParams['font.family']      = 'serif'
         rcParams['axes.labelsize']   = 11
 
-    def _bg(self):   return "#1e1e2e" if self._is_dark else "#f8f8f2"
+    def _bg(self):   return "#1e1e2e" if self._is_dark else "#ffffff"
     def _fg(self):   return "#cdd6f4" if self._is_dark else "#1e1e2e"
     def _grid(self): return "#45475a" if self._is_dark else "#ccc"
-    def _accent(self): return "#89b4fa"  # Catppuccin blue – works on both themes
 
     def _apply_theme(self):
-        bg = self._bg()
-        fg = self._fg()
+        bg   = self._bg()
+        fg   = self._fg()
         grid = self._grid()
 
-        self.fig.patch.set_facecolor(bg)
-        for ax in (self.ax_mag, self.ax_phase):
+        for fig, ax in ((self.fig_mag, self.ax_mag), (self.fig_phase, self.ax_phase)):
+            fig.patch.set_facecolor(bg)
+            fig.subplots_adjust(left=0.17, right=0.95, top=0.88, bottom=0.15)
             ax.set_facecolor(bg)
             ax.tick_params(colors=fg, labelsize=9)
             ax.xaxis.label.set_color(fg)
@@ -171,25 +178,18 @@ class _DualCanvas(QWidget):
     # ── public ────────────────────────────────────────────────────────────────
 
     def plot(self, network: rf.Network, label: str, term: str):
-        """
-        Plot magnitude and phase of the appropriate S-parameter from *network*.
-
-        *term* is used to select the correct S-parameter index (S11 vs S21).
-        """
+        """Plot magnitude and phase into their respective independent canvases."""
         self.ax_mag.cla()
         self.ax_phase.cla()
         self._apply_theme()
 
         freqs_ghz = network.f / 1e9
-        # FIX: use the correct S-parameter index for the given error term
         s = _get_s_data(network, term)
 
         mag_db = 20 * np.log10(np.abs(s) + 1e-12)
         phase  = np.angle(s, deg=True)
 
-        color = self._accent()
-
-        self.ax_mag.plot(freqs_ghz, mag_db, color=color, linewidth=1.6)
+        self.ax_mag.plot(freqs_ghz, mag_db, color="#89b4fa", linewidth=1.6)
         self.ax_mag.set_xlabel("Frequency (GHz)")
         self.ax_mag.set_ylabel("Magnitude (dB)")
         self.ax_mag.set_title(f"{label} — Magnitude")
@@ -199,16 +199,15 @@ class _DualCanvas(QWidget):
         self.ax_phase.set_ylabel("Phase (°)")
         self.ax_phase.set_title(f"{label} — Phase")
 
-        self.canvas.draw()
+        self.canvas_mag.draw()
+        self.canvas_phase.draw()
 
     def clear(self):
         self.ax_mag.cla()
         self.ax_phase.cla()
         self._apply_theme()
-        self.canvas.draw()
-
-    def get_figure(self) -> Figure:
-        return self.fig
+        self.canvas_mag.draw()
+        self.canvas_phase.draw()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -256,8 +255,8 @@ class ErrorVisualizerDialog(QDialog):
 
     def _build_ui(self):
         self.setWindowTitle("NanoVNA UTN Toolkit — Calibration Error Viewer")
-        self.setMinimumSize(860, 520)
-        self.resize(960, 560)
+        self.setMinimumSize(1000, 580)
+        self.resize(1140, 640)
 
         root = QVBoxLayout(self)
         root.setContentsMargins(18, 16, 18, 14)
@@ -268,7 +267,7 @@ class ErrorVisualizerDialog(QDialog):
 
         self._method_label = QLabel(f"Method:  {self._method}")
         self._method_label.setFont(QFont("serif", 10))
-        self._method_label.setStyleSheet(f"color: {'#89b4fa' if self._is_dark else '#3060c0'}; font-weight: bold;")
+        self._method_label.setStyleSheet(f"color: {'#b4ceff' if self._is_dark else '#4a80d0'}; font-weight: bold;")
 
         self._term_label = QLabel()
         self._term_label.setFont(QFont("serif", 13, QFont.Bold))
@@ -349,11 +348,13 @@ class ErrorVisualizerDialog(QDialog):
         self._btn_next.setEnabled(self._index < n - 1)
 
         if network is not None:
-            # FIX: pass *term* so the canvas picks the correct S-parameter index
             self._canvas.plot(network, label, term)
         else:
             self._canvas.clear()
-            for ax in (self._canvas.ax_mag, self._canvas.ax_phase):
+            for ax, canvas in (
+                (self._canvas.ax_mag,   self._canvas.canvas_mag),
+                (self._canvas.ax_phase, self._canvas.canvas_phase),
+            ):
                 ax.text(
                     0.5, 0.5, "File not found",
                     transform=ax.transAxes,
@@ -362,17 +363,24 @@ class ErrorVisualizerDialog(QDialog):
                     color="#f38ba8",
                     fontstyle="italic"
                 )
-            self._canvas.canvas.draw()
+                canvas.draw()
 
     # ── export ────────────────────────────────────────────────────────────────
 
     def _export_images(self):
-        """Save one PNG per error term (both magnitude+phase in the same figure)."""
+        """Save two PNGs per error term: one for magnitude, one for phase."""
         dest_dir = QFileDialog.getExistingDirectory(
             self, "Select folder to save images"
         )
         if not dest_dir:
             return
+
+        out_dir = os.path.join(dest_dir, "calibration_error_plots")
+        os.makedirs(out_dir, exist_ok=True)
+
+        bg   = "#1e1e2e" if self._is_dark else "#ffffff"
+        fg   = "#cdd6f4" if self._is_dark else "#1e1e2e"
+        grid = "#45475a" if self._is_dark else "#ccc"
 
         saved = 0
         for term in self._terms:
@@ -381,30 +389,40 @@ class ErrorVisualizerDialog(QDialog):
                 continue
             label = _ERROR_LABELS.get(term, term)
 
-            fig = Figure(figsize=(10, 4), tight_layout=True)
-            ax_m = fig.add_subplot(1, 2, 1)
-            ax_p = fig.add_subplot(1, 2, 2)
-
             freqs_ghz = net.f / 1e9
-            # FIX: use correct S-parameter index per term
-            s = _get_s_data(net, term)
+            s      = _get_s_data(net, term)
             mag_db = 20 * np.log10(np.abs(s) + 1e-12)
             phase  = np.angle(s, deg=True)
 
-            ax_m.plot(freqs_ghz, mag_db,  color="#89b4fa", linewidth=1.6)
-            ax_m.set_xlabel("Frequency (GHz)"); ax_m.set_ylabel("Magnitude (dB)")
-            ax_m.set_title(f"{label} — Magnitude"); ax_m.grid(True, linestyle="--", alpha=0.5)
+            for data, ylabel, title_suffix, color, suffix in (
+                (mag_db, "Magnitude (dB)", "Magnitude", "#89b4fa", "magnitude"),
+                (phase,  "Phase (°)",      "Phase",     "#a6e3a1", "phase"),
+            ):
+                fig = Figure(figsize=(6, 4))
+                fig.patch.set_facecolor(bg)
+                fig.subplots_adjust(left=0.17, right=0.95, top=0.88, bottom=0.15)
 
-            ax_p.plot(freqs_ghz, phase, color="#a6e3a1", linewidth=1.6)
-            ax_p.set_xlabel("Frequency (GHz)"); ax_p.set_ylabel("Phase (°)")
-            ax_p.set_title(f"{label} — Phase"); ax_p.grid(True, linestyle="--", alpha=0.5)
+                ax = fig.add_subplot(111)
+                ax.set_facecolor(bg)
+                ax.tick_params(colors=fg, labelsize=9)
+                ax.xaxis.label.set_color(fg)
+                ax.yaxis.label.set_color(fg)
+                ax.title.set_color(fg)
+                for spine in ax.spines.values():
+                    spine.set_edgecolor(grid)
+                ax.grid(True, color=grid, linewidth=0.5, linestyle="--", alpha=0.6)
 
-            out_path = os.path.join(dest_dir, f"{term}.png")
-            fig.savefig(out_path, dpi=150, bbox_inches="tight")
-            saved += 1
+                ax.plot(freqs_ghz, data, color=color, linewidth=1.6)
+                ax.set_xlabel("Frequency (GHz)")
+                ax.set_ylabel(ylabel)
+                ax.set_title(f"{label} — {title_suffix}")
+
+                out_path = os.path.join(out_dir, f"{term}_{suffix}.png")
+                fig.savefig(out_path, dpi=150, pad_inches=0.15)
+                saved += 1
 
         QMessageBox.information(self, "Export complete",
-                                f"Saved {saved} image(s) to:\n{dest_dir}")
+                                f"Saved {saved} image(s) to:\n{out_dir}")
 
     def _export_touchstone(self):
         """Copy all error .s1p/.s2p files for the current method to a chosen folder."""
