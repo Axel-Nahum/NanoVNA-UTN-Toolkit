@@ -250,7 +250,7 @@ class View(QMainWindow):
             unit_left = settings.value("Graphic1/db_times", "dB")
             unit_right = settings.value("Graphic2/db_times", "dB")
 
-            recreate_single_plot(
+            self.nano_window.line_left = recreate_single_plot(
                 self.nano_window,
                 ax=self.nano_window.ax_left,
                 fig=self.nano_window.fig_left,
@@ -269,10 +269,10 @@ class View(QMainWindow):
                 cursor_graph=self.nano_window.cursor_left,
                 cursor_graph_2=self.nano_window.cursor_left_2,
                 ax_type="left",
-                unit_mode=unit_left      
+                unit_mode=unit_left
             )
 
-            recreate_single_plot(
+            self.nano_window.line_right = recreate_single_plot(
                 self.nano_window,
                 ax=self.nano_window.ax_right,
                 fig=self.nano_window.fig_right,
@@ -294,33 +294,44 @@ class View(QMainWindow):
                 unit_mode=unit_right
             )
 
-            force_marker_visibility(self.nano_window, marker_color_left=marker_color1, marker_color_right=marker_color2, 
+            force_marker_visibility(self.nano_window, marker_color_left=marker_color1, marker_color_right=marker_color2,
                 marker1_size_left=marker_size1, marker1_size_right=marker_size2)
-            force_marker_visibility_2(self.nano_window, marker_color_left=marker2_color1, marker_color_right=marker2_color2, 
+            force_marker_visibility_2(self.nano_window, marker_color_left=marker2_color1, marker_color_right=marker2_color2,
                 marker_size_left=marker2_size1, marker_size_right=marker2_size2)
 
-            self.nano_window.fig_left.canvas.draw_idle()
-            self.nano_window.fig_right.canvas.draw_idle()
+            nw = self.nano_window
+
+            if hasattr(nw, 'update_cursor'):
+                nw.update_cursor(0)
+            if hasattr(nw, 'update_right_cursor'):
+                nw.update_right_cursor(0)
 
             # --- Update states ---
-            self.nano_window.s11 = self.s11
-            self.nano_window.s21 = self.s21
-            self.nano_window.freqs = self.freqs
-            self.nano_window.left_graph_type = self.current_graph_tab1
-            self.nano_window.left_s_param = self.current_s_tab1
-            self.nano_window.right_graph_type = self.current_graph_tab2
-            self.nano_window.right_s_param = self.current_s_tab2
+            nw.s11 = self.s11
+            nw.s21 = self.s21
+            nw.freqs = self.freqs
+            nw.left_graph_type = self.current_graph_tab1
+            nw.left_s_param = self.current_s_tab1
+            nw.right_graph_type = self.current_graph_tab2
+            nw.right_s_param = self.current_s_tab2
 
             # --- Update s_param references in panel functions ---
-            if hasattr(self.nano_window, 'update_left_s_param') and callable(self.nano_window.update_left_s_param):
-                self.nano_window.update_left_s_param(self.current_s_tab1)
-            if hasattr(self.nano_window, 'update_right_s_param') and callable(self.nano_window.update_right_s_param):
-                self.nano_window.update_right_s_param(self.current_s_tab2)
+            if hasattr(nw, 'update_left_s_param') and callable(nw.update_left_s_param):
+                nw.update_left_s_param(self.current_s_tab1)
+            if hasattr(nw, 'update_right_s_param') and callable(nw.update_right_s_param):
+                nw.update_right_s_param(self.current_s_tab2)
 
             # --- Reset sliders and update QGroupBox information ---
-            reset_sliders_and_markers_for_graph_change(self)
+            reset_sliders_and_markers_for_graph_change(nw)
 
-            self.nano_window.show()
+            # Enforce marker 2 visibility last — nothing after this should override it
+            nw.cursor_left_2.set_visible(nw.show_graphic1_marker2)
+            nw.cursor_right_2.set_visible(nw.show_graphic2_marker2)
+
+            nw.fig_left.canvas.draw_idle()
+            nw.fig_right.canvas.draw_idle()
+
+            nw.show()
 
         self.close()
 

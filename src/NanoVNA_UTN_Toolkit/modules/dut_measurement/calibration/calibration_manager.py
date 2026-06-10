@@ -254,7 +254,7 @@ class OSMCalibrationManager:
             self._save_osm_error_file(freqs, e11, "source_match.s1p", "Source match", kit_name)
             self._save_osm_error_file(freqs, e10e01, "reflection_tracking.s1p", "Reflection tracking", kit_name)
             
-            logging.info(f"[OSMCalibrationManager] OSM calibration errors saved: {self.error_dir}")
+            logging.info(f"[OSMCalibrationManager] OSM calibration errors saved: {kit_path}")
             return True
 
         except Exception as e:

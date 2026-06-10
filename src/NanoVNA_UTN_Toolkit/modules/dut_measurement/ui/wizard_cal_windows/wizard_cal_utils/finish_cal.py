@@ -65,9 +65,28 @@ def save_calibration_config(self):
         settings.setValue("Calibration/Parameter", parameter)
         settings.sync()
 
+        # Reset graphics panels to only show parameters available for this method,
+        # preventing ghost cursors from a previous method's configuration.
+        try:
+            graphics_settings = get_settings(
+                "INI/dut_measurement/graphics_config/graphics_config.ini",
+                "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini",
+                Path(__file__).resolve()
+            )
+            if self.selected_method in ("OSM (Open - Short - Match)", "Open/Short Normalization"):
+                graphics_settings.setValue("Tab1/SParameter", "S11")
+                graphics_settings.setValue("Tab2/SParameter", "S11")
+            elif self.selected_method == "Thru Normalization":
+                graphics_settings.setValue("Tab1/SParameter", "S21")
+                graphics_settings.setValue("Tab2/SParameter", "S21")
+            # For 1-Port+N and Enhanced-Response both S11 and S21 are valid — leave as-is
+            graphics_settings.sync()
+        except Exception as eg:
+            logging.warning(f"Could not reset graphics SParameter config: {eg}")
+
         logging.info(f"Calibration method saved: {self.selected_method}")
         logging.info(f"Calibrated parameter saved: {parameter}")
-        
+
     except Exception as e:
         logging.error(f"Failed to save calibration config: {e}")
 

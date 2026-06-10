@@ -87,26 +87,34 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
 
                                 if graph_type_left == "Smith Diagram":
                                     self.cursor_left.set_data([float(np.real(val_complex))], [float(np.imag(val_complex))])
-                                elif graph_type_left == "Magnitude":
+                                else:
                                     freq_mhz = float(self.freqs[index] / 1e6)
-                                    if unit_mode_left == "dB":
-                                        mag_val = float(20 * np.log10(np.abs(val_complex)))
-                                    elif unit_mode_left == "Power ratio":
-                                        mag_val = float(np.abs(val_complex) ** 2)
-                                    elif unit_mode_left == "times":
-                                        mag_val = float(np.abs(val_complex))
-                                    else:
-                                        mag_val = float(np.abs(val_complex))
-                                    self.cursor_left.set_data([freq_mhz], [mag_val])
-                                elif graph_type_left == "Phase":
-                                    freq_mhz = float(self.freqs[index] / 1e6)
-                                    phase_deg = float(np.angle(val_complex) * 180 / np.pi)
-                                    self.cursor_left.set_data([freq_mhz], [phase_deg])
-                                elif graph_type_left == "VSWR":
-                                    freq_mhz = float(self.freqs[index] / 1e6)
-                                    s_magnitude = np.abs(val_complex)
-                                    vswr_val = (1 + s_magnitude) / (1 - s_magnitude) if s_magnitude < 1 else 999
-                                    self.cursor_left.set_data([freq_mhz], [float(vswr_val)])
+                                    y_val = None
+                                    # Read Y directly from the plotted line so the cursor always
+                                    # matches the trace (avoids phase-wrapping and unit mismatches)
+                                    if hasattr(self, 'line_left') and self.line_left is not None:
+                                        try:
+                                            ydata = self.line_left.get_ydata()
+                                            if ydata is not None and len(ydata) > index:
+                                                y_val = float(ydata[index])
+                                        except Exception:
+                                            pass
+                                    if y_val is None:
+                                        if graph_type_left == "Magnitude":
+                                            if unit_mode_left == "dB":
+                                                y_val = float(20 * np.log10(np.abs(val_complex)))
+                                            elif unit_mode_left == "Power ratio":
+                                                y_val = float(np.abs(val_complex) ** 2)
+                                            else:
+                                                y_val = float(np.abs(val_complex))
+                                        elif graph_type_left == "Phase":
+                                            y_val = float(np.angle(val_complex) * 180 / np.pi)
+                                        elif graph_type_left == "VSWR":
+                                            s_mag = np.abs(val_complex)
+                                            y_val = float((1 + s_mag) / (1 - s_mag)) if s_mag < 1 else 999.0
+                                        else:
+                                            y_val = float(np.abs(val_complex))
+                                    self.cursor_left.set_data([freq_mhz], [y_val])
 
                                 if hasattr(self, 'canvas_left') and self.canvas_left:
                                     self.canvas_left.draw_idle()
@@ -190,26 +198,32 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
 
                                 if graph_type_right == "Smith Diagram":
                                     self.cursor_right.set_data([float(np.real(val_complex))], [float(np.imag(val_complex))])
-                                elif graph_type_right == "Magnitude":
+                                else:
                                     freq_mhz = float(self.freqs[index] / 1e6)
-                                    if unit_mode_right == "dB":
-                                        mag_val = float(20 * np.log10(np.abs(val_complex)))
-                                    elif unit_mode_right == "Power ratio":
-                                        mag_val = float(np.abs(val_complex) ** 2)
-                                    elif unit_mode_right == "times":
-                                        mag_val = float(np.abs(val_complex))
-                                    else:
-                                        mag_val = float(np.abs(val_complex))
-                                    self.cursor_right.set_data([freq_mhz], [mag_val])
-                                elif graph_type_right == "Phase":
-                                    freq_mhz = float(self.freqs[index] / 1e6)
-                                    phase_deg = float(np.angle(val_complex) * 180 / np.pi)
-                                    self.cursor_right.set_data([freq_mhz], [phase_deg])
-                                elif graph_type_right == "VSWR":
-                                    freq_mhz = float(self.freqs[index] / 1e6)
-                                    s_magnitude = np.abs(val_complex)
-                                    vswr_val = (1 + s_magnitude) / (1 - s_magnitude) if s_magnitude < 1 else 999
-                                    self.cursor_right.set_data([freq_mhz], [float(vswr_val)])
+                                    y_val = None
+                                    if hasattr(self, 'line_right') and self.line_right is not None:
+                                        try:
+                                            ydata = self.line_right.get_ydata()
+                                            if ydata is not None and len(ydata) > index:
+                                                y_val = float(ydata[index])
+                                        except Exception:
+                                            pass
+                                    if y_val is None:
+                                        if graph_type_right == "Magnitude":
+                                            if unit_mode_right == "dB":
+                                                y_val = float(20 * np.log10(np.abs(val_complex)))
+                                            elif unit_mode_right == "Power ratio":
+                                                y_val = float(np.abs(val_complex) ** 2)
+                                            else:
+                                                y_val = float(np.abs(val_complex))
+                                        elif graph_type_right == "Phase":
+                                            y_val = float(np.angle(val_complex) * 180 / np.pi)
+                                        elif graph_type_right == "VSWR":
+                                            s_mag = np.abs(val_complex)
+                                            y_val = float((1 + s_mag) / (1 - s_mag)) if s_mag < 1 else 999.0
+                                        else:
+                                            y_val = float(np.abs(val_complex))
+                                    self.cursor_right.set_data([freq_mhz], [y_val])
 
                                 if hasattr(self, 'canvas_right') and self.canvas_right:
                                     self.canvas_right.draw_idle()
@@ -305,26 +319,32 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
 
                                 if graph_type_left == "Smith Diagram":
                                     self.cursor_left_2.set_data([float(np.real(val_complex))], [float(np.imag(val_complex))])
-                                elif graph_type_left == "Magnitude":
+                                else:
                                     freq_mhz = float(self.freqs[index] / 1e6)
-                                    if unit_mode_left == "dB":
-                                        mag_val = float(20 * np.log10(np.abs(val_complex)))
-                                    elif unit_mode_left == "Power ratio":
-                                        mag_val = float(np.abs(val_complex) ** 2)
-                                    elif unit_mode_left == "times":
-                                        mag_val = float(np.abs(val_complex))
-                                    else:
-                                        mag_val = float(np.abs(val_complex))
-                                    self.cursor_left_2.set_data([freq_mhz], [mag_val])
-                                elif graph_type_left == "Phase":
-                                    freq_mhz = float(self.freqs[index] / 1e6)
-                                    phase_deg = float(np.angle(val_complex) * 180 / np.pi)
-                                    self.cursor_left_2.set_data([freq_mhz], [phase_deg])
-                                elif graph_type_left == "VSWR":
-                                    freq_mhz = float(self.freqs[index] / 1e6)
-                                    s_magnitude = np.abs(val_complex)
-                                    vswr_val = (1 + s_magnitude) / (1 - s_magnitude) if s_magnitude < 1 else 999
-                                    self.cursor_left_2.set_data([freq_mhz], [float(vswr_val)])
+                                    y_val = None
+                                    if hasattr(self, 'line_left') and self.line_left is not None:
+                                        try:
+                                            ydata = self.line_left.get_ydata()
+                                            if ydata is not None and len(ydata) > index:
+                                                y_val = float(ydata[index])
+                                        except Exception:
+                                            pass
+                                    if y_val is None:
+                                        if graph_type_left == "Magnitude":
+                                            if unit_mode_left == "dB":
+                                                y_val = float(20 * np.log10(np.abs(val_complex)))
+                                            elif unit_mode_left == "Power ratio":
+                                                y_val = float(np.abs(val_complex) ** 2)
+                                            else:
+                                                y_val = float(np.abs(val_complex))
+                                        elif graph_type_left == "Phase":
+                                            y_val = float(np.angle(val_complex) * 180 / np.pi)
+                                        elif graph_type_left == "VSWR":
+                                            s_mag = np.abs(val_complex)
+                                            y_val = float((1 + s_mag) / (1 - s_mag)) if s_mag < 1 else 999.0
+                                        else:
+                                            y_val = float(np.abs(val_complex))
+                                    self.cursor_left_2.set_data([freq_mhz], [y_val])
 
                                 if hasattr(self, 'canvas_left') and self.canvas_left:
                                     self.canvas_left.draw_idle()
@@ -405,26 +425,32 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
 
                                 if graph_type_right == "Smith Diagram":
                                     self.cursor_right_2.set_data([float(np.real(val_complex))], [float(np.imag(val_complex))])
-                                elif graph_type_right == "Magnitude":
+                                else:
                                     freq_mhz = float(self.freqs[index] / 1e6)
-                                    if unit_mode_right == "dB":
-                                        mag_val = float(20 * np.log10(np.abs(val_complex)))
-                                    elif unit_mode_right == "Power ratio":
-                                        mag_val = float(np.abs(val_complex) ** 2)
-                                    elif unit_mode_right == "times":
-                                        mag_val = float(np.abs(val_complex))
-                                    else:
-                                        mag_val = float(np.abs(val_complex))
-                                    self.cursor_right_2.set_data([freq_mhz], [mag_val])
-                                elif graph_type_right == "Phase":
-                                    freq_mhz = float(self.freqs[index] / 1e6)
-                                    phase_deg = float(np.angle(val_complex) * 180 / np.pi)
-                                    self.cursor_right_2.set_data([freq_mhz], [phase_deg])
-                                elif graph_type_right == "VSWR":
-                                    freq_mhz = float(self.freqs[index] / 1e6)
-                                    s_magnitude = np.abs(val_complex)
-                                    vswr_val = (1 + s_magnitude) / (1 - s_magnitude) if s_magnitude < 1 else 999
-                                    self.cursor_right_2.set_data([freq_mhz], [float(vswr_val)])
+                                    y_val = None
+                                    if hasattr(self, 'line_right') and self.line_right is not None:
+                                        try:
+                                            ydata = self.line_right.get_ydata()
+                                            if ydata is not None and len(ydata) > index:
+                                                y_val = float(ydata[index])
+                                        except Exception:
+                                            pass
+                                    if y_val is None:
+                                        if graph_type_right == "Magnitude":
+                                            if unit_mode_right == "dB":
+                                                y_val = float(20 * np.log10(np.abs(val_complex)))
+                                            elif unit_mode_right == "Power ratio":
+                                                y_val = float(np.abs(val_complex) ** 2)
+                                            else:
+                                                y_val = float(np.abs(val_complex))
+                                        elif graph_type_right == "Phase":
+                                            y_val = float(np.angle(val_complex) * 180 / np.pi)
+                                        elif graph_type_right == "VSWR":
+                                            s_mag = np.abs(val_complex)
+                                            y_val = float((1 + s_mag) / (1 - s_mag)) if s_mag < 1 else 999.0
+                                        else:
+                                            y_val = float(np.abs(val_complex))
+                                    self.cursor_right_2.set_data([freq_mhz], [y_val])
 
                                 if hasattr(self, 'canvas_right') and self.canvas_right:
                                     self.canvas_right.draw_idle()

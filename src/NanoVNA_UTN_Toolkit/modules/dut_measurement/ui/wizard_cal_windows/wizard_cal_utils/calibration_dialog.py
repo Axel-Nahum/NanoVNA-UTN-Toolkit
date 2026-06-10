@@ -15,6 +15,21 @@ def get_current_timestamp(self):
     from datetime import datetime
     return datetime.now().strftime("%Y%m%d_%H%M%S")
 
+def _extract_success(result):
+    """Extract bool from either a plain bool or a (bool, extras) tuple."""
+    if isinstance(result, tuple):
+        return bool(result[0])
+    return bool(result)
+
+def _reset_all_managers(self):
+    """Clear all calibration managers after a save so the next method starts fresh."""
+    if self.osm_calibration:
+        self.osm_calibration.clear_all_measurements()
+    if self.thru_calibration:
+        self.thru_calibration.clear_all_measurements()
+    if hasattr(self, 'os_calibration') and self.os_calibration:
+        self.os_calibration.clear_all_measurements()
+
 def save_calibration_dialog(self):
     from PySide6.QtWidgets import QMessageBox
     """Shows a dialog to save the calibration without advancing to graphics window"""
@@ -23,7 +38,7 @@ def save_calibration_dialog(self):
 
     if not self.thru_calibration:
         return
-        
+
     # Check which measurements are available
     if self.selected_method == "Open/Short Normalization":
         if not hasattr(self, 'os_calibration') or not self.os_calibration:
@@ -47,7 +62,7 @@ def save_calibration_dialog(self):
             "No calibration measurements have been taken yet.\nPlease perform at least one measurement before saving."
         )
         return
-        
+
     # Dialog to enter calibration name
     from PySide6.QtWidgets import QInputDialog
 
@@ -61,50 +76,49 @@ def save_calibration_dialog(self):
         prefix = "1PortN"
     elif self.selected_method == "Enhanced-Response":
         prefix = "Enhanced Response"
+    else:
+        prefix = "Calibration"
 
     name, ok = QInputDialog.getText(
-        self, 
-        'Save Calibration', 
+        self,
+        'Save Calibration',
         f'Enter calibration name:\n\nMeasurements to save: {", ".join(measured_standards).upper()}',
         text=f'{prefix}_Calibration_{get_current_timestamp(self)}'
     )
-    
+
     if ok and name:
         try:
+            saved = False
+
             if self.selected_method == "Open/Short Normalization":
-                success = self.os_calibration.save_calibration_file(name, self.selected_method, False)
-                if success:
-                    from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.information(
-                        self,
-                        "Success",
-                        f"Calibration '{name}' saved successfully!\n\nUse 'Finish' button to continue to graphics window."
-                    )
+                result = self.os_calibration.save_calibration_file(name, self.selected_method, False)
+                if _extract_success(result):
+                    saved = True
                     logging.info(f"Open/Short Normalization kit '{name}' saved successfully")
             else:
-                # Save calibration (it will save only the available measurements)
-                success = self.osm_calibration.save_calibration_file(name, self.selected_method, False)
-                if success:
-                    from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.information(
-                        self,
-                        "Success",
-                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: {', '.join(measured_standards).upper()}\n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
-                    )
-                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
+                if self.selected_method in ("OSM (Open - Short - Match)", "1-Port+N", "Enhanced-Response"):
+                    result = self.osm_calibration.save_calibration_file(name, self.selected_method, False)
+                    if _extract_success(result):
+                        saved = True
+                        logging.info(f"OSM calibration '{name}' saved successfully")
 
-                success = self.thru_calibration.save_calibration_file(name, self.selected_method, False, osm_instance=self.osm_calibration)
-                if success:
-                    from PySide6.QtWidgets import QMessageBox
-                    QMessageBox.information(
-                        self,
-                        "Success",
-                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: {', '.join(measured_standards).upper()}\n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
-                    )
-                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
+                if self.selected_method in ("Thru Normalization", "1-Port+N", "Enhanced-Response"):
+                    result = self.thru_calibration.save_calibration_file(name, self.selected_method, False, osm_instance=self.osm_calibration)
+                    if _extract_success(result):
+                        saved = True
+                        logging.info(f"Thru calibration '{name}' saved successfully")
 
-            # --- Read current calibration method ---
-            # Use new calibration structure
+            if saved:
+                QMessageBox.information(
+                    self,
+                    "Success",
+                    f"Calibration '{name}' saved successfully!\n\nSaved measurements: {', '.join(measured_standards).upper()}\n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                )
+                # Reset all managers so this session's data does not bleed into the next calibration
+                _reset_all_managers(self)
+            else:
+                QMessageBox.warning(self, "Save Failed", f"Could not save calibration '{name}'.\nCheck that all required measurements have been performed.")
+                return
 
             # Load configuration for calibration settings
             settings_calibration = get_settings(
@@ -112,40 +126,21 @@ def save_calibration_dialog(self):
                 "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
                 Path(__file__).resolve()
             )
-            """
-            # --- If a kit was previously saved in this session, show its name ---
-            if getattr(self, 'last_saved_kit_id', None):
-                last_id = self.last_saved_kit_id
-                last_name = settings_calibration.value(f"Kit_{last_id}/kit_name", "")
-                if last_name:
-                    name_input.setText(last_name)
 
-            if name is None:
-                name = name_input.text().strip()
-            if not name:
-                name_input.setPlaceholderText("Please enter a valid name...")
-                return
-            """
             # --- Check if name already exists in any Kit ---
             existing_groups = settings_calibration.childGroups()
             for g in existing_groups:
                 if g.startswith("Kit_"):
                     existing_name = settings_calibration.value(f"{g}/kit_name", "")
                     if existing_name == name:
-                        # Show warning message box if name exists
-                        QMessageBox.warning(dialog, "Duplicate Name",
+                        QMessageBox.warning(self, "Duplicate Name",
                                             f"The kit name '{name}' already exists.\nPlease choose another name.",
                                             QMessageBox.Ok)
                         return
 
-            # --- Determine ID: use last saved if exists ---
-            if getattr(self, 'last_saved_kit_id', None):
-                next_id = self.last_saved_kit_id
-            else:
-                # First save -> calculate next available ID
-                kit_ids = [int(g.split("_")[1]) for g in existing_groups if g.startswith("Kit_") and g.split("_")[1].isdigit()]
-                next_id = max(kit_ids, default=0) + 1
-                self.last_saved_kit_id = next_id  # store ID for overwriting next time
+            # --- Determine ID: always calculate next available to prevent overwriting ---
+            kit_ids = [int(g.split("_")[1]) for g in existing_groups if g.startswith("Kit_") and g.split("_")[1].isdigit()]
+            next_id = max(kit_ids, default=0) + 1
 
             calibration_entry_name = f"Kit_{next_id}"
             full_calibration_name = f"{name}_{next_id}"
@@ -166,7 +161,7 @@ def save_calibration_dialog(self):
             settings_calibration.endGroup()
             settings_calibration.sync()
 
-            logging.info(f"[welcome_windows.open_save_calibration] Saved calibration {full_calibration_name}")
+            logging.info(f"[CalibrationDialog] Saved calibration {full_calibration_name}")
 
         except Exception as e:
             logging.error(f"[CalibrationWizard] Error saving calibration: {e}")

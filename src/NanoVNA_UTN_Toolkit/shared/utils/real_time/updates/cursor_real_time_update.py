@@ -17,6 +17,17 @@ def compute_y(val, graph_type, unit):
     return np.abs(val)
 
 
+def _get_y_from_line(line, idx):
+    """Read y value at idx from a plotted line (avoids recomputing Phase with wrapping issues)."""
+    try:
+        ydata = line.get_ydata()
+        if ydata is not None and len(ydata) > idx:
+            return ydata[idx]
+    except Exception:
+        pass
+    return None
+
+
 def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit_left, unit_right):
     try:
         if self.freqs is None:
@@ -44,26 +55,38 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
         if hasattr(self, "cursor_left") and self.cursor_left:
             idx = get_idx("slider_left")
             x = freqs[idx] / 1e6
-            y = compute_y(s_left[idx], graph_left, unit_left)
+            if graph_left == "Phase":
+                y = _get_y_from_line(self.line_left, idx) or compute_y(s_left[idx], graph_left, unit_left)
+            else:
+                y = compute_y(s_left[idx], graph_left, unit_left)
             self.cursor_left.set_data([x], [y])
 
         if hasattr(self, "cursor_left_2") and self.cursor_left_2:
             idx = get_idx("slider_left_2")
             x = freqs[idx] / 1e6
-            y = compute_y(s_left[idx], graph_left, unit_left)
+            if graph_left == "Phase":
+                y = _get_y_from_line(self.line_left, idx) or compute_y(s_left[idx], graph_left, unit_left)
+            else:
+                y = compute_y(s_left[idx], graph_left, unit_left)
             self.cursor_left_2.set_data([x], [y])
 
         # ================= RIGHT =================
         if hasattr(self, "cursor_right") and self.cursor_right:
             idx = get_idx("slider_right")
             x = freqs[idx] / 1e6
-            y = compute_y(s_right[idx], graph_right, unit_right)
+            if graph_right == "Phase":
+                y = _get_y_from_line(self.line_right, idx) or compute_y(s_right[idx], graph_right, unit_right)
+            else:
+                y = compute_y(s_right[idx], graph_right, unit_right)
             self.cursor_right.set_data([x], [y])
 
         if hasattr(self, "cursor_right_2") and self.cursor_right_2:
             idx = get_idx("slider_right_2")
             x = freqs[idx] / 1e6
-            y = compute_y(s_right[idx], graph_right, unit_right)
+            if graph_right == "Phase":
+                y = _get_y_from_line(self.line_right, idx) or compute_y(s_right[idx], graph_right, unit_right)
+            else:
+                y = compute_y(s_right[idx], graph_right, unit_right)
             self.cursor_right_2.set_data([x], [y])
 
         if hasattr(self, "canvas_left"):

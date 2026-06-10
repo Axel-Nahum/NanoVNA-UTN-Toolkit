@@ -134,9 +134,10 @@ def next_step(self, parent = None):
         self.save_button.setVisible(False)
 
 def previous_step(self):
+    self.save_button.setVisible(False)
     if self.current_step <= 1:
-        show_first_screen(self) 
-        self.next_button.setEnabled(False)  
+        show_first_screen(self)
+        self.next_button.setEnabled(False)
     else:
         show_step_screen(self, self.current_step - 1)
         
@@ -148,6 +149,21 @@ def show_first_screen(self):
     self.selected_method = None
     self.selected_standard = "open"
     self.next_button.setEnabled(False)
+    self.save_button.setVisible(False)
+
+    # Reset all calibration managers so each method starts fresh
+    if self.osm_calibration:
+        self.osm_calibration.clear_all_measurements()
+    if self.thru_calibration:
+        self.thru_calibration.clear_all_measurements()
+    if hasattr(self, 'os_calibration') and self.os_calibration:
+        self.os_calibration.clear_all_measurements()
+
+    # Clear stale widget references — the QLabels from the previous step screen
+    # are scheduled for deletion via deleteLater(); keeping them here would cause
+    # RuntimeError when update_calibration_status_display calls setText after
+    # QApplication.processEvents() fires the deferred deletion.
+    self.calibration_status_widgets = {}
 
     self.next_button.setText("▶▶")
     try:
@@ -455,6 +471,7 @@ def show_first_screen(self):
 def show_step_screen(self, step, parent = None):
     """Show the given step with left info panel and right Smith chart."""
     clear_main_content(self)
+    self.calibration_status_widgets = {}
     steps = get_steps_for_method(self)
 
     # Pantalla final
@@ -515,16 +532,17 @@ def show_step_screen(self, step, parent = None):
         elif step == 4:
             step_name = "THRU"
     
-    # Check if this standard has already been measured
+    # Check if this standard has already been measured — scoped to active method
     is_measured = False
-    if self.osm_calibration:
-        is_measured = self.osm_calibration.is_standard_measured(step_name.lower())
-
-    if self.thru_calibration:
-        is_measured = self.thru_calibration.is_standard_measured(step_name.lower())
-
-    if hasattr(self, 'os_calibration') and self.os_calibration and self.selected_method == "Open/Short Normalization":
-        is_measured = self.os_calibration.is_standard_measured(step_name.lower())
+    if self.selected_method in ("OSM (Open - Short - Match)", "1-Port+N", "Enhanced-Response"):
+        if self.osm_calibration:
+            is_measured = self.osm_calibration.is_standard_measured(step_name.lower())
+    if self.selected_method in ("Thru Normalization", "1-Port+N", "Enhanced-Response"):
+        if self.thru_calibration:
+            is_measured = self.thru_calibration.is_standard_measured(step_name.lower())
+    if self.selected_method == "Open/Short Normalization":
+        if hasattr(self, 'os_calibration') and self.os_calibration:
+            is_measured = self.os_calibration.is_standard_measured(step_name.lower())
 
     if self.selected_method == "Open/Short Normalization":
         if is_measured:

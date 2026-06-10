@@ -237,10 +237,12 @@ class EditGraphics(QMainWindow):
         unit_left = settings.value("Graphic1/db_times", "dB")
         unit_right = settings.value("Graphic2/db_times", "dB")
 
-        recreate_single_plot(
-            self.nano_window,
-            ax=self.nano_window.ax_left,
-            fig=self.nano_window.fig_left,
+        nw = self.nano_window
+
+        nw.line_left = recreate_single_plot(
+            nw,
+            ax=nw.ax_left,
+            fig=nw.fig_left,
             s_data=data_left,
             freqs=self.freqs,
             graph_type=graph_type1,
@@ -253,15 +255,16 @@ class EditGraphics(QMainWindow):
             linewidth=line_width,
             markersize=marker_size,
             unit=unit_left,
-            cursor_graph=self.nano_window.cursor_left,
-            cursor_graph_2=self.nano_window.cursor_left_2,
+            cursor_graph=nw.cursor_left,
+            cursor_graph_2=nw.cursor_left_2,
+            ax_type="left",
             unit_mode=unit_left
         )
 
-        recreate_single_plot(
-            self.nano_window,
-            ax=self.nano_window.ax_right,
-            fig=self.nano_window.fig_right,
+        nw.line_right = recreate_single_plot(
+            nw,
+            ax=nw.ax_right,
+            fig=nw.fig_right,
             s_data=data_right,
             freqs=self.freqs,
             graph_type=graph_type2,
@@ -274,28 +277,53 @@ class EditGraphics(QMainWindow):
             linewidth=line_width2,
             markersize=marker_size2,
             unit=unit_right,
-            cursor_graph=self.nano_window.cursor_right,
-            cursor_graph_2=self.nano_window.cursor_right_2,
+            cursor_graph=nw.cursor_right,
+            cursor_graph_2=nw.cursor_right_2,
+            ax_type="right",
             unit_mode=unit_right
         )
 
-        force_marker_visibility(self.nano_window, marker_color_left=marker_color, marker_color_right=marker_color2, 
+        force_marker_visibility(nw, marker_color_left=marker_color, marker_color_right=marker_color2,
                                 marker1_size_left=marker_size, marker1_size_right=marker_size2)
-        force_marker_visibility_2(self.nano_window, marker_color_left=marker2_color, marker_color_right=marker2_color2, 
+        force_marker_visibility_2(nw, marker_color_left=marker2_color, marker_color_right=marker2_color2,
                                 marker_size_left=marker2_size, marker_size_right=marker2_size2)
 
-        self.nano_window.s11 = self.s11
-        self.nano_window.s21 = self.s21
-        self.nano_window.freqs = self.freqs
-        self.nano_window.left_graph_type = graph_type1
-        self.nano_window.left_s_param = s_param1
-        self.nano_window.right_graph_type = graph_type2
-        self.nano_window.right_s_param = s_param2
+        # Restore cursors to their last saved positions (not index 0)
+        _s = get_settings(
+            "INI/dut_measurement/graphics_config/graphics_config.ini",
+            "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini",
+            Path(__file__).resolve()
+        )
+        idx_left   = int(_s.value("Cursor_1_1/index", 0))
+        idx_left_2 = int(_s.value("Cursor_2_1/index", 0))
+        idx_right  = int(_s.value("Cursor_1_2/index", 0))
+        idx_right_2 = int(_s.value("Cursor_2_2/index", 0))
 
-        self.nano_window.canvas_left.draw_idle()
-        self.nano_window.canvas_right.draw_idle()
+        if hasattr(nw, 'update_cursor'):
+            nw.update_cursor(idx_left)
+        if hasattr(nw, 'update_cursor_2'):
+            nw.update_cursor_2(idx_left_2)
+        if hasattr(nw, 'update_right_cursor'):
+            nw.update_right_cursor(idx_right)
+        if hasattr(nw, 'update_right_cursor_2'):
+            nw.update_right_cursor_2(idx_right_2)
 
-        self.nano_window.show()
+        nw.s11 = self.s11
+        nw.s21 = self.s21
+        nw.freqs = self.freqs
+        nw.left_graph_type = graph_type1
+        nw.left_s_param = s_param1
+        nw.right_graph_type = graph_type2
+        nw.right_s_param = s_param2
+
+        # Enforce marker 2 visibility last — nothing after this should override it
+        nw.cursor_left_2.set_visible(nw.show_graphic1_marker2)
+        nw.cursor_right_2.set_visible(nw.show_graphic2_marker2)
+
+        nw.canvas_left.draw_idle()
+        nw.canvas_right.draw_idle()
+
+        nw.show()
         self.close()
 
 if __name__ == "__main__":

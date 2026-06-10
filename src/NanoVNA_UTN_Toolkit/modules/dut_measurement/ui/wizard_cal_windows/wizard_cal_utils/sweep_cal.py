@@ -234,9 +234,15 @@ def perform_calibration_measurement(self, step, standard_name):
                 QMessageBox.critical(self, "Connection Error", f"Failed to connect: {str(e)}")
                 return
 
+        # Display name for status messages — Open/Short Normalization shows "Open/Short" instead of "OPEN"
+        if getattr(self, 'selected_method', None) == "Open/Short Normalization" and standard_name in ("OPEN", "SHORT"):
+            display_name = "Open/Short"
+        else:
+            display_name = standard_name
+
         try:
             # Update status
-            self.status_label.setText(f"Measuring {standard_name}...")
+            self.status_label.setText(f"Measuring {display_name}...")
             self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: orange;")
             QApplication.processEvents()
             
@@ -322,7 +328,7 @@ def perform_calibration_measurement(self, step, standard_name):
                         status = self.os_calibration.get_completion_status()
                         logging.info(f"[CalibrationWizard] Open/Short calibration status: {status}")
                         update_calibration_status_display(self)
-                        self.status_label.setText(f"{standard_name} measurement complete")
+                        self.status_label.setText(f"{display_name} measurement complete")
                         self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
                 else:
                     # Route to OSM calibration manager
@@ -337,17 +343,17 @@ def perform_calibration_measurement(self, step, standard_name):
                         status = self.osm_calibration.get_completion_status()
                         logging.info(f"[CalibrationWizard] Calibration status: {status}")
                         update_calibration_status_display(self)
-                        self.status_label.setText(f"{standard_name} measurement complete")
+                        self.status_label.setText(f"{display_name} measurement complete")
                         self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
 
                 # Update Smith chart with measured data
                 update_smith_chart(self, freqs, s11, standard_name)
-                
+
                 # Update status
-                self.status_label.setText(f"{standard_name} measured successfully!")
+                self.status_label.setText(f"{display_name} measured successfully!")
                 self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
-                
-                logging.info(f"[CalibrationWizard] Measurement for {standard_name} completed successfully")
+
+                logging.info(f"[CalibrationWizard] Measurement for {display_name} completed successfully")
 
             elif standard_name == "THRU":
                 logging.info(f"[CalibrationWizard] Reading S11 data for THRU...")
