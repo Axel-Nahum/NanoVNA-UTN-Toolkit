@@ -55,7 +55,7 @@ def save_calibration_config(self):
 
         if self.selected_method == "OSM (Open - Short - Match)":
             parameter = "S11"
-        elif self.selected_method == "Normalization":
+        elif self.selected_method == "Thru Normalization":
             parameter = "S21"
         else:
             parameter = "S11, S21"
@@ -138,7 +138,7 @@ def finish_wizard(self, parent = None):
         errors = CalibrationErrors(cal_dir, error_subfolder="osm_errors")
         errors.calculate_osm_errors()
 
-    elif self.selected_method == "Normalization":
+    elif self.selected_method == "Thru Normalization":
         cal_dir = get_calibration_path(
             "modules/dut_measurement/calibration/thru_results",
             "modules/dut_measurement/calibration/thru_results",

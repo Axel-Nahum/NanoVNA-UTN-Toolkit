@@ -332,7 +332,7 @@ def _build_calibration_fn(self):
         if method == "OSM (Open - Short - Match)":
             return methods.osm_calibrate_s11(s11_raw), s21_raw
 
-        if method == "Normalization":
+        if method == "Thru Normalization":
             thru_dir = get_calibration_path(
                 "modules/dut_measurement/calibration/thru_results",
                 "modules/dut_measurement/calibration/thru_results",

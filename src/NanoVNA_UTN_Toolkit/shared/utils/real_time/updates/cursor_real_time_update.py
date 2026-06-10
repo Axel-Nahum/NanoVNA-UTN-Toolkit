@@ -36,6 +36,10 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
                 slider.set_val(min(int(slider.val), n - 1))
             return min(max(0, int(slider.val)), n - 1)
 
+        if len(s_left) != len(freqs):
+            logging.error("DESYNC DATA")
+            return
+
         # ================= LEFT =================
         if hasattr(self, "cursor_left") and self.cursor_left:
             idx = get_idx("slider_left")

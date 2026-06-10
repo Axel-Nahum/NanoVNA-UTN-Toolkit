@@ -501,6 +501,16 @@ class NanoVNAStatusApp(QMainWindow):
     def open_selection_window(self):
         """Open the welcome window."""
         # Log device transfer to welcome window
+
+        settings = get_settings(
+            "INI/dut_measurement/signal_filters/signal_filters.ini",
+            "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
+            Path(__file__).resolve()
+        )
+
+        settings.setValue("kalman/enabled", False)
+        settings.setValue("kalman/preset", "Off")
+
         if self.vna:
             device_type = type(self.vna).__name__
             self.log_message(f"[connection_window.open_selection_window] Device {device_type} available - passing to welcome window")

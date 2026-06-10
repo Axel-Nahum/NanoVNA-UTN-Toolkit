@@ -574,7 +574,7 @@ def run_sweep(self):
             if calibration_method == "OSM (Open - Short - Match)":
                 s11 = methods.osm_calibrate_s11(s11_med)
                 s21 = s21_med  # S21 sin calibrar
-            elif calibration_method == "Normalization":
+            elif calibration_method == "Thru Normalization":
 
                 # Cal_Directory
                 cal_dir = get_calibration_path(

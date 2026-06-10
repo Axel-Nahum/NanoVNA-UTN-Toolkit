@@ -69,18 +69,18 @@ def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_colo
 
         elif graph_type_1 == "Magnitude":
             if hasattr(self, 'ax_left') and self.ax_left:
-                self.cursor_left = self.ax_left.plot(self.freqs[0], np.abs(self.s11[0]), 'o', color=marker_color_left, markersize=marker1_size_left, 
+                self.cursor_left = self.ax_left.plot(self.freqs[0] / 1e6, np.abs(self.s11[0]), 'o', color=marker_color_left, markersize=marker1_size_left, 
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
-                self.cursor_left_2 = self.ax_left.plot(self.freqs[0], np.abs(self.s11[0]), 'o', color=marker2_color_left, markersize=marker2_size_left, 
+                self.cursor_left_2 = self.ax_left.plot(self.freqs[0] / 1e6, np.abs(self.s11[0]), 'o', color=marker2_color_left, markersize=marker2_size_left, 
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
         elif graph_type_1 == "Phase":
             if hasattr(self, 'ax_left') and self.ax_left:
-                self.cursor_left = self.ax_left.plot(self.freqs[0], np.angle(self.s11[0]), 'o', color=marker_color_left, markersize=marker1_size_left, 
+                self.cursor_left = self.ax_left.plot(self.freqs[0] / 1e6, np.angle(self.s11[0]), 'o', color=marker_color_left, markersize=marker1_size_left, 
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
-                self.cursor_left_2 = self.ax_left.plot(self.freqs[0], np.angle(self.s11[0]), 'o', color=marker2_color_left, markersize=marker2_size_left, 
+                self.cursor_left_2 = self.ax_left.plot(self.freqs[0] / 1e6, np.angle(self.s11[0]), 'o', color=marker2_color_left, markersize=marker2_size_left, 
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
         if graph_type_2 == "Smith Diagram":
@@ -93,18 +93,18 @@ def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_colo
 
         elif graph_type_2 == "Magnitude":
             if hasattr(self, 'ax_right') and self.ax_right:
-                self.cursor_right = self.ax_right.plot(self.freqs[0], np.abs(self.s11[0]), 'o', color=marker_color_right, markersize=marker1_size_right, 
+                self.cursor_right = self.ax_right.plot(self.freqs[0] / 1e6, np.abs(self.s11[0]), 'o', color=marker_color_right, markersize=marker1_size_right, 
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
-                self.cursor_right_2 = self.ax_right.plot(self.freqs[0], np.abs(self.s11[0]), 'o', color=marker2_color_right, markersize=marker2_size_right, 
+                self.cursor_right_2 = self.ax_right.plot(self.freqs[0] / 1e6, np.abs(self.s11[0]), 'o', color=marker2_color_right, markersize=marker2_size_right, 
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
         elif graph_type_2 == "Phase":
             if hasattr(self, 'ax_right') and self.ax_right:
-                self.cursor_right = self.ax_right.plot(self.freqs[0], np.angle(self.s11[0]), 'o', color=marker_color_right, markersize=marker1_size_right, 
+                self.cursor_right = self.ax_right.plot(self.freqs[0] / 1e6, np.angle(self.s11[0]), 'o', color=marker_color_right, markersize=marker1_size_right, 
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
-                self.cursor_right_2 = self.ax_right.plot(self.freqs[0], np.angle(self.s11[0]), 'o', color=marker2_color_right, markersize=marker2_size_right, 
+                self.cursor_right_2 = self.ax_right.plot(self.freqs[0] / 1e6, np.angle(self.s11[0]), 'o', color=marker2_color_right, markersize=marker2_size_right, 
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
         
         # Update markers list with new cursor references

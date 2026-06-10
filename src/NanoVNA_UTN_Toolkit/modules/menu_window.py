@@ -30,6 +30,7 @@ get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.welcome_window.welcome_windows import NanoVNAWelcome
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.characterization_welcome.characterization_welcome import MaterialCharacterizationWelcome
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.characterization_welcome.characterization_welcome_false import CharacterizationFalse
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -349,9 +350,11 @@ class ModuleSelectionWindow(QMainWindow):
                 f"[ModuleSelectionWindow] Device {device_type} available - opening material characterization module"
             )
 
-            self.welcome_windows = MaterialCharacterizationWelcome(
+            """self.welcome_windows = MaterialCharacterizationWelcome(
                 vna_device=self.vna
-            )
+            )"""
+
+            self.welcome_windows = CharacterizationFalse()
 
         else:
 
@@ -359,7 +362,8 @@ class ModuleSelectionWindow(QMainWindow):
                 "[ModuleSelectionWindow] No device connected - using placeholder mode"
             )
 
-            self.welcome_windows = MaterialCharacterizationWelcome()
+            #self.welcome_windows = MaterialCharacterizationWelcome()
+            self.welcome_windows = CharacterizationFalse()
 
         self.welcome_windows.show()
 

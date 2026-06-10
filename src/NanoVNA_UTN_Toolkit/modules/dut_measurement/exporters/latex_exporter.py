@@ -566,7 +566,7 @@ class LatexExporter:
         )
         
         kits_ok = settings_calibration.value("Calibration/Kits", False, type=bool)
-        selected_kit = settings_calibration.value("Calibration/Name", "Normalization")
+        selected_kit = settings_calibration.value("Calibration/Name", "Thru Normalization")
         kit_id = settings_calibration.value("Calibration/id", 0)
         kit_name_only = selected_kit.rsplit("_", 1)[0]
         kit_name_only_tex = kit_name_only.replace("_", r"\_")

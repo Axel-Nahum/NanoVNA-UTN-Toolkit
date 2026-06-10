@@ -423,7 +423,7 @@ class NanoVNAGraphics(QMainWindow):
                     
             if is_connected:
                 logging.info("[graphics_window.__init__] Device ready - scheduling auto-sweep")
-                QTimer.singleShot(500, lambda: run_sweep(self))  # Delay to allow UI to load
+                QTimer.singleShot(1000, lambda: run_sweep(self))  # Delay to allow UI to load
             else:
                 logging.warning("[graphics_window.__init__] Device not available for auto-sweep")
         else:
@@ -449,7 +449,7 @@ class NanoVNAGraphics(QMainWindow):
         # ---------------- INIT REALTIME STATE ----------------
 
         self._rt_generation = 0
-        QTimer.singleShot(1500, lambda: start_realtime(self))
+        QTimer.singleShot(1000, lambda: start_realtime(self))
 
         self.markers = [
             {"cursor": self.cursor_left, "cursor_2": self.cursor_left_2, "slider": self.slider_left, "slider_2": self.slider_left_2, "label": self.labels_left, "label_2": self.labels_left_2, "update_cursor": self.update_cursor, "update_cursor_2": self.update_cursor_2},

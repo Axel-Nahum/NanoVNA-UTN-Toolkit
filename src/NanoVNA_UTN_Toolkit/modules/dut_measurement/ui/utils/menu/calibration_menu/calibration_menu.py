@@ -187,7 +187,7 @@ def select_kit_dialog(self):
 
         if kit_info["method"] == "OSM (Open - Short - Match)":
             parameter = "S11"
-        elif kit_info["method"] == "Normalization":
+        elif kit_info["method"] == "Thru Normalization":
             parameter = "S21"
         else:
             parameter = "S11, S21"

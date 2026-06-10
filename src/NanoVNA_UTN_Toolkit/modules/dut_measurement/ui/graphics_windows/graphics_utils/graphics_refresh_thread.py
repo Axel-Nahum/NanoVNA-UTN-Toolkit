@@ -1,5 +1,5 @@
 from PySide6.QtCore import QObject, Signal, QThread, QTimer
-from PySide6.QtWidgets import QMessageBox, QApplication
+from PySide6.QtWidgets import QMessageBox
 import numpy as np
 import logging
 import skrf as rf
@@ -34,7 +34,10 @@ get_calibration_path = safe_import(
     "get_calibration_path"
 )
 
-load_sweep_configuration = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils", "load_sweep_configuration")
+load_sweep_configuration = safe_import(
+    "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils",
+    "load_sweep_configuration"
+)
 
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.methods import Methods
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.kits import KitsCalibrator
@@ -49,18 +52,15 @@ class SweepWorker(QObject):
     error = Signal(str)
     progress = Signal(int)
 
-    def __init__(self, vna_device, start_freq, stop_freq, segments, parent = None, ):
+    def __init__(self, vna_device, start_freq, stop_freq, segments, parent=None):
         super().__init__()
-
         self.vna_device = vna_device
         self.start_freq = start_freq
         self.stop_freq = stop_freq
         self.segments = segments
-
         self.parent = parent
 
     def run(self):
-
         try:
             self.progress.emit(10)
 
@@ -74,10 +74,7 @@ class SweepWorker(QObject):
 
             self.progress.emit(25)
 
-            self.vna_device.resetSweep(
-                self.start_freq,
-                self.stop_freq
-            )
+            self.vna_device.resetSweep(self.start_freq, self.stop_freq)
 
             self.progress.emit(50)
 
@@ -138,15 +135,13 @@ def run_sweep(self):
     preset = sf_settings.value("kalman/preset", "Default")
 
     if preset != "Off" and not self.realtime_checkbox.isChecked():
-        # Reset Kalman
-        if hasattr(self, 'kf_s11'): self.kf_s11.reset()
-        if hasattr(self, 'kf_s21'): self.kf_s21.reset()
+        self.kf_s11.reset()
+        self.kf_s21.reset()
 
     self.sweep_button.setText("Sweeping...")
     self.sweep_button.setEnabled(False)
     self.sweep_progress_bar.setVisible(True)
     self.sweep_progress_bar.setValue(0)
-
     self.reconnect_button.setEnabled(False)
 
     # ---------------- THREAD SETUP ---------------- #
@@ -161,18 +156,15 @@ def run_sweep(self):
     )
 
     self.worker.moveToThread(self.thread)
-
     self.thread.started.connect(self.worker.run)
-
     self.worker.progress.connect(self.sweep_progress_bar.setValue)
     self.worker.finished.connect(lambda result: on_sweep_finished(self, result))
     self.worker.error.connect(lambda msg: on_sweep_error(self, msg))
-
     self.worker.finished.connect(self.thread.quit)
     self.worker.finished.connect(self.worker.deleteLater)
     self.thread.finished.connect(self.thread.deleteLater)
-
     self.thread.start()
+
 
 def on_sweep_finished(self, result):
 
@@ -214,7 +206,7 @@ def on_sweep_finished(self, result):
         if calibration_method == "OSM (Open - Short - Match)":
             s11 = methods.osm_calibrate_s11(s11_med)
 
-        elif calibration_method == "Normalization":
+        elif calibration_method == "Thru Normalization":
             cal_dir = get_calibration_path(
                 "modules/dut_measurement/calibration/thru_results",
                 "modules/dut_measurement/calibration/thru_results",
@@ -225,7 +217,6 @@ def on_sweep_finished(self, result):
 
         elif calibration_method == "1-Port+N":
             s11 = methods.osm_calibrate_s11(s11_med)
-
             cal_dir = get_calibration_path(
                 "modules/dut_measurement/calibration/thru_results",
                 "modules/dut_measurement/calibration/thru_results",
@@ -235,57 +226,41 @@ def on_sweep_finished(self, result):
             s21 = methods.normalization_calibrate_s21(s21_med)
 
         elif calibration_method == "Enhanced-Response":
-
             osm_dir = get_calibration_path(
                 "modules/dut_measurement/calibration/osm_results",
                 "modules/dut_measurement/calibration/osm_results",
                 Path(__file__).resolve()
             )
-
             thru_dir = get_calibration_path(
                 "modules/dut_measurement/calibration/thru_results",
                 "modules/dut_measurement/calibration/thru_results",
                 Path(__file__).resolve()
             )
-
             s11, s21 = methods.enhanced_response_calibrate(
                 s11_med, s21_med, osm_dir, thru_dir
             )
 
     elif kits_ok:
-
         selected_kit_dir = get_calibration_path(
             "modules/dut_measurement/calibration/Kits",
             "modules/dut_measurement/calibration/Kits",
             Path(__file__).resolve()
         )
-
         kits_calibrator = KitsCalibrator(selected_kit_dir)
-
         s11, s21 = kits_calibrator.kits_selected(
-            calibration_method,
-            kit_name,
-            s11_med,
-            s21_med
+            calibration_method, kit_name, s11_med, s21_med
         )
 
     elif is_import_dut:
-
         settings.setValue("Calibration/DUT", True)
-
         data_dut = rf.Network(self.dut)
-
         freqs = data_dut.f
         s11 = data_dut.s[:, 0, 0]
         s21 = data_dut.s[:, 1, 0]
 
     # -------------------------------------------------
-    # STORE DATA
+    # KALMAN FILTER
     # -------------------------------------------------
-
-    # ----------------------------------------------------
-    # Plot Manager settings
-    # ----------------------------------------------------
 
     settings = get_settings(
         "INI/dut_measurement/signal_filters/signal_filters.ini",
@@ -294,8 +269,6 @@ def on_sweep_finished(self, result):
     )
 
     is_kalman_enabled = settings.value("kalman/enabled", False, type=bool)
-
-    # kalman filter for smoothing
 
     if is_kalman_enabled:
         s11_f = np.array([self.kf_s11.update(x) for x in s11])
@@ -313,61 +286,40 @@ def on_sweep_finished(self, result):
     # -------------------------------------------------
 
     update_plots_with_new_data(self, skip_reset=True)
-
     _reset_markers_after_sweep(self)
-    
-    # Additional reset specifically for Run Sweep to ensure cursor info is updated
-    def final_run_sweep_cursor_reset():
-        try:
-            if self.cursor_left and getattr(self.cursor_left, "ax", None):
-                self.update_cursor_info(self.cursor_left)
-        except Exception as e:
-            logging.warning("[graphics_window.run_sweep] Cursor left invalid: %s", e)
 
+    self.update_cursor(0)
+    self.update_right_cursor(0)
+
+    # -------------------------------------------------
+    # RESET CURSORS — single call, after rendering
+    # -------------------------------------------------
+
+    def _reset_cursors():
         try:
-            logging.info("[graphics_window.run_sweep] FINAL: Ensuring cursor information is displayed after run sweep")
-            
-            # Force sliders to leftmost position
-            if hasattr(self, 'slider_left') and self.slider_left:
-                self.slider_left.set_val(0)
-            if hasattr(self, 'slider_left_2') and self.slider_left_2:
-                self.slider_left_2.set_val(0)
-            if hasattr(self, 'slider_right') and self.slider_right:
-                self.slider_right.set_val(0)
-            if hasattr(self, 'slider_right_2') and self.slider_right_2:
-                self.slider_right_2.set_val(0)
-            
-            # Force cursor information update
             if hasattr(self, 'update_cursor') and callable(self.update_cursor):
                 self.update_cursor(0)
-                logging.info("[graphics_window.run_sweep] FINAL: Left cursor info updated to show minimum frequency data")
-
             if hasattr(self, 'update_cursor_2') and callable(self.update_cursor_2):
                 self.update_cursor_2(0)
-                logging.info("[graphics_window.run_sweep] FINAL: Left cursor info updated to show minimum frequency data")
-            
             if hasattr(self, 'update_right_cursor') and callable(self.update_right_cursor):
                 self.update_right_cursor(0)
-                logging.info("[graphics_window.run_sweep] FINAL: Right cursor info updated to show minimum frequency data")
-            
             if hasattr(self, 'update_right_cursor_2') and callable(self.update_right_cursor_2):
                 self.update_right_cursor_2(0)
-                logging.info("[graphics_window.run_sweep] FINAL: Right cursor info updated to show minimum frequency data")
-                
-            # Force canvas redraw
             if hasattr(self, 'canvas_left') and self.canvas_left:
                 self.canvas_left.draw()
             if hasattr(self, 'canvas_right') and self.canvas_right:
                 self.canvas_right.draw()
-    
         except Exception as e:
-            logging.warning(f"[graphics_window.run_sweep] Error in final cursor reset: {e}")
-    
-    # Execute final reset after 200ms to ensure everything is configured
-    QTimer.singleShot(200, final_run_sweep_cursor_reset)
-    
-    #self.sweep_button.setEnabled(True)
+            logging.warning(f"[on_sweep_finished] _reset_cursors error: {e}")
+
+    QTimer.singleShot(50, _reset_cursors)
+
+    # -------------------------------------------------
+    # UI STATE
+    # -------------------------------------------------
+
     self.sweep_progress_bar.setVisible(False)
+    self.sweep_progress_bar.setValue(0)
     self.reconnect_button.setEnabled(True)
 
     if getattr(self, '_rt_active', False):
@@ -375,14 +327,8 @@ def on_sweep_finished(self, result):
     else:
         self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
 
-    if hasattr(self, "sweep_button"):
-        if self._initial_sweep_done:  
-            self._initial_sweep_done = True
-            self.sweep_button.setEnabled(True)
-
-    if hasattr(self, "sweep_progress_bar"):
-        self.sweep_progress_bar.setVisible(False)
-        self.sweep_progress_bar.setValue(0)
+    if not hasattr(self, '_initial_sweep_done') or not self._initial_sweep_done:
+        self._initial_sweep_done = True
 
     sf_settings = get_settings(
         "INI/dut_measurement/signal_filters/signal_filters.ini",
@@ -400,33 +346,12 @@ def on_sweep_finished(self, result):
     if self.realtime_checkbox.isChecked():
         self.sweep_button.setEnabled(True)
 
-    try:
-        if hasattr(self, 'update_cursor') and callable(self.update_cursor):
-            self.update_cursor(0)
-        if hasattr(self, 'update_cursor_2') and callable(self.update_cursor_2):
-            self.update_cursor_2(0)
-        if hasattr(self, 'update_right_cursor') and callable(self.update_right_cursor):
-            self.update_right_cursor(0)
-        if hasattr(self, 'update_right_cursor_2') and callable(self.update_right_cursor_2):
-            self.update_right_cursor_2(0)
-        self.canvas_left.draw_idle()
-        self.canvas_right.draw_idle()
-    except Exception as e:
-        logging.warning(f"[on_sweep_finished] cursor init: {e}")
-
-        self.slider_left.set_val(0)
-        self.slider_left_2.set_val(0)
-        self.slider_right.set_val(0)
-        self.slider_right_2.set_val(0)
-
 # =========================================================
 # ERROR HANDLER
 # =========================================================
 
 def on_sweep_error(self, msg):
-
     QMessageBox.critical(self, "Sweep Error", msg)
-
     self.sweep_button.setEnabled(True)
     self.sweep_progress_bar.setVisible(False)
     self.reconnect_button.setEnabled(True)

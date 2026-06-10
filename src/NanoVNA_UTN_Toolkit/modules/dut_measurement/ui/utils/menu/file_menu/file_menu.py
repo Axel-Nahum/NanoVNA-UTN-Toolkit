@@ -152,7 +152,7 @@ def import_touchstone_data_calibration(self):
 
     methods = [
         "OSM (Open - Short - Match)",
-        "Normalization",
+        "Thru Normalization",
         "1-Port+N",
         "Enhanced-Response"
     ]

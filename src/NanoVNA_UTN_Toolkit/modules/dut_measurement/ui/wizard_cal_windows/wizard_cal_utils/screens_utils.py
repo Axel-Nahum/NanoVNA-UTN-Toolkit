@@ -33,7 +33,7 @@ def step_OSM_MATCH(self):
     return label
 
 def step_Normalization(self):
-    label = QLabel("Step 1: Normalization")
+    label = QLabel("Step 1: Thru Normalization")
     label.setStyleSheet("font-size: 20px; font-weight: bold; padding: 8px;")
     label.setAlignment(Qt.AlignRight | Qt.AlignTop)
     return label
@@ -71,7 +71,7 @@ def get_steps_for_method(self):
             step_OSM_SHORT(self),
             step_OSM_MATCH(self)
         ]
-    elif self.selected_method == "Normalization":
+    elif self.selected_method == "Thru Normalization":
         return [step_Normalization(self)]
     elif self.selected_method == "1-Port+N":
         return [
@@ -119,7 +119,7 @@ def show_current_step_measurement(self, step):
                 step_name = "short"
             elif step == 3:
                 step_name = "match"
-        elif self.selected_method == "Normalization":
+        elif self.selected_method == "Thru Normalization":
             if step == 1:
                 step_name = "thru"
 
@@ -151,7 +151,7 @@ def show_current_step_measurement(self, step):
             manager.builder.draw_base_smith_chart(base_network)
             self.current_canvas.draw()
 
-        if self.selected_method == "Normalization" and step_name == "thru":
+        if self.selected_method == "Thru Normalization" and step_name == "thru":
             if self.thru_calibration.is_standard_measured(step_name):
                 measurement = self.thru_calibration.get_measurement(step_name)
                 if measurement:

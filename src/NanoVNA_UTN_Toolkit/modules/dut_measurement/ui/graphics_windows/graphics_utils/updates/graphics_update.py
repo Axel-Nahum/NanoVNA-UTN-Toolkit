@@ -87,6 +87,8 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             
             # Add starting point marker
             builder.add_start_point_marker(s_data, color=tracecolor)
+
+            data_line = None
                     
         elif graph_type == "Magnitude":
             # Plot magnitude
@@ -108,7 +110,7 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
 
             logging.info(f"[Cursor] Frequency: {cursor_x:.6f} MHz, Magnitude: {cursor_y:.3f} {unit}")
 
-            ax.plot(freqs / 1e6, magnitude_db, color=tracecolor, linewidth=linewidth)
+            data_line, = ax.plot(freqs / 1e6, magnitude_db, color=tracecolor, linewidth=linewidth)
 
             ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=f"{text_color}")
             
@@ -182,7 +184,7 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
 
             fig.canvas.draw_idle()
 
-            ax.plot(freqs / 1e6, phase_deg, color=tracecolor, linewidth=linewidth)
+            data_line, = ax.plot(freqs / 1e6, phase_deg, color=tracecolor, linewidth=linewidth)
 
             ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=f"{text_color}")
             ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
@@ -259,8 +261,11 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
         cursor_graph_2.set_zorder(10)
         ax.add_line(cursor_graph_2)
         
+        return data_line
+    
     except Exception as e:
         logging.error(f"[graphics_window._recreate_single_plot] Error recreating plot: {e}")
+        return None
 
 def update_plots_with_new_data(self, skip_reset=False):
     """Update both plots with new sweep data."""
@@ -346,7 +351,7 @@ def update_plots_with_new_data(self, skip_reset=False):
             except Exception as e:
                 logging.debug(f"Failed to disconnect slider_right_2 events: {e}")"""
 
-        recreate_single_plot(
+        self.line_left = recreate_single_plot(
             self,
             ax=self.ax_left,
             fig=self.fig_left,
@@ -372,7 +377,7 @@ def update_plots_with_new_data(self, skip_reset=False):
         logging.info(f"[graphics_window.update_plots_with_new_data] Recreating right plot: {graph_type_tab2} - {s_param_tab2} - {marker_color2}")
         #unit_right = get_graph_unit(self, 2)
 
-        recreate_single_plot(
+        self.line_right = recreate_single_plot(
             self,
             ax=self.ax_right,
             fig=self.fig_right,

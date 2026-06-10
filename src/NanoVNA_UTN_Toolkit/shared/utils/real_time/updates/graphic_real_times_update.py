@@ -62,7 +62,8 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
         else:
             ax.set_ylim(self.ymin_right, self.ymax_right)
 
-    # SIN relim() ni autoscale_view()
+    ax.relim()
+    ax.autoscale_view()
 
 # ----------------------------------------------------------------------------------
 
@@ -74,8 +75,13 @@ def update_plots_realtime(self):
         if not hasattr(self.ax_right, "lines") or len(self.ax_right.lines) == 0:
             return
 
-        self.line_left  = self.ax_left.lines[0]
-        self.line_right = self.ax_right.lines[0]
+        #self.line_left  = self.ax_left.lines[0]
+        #self.line_right = self.ax_right.lines[0]
+
+        if not hasattr(self, "line_left") or self.line_left is None:
+            return
+        if not hasattr(self, "line_right") or self.line_right is None:
+            return
 
         if self.freqs is None or self.s11 is None or self.s21 is None:
             return

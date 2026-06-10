@@ -578,7 +578,7 @@ class THRUCalibrationManager:
 
                 logging.info(f"[CalibrationManager] Selected method: {selected_method}")
 
-                if selected_method == "Normalization":
+                if selected_method == "Thru Normalization":
                     s21 = self.measurements['thru']['s21']
                     freqs = self.measurements['thru']['freqs']
                     errors['transmission_tracking'] = s21
@@ -618,7 +618,7 @@ class THRUCalibrationManager:
                         logging.error(f"[THRUCalibrationManager] Cannot compute Enhanced-Response: missing {', '.join(missing)}")
                         return False, {}
             else:
-                if selected_method == "Normalization":
+                if selected_method == "Thru Normalization":
                     s11, s21, freqs = self.read_thru_file(files[3])
                     errors['transmission_tracking'] = s21
 
@@ -655,7 +655,7 @@ class THRUCalibrationManager:
                         return False, {}
 
             # === NORMALIZATION ===
-            if selected_method == "Normalization":
+            if selected_method == "Thru Normalization":
 
                 self._save_thru_error_file(freqs, s, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
 

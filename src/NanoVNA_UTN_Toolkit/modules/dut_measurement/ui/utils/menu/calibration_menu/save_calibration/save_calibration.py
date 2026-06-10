@@ -67,8 +67,8 @@ def save_kit_dialog(self):
 
     if selected_method == "OSM (Open - Short - Match)":
         prefix = "OSM"
-    elif selected_method == "Normalization":
-        prefix = "Normalization"
+    elif selected_method == "Thru Normalization":
+        prefix = "Thru Normalization"
     elif selected_method== "1-Port+N":
         prefix = "1PortN"
     elif selected_method == "Enhanced-Response":
@@ -91,7 +91,7 @@ def save_kit_dialog(self):
     if ok and name:
         try:
             # Save calibration (it will save only the available measurements)
-            if selected_method != "Normalization": 
+            if selected_method != "Thru Normalization": 
                 success = self.osm_calibration.save_calibration_file(name, selected_method, False, files)
                 if success:
                     # Show success message

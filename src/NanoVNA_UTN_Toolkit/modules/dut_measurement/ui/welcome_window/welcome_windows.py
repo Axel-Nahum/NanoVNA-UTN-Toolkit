@@ -550,7 +550,7 @@ class NanoVNAWelcome(QMainWindow):
 
         methods = [
             "OSM (Open - Short - Match)",
-            "Normalization",
+            "Thru Normalization",
             "1-Port+N",
             "Enhanced-Response"
         ]
@@ -599,8 +599,8 @@ class NanoVNAWelcome(QMainWindow):
 
         if selected_method == "OSM (Open - Short - Match)":
             prefix = "OSM"
-        elif selected_method == "Normalization":
-            prefix = "Normalization"
+        elif selected_method == "Thru Normalization":
+            prefix = "Thru Normalization"
         elif selected_method == "1-Port+N":
             prefix = "1PortN"
         elif selected_method == "Enhanced-Response":
@@ -722,7 +722,7 @@ class NanoVNAWelcome(QMainWindow):
 
                 if selected_method == "OSM (Open - Short - Match)":
                     parameter = "S11"
-                elif selected_method == "Normalization":
+                elif selected_method == "Thru Normalization":
                     parameter = "S21"
                 else:
                     parameter = "S11, S21"
@@ -855,7 +855,7 @@ class NanoVNAWelcome(QMainWindow):
 
             if matched_method == "OSM (Open - Short - Match)":
                 parameter = "S11"
-            elif matched_method == "Normalization":
+            elif matched_method == "Thru Normalization":
                 parameter = "S21"
             else:
                 parameter = "S11, S21"

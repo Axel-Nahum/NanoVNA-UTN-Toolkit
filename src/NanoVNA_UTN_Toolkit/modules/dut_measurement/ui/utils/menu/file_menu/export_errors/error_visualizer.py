@@ -34,7 +34,7 @@ _METHOD_TERMS = {
     "OSM (Open - Short - Match)": [
         "directivity", "source_match", "reflection_tracking"
     ],
-    "Normalization": [
+    "Thru Normalization": [
         "transmission_tracking"
     ],
     "1-Port+N": [
@@ -509,7 +509,7 @@ def open_error_visualizer(parent_self, errors_folder: str | None = None,
             _folder_map = {
                 "OSM (Open - Short - Match)":
                     ("modules/dut_measurement/calibration/osm_results/osm_errors",) * 2,
-                "Normalization":
+                "Thru Normalization":
                     ("modules/dut_measurement/calibration/thru_results/normalization_errors",) * 2,
                 "1-Port+N":
                     ("modules/dut_measurement/calibration/thru_results/1-Port+N_errors",) * 2,

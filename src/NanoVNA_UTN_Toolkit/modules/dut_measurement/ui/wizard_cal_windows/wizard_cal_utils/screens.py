@@ -123,7 +123,7 @@ def next_step(self, parent = None):
 
     # --- Control de visibilidad del botón "Save Calibration" ---
     if (
-        (self.selected_method == "Normalization" and self.current_step == 1)
+        (self.selected_method == "Thru Normalization" and self.current_step == 1)
         or (self.selected_method == "OSM (Open - Short - Match)" and self.current_step == 3)
         or (self.selected_method == "1-Port+N" and self.current_step == 4)
         or (self.selected_method == "Enhanced-Response" and self.current_step == 4)
@@ -205,7 +205,7 @@ def show_first_screen(self):
 
     self.freq_dropdown.addItems([
         "OSM (Open - Short - Match)",
-        "Normalization",
+        "Thru Normalization",
         "1-Port+N",
         "Enhanced-Response"
     ])
@@ -489,7 +489,7 @@ def show_step_screen(self, step, parent = None):
         elif step == 3:
             step_name = "MATCH"
 
-    if self.selected_method == "Normalization":
+    if self.selected_method == "Thru Normalization":
         if step == 1:
             step_name = "THRU"
 
@@ -578,10 +578,10 @@ def show_step_screen(self, step, parent = None):
             self.calibration_status_widgets[standard] = label
 
     # Measurement completion status
-    if self.thru_calibration and self.selected_method == "Normalization" or self.selected_method == "1-Port+N" or self.selected_method == "Enhanced-Response":
+    if self.thru_calibration and self.selected_method == "Thru Normalization" or self.selected_method == "1-Port+N" or self.selected_method == "Enhanced-Response":
         status = self.thru_calibration.get_completion_status()
 
-        if self.selected_method == "Normalization":
+        if self.selected_method == "Thru Normalization":
             status_label = QLabel(f"{self.dut_wizard_ui_calibration_status}")
             status_label.setStyleSheet("font-size: 16px; font-weight: bold; margin-top: 10px;")
             left_layout.addWidget(status_label)
@@ -655,7 +655,7 @@ def show_step_screen(self, step, parent = None):
     if self.osm_calibration and self.selected_method == "OSM (Open - Short - Match)":
         show_current_step_measurement(self, step)
 
-    if self.thru_calibration and self.selected_method == "Normalization":
+    if self.thru_calibration and self.selected_method == "Thru Normalization":
         show_current_step_measurement(self, step)
 
     self.current_step = step
@@ -702,7 +702,7 @@ def show_step_screen(self, step, parent = None):
 
     if step == len(steps):
         # Always show save button in final step for Thru calibration
-        if self.thru_calibration and self.selected_method == "Normalization":
+        if self.thru_calibration and self.selected_method == "Thru Normalization":
             self.save_button.setVisible(True)
         else:
             self.save_button.setVisible(False)

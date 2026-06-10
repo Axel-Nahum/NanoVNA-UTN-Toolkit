@@ -272,7 +272,7 @@ class KitsCalibrator:
         if selected_method == "OSM (Open - Short - Match)":
             s11 = self.osm_calibrate_s11(s11_med, selected_kit)
             s21 = s21_med
-        elif selected_method == "Normalization":
+        elif selected_method == "Thru Normalization":
             s11 = s11_med
             s21 = self.normalization_calibrate_s21(s21_med, selected_kit)
         elif selected_method == "1-Port+N":

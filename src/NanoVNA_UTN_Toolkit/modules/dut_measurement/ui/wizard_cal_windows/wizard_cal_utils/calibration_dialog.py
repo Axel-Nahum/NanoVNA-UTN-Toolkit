@@ -47,8 +47,8 @@ def save_calibration_dialog(self):
 
     if self.selected_method == "OSM (Open - Short - Match)":
         prefix = "OSM"
-    elif self.selected_method == "Normalization":
-        prefix = "Normalization"
+    elif self.selected_method == "Thru Normalization":
+        prefix = "Thru Normalization"
     elif self.selected_method == "1-Port+N":
         prefix = "1PortN"
     elif self.selected_method == "Enhanced-Response":
