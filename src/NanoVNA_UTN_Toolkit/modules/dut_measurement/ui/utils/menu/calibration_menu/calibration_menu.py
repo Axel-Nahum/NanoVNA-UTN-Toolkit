@@ -189,6 +189,8 @@ def select_kit_dialog(self):
             parameter = "S11"
         elif kit_info["method"] == "Thru Normalization":
             parameter = "S21"
+        elif kit_info["method"] == "Open/Short Normalization":
+            parameter = "S11"
         else:
             parameter = "S11, S21"
 

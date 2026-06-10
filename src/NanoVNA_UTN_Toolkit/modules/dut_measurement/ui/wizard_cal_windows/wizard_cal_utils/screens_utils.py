@@ -38,6 +38,12 @@ def step_Normalization(self):
     label.setAlignment(Qt.AlignRight | Qt.AlignTop)
     return label
 
+def step_OpenShortNormalization(self):
+    label = QLabel("Step 1: Open or Short (Open/Short Normalization)")
+    label.setStyleSheet("font-size: 20px; font-weight: bold; padding: 8px;")
+    label.setAlignment(Qt.AlignRight | Qt.AlignTop)
+    return label
+
 def step_OnePortN_OPEN(self):
     label = QLabel("Step 1: OPEN (1-Port+N)")
     label.setStyleSheet("font-size: 20px; font-weight: bold; padding: 8px;")
@@ -73,6 +79,8 @@ def get_steps_for_method(self):
         ]
     elif self.selected_method == "Thru Normalization":
         return [step_Normalization(self)]
+    elif self.selected_method == "Open/Short Normalization":
+        return [step_OpenShortNormalization(self)]
     elif self.selected_method == "1-Port+N":
         return [
             step_OnePortN_OPEN(self),
@@ -122,6 +130,9 @@ def show_current_step_measurement(self, step):
         elif self.selected_method == "Thru Normalization":
             if step == 1:
                 step_name = "thru"
+        elif self.selected_method == "Open/Short Normalization":
+            if step == 1:
+                step_name = "open"
 
         # Show only the measurement for the current step if it exists
         if self.selected_method == "OSM (Open - Short - Match)" and step_name in ["open", "short", "match"]:
@@ -177,10 +188,24 @@ def show_current_step_measurement(self, step):
                 )
                 # Create empty y-data for magnitude plot
                 s_data_empty = np.zeros_like(freqs_base)
-                
+
                 manager.builder.ax = self.current_ax
                 manager.builder.plot_base_magnitude(freqs_base, s_data_empty)  # Replace Smith chart base with magnitude
                 self.current_canvas.draw()
+
+        if self.selected_method == "Open/Short Normalization" and step_name in ("open", "short"):
+            if hasattr(self, 'os_calibration') and self.os_calibration and self.os_calibration.is_standard_measured(step_name):
+                measurement = self.os_calibration.get_measurement()
+                if measurement:
+                    freqs, s11 = measurement
+                    manager = SmithChartManager()
+                    manager.update_wizard_measurement(
+                        ax=self.current_ax,
+                        freqs=freqs,
+                        s11_data=s11,
+                        standard_name=step_name,
+                        canvas=self.current_canvas
+                    )
 
     except Exception as e:
         logging.error(f"[CalibrationWizard] Error showing current step measurement: {e}")

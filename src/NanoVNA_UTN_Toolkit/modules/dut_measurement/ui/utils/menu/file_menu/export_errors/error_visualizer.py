@@ -37,6 +37,9 @@ _METHOD_TERMS = {
     "Thru Normalization": [
         "transmission_tracking"
     ],
+    "Open/Short Normalization": [
+        "reflection_tracking"
+    ],
     "1-Port+N": [
         "directivity", "source_match", "reflection_tracking", "transmission_tracking"
     ],
@@ -511,6 +514,8 @@ def open_error_visualizer(parent_self, errors_folder: str | None = None,
                     ("modules/dut_measurement/calibration/osm_results/osm_errors",) * 2,
                 "Thru Normalization":
                     ("modules/dut_measurement/calibration/thru_results/normalization_errors",) * 2,
+                "Open/Short Normalization":
+                    ("modules/dut_measurement/calibration/open_short_results/open_short_normalization_errors",) * 2,
                 "1-Port+N":
                     ("modules/dut_measurement/calibration/thru_results/1-Port+N_errors",) * 2,
                 "Enhanced-Response":

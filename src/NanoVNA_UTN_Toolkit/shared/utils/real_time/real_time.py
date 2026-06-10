@@ -340,6 +340,14 @@ def _build_calibration_fn(self):
             )
             return s11_raw, Methods(thru_dir).normalization_calibrate_s21(s21_raw)
 
+        if method == "Open/Short Normalization":
+            os_dir = get_calibration_path(
+                "modules/dut_measurement/calibration/open_short_results",
+                "modules/dut_measurement/calibration/open_short_results",
+                Path(__file__).resolve()
+            )
+            return Methods(os_dir).open_short_normalization_calibrate_s11(s11_raw), s21_raw
+
         if method == "1-Port+N":
             s11_cal = methods.osm_calibrate_s11(s11_raw)
             thru_dir = get_calibration_path(

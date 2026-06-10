@@ -262,6 +262,33 @@ class CalibrationErrors:
 
         return open_s, short_s, match_s
 
+    def calculate_open_short_normalization_errors(self):
+        """
+        Compute and save Open/Short normalization calibration errors.
+        The measured S11 (already sign-corrected) represents the reflection tracking error (e01*e10).
+        """
+        logging.info("[CalibrationErrors] Reading Open/Short calibration file")
+        open_short_s = self._load_open_short_file()
+        freq = open_short_s.f
+        s11_measured = open_short_s.s[:, 0, 0]
+
+        reflection_tracking = s11_measured
+
+        self._save_osm_error_file(freq, reflection_tracking, "reflection_tracking.s1p", "Reflection tracking")
+
+        self.reflection_tracking = reflection_tracking
+        self.directivity = None
+        self.source_match = None
+
+        logging.info("[CalibrationErrors] Open/Short normalization error calculation completed")
+
+    def _load_open_short_file(self):
+        """Load the Open/Short S1P file used for normalization calibration."""
+        open_short_file = os.path.join(self.calibration_dir, "open_short.s1p")
+        if not os.path.exists(open_short_file):
+            raise FileNotFoundError(f"[CalibrationErrors] Missing Open/Short calibration file: {open_short_file}")
+        return rf.Network(open_short_file)
+
     def _load_thru_file(self):
         """Load the THRU S1P file used for normalization calibration."""
         logging.info("[CalibrationErrors] Loading THRU calibration file...")

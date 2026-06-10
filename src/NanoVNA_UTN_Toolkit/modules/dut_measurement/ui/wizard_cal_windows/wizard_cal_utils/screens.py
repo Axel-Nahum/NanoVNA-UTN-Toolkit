@@ -124,6 +124,7 @@ def next_step(self, parent = None):
     # --- Control de visibilidad del botón "Save Calibration" ---
     if (
         (self.selected_method == "Thru Normalization" and self.current_step == 1)
+        or (self.selected_method == "Open/Short Normalization" and self.current_step == 1)
         or (self.selected_method == "OSM (Open - Short - Match)" and self.current_step == 3)
         or (self.selected_method == "1-Port+N" and self.current_step == 4)
         or (self.selected_method == "Enhanced-Response" and self.current_step == 4)
@@ -145,6 +146,7 @@ def show_first_screen(self):
     clear_content(self)
 
     self.selected_method = None
+    self.selected_standard = "open"
     self.next_button.setEnabled(False)
 
     self.next_button.setText("▶▶")
@@ -205,6 +207,7 @@ def show_first_screen(self):
 
     self.freq_dropdown.addItems([
         "OSM (Open - Short - Match)",
+        "Open/Short Normalization",
         "Thru Normalization",
         "1-Port+N",
         "Enhanced-Response"
@@ -212,12 +215,8 @@ def show_first_screen(self):
 
     self.freq_dropdown.currentIndexChanged.connect(
         lambda index: (
-            setattr(
-                self,
-                "selected_method",
-                self.freq_dropdown.currentText()
-            ),
-            self.next_button.setEnabled(index > 0)
+            setattr(self, "selected_method", self.freq_dropdown.currentText()),
+            self.next_button.setEnabled(index > 0),
         )
     )
 
@@ -300,7 +299,6 @@ def show_first_screen(self):
     methods_frame_layout.addWidget(methods_description)
     methods_frame_layout.addSpacing(15)
     methods_frame_layout.addLayout(dropdown_layout)
-
     methods_frame_layout.addWidget(methods_group)
 
     # ================================================
@@ -493,6 +491,10 @@ def show_step_screen(self, step, parent = None):
         if step == 1:
             step_name = "THRU"
 
+    if self.selected_method == "Open/Short Normalization":
+        if step == 1:
+            step_name = "OPEN"
+
     if self.selected_method == "1-Port+N":
         if step == 1:
             step_name = "OPEN"
@@ -521,23 +523,37 @@ def show_step_screen(self, step, parent = None):
     if self.thru_calibration:
         is_measured = self.thru_calibration.is_standard_measured(step_name.lower())
 
-    if is_measured:
-        instruction_text = f"{step_name} standard already measured ✓"
-        instruction_style = "font-size: 14px; padding: 8px; color: lightgreen;"
+    if hasattr(self, 'os_calibration') and self.os_calibration and self.selected_method == "Open/Short Normalization":
+        is_measured = self.os_calibration.is_standard_measured(step_name.lower())
+
+    if self.selected_method == "Open/Short Normalization":
+        if is_measured:
+            instruction_text = "Open or Short standard already measured ✓"
+            instruction_style = "font-size: 14px; padding: 8px; color: lightgreen;"
+        else:
+            instruction_text = "Connect Open or Short standard and press Measure"
+            instruction_style = "font-size: 14px; padding: 8px; color: yellow;"
     else:
-        instruction_text = f"{self.dut_wizard_ui_instruction_text.format(step_name=step_name)}"
-        instruction_style = "font-size: 14px; padding: 8px; color: yellow;"
-        
+        if is_measured:
+            instruction_text = f"{step_name} standard already measured ✓"
+            instruction_style = "font-size: 14px; padding: 8px; color: lightgreen;"
+        else:
+            instruction_text = f"{self.dut_wizard_ui_instruction_text.format(step_name=step_name)}"
+            instruction_style = "font-size: 14px; padding: 8px; color: yellow;"
+
     instruction_label = QLabel(instruction_text)
     instruction_label.setAlignment(Qt.AlignCenter)
     instruction_label.setStyleSheet(instruction_style)
     instruction_label.setWordWrap(True)
     left_layout.addWidget(instruction_label)
-    
+
     # Button to perform measurement
     measure_button = QPushButton(f"{self.dut_wizard_ui_re_measure_label_button}" if is_measured else f"{self.dut_wizard_ui_measure_label_button}")
     measure_button.setStyleSheet("font-size: 16px; padding: 10px; font-weight: bold;")
-    measure_button.clicked.connect(lambda: perform_calibration_measurement(self, step, step_name))
+    if self.selected_method == "Open/Short Normalization":
+        measure_button.clicked.connect(lambda: perform_calibration_measurement(self, step, "OPEN"))
+    else:
+        measure_button.clicked.connect(lambda: perform_calibration_measurement(self, step, step_name))
     left_layout.addWidget(measure_button)
     
     # Status label to show measurement state
@@ -658,6 +674,9 @@ def show_step_screen(self, step, parent = None):
     if self.thru_calibration and self.selected_method == "Thru Normalization":
         show_current_step_measurement(self, step)
 
+    if hasattr(self, 'os_calibration') and self.os_calibration and self.selected_method == "Open/Short Normalization":
+        show_current_step_measurement(self, step)
+
     self.current_step = step
     self.back_button.setVisible(step > 0)
     
@@ -679,34 +698,7 @@ def show_step_screen(self, step, parent = None):
         pass
 
     if step == len(steps):
-        # Always show save button in final step for OSM calibration
-        if self.osm_calibration and self.selected_method == "OSM (Open - Short - Match)":
-            self.save_button.setVisible(True)
-        else:
-            self.save_button.setVisible(False)
-            
-        self.next_button.setText("Finish")
-        try:
-            self.next_button.clicked.disconnect()
-        except Exception:
-            pass
-        self.next_button.clicked.connect(lambda: finish_wizard(self))
-    else:
-        self.save_button.setVisible(False)  # Hide save button in non-final steps
-        self.next_button.setText("▶▶")
-        try:
-            self.next_button.clicked.disconnect()
-        except Exception:
-            pass
-        self.next_button.clicked.connect(lambda: next_step(self))
-
-    if step == len(steps):
-        # Always show save button in final step for Thru calibration
-        if self.thru_calibration and self.selected_method == "Thru Normalization":
-            self.save_button.setVisible(True)
-        else:
-            self.save_button.setVisible(False)
-            
+        self.save_button.setVisible(True)
         self.next_button.setText(f"{self.dut_wizard_ui_label_finish_button}")
         try:
             self.next_button.clicked.disconnect()
@@ -714,51 +706,7 @@ def show_step_screen(self, step, parent = None):
             pass
         self.next_button.clicked.connect(lambda: finish_wizard(self))
     else:
-        self.save_button.setVisible(False)  # Hide save button in non-final steps
-        self.next_button.setText("▶▶")
-        try:
-            self.next_button.clicked.disconnect()
-        except Exception:
-            pass
-        self.next_button.clicked.connect(lambda: next_step(self))
-
-    if step == len(steps):
-        # Always show save button in final step for Thru calibration
-        if self.thru_calibration and self.selected_method == "1-Port+N":
-            self.save_button.setVisible(True)
-        else:
-            self.save_button.setVisible(False)
-            
-        self.next_button.setText(f"{self.dut_wizard_ui_label_finish_button}")
-        try:
-            self.next_button.clicked.disconnect()
-        except Exception:
-            pass
-        self.next_button.clicked.connect(lambda: finish_wizard(self))
-    else:
-        self.save_button.setVisible(False)  # Hide save button in non-final steps
-        self.next_button.setText("▶▶")
-        try:
-            self.next_button.clicked.disconnect()
-        except Exception:
-            pass
-        self.next_button.clicked.connect(lambda: next_step(self))
-
-    if step == len(steps):
-        # Always show save button in final step for Thru calibration
-        if self.thru_calibration and self.selected_method == "Enhanced-Response":
-            self.save_button.setVisible(True)
-        else:
-            self.save_button.setVisible(False)
-            
-        self.next_button.setText(f"{self.dut_wizard_ui_label_finish_button}")
-        try:
-            self.next_button.clicked.disconnect()
-        except Exception:
-            pass
-        self.next_button.clicked.connect(lambda: finish_wizard(self))
-    else:
-        self.save_button.setVisible(False)  # Hide save button in non-final steps
+        self.save_button.setVisible(False)
         self.next_button.setText("▶▶")
         try:
             self.next_button.clicked.disconnect()

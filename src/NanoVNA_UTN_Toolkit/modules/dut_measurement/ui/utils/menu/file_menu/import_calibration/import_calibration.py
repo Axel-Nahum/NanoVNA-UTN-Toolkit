@@ -38,7 +38,9 @@ def save_calibration_dialog(self, selected_method, files):
     if selected_method == "OSM (Open - Short - Match)":
         prefix = "OSM"
     elif selected_method == "Thru Normalization":
-        prefix = "Thru Normalization"
+        prefix = "Thru_Normalization"
+    elif selected_method == "Open/Short Normalization":
+        prefix = "OpenShort_Normalization"
     elif selected_method == "1-Port+N":
         prefix = "1PortN"
     elif selected_method == "Enhanced-Response":
@@ -157,6 +159,8 @@ def save_calibration_dialog(self, selected_method, files):
                 parameter = "S11"
             elif selected_method == "Thru Normalization":
                 parameter = "S21"
+            elif selected_method == "Open/Short Normalization":
+                parameter = "S11"
             else:
                 parameter = "S11, S21"
 

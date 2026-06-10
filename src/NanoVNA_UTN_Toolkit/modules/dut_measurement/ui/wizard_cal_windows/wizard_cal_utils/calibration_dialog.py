@@ -25,19 +25,25 @@ def save_calibration_dialog(self):
         return
         
     # Check which measurements are available
-    osm_status = self.osm_calibration.get_completion_status()
-    thru_status = self.thru_calibration.get_completion_status()
+    if self.selected_method == "Open/Short Normalization":
+        if not hasattr(self, 'os_calibration') or not self.os_calibration:
+            QMessageBox.warning(self, "No Measurements", "No calibration measurements have been taken yet.")
+            return
+        os_status = self.os_calibration.get_completion_status()
+        measured_standards = [std for std, completed in os_status.items() if completed and std != 'complete']
+    else:
+        osm_status = self.osm_calibration.get_completion_status()
+        thru_status = self.thru_calibration.get_completion_status()
+        measured_standards = [
+            std for std, completed in osm_status.items() if completed and std != 'complete'
+        ] + [
+            std for std, completed in thru_status.items() if completed and std != 'complete'
+        ]
 
-    measured_standards = [
-        std for std, completed in osm_status.items() if completed and std != 'complete'
-    ] + [
-        std for std, completed in thru_status.items() if completed and std != 'complete'
-    ]
-    
     if not measured_standards:
         QMessageBox.warning(
-            self, 
-            "No Measurements", 
+            self,
+            "No Measurements",
             "No calibration measurements have been taken yet.\nPlease perform at least one measurement before saving."
         )
         return
@@ -48,7 +54,9 @@ def save_calibration_dialog(self):
     if self.selected_method == "OSM (Open - Short - Match)":
         prefix = "OSM"
     elif self.selected_method == "Thru Normalization":
-        prefix = "Thru Normalization"
+        prefix = "Thru_Normalization"
+    elif self.selected_method == "Open/Short Normalization":
+        prefix = "OpenShort_Normalization"
     elif self.selected_method == "1-Port+N":
         prefix = "1PortN"
     elif self.selected_method == "Enhanced-Response":
@@ -63,40 +71,37 @@ def save_calibration_dialog(self):
     
     if ok and name:
         try:
-            # Save calibration (it will save only the available measurements)
-            success = self.osm_calibration.save_calibration_file(name, self.selected_method, False)
-            if success:
-                # Show success message
-                from PySide6.QtWidgets import QMessageBox
-                QMessageBox.information(
-                    self, 
-                    "Success", 
-                    f"Calibration '{name}' saved successfully!\n\nSaved measurements: {', '.join(measured_standards).upper()}\n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
-                )
-                
-                # Stay in wizard - do not advance to graphics window
-                logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
-                
+            if self.selected_method == "Open/Short Normalization":
+                success = self.os_calibration.save_calibration_file(name, self.selected_method, False)
+                if success:
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self,
+                        "Success",
+                        f"Calibration '{name}' saved successfully!\n\nUse 'Finish' button to continue to graphics window."
+                    )
+                    logging.info(f"Open/Short Normalization kit '{name}' saved successfully")
             else:
-                from PySide6.QtWidgets import QMessageBox
-                #QMessageBox.warning(self, "Error", "Failed to save calibration") hay un error aca y entra primero
+                # Save calibration (it will save only the available measurements)
+                success = self.osm_calibration.save_calibration_file(name, self.selected_method, False)
+                if success:
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self,
+                        "Success",
+                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: {', '.join(measured_standards).upper()}\n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                    )
+                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
 
-            success = self.thru_calibration.save_calibration_file(name, self.selected_method, False, osm_instance=self.osm_calibration)
-            if success:
-                # Show success message
-                from PySide6.QtWidgets import QMessageBox
-                QMessageBox.information(
-                    self, 
-                    "Success", 
-                    f"Calibration '{name}' saved successfully!\n\nSaved measurements: {', '.join(measured_standards).upper()}\n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
-                )
-                
-                # Stay in wizard - do not advance to graphics window
-                logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
-                
-            else:
-                from PySide6.QtWidgets import QMessageBox
-                #QMessageBox.warning(self, "Error", "Failed to save calibration")
+                success = self.thru_calibration.save_calibration_file(name, self.selected_method, False, osm_instance=self.osm_calibration)
+                if success:
+                    from PySide6.QtWidgets import QMessageBox
+                    QMessageBox.information(
+                        self,
+                        "Success",
+                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: {', '.join(measured_standards).upper()}\n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                    )
+                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
 
             # --- Read current calibration method ---
             # Use new calibration structure

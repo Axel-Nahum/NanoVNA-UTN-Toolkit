@@ -176,8 +176,10 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             ax.grid(current_state_grid)
 
         elif graph_type == "Phase":
-            # Plot phase
-            phase_deg = np.angle(s_data) * 180 / np.pi
+            # Plot phase — unwrap then normalize to avoid ±180° oscillation
+            phase_deg = np.degrees(np.unwrap(np.angle(s_data)))
+            if np.mean(phase_deg) < -90:
+                phase_deg += 360
 
             cursor_graph.set_xdata([freqs[0] * 1e-6])
             cursor_graph.set_ydata([phase_deg[0]])

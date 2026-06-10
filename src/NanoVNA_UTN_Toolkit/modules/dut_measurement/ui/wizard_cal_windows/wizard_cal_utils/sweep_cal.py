@@ -75,6 +75,18 @@ def update_calibration_status_display(self):
                 widget.setText(f"{icon} {standard.upper()}: {status_text}")
                 widget.setStyleSheet(f"font-size: 14px; color: {color}; margin-left: 10px;")
 
+    if hasattr(self, 'calibration_status_widgets') and hasattr(self, 'os_calibration') and self.os_calibration:
+        status = self.os_calibration.get_completion_status()
+
+        for standard, widget in self.calibration_status_widgets.items():
+            if standard in status:
+                completed = status[standard]
+                icon = "✓" if completed else "✗"
+                color = "green" if completed else "red"
+                status_text = 'Completed' if completed else 'Pending'
+                widget.setText(f"{icon} {standard.upper()}: {status_text}")
+                widget.setStyleSheet(f"font-size: 14px; color: {color}; margin-left: 10px;")
+
 def unit_multiplier(self, unit):
     return {"Hz": 1, "kHz": 1e3, "MHz": 1e6, "GHz": 1e9}[unit]
 
@@ -301,27 +313,33 @@ def perform_calibration_measurement(self, step, standard_name):
                 logging.error(f"[CalibrationWizard] Data count mismatch - this may indicate datapoints configuration issues")
 
             if standard_name == "OPEN" or standard_name == "SHORT" or standard_name == "MATCH":
-                
-                # Save data in calibration structure
-                if self.osm_calibration:
-                    if standard_name == "OPEN":
-                        self.osm_calibration.set_measurement("open", freqs, s11)
-                    elif standard_name == "SHORT":
-                        self.osm_calibration.set_measurement("short", freqs, s11)
-                    elif standard_name == "MATCH":
-                        self.osm_calibration.set_measurement("match", freqs, s11)
-                    
-                    # Show completion status
-                    status = self.osm_calibration.get_completion_status()
-                    logging.info(f"[CalibrationWizard] Calibration status: {status}")
-                    
-                    # Update the status display immediately after measurement
-                    update_calibration_status_display(self)
-                    
-                    # Update UI state after measurement
-                    self.status_label.setText(f"{standard_name} measurement complete")
-                    self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
-                
+
+                if getattr(self, 'selected_method', None) == "Open/Short Normalization" and standard_name in ("OPEN", "SHORT"):
+                    # Route to Open/Short Normalization calibration manager
+                    if hasattr(self, 'os_calibration') and self.os_calibration:
+                        standard_key = standard_name.lower()
+                        self.os_calibration.set_measurement(standard_key, freqs, s11)
+                        status = self.os_calibration.get_completion_status()
+                        logging.info(f"[CalibrationWizard] Open/Short calibration status: {status}")
+                        update_calibration_status_display(self)
+                        self.status_label.setText(f"{standard_name} measurement complete")
+                        self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
+                else:
+                    # Route to OSM calibration manager
+                    if self.osm_calibration:
+                        if standard_name == "OPEN":
+                            self.osm_calibration.set_measurement("open", freqs, s11)
+                        elif standard_name == "SHORT":
+                            self.osm_calibration.set_measurement("short", freqs, s11)
+                        elif standard_name == "MATCH":
+                            self.osm_calibration.set_measurement("match", freqs, s11)
+
+                        status = self.osm_calibration.get_completion_status()
+                        logging.info(f"[CalibrationWizard] Calibration status: {status}")
+                        update_calibration_status_display(self)
+                        self.status_label.setText(f"{standard_name} measurement complete")
+                        self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
+
                 # Update Smith chart with measured data
                 update_smith_chart(self, freqs, s11, standard_name)
                 

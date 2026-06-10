@@ -35,7 +35,10 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
         else:
             y_data = np.abs(s_data)
     elif graph_type == "Phase":
-        y_data = np.angle(s_data) * 180 / np.pi
+        # Unwrap then normalize to avoid ±180° oscillation
+        y_data = np.degrees(np.unwrap(np.angle(s_data)))
+        if np.mean(y_data) < -90:
+            y_data += 360
     else:
         return
 

@@ -790,3 +790,141 @@ class THRUCalibrationManager:
         s21_corrected = s21_raw / cal_s21_interp
         logging.info("[THRUCalibrationManager] THRU calibration applied successfully")
         return s21_corrected
+
+
+class OpenShortCalibrationManager:
+    """
+    Open/Short Normalization calibration manager.
+    Measures either an OPEN or SHORT standard and uses S11 as the reflection tracking error (e01*e10).
+    Sign is corrected at storage time: OPEN → +s11, SHORT → -s11.
+    """
+
+    def __init__(self, base_path: str = None):
+
+        base_path = get_calibration_path(
+            "modules/dut_measurement/calibration",
+            "modules/dut_measurement/calibration",
+            Path(__file__).resolve()
+        )
+
+        self.base_path = base_path
+        self.open_short_results_path = os.path.join(base_path, "open_short_results")
+        self.kits_path = os.path.join(base_path, "kits")
+
+        os.makedirs(self.open_short_results_path, exist_ok=True)
+        os.makedirs(self.kits_path, exist_ok=True)
+
+        self.measurements = {
+            'open_short': {'freqs': None, 's11': None, 'measured': False}
+        }
+
+        self.device_name = None
+        self.calibration_date = None
+        self.is_complete = False
+        self.selected_standard = None
+
+        logging.info(f"[OpenShortCalibrationManager] Initialized with base path: {base_path}")
+
+    def set_measurement(self, standard_name: str, freqs: np.ndarray, s11: np.ndarray) -> bool:
+        """Store Open/Short measurement, sign-corrected, and save as Touchstone S1P."""
+        freqs = np.asarray(freqs, dtype=np.float64)
+        s11 = np.asarray(s11, dtype=np.complex128)
+
+        sign = -1.0 if np.mean(s11.real) < 0 else 1.0
+        s11_corrected = s11 * sign
+        self.selected_standard = "short" if sign < 0 else "open"
+
+        try:
+            self.measurements['open_short']['freqs'] = np.array(freqs)
+            self.measurements['open_short']['s11'] = np.array(s11_corrected)
+            self.measurements['open_short']['measured'] = True
+            self.is_complete = True
+            self.calibration_date = datetime.now()
+
+            touchstone_path = os.path.join(self.open_short_results_path, "open_short.s1p")
+            self._save_as_touchstone_s1p(freqs, s11_corrected, touchstone_path)
+
+            logging.info(f"[OpenShortCalibrationManager] {standard_name.upper()} measurement saved")
+            return True
+        except Exception as e:
+            logging.error(f"[OpenShortCalibrationManager] Error saving measurement: {e}")
+            return False
+
+    def _save_as_touchstone_s1p(self, freqs, s11, filepath):
+        try:
+            s_data = np.zeros((len(freqs), 1, 1), dtype=complex)
+            s_data[:, 0, 0] = s11
+            network = rf.Network()
+            network.frequency = rf.Frequency.from_f(freqs, unit="Hz")
+            network.s = s_data
+            network.z0 = 50
+            filepath = os.path.splitext(filepath)[0]
+            network.write_touchstone(filepath)
+            logging.info(f"[OpenShortCalibrationManager] Touchstone S1P saved: {filepath}.s1p")
+        except Exception as e:
+            logging.error(f"[OpenShortCalibrationManager] Error writing S1P file: {e}")
+
+    def get_measurement(self) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+        """Return measurement data (freqs, s11) if available."""
+        data = self.measurements['open_short']
+        if not data['measured']:
+            return None
+        return data['freqs'], data['s11']
+
+    def is_standard_measured(self, standard_name: str = 'open_short') -> bool:
+        """Check if the Open/Short measurement has been performed."""
+        return self.measurements.get('open_short', {}).get('measured', False)
+
+    def get_completion_status(self) -> Dict[str, bool]:
+        return {'open_short': self.measurements['open_short']['measured'], 'complete': self.is_complete}
+
+    def save_calibration_file(self, filename: str, selected_method: str, is_external_kit: bool, files=None, osm_instance=None):
+        """Save Open/Short Normalization calibration kit (reflection_tracking.s1p)."""
+        if files is None:
+            files = []
+
+        try:
+            if not self.is_complete:
+                logging.warning("[OpenShortCalibrationManager] Cannot save incomplete calibration")
+                return False, {}
+
+            kit_subfolder = filename
+            kit_path = os.path.join(self.kits_path, kit_subfolder)
+            os.makedirs(kit_path, exist_ok=True)
+
+            if not is_external_kit:
+                s11 = self.measurements['open_short']['s11']
+                freqs = self.measurements['open_short']['freqs']
+            else:
+                src = files[3] if len(files) > 3 else os.path.join(self.open_short_results_path, "open_short.s1p")
+                network = rf.Network(src)
+                freqs = network.frequency.f
+                s11 = network.s[:, 0, 0]
+
+            self._save_open_short_error_file(freqs, s11, "reflection_tracking.s1p", "Reflection tracking", kit_subfolder)
+
+            logging.info(f"[OpenShortCalibrationManager] Kit saved: {kit_path}")
+            return True, {'reflection_tracking': s11}
+
+        except Exception as e:
+            logging.error(f"[OpenShortCalibrationManager] Error saving calibration file: {e}")
+            return False, {}
+
+    def _save_open_short_error_file(self, freq, s11_data, filename, label, kit_subfolder=None):
+        save_dir = os.path.join(self.kits_path, kit_subfolder) if kit_subfolder else self.kits_path
+        os.makedirs(save_dir, exist_ok=True)
+        filepath = os.path.join(save_dir, filename)
+        s_data = np.zeros((len(freq), 1, 1), dtype=complex)
+        s_data[:, 0, 0] = s11_data
+        network = rf.Network()
+        network.frequency = rf.Frequency.from_f(freq, unit="Hz")
+        network.s = s_data
+        network.write_touchstone(filepath)
+        logging.info(f"[OpenShortCalibrationManager] {label} saved: {filepath}")
+
+    def clear_all_measurements(self):
+        self.measurements['open_short'] = {'freqs': None, 's11': None, 'measured': False}
+        self.is_complete = False
+        self.calibration_date = None
+        self.selected_standard = None
+        logging.info("[OpenShortCalibrationManager] All measurements cleared")

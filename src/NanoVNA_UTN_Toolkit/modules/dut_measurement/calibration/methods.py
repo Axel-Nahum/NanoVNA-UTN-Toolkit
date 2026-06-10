@@ -153,6 +153,42 @@ class Methods:
         logging.info("[Calibrator] Calculated calibrated S21 using normalization.")
         return s21_cal
 
+    def open_short_normalization_calibrate_s11(self, s11_med):
+        """Calibrate S11 using Open/Short normalization reflection tracking error term."""
+        logging.info("[Calibrator] Loading reflection tracking error from S1P file...")
+
+        error_dir = os.path.join(self.calibration_dir, "open_short_normalization_errors")
+        reflection_tracking_file = os.path.join(error_dir, "reflection_tracking.s1p")
+
+        reflection_tracking_network = rf.Network(reflection_tracking_file)
+        reflection_tracking = reflection_tracking_network.s[:, 0, 0]
+
+        cal_points = len(reflection_tracking)
+        sweep_points = len(s11_med)
+        original_s11_med = s11_med.copy()
+
+        if cal_points != sweep_points:
+            logging.warning(f"[Calibrator] S11 size mismatch: calibration ({cal_points}) vs sweep ({sweep_points})")
+            min_points = min(cal_points, sweep_points)
+            s11_med = s11_med[:min_points]
+            reflection_tracking = reflection_tracking[:min_points]
+
+        s11_cal = s11_med / reflection_tracking
+
+        if len(s11_cal) < sweep_points:
+            result = np.zeros(sweep_points, dtype=complex)
+            result[:len(s11_cal)] = s11_cal
+            result[len(s11_cal):] = original_s11_med[len(s11_cal):]
+            s11_cal = result
+
+        # Unwrap phase to avoid oscillation between +180° and -180°
+        magnitude = np.abs(s11_cal)
+        phase = np.unwrap(np.angle(s11_cal))
+        s11_cal = magnitude * np.exp(1j * phase)
+
+        logging.info("[Calibrator] Calculated calibrated S11 using Open/Short normalization.")
+        return s11_cal
+
     def one_port_n_calibrate(self, s11_med, s21_med, osm_dir, thru_dir):
         """
         Calibrate S11 and S21 using the 1-Port+N method.

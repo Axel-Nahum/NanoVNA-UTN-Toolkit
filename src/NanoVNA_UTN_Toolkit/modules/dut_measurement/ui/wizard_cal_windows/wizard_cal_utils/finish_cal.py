@@ -57,6 +57,8 @@ def save_calibration_config(self):
             parameter = "S11"
         elif self.selected_method == "Thru Normalization":
             parameter = "S21"
+        elif self.selected_method == "Open/Short Normalization":
+            parameter = "S11"
         else:
             parameter = "S11, S21"
 
@@ -148,6 +150,17 @@ def finish_wizard(self, parent = None):
 
         errors = CalibrationErrors(cal_dir, error_subfolder="normalization_errors")
         errors.calculate_normalization_errors()
+
+    elif self.selected_method == "Open/Short Normalization":
+        cal_dir = get_calibration_path(
+            "modules/dut_measurement/calibration/open_short_results",
+            "modules/dut_measurement/calibration/open_short_results",
+            Path(__file__).resolve()
+        )
+        os.makedirs(cal_dir, exist_ok=True)
+
+        errors = CalibrationErrors(cal_dir, error_subfolder="open_short_normalization_errors")
+        errors.calculate_open_short_normalization_errors()
 
     elif self.selected_method == "1-Port+N":
         osm_dir = get_calibration_path(

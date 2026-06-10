@@ -8,6 +8,7 @@
         "method_normalization_open": "Open Normalization",
         "method_normalization_short": "Short Normalization",
         "method_normalization_thru": "Thru Normalization",
+        "method_open_short_normalization": "Open/Short Normalization",
         "method_1_port": "1-Port+N",
         "method_E_R": "Enhanced-Response",
         "description": []

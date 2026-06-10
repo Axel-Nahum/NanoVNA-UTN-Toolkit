@@ -215,6 +215,15 @@ def on_sweep_finished(self, result):
             methods = Methods(cal_dir)
             s21 = methods.normalization_calibrate_s21(s21_med)
 
+        elif calibration_method == "Open/Short Normalization":
+            cal_dir = get_calibration_path(
+                "modules/dut_measurement/calibration/open_short_results",
+                "modules/dut_measurement/calibration/open_short_results",
+                Path(__file__).resolve()
+            )
+            methods = Methods(cal_dir)
+            s11 = methods.open_short_normalization_calibrate_s11(s11_med)
+
         elif calibration_method == "1-Port+N":
             s11 = methods.osm_calibrate_s11(s11_med)
             cal_dir = get_calibration_path(

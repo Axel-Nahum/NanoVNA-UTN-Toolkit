@@ -586,6 +586,17 @@ def run_sweep(self):
 
                 s11 = s11_med  # S11 sin calibrar
                 s21 = methods.normalization_calibrate_s21(s21_med)
+
+            elif calibration_method == "Open/Short Normalization":
+                cal_dir = get_calibration_path(
+                    "modules/dut_measurement/calibration/open_short_results",
+                    "modules/dut_measurement/calibration/open_short_results",
+                    Path(__file__).resolve()
+                )
+                methods = Methods(cal_dir)
+                s11 = methods.open_short_normalization_calibrate_s11(s11_med)
+                s21 = s21_med
+
             elif calibration_method == "1-Port+N":
 
                 # Cal_Directory

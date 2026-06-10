@@ -22,12 +22,14 @@ save_calibration_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measureme
 
 # Import calibration data storage
 try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.calibration_manager import OSMCalibrationManager, THRUCalibrationManager
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.calibration_manager import OSMCalibrationManager, THRUCalibrationManager, OpenShortCalibrationManager
 except ImportError as e:
     logging.error("Failed to import OSMCalibrationManager: %s", e)
     logging.error("Failed to import THRUCalibrationManager: %s", e)
+    logging.error("Failed to import OpenShortCalibrationManager: %s", e)
     OSMCalibrationManager = None
     THRUCalibrationManager = None
+    OpenShortCalibrationManager = None
 
 dark_light_config = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode", "dark_light_config")
 
@@ -132,6 +134,15 @@ class CalibrationWizard(QMainWindow):
         else:
             self.thru_calibration = None
             logging.warning("[CalibrationWizard] THRUCalibrationManager not available")
+
+        if OpenShortCalibrationManager:
+            self.os_calibration = OpenShortCalibrationManager()
+            if vna_device and hasattr(vna_device, 'name'):
+                self.os_calibration.device_name = vna_device.name
+            logging.info("[CalibrationWizard] Open/Short calibration manager initialized")
+        else:
+            self.os_calibration = None
+            logging.warning("[CalibrationWizard] OpenShortCalibrationManager not available")
 
         # Store measured data state for UI consistency
         self.measured_data = {
