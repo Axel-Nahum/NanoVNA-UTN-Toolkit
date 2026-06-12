@@ -770,6 +770,10 @@ class GraphPreviewExportDialog(QDialog):
             colors = ["#00ff00", "#ffaa00"]
         edits = self.marker_freq_edits[graph_index]
 
+        # Lock current limits — patches/text in data coords must not push the axes
+        _xlim = ax.get_xlim()
+        _ylim = ax.get_ylim()
+
         for i, active in enumerate(self.marker_active[graph_index]):
             edit, combo = (edits[0], edits[1]) if i == 0 else (edits[2], edits[3])
 
@@ -800,13 +804,13 @@ class GraphPreviewExportDialog(QDialog):
                     y = np.imag(s11[idx])
                 elif graph_index == 1:
                     x = scaled_freqs[idx]
-                    y = 20*np.log10(np.abs(s11[idx]))
+                    y = 20*np.log10(np.abs(s11[idx])) if self._selected_unit() == "dB" else np.abs(s11[idx])
                 elif graph_index == 2:
                     x = scaled_freqs[idx]
                     y = np.angle(s11[idx], deg=True)
                 elif graph_index == 3:
                     x = scaled_freqs[idx]
-                    y = 20*np.log10(np.abs(s21[idx]))
+                    y = 20*np.log10(np.abs(s21[idx])) if self._selected_unit() == "dB" else np.abs(s21[idx])
                 elif graph_index == 4:
                     phase_s21 = np.angle(np.exp(1j * freqs / 1e7), deg=True)
                     x = scaled_freqs[idx]
@@ -829,10 +833,14 @@ class GraphPreviewExportDialog(QDialog):
                         f"Re: {np.real(s11[idx]):.3f}   Im: {np.imag(s11[idx]):.3f}"
                     )
                 elif graph_index in [1, 3]:
+                    if self._selected_unit() == "dB":
+                        val_str = f"|S|: {y:.3f} dB"
+                    else:
+                        val_str = f"|S|: {y:.4f}"
                     text = (
                         f"Marker {i+1}\n"
                         f"Freq: {nearest_val:.2f} {combo.currentText()}\n"
-                        f"|S|: {y:.3f} dB"
+                        f"{val_str}"
                     )
                 else:
                     text = (
@@ -848,7 +856,7 @@ class GraphPreviewExportDialog(QDialog):
                 txt = ax.text(ann_x, ann_y, text,
                               ha='center', va='center',
                               color=colors[i], fontsize=9,
-                              linespacing=2.0,
+                              linespacing=1.8, family='monospace',
                               zorder=10, clip_on=False)
 
                 # Measure text bbox in pixels to size the background patch
@@ -891,6 +899,10 @@ class GraphPreviewExportDialog(QDialog):
                 unit_factor = {"kHz": 1e3, "MHz": 1e6, "GHz": 1e9}[combo.currentText()]
                 default_val = freqs[0] / unit_factor
                 edit.setText(f"{default_val:.2f}")
+
+        # Restore limits so markers never displace the graph
+        ax.set_xlim(_xlim)
+        ax.set_ylim(_ylim)
 
         self._enable_drag_annotations()
         self.canvas.draw()

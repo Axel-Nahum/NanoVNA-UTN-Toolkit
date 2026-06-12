@@ -241,6 +241,27 @@ def open_plot_settings(self):
     self.y2_min.setPlaceholderText("Min")
     self.y2_max.setPlaceholderText("Max")
 
+    # Pre-fill saved Y limits when auto-scale is disabled
+    if not auto1_set_checked:
+        self.y1_min.setEnabled(True)
+        self.y1_max.setEnabled(True)
+        v1min = self.settings.value("set_range/ymin_left", None, type=float)
+        v1max = self.settings.value("set_range/ymax_left", None, type=float)
+        if v1min is not None:
+            self.y1_min.setText(f"{v1min:.6g}")
+        if v1max is not None:
+            self.y1_max.setText(f"{v1max:.6g}")
+
+    if not auto2_set_checked:
+        self.y2_min.setEnabled(True)
+        self.y2_max.setEnabled(True)
+        v2min = self.settings.value("set_range/ymin_right", None, type=float)
+        v2max = self.settings.value("set_range/ymax_right", None, type=float)
+        if v2min is not None:
+            self.y2_min.setText(f"{v2min:.6g}")
+        if v2max is not None:
+            self.y2_max.setText(f"{v2max:.6g}")
+
     y_range_label = QLabel(f"{self.y_range_label}")
     y_range_label.setStyleSheet("font-weight: bold; font-size: 15px; border: none;")
 
@@ -419,6 +440,8 @@ def save_auto_scale_settings(self):
         ymin = float(self.y1_min.text())
         ymax = float(self.y1_max.text())
         save_auto_scale_data(self, ymin, ymax, self.ax_left)
+        self.settings.setValue("set_range/ymin_left", ymin)
+        self.settings.setValue("set_range/ymax_left", ymax)
         self.ax_left.set_ylim(ymin, ymax)
         self.fig_left.canvas.draw_idle()
 
@@ -426,6 +449,8 @@ def save_auto_scale_settings(self):
         ymin = float(self.y2_min.text())
         ymax = float(self.y2_max.text())
         save_auto_scale_data(self, ymin, ymax, self.ax_right)
+        self.settings.setValue("set_range/ymin_right", ymin)
+        self.settings.setValue("set_range/ymax_right", ymax)
         self.ax_right.set_ylim(ymin, ymax)
         self.fig_right.canvas.draw_idle()
 
