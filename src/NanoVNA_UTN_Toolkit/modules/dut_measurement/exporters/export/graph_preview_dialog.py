@@ -21,13 +21,13 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox, QWidget,
     QCheckBox, QHBoxLayout, QLineEdit, QComboBox, QFrame,
-    QRadioButton, QButtonGroup
+    QRadioButton, QButtonGroup, QStylePainter, QStyleOptionComboBox
 )
 from PySide6.QtCore import Qt, QLocale
-from PySide6.QtGui import QDoubleValidator
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QDoubleValidator, QGuiApplication
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.patches import FancyBboxPatch
 import matplotlib.pyplot as plt
 
 plt.rcParams['mathtext.fontset'] = 'cm'  
@@ -41,6 +41,36 @@ logger = logging.getLogger(__name__)
 JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
+
+class _CenteredComboBox(QComboBox):
+    """QComboBox that draws its selected text centered."""
+    def paintEvent(self, event):
+        from PySide6.QtWidgets import QStyle
+        from PySide6.QtGui import QPalette
+        painter = QStylePainter(self)
+        opt = QStyleOptionComboBox()
+        self.initStyleOption(opt)
+        opt.currentText = ""
+        painter.drawComplexControl(QStyle.ComplexControl.CC_ComboBox, opt)
+        arrow_rect = self.style().subControlRect(
+            QStyle.ComplexControl.CC_ComboBox, opt,
+            QStyle.SubControl.SC_ComboBoxArrow, self
+        )
+        text_rect = self.rect()
+        text_rect.setRight(arrow_rect.left())
+        group = QPalette.ColorGroup.Normal if self.isEnabled() else QPalette.ColorGroup.Disabled
+        painter.setPen(self.palette().color(group, QPalette.ColorRole.Text))
+        painter.drawText(text_rect, Qt.AlignCenter | Qt.AlignVCenter, self.currentText())
+
+
+def _make_centered_combo(items):
+    combo = _CenteredComboBox()
+    combo.addItems(items)
+    combo.setCurrentIndex(0)
+    for j in range(combo.count()):
+        combo.setItemData(j, Qt.AlignCenter, Qt.TextAlignmentRole)
+    return combo
+
 
 class GraphPreviewExportDialog(QDialog):
     def __init__(self, parent=None, freqs=None, s11_data=None, s21_data=None,
@@ -172,6 +202,19 @@ class GraphPreviewExportDialog(QDialog):
         self.prev_button.setStyleSheet(nav_btn_style)
         self.next_button.setStyleSheet(nav_btn_style)
 
+        # --- Read marker colors from graphics_config.ini ---
+        try:
+            _gfx = get_settings(
+                "INI/dut_measurement/graphics_config/graphics_config.ini",
+                "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini",
+                Path(__file__).resolve()
+            )
+            _marker_color1 = _gfx.value("Graphic1/MarkerColor1", "#00ff00")
+            _marker_color2 = _gfx.value("Graphic1/MarkerColor2", "#ffaa00")
+        except Exception:
+            _marker_color1 = "#00ff00"
+            _marker_color2 = "#ffaa00"
+
         # --- Marker checkboxes and frequency inputs
         self.marker_checkboxes = {}  # key=graph_index, value=(marker1, marker2)
         self.marker_freq_edits = {}  # key=graph_index, value=(edit1, combo1, edit2, combo2)
@@ -180,9 +223,9 @@ class GraphPreviewExportDialog(QDialog):
 
             # --- Marker checkboxes ---
             marker1 = QCheckBox(f"{self.pdf_preview_marker_1}")
-            marker1.setStyleSheet("color: green; font-weight: bold; font-size: 12pt;")
+            marker1.setStyleSheet(f"color: {_marker_color1}; font-weight: bold; font-size: 12pt;")
             marker2 = QCheckBox(f"{self.pdf_preview_marker_2}")
-            marker2.setStyleSheet("color: orange; font-weight: bold; font-size: 12pt;")
+            marker2.setStyleSheet(f"color: {_marker_color2}; font-weight: bold; font-size: 12pt;")
             marker1.stateChanged.connect(lambda _, idx=i: self._update_markers(idx))
             marker2.stateChanged.connect(lambda _, idx=i: self._update_markers(idx))
             self.marker_checkboxes[i] = (marker1, marker2)
@@ -191,18 +234,12 @@ class GraphPreviewExportDialog(QDialog):
             edit1 = QLineEdit()
             edit1.setFixedWidth(80)
             edit1.setStyleSheet("background-color: white; color: black;")
-            combo1 = QComboBox()
-            combo1.addItems(["kHz", "MHz", "GHz"])
-            combo1.setCurrentText("kHz")
-            combo1.setStyleSheet("background-color: white; color: black;")
+            combo1 = _make_centered_combo(["kHz", "MHz", "GHz"])
 
             edit2 = QLineEdit()
             edit2.setFixedWidth(80)
             edit2.setStyleSheet("background-color: white; color: black;")
-            combo2 = QComboBox()
-            combo2.addItems(["kHz", "MHz", "GHz"])
-            combo2.setCurrentText("kHz")
-            combo2.setStyleSheet("background-color: white; color: black;")
+            combo2 = _make_centered_combo(["kHz", "MHz", "GHz"])
 
             # --- Inline validator function ---
             def validate_input(edit, combo):
@@ -267,6 +304,20 @@ class GraphPreviewExportDialog(QDialog):
         marker_container_layout.addLayout(self.marker_layout)
         marker_container_layout.addStretch()
 
+        # --- Magnitude unit selector (created here so nav_strip can reference them) ---
+        rb_style = "QRadioButton { color: #333333; font-size: 14px; background-color: transparent; } QRadioButton::indicator { width: 14px; height: 14px; }"
+        self.rb_db = QRadioButton("dB")
+        self.rb_db.setChecked(True)
+        self.rb_db.setFocusPolicy(Qt.NoFocus)
+        self.rb_db.setStyleSheet(rb_style)
+        self.rb_linear = QRadioButton("Linear")
+        self.rb_linear.setFocusPolicy(Qt.NoFocus)
+        self.rb_linear.setStyleSheet(rb_style)
+        self.unit_group = QButtonGroup(self)
+        self.unit_group.addButton(self.rb_db)
+        self.unit_group.addButton(self.rb_linear)
+        self.unit_group.buttonClicked.connect(self._on_unit_changed)
+
         # --- Canvas inside a framed container ---
         canvas_frame = QFrame()
         canvas_frame.setStyleSheet(
@@ -277,11 +328,15 @@ class GraphPreviewExportDialog(QDialog):
         frame_layout.setSpacing(0)
         frame_layout.addWidget(self.canvas)
 
-        # --- Nav strip inside the white frame ---
+        # --- Nav strip inside the white frame: Prev | stretch | dB/Linear | stretch | Next ---
         nav_strip = QHBoxLayout()
         nav_strip.setContentsMargins(8, 5, 8, 5)
         nav_strip.addWidget(self.prev_button)
-        nav_strip.addStretch()
+        nav_strip.addStretch(1)
+        nav_strip.addWidget(self.rb_db)
+        nav_strip.addSpacing(60)
+        nav_strip.addWidget(self.rb_linear)
+        nav_strip.addStretch(1)
         nav_strip.addWidget(self.next_button)
         frame_layout.addLayout(nav_strip)
 
@@ -294,20 +349,6 @@ class GraphPreviewExportDialog(QDialog):
         main_layout.addWidget(marker_container, alignment=Qt.AlignCenter)
 
         main_layout.addSpacing(10)
-
-        # --- Magnitude unit selector ---
-        rb_style = "QRadioButton { color: #cccccc; font-size: 12px; } QRadioButton::indicator { width: 13px; height: 13px; }"
-        self.rb_db = QRadioButton("dB")
-        self.rb_db.setChecked(True)
-        self.rb_db.setFocusPolicy(Qt.NoFocus)
-        self.rb_db.setStyleSheet(rb_style)
-        self.rb_linear = QRadioButton("Linear")
-        self.rb_linear.setFocusPolicy(Qt.NoFocus)
-        self.rb_linear.setStyleSheet(rb_style)
-        self.unit_group = QButtonGroup(self)
-        self.unit_group.addButton(self.rb_db)
-        self.unit_group.addButton(self.rb_linear)
-        self.unit_group.buttonClicked.connect(self._on_unit_changed)
 
         # --- Bottom toolbar ---
         self.export_button = QPushButton(f"{self.pdf_preview_generate_report}")
@@ -328,11 +369,9 @@ class GraphPreviewExportDialog(QDialog):
 
         bottom_bar = QHBoxLayout()
         bottom_bar.setContentsMargins(0, 4, 0, 0)
-        bottom_bar.addWidget(self.rb_db)
-        bottom_bar.addSpacing(10)
-        bottom_bar.addWidget(self.rb_linear)
         bottom_bar.addStretch()
         bottom_bar.addWidget(self.export_button)
+        bottom_bar.addStretch()
         main_layout.addLayout(bottom_bar)
 
         # --- Connect navigation ---
@@ -354,7 +393,7 @@ class GraphPreviewExportDialog(QDialog):
         self.fig.subplots_adjust(
             left=margin,
             right=1 - margin,
-            top=1 - margin,
+            top=1 - margin - 0.04,   # top gap so title has breathing room
             bottom=margin
         )
 
@@ -362,14 +401,22 @@ class GraphPreviewExportDialog(QDialog):
         scale = (w / 800)
         scale = max(0.6, min(1.0, scale))   # clamp entre 0.6 y 1.0
 
-        self.ax.title.set_fontsize(12 * scale)
+        self.ax.title.set_fontsize(14 * scale)
         self.ax.xaxis.label.set_fontsize(11 * scale)
         self.ax.yaxis.label.set_fontsize(11 * scale)
         for tick in self.ax.get_xticklabels() + self.ax.get_yticklabels():
             tick.set_fontsize(9 * scale)
 
         if hasattr(self, "current_graph_index") and self.current_graph_index == 0:
+            # Symmetric vertical margins so the square Smith chart is centered
+            self.fig.subplots_adjust(
+                left=margin,
+                right=1 - margin,
+                top=1 - margin,
+                bottom=margin
+            )
             self.ax.set_aspect("equal", adjustable="box")
+            self.ax.set_anchor("C")
             self.ax.set_xlim(-1.1, 1.1)
             self.ax.set_ylim(-1.1, 1.1)
 
@@ -414,12 +461,16 @@ class GraphPreviewExportDialog(QDialog):
         vbox2.addLayout(row2)
 
         self.marker_layout.addLayout(vbox1)
-        self.marker_layout.addSpacing(30)
+        self.marker_layout.addSpacing(70)
         self.marker_layout.addLayout(vbox2)
         self.canvas.draw_idle()
 
     # --- Plot graph ---
     def _plot_graph(self, index):
+        unit_applies = index in (1, 3)   # only S11/S21 magnitude
+        self.rb_db.setVisible(unit_applies)
+        self.rb_linear.setVisible(unit_applies)
+
         self.fig.clear()
         self.ax = self.fig.add_subplot(111)
         self.ax.set_facecolor("white")
@@ -472,34 +523,34 @@ class GraphPreviewExportDialog(QDialog):
         new_freqs = freqs / scale
 
         if index == 0:
-            self.fig.subplots_adjust(left=0.05, right=0.95, top=0.9, bottom=0.1)
-
             # Set title for the Smith chart
-            self.ax.set_title(rf"{self.pdf_preview_s11_smith_title}", fontsize=12, pad=20)
-            
+            self.ax.set_title(rf"{self.pdf_preview_s11_smith_title}", fontsize=14, pad=14)
+
             # Create a temporary network just for plotting the Smith chart background with labels
             dummy_freq = rf.Frequency(1, 10, 10, unit='GHz')
             dummy_s = np.zeros((10, 1, 1), dtype=complex)
             dummy_ntw = rf.Network(frequency=dummy_freq, s=dummy_s)
-            
+
             # Plot the Smith chart grid with labels in black, without adding legend entry
             dummy_ntw.plot_s_smith(ax=self.ax, draw_labels=True, color='black', lw=0.5, label=None)
-            
+
             # Plot actual S11 data on top
             gamma = s11
-            line, = self.ax.plot(np.real(gamma), np.imag(gamma), color="red", linewidth=1.2, label="S11")
-            
+            line, = self.ax.plot(np.real(gamma), np.imag(gamma), color="red", linewidth=1.2, label=r"$S_{11}$")
+
             # Adjust appearance
             self.ax.set_aspect("equal", adjustable="box")
             self.ax.set_xlim(-1.1, 1.1)
             self.ax.set_ylim(-1.1, 1.1)
             self.ax.tick_params(left=False, bottom=False, labelleft=False, labelbottom=False)
 
-            # Custom legend showing only the S11 trace
+            # Legend outside the axes, top-left corner above the chart
             legend = self.ax.legend(
                 handles=[line],
-                loc="upper left",
-                fontsize=9,
+                loc="lower left",
+                bbox_to_anchor=(-0.13, 1.00),
+                borderaxespad=0,
+                fontsize=10,
                 facecolor="white",
                 edgecolor="black",
                 framealpha=1,
@@ -512,7 +563,7 @@ class GraphPreviewExportDialog(QDialog):
             y_data, ylabel, title = self._magnitude_curve(s11, r"S_{11}", unit)
             self.ax.plot(new_freqs, y_data, color="red", linewidth=1.3)
             self.ax.set_xlabel(f"{self.pdf_preview_s11_magnitude_x_axis}", fontsize=12)
-            self.ax.set_title(title, fontsize=12, pad=12)
+            self.ax.set_title(title, fontsize=14, pad=14)
             self.ax.set_ylabel(ylabel)
             self.ax.grid(True, linestyle="--", alpha=0.6)
             ylim = self._get_ylim_for_export("S11", "Magnitude")
@@ -521,7 +572,7 @@ class GraphPreviewExportDialog(QDialog):
 
         elif index == 2:
             self.ax.plot(new_freqs, np.angle(s11, deg=True), color="red", linewidth=1.3)
-            self.ax.set_title(rf"{self.pdf_preview_s11_phase_title}", fontsize=12, pad=12)
+            self.ax.set_title(rf"{self.pdf_preview_s11_phase_title}", fontsize=14, pad=14)
             self.ax.set_xlabel(f"{self.pdf_preview_s11_phase_x_axis}", fontsize=12)
             self.ax.set_ylabel(rf"{self.pdf_preview_s11_phase_y_axis}", fontsize=12)
             self.ax.grid(True, linestyle="--", alpha=0.6)
@@ -533,7 +584,7 @@ class GraphPreviewExportDialog(QDialog):
             unit = self._selected_unit()
             y_data, ylabel, title = self._magnitude_curve(s21, r"S_{21}", unit)
             self.ax.plot(new_freqs, y_data, color="blue", linewidth=1.3)
-            self.ax.set_title(title, fontsize=12, pad=12)
+            self.ax.set_title(title, fontsize=14, pad=14)
             self.ax.set_xlabel(f"{self.pdf_preview_s21_magnitude_x_axis}", fontsize=12)
             self.ax.set_ylabel(ylabel)
             self.ax.grid(True, linestyle="--", alpha=0.6)
@@ -543,7 +594,7 @@ class GraphPreviewExportDialog(QDialog):
         elif index == 4:
             phase_s21 = np.angle(np.exp(1j * freqs / 1e7), deg=True)
             self.ax.plot(new_freqs, phase_s21, color="blue", linewidth=1.3)
-            self.ax.set_title(rf"{self.pdf_preview_s21_phase_title}", fontsize=12, pad=12)
+            self.ax.set_title(rf"{self.pdf_preview_s21_phase_title}", fontsize=14, pad=14)
             self.ax.set_xlabel(f"{self.pdf_preview_s21_phase_x_axis}", fontsize=12)
             self.ax.set_ylabel(rf"{self.pdf_preview_s21_phase_y_axis}", fontsize=12)
             ylim = self._get_ylim_for_export("S21", "Phase")
@@ -685,15 +736,30 @@ class GraphPreviewExportDialog(QDialog):
         marker1, marker2 = self.marker_checkboxes[graph_index]
         self.marker_active[graph_index] = [marker1.isChecked(), marker2.isChecked()]
 
-        for ann in getattr(self, "annotations", []):
-            ann.set_visible(False)
+        for obj in getattr(self, "ann_objects", []):
+            try: obj['text'].remove()
+            except Exception: pass
+            try: obj['patch'].remove()
+            except Exception: pass
         for mk in getattr(self, "markers", []):
             mk.set_visible(False)
 
-        self.annotations = []
+        self.ann_objects = []
+        self.annotations = []   # kept empty for compatibility
         self.markers = []
 
-        colors = ["green", "orange"]
+        try:
+            _gfx = get_settings(
+                "INI/dut_measurement/graphics_config/graphics_config.ini",
+                "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini",
+                Path(__file__).resolve()
+            )
+            colors = [
+                _gfx.value("Graphic1/MarkerColor1", "#00ff00"),
+                _gfx.value("Graphic1/MarkerColor2", "#ffaa00"),
+            ]
+        except Exception:
+            colors = ["#00ff00", "#ffaa00"]
         edits = self.marker_freq_edits[graph_index]
 
         for i, active in enumerate(self.marker_active[graph_index]):
@@ -703,6 +769,7 @@ class GraphPreviewExportDialog(QDialog):
                 edit.setEnabled(True)
                 combo.setEnabled(True)
                 edit.setStyleSheet("background-color: white; color: black;")
+                combo.update()
 
                 try:
                     freq_val = float(edit.text())
@@ -751,8 +818,7 @@ class GraphPreviewExportDialog(QDialog):
                     text = (
                         f"Marker {i+1}\n"
                         f"Freq: {nearest_val:.2f} {combo.currentText()}\n"
-                        f"Re: {np.real(s11[idx]):.3f}\n"
-                        f"Im: {np.imag(s11[idx]):.3f}"
+                        f"Re: {np.real(s11[idx]):.3f}   Im: {np.imag(s11[idx]):.3f}"
                     )
                 elif graph_index in [1, 3]:
                     text = (
@@ -764,29 +830,55 @@ class GraphPreviewExportDialog(QDialog):
                     text = (
                         f"Marker {i+1}\n"
                         f"Freq: {nearest_val:.2f} {combo.currentText()}\n"
-                        f"{self.measurement_ui_s_parameter_phase} {y:.3f}°"
+                        f"Phase: {y:.3f}°"
                     )
 
+                # Center of annotation box in data coords
                 ann_x, ann_y = self.marker_positions[graph_index][i] if self.marker_positions[graph_index][i] else (x, y)
 
-                ann = ax.annotate(
-                    text,
-                    xy=(x, y),
-                    xycoords='data',
-                    xytext=(ann_x, ann_y),
-                    bbox=dict(facecolor='white', edgecolor=colors[i], alpha=0.7),
-                    color=colors[i]
+                # Text — no bbox, centered at annotation position
+                txt = ax.text(ann_x, ann_y, text,
+                              ha='center', va='center',
+                              color=colors[i], fontsize=9,
+                              linespacing=2.0,
+                              zorder=10, clip_on=False)
+
+                # Measure text bbox in pixels to size the background patch
+                renderer = self.canvas.get_renderer()
+                tbbox = txt.get_window_extent(renderer=renderer)
+                PAD = 6
+                L_px = tbbox.x0 - PAD
+                B_px = tbbox.y0 - PAD
+                R_px = tbbox.x1 + PAD
+                T_px = tbbox.y1 + PAD
+
+                try:
+                    d_lb = ax.transData.inverted().transform((L_px, B_px))
+                    d_rt = ax.transData.inverted().transform((R_px, T_px))
+                except Exception:
+                    d_lb = (ann_x - 0.15, ann_y - 0.08)
+                    d_rt = (ann_x + 0.15, ann_y + 0.08)
+
+                patch = FancyBboxPatch(
+                    (d_lb[0], d_lb[1]),
+                    max(1e-9, d_rt[0] - d_lb[0]),
+                    max(1e-9, d_rt[1] - d_lb[1]),
+                    boxstyle='square,pad=0',
+                    facecolor='white', edgecolor=colors[i],
+                    alpha=0.85, transform=ax.transData,
+                    zorder=9, clip_on=False
                 )
+                ax.add_patch(patch)
 
                 self.markers.append(mk_line)
-                self.annotations.append(ann)
-                prev_pos = self.marker_positions[graph_index][i]
-                self.marker_positions[graph_index][i] = prev_pos if prev_pos is not None else (x, y)
+                self.ann_objects.append({'text': txt, 'patch': patch, 'idx': i})
+                self.marker_positions[graph_index][i] = (ann_x, ann_y)
 
             else:
                 edit.setEnabled(False)
                 combo.setEnabled(False)
-                edit.setStyleSheet("background-color: lightgray; color: darkgray;")
+                edit.setStyleSheet("background-color: #d8d8d8; color: #888888;")
+                combo.update()
 
                 unit_factor = {"kHz": 1e3, "MHz": 1e6, "GHz": 1e9}[combo.currentText()]
                 default_val = freqs[0] / unit_factor
@@ -797,86 +889,199 @@ class GraphPreviewExportDialog(QDialog):
 
     # --- Draggable markers ---
     def _enable_drag_annotations(self):
-        drag_state = {"dragging": None, "mode": None, "corner": None}
+        for cid in getattr(self, "_drag_cids", []):
+            try: self.canvas.mpl_disconnect(cid)
+            except Exception: pass
 
-        def detect_corner(bbox, x, y, tol=8):
-            if abs(x - bbox.x1) < tol and abs(y - bbox.y1) < tol:
-                return "top_right"
+        drag_state = {
+            "obj": None, "mode": None, "press_px": None,
+            "edge": None, "bbox0_px": None,
+            "fontsize0": None, "text_w0": None, "text_h0": None,
+            "patch_xy0": None, "txt_pos0": None,
+        }
+
+        EDGE_TOL = 10
+        MIN_W_PX, MIN_H_PX = 50, 35
+
+        def _patch_px(patch):
+            """Patch bounds in canvas pixels: (L, B, R, T)."""
+            t = patch.get_transform()
+            x, y = patch.get_x(), patch.get_y()
+            w, h = patch.get_width(), patch.get_height()
+            lb = t.transform((x, y))
+            rt = t.transform((x + w, y + h))
+            return lb[0], lb[1], rt[0], rt[1]
+
+        def _px_to_data(px, py):
+            return tuple(self.ax.transData.inverted().transform((px, py)))
+
+        def _detect_edge(L, B, R, T, mx, my):
+            on_l = abs(mx - L) < EDGE_TOL
+            on_r = abs(mx - R) < EDGE_TOL
+            on_b = abs(my - B) < EDGE_TOL
+            on_t = abs(my - T) < EDGE_TOL
+            in_x = L + EDGE_TOL < mx < R - EDGE_TOL
+            in_y = B + EDGE_TOL < my < T - EDGE_TOL
+            if on_r and on_t: return "top_right"
+            if on_l and on_t: return "top_left"
+            if on_r and on_b: return "bot_right"
+            if on_l and on_b: return "bot_left"
+            if on_r and in_y: return "right"
+            if on_l and in_y: return "left"
+            if on_t and in_x: return "top"
+            if on_b and in_x: return "bottom"
             return None
 
+        def _edge_cursor(edge):
+            if edge in ("left", "right"):          return Qt.SizeHorCursor
+            if edge in ("top", "bottom"):          return Qt.SizeVerCursor
+            if edge in ("top_right", "bot_left"):  return Qt.SizeBDiagCursor
+            if edge in ("top_left",  "bot_right"): return Qt.SizeFDiagCursor
+            return Qt.ArrowCursor
+
+        def _inside(L, B, R, T, mx, my):
+            return L + EDGE_TOL < mx < R - EDGE_TOL and B + EDGE_TOL < my < T - EDGE_TOL
+
         def on_move_hover(event):
-            if event.inaxes != self.ax:
-                self.canvas.setCursor(Qt.ArrowCursor)
+            if drag_state["obj"] is not None:
                 return
-            renderer = self.canvas.get_renderer()
-            for ann in self.annotations:
-                bbox = ann.get_window_extent(renderer=renderer)
-                if detect_corner(bbox, event.x, event.y):
-                    self.canvas.setCursor(Qt.SizeBDiagCursor)
+            for obj in self.ann_objects:
+                L, B, R, T = _patch_px(obj['patch'])
+                edge = _detect_edge(L, B, R, T, event.x, event.y)
+                if edge:
+                    self.canvas.setCursor(_edge_cursor(edge))
                     return
-                if bbox.contains(event.x, event.y):
+                if _inside(L, B, R, T, event.x, event.y):
                     self.canvas.setCursor(Qt.OpenHandCursor)
                     return
             self.canvas.setCursor(Qt.ArrowCursor)
 
         def on_press(event):
-            if event.inaxes != self.ax:
-                return
-            renderer = self.canvas.get_renderer()
-            for ann in self.annotations:
-                bbox = ann.get_window_extent(renderer=renderer)
-                corner = detect_corner(bbox, event.x, event.y)
-                if corner:
+            for obj in self.ann_objects:
+                patch = obj['patch']
+                txt   = obj['text']
+                L, B, R, T = _patch_px(patch)
+                edge = _detect_edge(L, B, R, T, event.x, event.y)
+                if edge:
+                    renderer = self.canvas.get_renderer()
+                    tbbox = txt.get_window_extent(renderer=renderer)
                     drag_state.update({
-                        "dragging": ann,
-                        "mode": "resize",
-                        "corner": corner,
-                        "fontsize0": ann.get_fontsize()
+                        "obj": obj, "mode": "resize",
+                        "press_px": (event.x, event.y),
+                        "edge": edge,
+                        "bbox0_px": (L, B, R, T),
+                        "fontsize0": txt.get_fontsize(),
+                        "text_w0": max(1.0, tbbox.width),
+                        "text_h0": max(1.0, tbbox.height),
                     })
+                    self.canvas.setCursor(_edge_cursor(edge))
                     return
-                if bbox.contains(event.x, event.y):
-                    idx = self.annotations.index(ann)
+                if _inside(L, B, R, T, event.x, event.y):
                     drag_state.update({
-                        "dragging": ann,
-                        "mode": "move",
-                        "corner": None,
-                        "x0": ann.xy[0],
-                        "y0": ann.xy[1],
-                        "press_xdata": event.xdata,
-                        "press_ydata": event.ydata,
-                        "idx": idx
+                        "obj": obj, "mode": "move",
+                        "press_px": (event.x, event.y),
+                        "patch_xy0": (patch.get_x(), patch.get_y()),
+                        "txt_pos0": txt.get_position(),
                     })
+                    self.canvas.setCursor(Qt.ClosedHandCursor)
                     return
 
         def on_motion(event):
-            if drag_state["dragging"] is None or event.xdata is None or event.ydata is None:
+            if drag_state["obj"] is None:
                 return
-            ann = drag_state["dragging"]
+            obj   = drag_state["obj"]
+            patch = obj['patch']
+            txt   = obj['text']
+            press_px, press_py = drag_state["press_px"]
+            dx = event.x - press_px   # right = +
+            dy = event.y - press_py   # up    = +
+
             if drag_state["mode"] == "move":
-                dx = event.xdata - drag_state["press_xdata"]
-                dy = event.ydata - drag_state["press_ydata"]
-                new_pos = (drag_state["x0"] + dx, drag_state["y0"] + dy)
-                ann.set_position(new_pos)
-                idx = drag_state["idx"]
-                self.marker_positions[self.current_graph_index][idx] = new_pos
-            elif drag_state["mode"] == "resize" and drag_state["corner"] == "top_right":
-                renderer = self.canvas.get_renderer()
-                bbox = ann.get_window_extent(renderer=renderer)
-                delta = event.x - bbox.x1 + bbox.y1 - event.y
-                new_size = max(6, drag_state["fontsize0"] + delta * 0.05)
-                ann.set_fontsize(new_size)
+                try:
+                    d0 = _px_to_data(press_px, press_py)
+                    d1 = _px_to_data(event.x, event.y)
+                    ddx, ddy = d1[0] - d0[0], d1[1] - d0[1]
+                    px0, py0 = drag_state["patch_xy0"]
+                    tx0, ty0 = drag_state["txt_pos0"]
+                    patch.set_x(px0 + ddx)
+                    patch.set_y(py0 + ddy)
+                    txt.set_position((tx0 + ddx, ty0 + ddy))
+                    # Save new center
+                    cx_d = tx0 + ddx
+                    cy_d = ty0 + ddy
+                    self.marker_positions[self.current_graph_index][obj['idx']] = (cx_d, cy_d)
+                except Exception:
+                    pass
+
+            elif drag_state["mode"] == "resize":
+                L0, B0, R0, T0 = drag_state["bbox0_px"]
+                edge = drag_state["edge"]
+
+                # Each edge: only the grabbed side moves, all others stay fixed
+                if   edge == "right":     nL,nB,nR,nT = L0,   B0,   R0+dx, T0
+                elif edge == "left":      nL,nB,nR,nT = L0+dx,B0,   R0,   T0
+                elif edge == "top":       nL,nB,nR,nT = L0,   B0,   R0,   T0+dy
+                elif edge == "bottom":    nL,nB,nR,nT = L0,   B0+dy,R0,   T0
+                elif edge == "top_right": nL,nB,nR,nT = L0,   B0,   R0+dx,T0+dy
+                elif edge == "top_left":  nL,nB,nR,nT = L0+dx,B0,   R0,   T0+dy
+                elif edge == "bot_right": nL,nB,nR,nT = L0,   B0+dy,R0+dx,T0
+                elif edge == "bot_left":  nL,nB,nR,nT = L0+dx,B0+dy,R0,   T0
+                else: return
+
+                # Enforce minimum size
+                if nR - nL < MIN_W_PX:
+                    if 'left' in edge: nL = nR - MIN_W_PX
+                    else:              nR = nL + MIN_W_PX
+                if nT - nB < MIN_H_PX:
+                    if 'bot' in edge or edge == 'bottom': nB = nT - MIN_H_PX
+                    else:                                  nT = nB + MIN_H_PX
+
+                try:
+                    d_lb = _px_to_data(nL, nB)
+                    d_rt = _px_to_data(nR, nT)
+                    patch.set_x(d_lb[0])
+                    patch.set_y(d_lb[1])
+                    patch.set_width(max(1e-9,  d_rt[0] - d_lb[0]))
+                    patch.set_height(max(1e-9, d_rt[1] - d_lb[1]))
+                    # Center text in new box
+                    txt.set_position(((d_lb[0]+d_rt[0])/2, (d_lb[1]+d_rt[1])/2))
+                    # Scale font so text fits in both dimensions of the new box
+                    PAD_PX = 8
+                    tw0 = drag_state["text_w0"]
+                    th0 = drag_state["text_h0"]
+                    avail_w = max(1.0, (nR - nL) - 2 * PAD_PX)
+                    avail_h = max(1.0, (nT - nB) - 2 * PAD_PX)
+                    fs_w = drag_state["fontsize0"] * (avail_w / tw0)
+                    fs_h = drag_state["fontsize0"] * (avail_h / th0)
+                    txt.set_fontsize(max(4, min(fs_w, fs_h)))
+                except Exception:
+                    pass
+
             self.canvas.draw_idle()
 
         def on_release(event):
-            drag_state["dragging"] = None
-            drag_state["mode"] = None
-            drag_state["corner"] = None
-            drag_state.pop("idx", None)
+            if drag_state["obj"] is not None:
+                obj = drag_state["obj"]
+                try:
+                    L, B, R, T = _patch_px(obj['patch'])
+                    cx_d, cy_d = _px_to_data((L+R)/2, (B+T)/2)
+                    self.marker_positions[self.current_graph_index][obj['idx']] = (cx_d, cy_d)
+                except Exception:
+                    pass
+            drag_state.update({
+                "obj": None, "mode": None, "press_px": None,
+                "edge": None, "bbox0_px": None,
+                "fontsize0": None, "text_w0": None, "text_h0": None,
+                "patch_xy0": None, "txt_pos0": None,
+            })
+            self.canvas.setCursor(Qt.ArrowCursor)
 
-        self.canvas.mpl_connect('motion_notify_event', on_move_hover)
-        self.canvas.mpl_connect('button_press_event', on_press)
-        self.canvas.mpl_connect('motion_notify_event', on_motion)
-        self.canvas.mpl_connect('button_release_event', on_release)
+        self._drag_cids = [
+            self.canvas.mpl_connect('motion_notify_event', on_move_hover),
+            self.canvas.mpl_connect('button_press_event', on_press),
+            self.canvas.mpl_connect('motion_notify_event', on_motion),
+            self.canvas.mpl_connect('button_release_event', on_release),
+        ]
 
     def _save_current_graph(self):
         if not hasattr(self, "saved_figures"):

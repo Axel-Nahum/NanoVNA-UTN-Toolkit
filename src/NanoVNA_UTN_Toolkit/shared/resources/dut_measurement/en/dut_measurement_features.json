@@ -62,9 +62,9 @@
         },
 
         "s11_phase": {
-            "title": "Phase $S_{11}$ ($^\\circ$)",
+            "title": "Phase $\\angle S_{11}$ ($^\\circ$)",
             "x_axis": "Frequency (MHz)",
-            "y_axis": "$\\phi_{S11}$ ($^\\circ$)"
+            "y_axis": "$\\phi_{S_{11}}$ ($^\\circ$)"
         },
 
         "s21_magnitude": {
@@ -74,9 +74,9 @@
         },
 
         "s21_phase": {
-            "title": "Phase $S_{21}$ ($^\\circ$)",
+            "title": "Phase $\\angle S_{21}$ ($^\\circ$)",
             "x_axis": "Frequency (MHz)",
-            "y_axis": "$\\phi_{S21}$ ($^\\circ$)"
+            "y_axis": "$\\phi_{S_{21}}$ ($^\\circ$)"
         }
       }
     }
