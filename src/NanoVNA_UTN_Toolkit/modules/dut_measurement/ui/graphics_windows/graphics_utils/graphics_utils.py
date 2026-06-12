@@ -75,6 +75,12 @@ def parse_frequency_input(text):
             return value * 1e6 if unit == '' else value
         return value
 
+def _ls(s):
+    """'S11' -> 'S_{11}' for LaTeX subscript in mathtext."""
+    if len(s) >= 2 and s[0] == 'S' and s[1:].isdigit():
+        return rf"S_{{{s[1:]}}}"
+    return s
+
 #############################################################################################
 # =================== LEFT PANEL ========================================================= #
 #############################################################################################
@@ -148,6 +154,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
             marker_color=markercolor,
             marker2_color=marker2color
         )
+        line = None
 
     elif graph_type == "Magnitude":
 
@@ -164,8 +171,8 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         line, = ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
-        ax.set_ylabel(r"$|%s|$" % s_param, color=text_color)
-        ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param, db_times=unit_mode)}$", color=f"{text_color}")
+        ax.set_ylabel(r"$|%s|$" % _ls(s_param), color=text_color)
+        ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=_ls(s_param), db_times=unit_mode)}$", color=f"{text_color}")
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
@@ -209,8 +216,8 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         line, = ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
-        ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
-        ax.set_title(rf"$\mathrm{{{self.measurement_ui_phase_title.format(parameter=s_param)}}}$", color=text_color)
+        ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % _ls(s_param), color=f"{text_color}")
+        ax.set_title(rf"${self.measurement_ui_phase_title.format(parameter=_ls(s_param))}$", color=text_color)
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
@@ -1269,6 +1276,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
             trace_color=tracecolor,
             marker_color=markercolor
         )
+        line = None
 
     elif graph_type == "Magnitude":
         fig, ax = plt.subplots(figsize=(4,3))
@@ -1284,8 +1292,8 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         line, = ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
-        ax.set_ylabel(r"$|%s|$" % s_param, color=text_color)
-        ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param, db_times=unit_mode)}$", color=f"{text_color}")
+        ax.set_ylabel(r"$|%s|$" % _ls(s_param), color=text_color)
+        ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=_ls(s_param), db_times=unit_mode)}$", color=f"{text_color}")
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6
@@ -1329,8 +1337,8 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         line, = ax.plot(freqs*1e-6, np.angle(S_data, deg=True), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=f"{text_color}")
-        ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
-        ax.set_title(rf"$\mathrm{{{self.measurement_ui_phase_title.format(parameter=s_param)}}}$", color=f"{text_color}")
+        ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % _ls(s_param), color=f"{text_color}")
+        ax.set_title(rf"${self.measurement_ui_phase_title.format(parameter=_ls(s_param))}$", color=f"{text_color}")
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
         freq_start = freqs[0]*1e-6

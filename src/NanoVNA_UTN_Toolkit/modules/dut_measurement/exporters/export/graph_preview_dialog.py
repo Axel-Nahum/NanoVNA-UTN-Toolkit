@@ -210,7 +210,7 @@ class GraphPreviewExportDialog(QDialog):
                 Path(__file__).resolve()
             )
             _marker_color1 = _gfx.value("Graphic1/MarkerColor1", "#00ff00")
-            _marker_color2 = _gfx.value("Graphic1/MarkerColor2", "#ffaa00")
+            _marker_color2 = _gfx.value("Graphic2/MarkerColor1", "#ffaa00")
         except Exception:
             _marker_color1 = "#00ff00"
             _marker_color2 = "#ffaa00"
@@ -233,12 +233,12 @@ class GraphPreviewExportDialog(QDialog):
             # --- Frequency inputs (white style) ---
             edit1 = QLineEdit()
             edit1.setFixedWidth(80)
-            edit1.setStyleSheet("background-color: white; color: black;")
+            edit1.setStyleSheet("background-color: white; color: black; border: 2px solid white; border-radius: 3px;")
             combo1 = _make_centered_combo(["kHz", "MHz", "GHz"])
 
             edit2 = QLineEdit()
             edit2.setFixedWidth(80)
-            edit2.setStyleSheet("background-color: white; color: black;")
+            edit2.setStyleSheet("background-color: white; color: black; border: 2px solid white; border-radius: 3px;")
             combo2 = _make_centered_combo(["kHz", "MHz", "GHz"])
 
             # --- Inline validator function ---
@@ -442,8 +442,12 @@ class GraphPreviewExportDialog(QDialog):
 
         # --- Marker 1: title centered, [input][unit] below ---
         vbox1 = QVBoxLayout()
-        vbox1.setSpacing(10)
-        vbox1.addWidget(marker1, alignment=Qt.AlignCenter)
+        vbox1.setSpacing(8)
+        cb_row1 = QHBoxLayout()
+        cb_row1.addStretch()
+        cb_row1.addWidget(marker1)
+        cb_row1.addStretch()
+        vbox1.addLayout(cb_row1)
         row1 = QHBoxLayout()
         row1.setSpacing(8)
         row1.addWidget(edit1)
@@ -452,10 +456,14 @@ class GraphPreviewExportDialog(QDialog):
 
         # --- Marker 2: title centered, [input][unit] below ---
         vbox2 = QVBoxLayout()
-        vbox2.setSpacing(5)
-        vbox2.addWidget(marker2, alignment=Qt.AlignCenter)
+        vbox2.setSpacing(8)
+        cb_row2 = QHBoxLayout()
+        cb_row2.addStretch()
+        cb_row2.addWidget(marker2)
+        cb_row2.addStretch()
+        vbox2.addLayout(cb_row2)
         row2 = QHBoxLayout()
-        row2.setSpacing(4)
+        row2.setSpacing(8)
         row2.addWidget(edit2)
         row2.addWidget(combo2)
         vbox2.addLayout(row2)
@@ -536,7 +544,7 @@ class GraphPreviewExportDialog(QDialog):
 
             # Plot actual S11 data on top
             gamma = s11
-            line, = self.ax.plot(np.real(gamma), np.imag(gamma), color="red", linewidth=1.2, label=r"$S_{11}$")
+            line, = self.ax.plot(np.real(gamma), np.imag(gamma), color="red", linewidth=1.2, label=r"$S_{11}$", clip_on=False)
 
             # Adjust appearance
             self.ax.set_aspect("equal", adjustable="box")
@@ -756,7 +764,7 @@ class GraphPreviewExportDialog(QDialog):
             )
             colors = [
                 _gfx.value("Graphic1/MarkerColor1", "#00ff00"),
-                _gfx.value("Graphic1/MarkerColor2", "#ffaa00"),
+                _gfx.value("Graphic2/MarkerColor1", "#ffaa00"),
             ]
         except Exception:
             colors = ["#00ff00", "#ffaa00"]
@@ -768,7 +776,7 @@ class GraphPreviewExportDialog(QDialog):
             if active:
                 edit.setEnabled(True)
                 combo.setEnabled(True)
-                edit.setStyleSheet("background-color: white; color: black;")
+                edit.setStyleSheet("background-color: white; color: black; border: 2px solid white; border-radius: 3px;")
                 combo.update()
 
                 try:
@@ -877,7 +885,7 @@ class GraphPreviewExportDialog(QDialog):
             else:
                 edit.setEnabled(False)
                 combo.setEnabled(False)
-                edit.setStyleSheet("background-color: #d8d8d8; color: #888888;")
+                edit.setStyleSheet("background-color: #d8d8d8; color: #888888; border: 1px solid #aaaaaa; border-radius: 3px;")
                 combo.update()
 
                 unit_factor = {"kHz": 1e3, "MHz": 1e6, "GHz": 1e9}[combo.currentText()]

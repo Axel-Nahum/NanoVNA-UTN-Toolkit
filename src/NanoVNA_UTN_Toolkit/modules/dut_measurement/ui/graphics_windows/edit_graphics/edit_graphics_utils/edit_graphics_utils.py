@@ -24,6 +24,12 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 
+def _ls(s):
+    """'S11' -> 'S_{11}' for LaTeX subscript in mathtext."""
+    if len(s) >= 2 and s[0] == 'S' and s[1:].isdigit():
+        return rf"S_{{{s[1:]}}}"
+    return s
+
 # Suppress matplotlib debug logs
 
 spin_style = """
@@ -358,7 +364,7 @@ def create_edit_tab1(self, tabs, nano_window):
 
             # Magnitude
             ax.set_xlabel(f"{self.edit_graphics_g1_mag_x_axis}", color=f"{get_text_color()}")
-            ax.set_ylabel(r"$|%s|$" % s_param1, color=f"{get_text_color()}")
+            ax.set_ylabel(r"$|%s|$" % _ls(s_param1), color=f"{get_text_color()}")
             ax.set_title(self.edit_graphics_g1_mag_title % s_param1, color=f"{get_text_color()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color()}")
@@ -391,8 +397,8 @@ def create_edit_tab1(self, tabs, nano_window):
 
             # Phase
             ax.set_xlabel(f"{self.edit_graphics_g1_phase_x_axis}", color=f"{get_text_color()}")
-            ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param1, color=f"{get_text_color()}")
-            ax.set_title(rf"$\mathrm{{{self.edit_graphics_g1_phase_title.format(parameter=s_param1)}}}$", color=f"{get_text_color()}")
+            ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % _ls(s_param1), color=f"{get_text_color()}")
+            ax.set_title(rf"${self.edit_graphics_g1_phase_title.format(parameter=_ls(s_param1))}$", color=f"{get_text_color()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color()}")
@@ -856,7 +862,7 @@ def create_edit_tab2(self, tabs, nano_window):
 
             # Magnitude
             ax.set_xlabel(f"{self.edit_graphics_g2_mag_x_axis}", color=f"{get_text_color2()}")
-            ax.set_ylabel(r"$|%s|$" % s_param2, color=f"{get_text_color2()}")
+            ax.set_ylabel(r"$|%s|$" % _ls(s_param2), color=f"{get_text_color2()}")
             ax.set_title(self.edit_graphics_g2_mag_title % s_param2, color=f"{get_text_color2()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color2()}")
@@ -888,8 +894,8 @@ def create_edit_tab2(self, tabs, nano_window):
 
             # Phase
             ax.set_xlabel(f"{self.edit_graphics_g2_phase_x_axis}", color=f"{get_text_color2()}")
-            ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param2, color=f"{get_text_color2()}")
-            ax.set_title(rf"$\mathrm{{{self.edit_graphics_g2_phase_title.format(parameter=s_param2)}}}$", color=f"{get_text_color2()}")
+            ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % _ls(s_param2), color=f"{get_text_color2()}")
+            ax.set_title(rf"${self.edit_graphics_g2_phase_title.format(parameter=_ls(s_param2))}$", color=f"{get_text_color2()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color2()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color2()}")

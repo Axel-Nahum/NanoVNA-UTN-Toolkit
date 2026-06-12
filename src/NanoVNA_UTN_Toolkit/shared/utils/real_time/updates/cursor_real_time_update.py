@@ -61,40 +61,52 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
         # ================= LEFT =================
         if hasattr(self, "cursor_left") and self.cursor_left:
             idx = get_idx("slider_left")
-            x = freqs[idx] / freq_div
-            if graph_left == "Phase":
-                y = _get_y_from_line(self.line_left, idx) or compute_y(s_left[idx], graph_left, unit_left)
+            if graph_left == "Smith Diagram":
+                self.cursor_left.set_data([np.real(s_left[idx])], [np.imag(s_left[idx])])
             else:
-                y = compute_y(s_left[idx], graph_left, unit_left)
-            self.cursor_left.set_data([x], [y])
+                x = freqs[idx] / freq_div
+                if graph_left == "Phase":
+                    y = _get_y_from_line(self.line_left, idx) or compute_y(s_left[idx], graph_left, unit_left)
+                else:
+                    y = compute_y(s_left[idx], graph_left, unit_left)
+                self.cursor_left.set_data([x], [y])
 
         if hasattr(self, "cursor_left_2") and self.cursor_left_2:
             idx = get_idx("slider_left_2")
-            x = freqs[idx] / freq_div
-            if graph_left == "Phase":
-                y = _get_y_from_line(self.line_left, idx) or compute_y(s_left[idx], graph_left, unit_left)
+            if graph_left == "Smith Diagram":
+                self.cursor_left_2.set_data([np.real(s_left[idx])], [np.imag(s_left[idx])])
             else:
-                y = compute_y(s_left[idx], graph_left, unit_left)
-            self.cursor_left_2.set_data([x], [y])
+                x = freqs[idx] / freq_div
+                if graph_left == "Phase":
+                    y = _get_y_from_line(self.line_left, idx) or compute_y(s_left[idx], graph_left, unit_left)
+                else:
+                    y = compute_y(s_left[idx], graph_left, unit_left)
+                self.cursor_left_2.set_data([x], [y])
 
         # ================= RIGHT =================
         if hasattr(self, "cursor_right") and self.cursor_right:
             idx = get_idx("slider_right")
-            x = freqs[idx] / freq_div
-            if graph_right == "Phase":
-                y = _get_y_from_line(self.line_right, idx) or compute_y(s_right[idx], graph_right, unit_right)
+            if graph_right == "Smith Diagram":
+                self.cursor_right.set_data([np.real(s_right[idx])], [np.imag(s_right[idx])])
             else:
-                y = compute_y(s_right[idx], graph_right, unit_right)
-            self.cursor_right.set_data([x], [y])
+                x = freqs[idx] / freq_div
+                if graph_right == "Phase":
+                    y = _get_y_from_line(self.line_right, idx) or compute_y(s_right[idx], graph_right, unit_right)
+                else:
+                    y = compute_y(s_right[idx], graph_right, unit_right)
+                self.cursor_right.set_data([x], [y])
 
         if hasattr(self, "cursor_right_2") and self.cursor_right_2:
             idx = get_idx("slider_right_2")
-            x = freqs[idx] / freq_div
-            if graph_right == "Phase":
-                y = _get_y_from_line(self.line_right, idx) or compute_y(s_right[idx], graph_right, unit_right)
+            if graph_right == "Smith Diagram":
+                self.cursor_right_2.set_data([np.real(s_right[idx])], [np.imag(s_right[idx])])
             else:
-                y = compute_y(s_right[idx], graph_right, unit_right)
-            self.cursor_right_2.set_data([x], [y])
+                x = freqs[idx] / freq_div
+                if graph_right == "Phase":
+                    y = _get_y_from_line(self.line_right, idx) or compute_y(s_right[idx], graph_right, unit_right)
+                else:
+                    y = compute_y(s_right[idx], graph_right, unit_right)
+                self.cursor_right_2.set_data([x], [y])
 
         if hasattr(self, "canvas_left"):
             self.canvas_left.draw_idle()

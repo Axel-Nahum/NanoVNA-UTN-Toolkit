@@ -24,6 +24,12 @@ read_auto_scale_data = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.
 
 get_freq_display_unit = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils", "get_freq_display_unit")
 
+def _ls(s):
+    """'S11' -> 'S_{11}' for LaTeX subscript in mathtext."""
+    if len(s) >= 2 and s[0] == 'S' and s[1:].isdigit():
+        return rf"S_{{{s[1:]}}}"
+    return s
+
 # ------------------------------------------------------------------------------------------------------------------------------ #
 
 def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
@@ -46,6 +52,7 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
 
     """Recreate a single plot with new data."""
     try:
+        data_line = None  # default; set below for Magnitude/Phase
         from matplotlib.lines import Line2D
 
         # Load configuration for calibration settings
@@ -119,11 +126,11 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             ax.set_xlabel(rf"$\mathrm{{Frequency\ ({freq_unit})}}$", color=f"{text_color}")
             
             if unit == "dB":
-                ax.set_ylabel(r"$%s\ \mathrm{[dB]}$" % s_param, color=text_color)
-                ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param, db_times=unit_mode)}$", color=text_color)
+                ax.set_ylabel(r"$|%s|\ \mathrm{[dB]}$" % _ls(s_param), color=text_color)
+                ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=_ls(s_param), db_times=unit_mode)}$", color=text_color)
             else:
-                ax.set_ylabel(r"$|%s|$" % s_param, color=f"{text_color}")
-                ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=s_param, db_times=unit_mode)}$", color=text_color)
+                ax.set_ylabel(r"$|%s|$" % _ls(s_param), color=f"{text_color}")
+                ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=_ls(s_param), db_times=unit_mode)}$", color=text_color)
 
             # Set X-axis limits with margins to match actual frequency range of the sweep
             freq_start = freqs[0] / freq_div
@@ -193,8 +200,8 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             data_line, = ax.plot(freqs / freq_div, phase_deg, color=tracecolor, linewidth=linewidth)
 
             ax.set_xlabel(rf"$\mathrm{{Frequency\ ({freq_unit})}}$", color=f"{text_color}")
-            ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % s_param, color=f"{text_color}")
-            ax.set_title(rf"$\mathrm{{{self.measurement_ui_phase_title.format(parameter=s_param)}}}$", color=f"{text_color}")
+            ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % _ls(s_param), color=f"{text_color}")
+            ax.set_title(rf"${self.measurement_ui_phase_title.format(parameter=_ls(s_param))}$", color=f"{text_color}")
 
             # Set X-axis limits with margins to match actual frequency range of the sweep
             freq_start = freqs[0] / freq_div

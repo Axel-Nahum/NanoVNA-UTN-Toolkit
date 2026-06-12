@@ -31,7 +31,45 @@ except ImportError:
 
 # ----------------------------------------------------------------------------------
 
+def _update_smith_realtime(ax, freqs, s_data):
+    """Update the Smith chart data trace in-place without redrawing the grid."""
+    n = len(s_data)
+    x = np.real(s_data)
+    y = np.imag(s_data)
+    updated = False
+    for line_obj in ax.lines:
+        xd = line_obj.get_xdata()
+        if hasattr(xd, '__len__') and len(xd) == n:
+            line_obj.set_data(x, y)
+            updated = True
+            break
+    if not updated and len(ax.lines) > 0:
+        # Fallback: update the last line added (the data trace)
+        ax.lines[-1].set_data(x, y)
+
+# ----------------------------------------------------------------------------------
+
 def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit, ax_type):
+
+    if graph_type == "Smith Diagram":
+        _update_smith_realtime(ax, freqs, s_data)
+        return
+
+    # Recover a stale/None line reference by finding the data trace in the axes
+    if line is None:
+        n = len(s_data)
+        for l in ax.lines:
+            xd = l.get_xdata()
+            if hasattr(xd, '__len__') and len(xd) == n:
+                line = l
+                # Heal the stored reference so future calls are direct
+                if ax_type == "left":
+                    self.line_left = line
+                elif ax_type == "right":
+                    self.line_right = line
+                break
+        if line is None:
+            return
 
     if graph_type == "Magnitude":
         if unit == "dB":
@@ -87,16 +125,17 @@ def update_plots_realtime(self):
         if not hasattr(self.ax_right, "lines") or len(self.ax_right.lines) == 0:
             return
 
-        #self.line_left  = self.ax_left.lines[0]
-        #self.line_right = self.ax_right.lines[0]
-
-        if not hasattr(self, "line_left") or self.line_left is None:
-            return
-        if not hasattr(self, "line_right") or self.line_right is None:
-            return
-
         if self.freqs is None or self.s11 is None or self.s21 is None:
             return
+
+        config          = load_graph_configuration()
+        graph_type_tab1 = config['graph_type_tab1']
+        s_param_tab1    = config['s_param_tab1']
+        graph_type_tab2 = config['graph_type_tab2']
+        s_param_tab2    = config['s_param_tab2']
+
+        # line references may be None/stale (e.g. right after a Smith→Magnitude switch);
+        # update_single_plot_realtime recovers them via ax.lines search.
 
         data_config = read_auto_scale_data(self)
         self.auto_scale_left  = data_config[0]
@@ -106,40 +145,14 @@ def update_plots_realtime(self):
         self.ymin_right       = data_config[4]
         self.ymax_right       = data_config[5]
 
-        config          = load_graph_configuration()
-        graph_type_tab1 = config['graph_type_tab1']
-        s_param_tab1    = config['s_param_tab1']
-        graph_type_tab2 = config['graph_type_tab2']
-        s_param_tab2    = config['s_param_tab2']
-
         s_data_left  = self.s11 if s_param_tab1 == "S11" else self.s21
         s_data_right = self.s11 if s_param_tab2 == "S11" else self.s21
 
-        # -----------------------------
-        # ACTUALIZAR CLOSURES — después de definir s_data
-        # -----------------------------
         if hasattr(self, "update_left_data_2") and self.update_left_data_2:
             try:
                 self.update_left_data_2(s_data_left, self.freqs)
             except Exception as e:
                 logging.error(f"[update_plots_realtime] update_left_data_2: {e}")
-
-        if hasattr(self, "update_right_data") and self.update_right_data:
-
-            old = getattr(self, "_last_update_right_data", None)
-
-            if old is not self.update_right_data:
-                logging.error(
-                    f"update_right_data changed "
-                    f"{id(old)} -> {id(self.update_right_data)}"
-                )
-                self._last_update_right_data = self.update_right_data
-
-            try:
-                #self.update_right_data(s_data_right, self.freqs)
-                pass
-            except Exception as e:
-                logging.error(f"[update_plots_realtime] update_right_data: {e}")
 
         update_single_plot_realtime(
             self, self.line_left, self.ax_left,

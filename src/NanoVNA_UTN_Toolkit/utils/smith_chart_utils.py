@@ -162,16 +162,32 @@ class SmithChartBuilder:
         
         return network
     
-    def add_legend(self, labels, colors=None, location='upper left', bbox_anchor=(-0.17, 1.14)):
-        """Add legend to Smith chart."""
+    def add_legend(self, labels, colors=None, location='lower left', bbox_anchor=(-0.13, 1.00)):
+        """Add legend to Smith chart matching preview style."""
         if self.ax is None:
             return
-            
+
         if colors is None:
             colors = [self.config.trace_color] * len(labels)
-            
+
+        def _latex_label(lbl):
+            if len(lbl) >= 2 and lbl[0] == 'S' and lbl[1:].isdigit():
+                return r"$S_{%s}$" % lbl[1:]
+            return lbl
+
+        latex_labels = [_latex_label(lbl) for lbl in labels]
         legend_lines = [Line2D([0], [0], color=color) for color in colors]
-        self.ax.legend(legend_lines, labels, loc=location, bbox_to_anchor=bbox_anchor)
+        legend = self.ax.legend(
+            legend_lines, latex_labels,
+            loc=location,
+            bbox_to_anchor=bbox_anchor,
+            borderaxespad=0,
+            fontsize=10,
+            facecolor="white",
+            edgecolor="black",
+            framealpha=1,
+        )
+        legend.set_draggable(True)
     
     def update_data_line_styles(self, freqs, color=None, linewidth=None):
         """Update styling of data lines that match frequency array."""
