@@ -139,7 +139,7 @@ class LatexExporter:
         
         return True, (compiler_name, compiler_path), None
     
-    def export_to_pdf(self, freqs, s11_data, s21_data, measurement_name=None, output_path=None):
+    def export_to_pdf(self, freqs, s11_data, s21_data, measurement_name=None, output_path=None, magnitude_unit="dB"):
         """
         Export S-parameter data to PDF using LaTeX.
 
@@ -184,7 +184,8 @@ class LatexExporter:
                     tmpdirname=tmpdirname,
                     measurement_name=measurement_name,
                     vna_name="NanoVNA",
-                    specific_compiler_path=compiler_path
+                    specific_compiler_path=compiler_path,
+                    magnitude_unit=magnitude_unit
                 )
             return True
         else:
@@ -339,14 +340,19 @@ class LatexExporter:
         image_files['smith'] = smith_path
 
         # Magnitude S11
+        unit_s11 = self._read_magnitude_unit(1)
+        mag_s11_y, mag_s11_ylabel, mag_s11_title = self._magnitude_curve(s11_data, "S11", unit_s11)
         fig, ax = plt.subplots(figsize=(6, 4))
         fig.patch.set_facecolor("white")
         ax.set_facecolor("white")
-        ax.plot(freqs * 1e-6, 20 * np.log10(np.abs(s11_data)), color='blue')
+        ax.plot(freqs * 1e-6, mag_s11_y, color='blue')
         ax.set_xlabel("Frequency [MHz]")
-        ax.set_ylabel("|S11|")
-        ax.set_title("Magnitude S11")
+        ax.set_ylabel(mag_s11_ylabel)
+        ax.set_title(mag_s11_title)
         ax.grid(True, linestyle='--', alpha=0.5)
+        ylim = self._get_ylim_for_export("S11", "Magnitude")
+        if ylim:
+            ax.set_ylim(*ylim)
         mag_s11_path = os.path.join(output_dir, "magnitude_s11.png")
         fig.savefig(mag_s11_path, dpi=300)
         plt.close(fig)
@@ -361,20 +367,28 @@ class LatexExporter:
         ax.set_ylabel("Phase S11 [deg]")
         ax.set_title("Phase S11")
         ax.grid(True, linestyle='--', alpha=0.5)
+        ylim = self._get_ylim_for_export("S11", "Phase")
+        if ylim:
+            ax.set_ylim(*ylim)
         phase_s11_path = os.path.join(output_dir, "phase_s11.png")
         fig.savefig(phase_s11_path, dpi=300)
         plt.close(fig)
         image_files['phase_s11'] = phase_s11_path
 
         # Magnitude S21
+        unit_s21 = self._read_magnitude_unit(2)
+        mag_s21_y, mag_s21_ylabel, mag_s21_title = self._magnitude_curve(s21_data, "S21", unit_s21)
         fig, ax = plt.subplots(figsize=(6, 4))
         fig.patch.set_facecolor("white")
         ax.set_facecolor("white")
-        ax.plot(freqs * 1e-6, 20 * np.log10(np.abs(s21_data)), color='red')
+        ax.plot(freqs * 1e-6, mag_s21_y, color='red')
         ax.set_xlabel("Frequency [MHz]")
-        ax.set_ylabel("|S21|")
-        ax.set_title("Magnitude S21")
+        ax.set_ylabel(mag_s21_ylabel)
+        ax.set_title(mag_s21_title)
         ax.grid(True, linestyle='--', alpha=0.5)
+        ylim = self._get_ylim_for_export("S21", "Magnitude")
+        if ylim:
+            ax.set_ylim(*ylim)
         mag_s21_path = os.path.join(output_dir, "magnitude_s21.png")
         fig.savefig(mag_s21_path, dpi=300)
         plt.close(fig)
@@ -389,6 +403,9 @@ class LatexExporter:
         ax.set_ylabel("Phase S21 [deg]")
         ax.set_title("Phase S21")
         ax.grid(True, linestyle='--', alpha=0.5)
+        ylim = self._get_ylim_for_export("S21", "Phase")
+        if ylim:
+            ax.set_ylim(*ylim)
         phase_s21_path = os.path.join(output_dir, "phase_s21.png")
         fig.savefig(phase_s21_path, dpi=300)
         plt.close(fig)
@@ -484,7 +501,7 @@ class LatexExporter:
         except Exception as e:
             raise Exception(f"Failed to generate PDF with {compiler_name}: {str(e)}. Please check your LaTeX installation and ensure all required packages are installed.")
     
-    def _create_latex_document_with_compiler(self, freqs, image_files, file_path, tmpdirname, measurement_name, vna_name, specific_compiler_path):
+    def _create_latex_document_with_compiler(self, freqs, image_files, file_path, tmpdirname, measurement_name, vna_name, specific_compiler_path, magnitude_unit="dB"):
         """
         Create the LaTeX document with cover page and all images using a specific compiler.
 
@@ -503,6 +520,7 @@ class LatexExporter:
             geometry_options={'paper': 'a4paper', 'margin': '2cm'}
         )
         doc.preamble.append(Command('usepackage', 'graphicx'))
+        doc.preamble.append(Command('usepackage', 'float'))
 
         current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         calibration_method, calibrated_parameter, measurement_number = self._get_calibration_info(measurement_name)
@@ -515,33 +533,48 @@ class LatexExporter:
                                 calibrated_parameter=calibrated_parameter,
                                 vna_name=vna_name)
 
+        _, _, title_s11 = self._magnitude_curve(None, r"S_{11}", magnitude_unit)
+        _, _, title_s21 = self._magnitude_curve(None, r"S_{21}", magnitude_unit)
+
+        graph_titles = [
+            NoEscape(r'Smith Diagram $-\ S_{11}$'),
+            NoEscape(title_s11),
+            NoEscape(r'Phase $\angle S_{11}$ (degrees)'),
+            NoEscape(title_s21),
+            NoEscape(r'Phase $\angle S_{21}$ (degrees)'),
+        ]
+
         # --- PAGES WITH IMAGES ---
-        doc.append(NewPage())  # Start from the second page
+        doc.append(NewPage())
         with doc.create(Section("Measurement Graphs")):
-            keys = list(image_files.keys())
             paths = list(image_files.values())
 
             # --- Smith chart alone on first page ---
-            with doc.create(Figure(position='h!')) as fig:
-                fig.add_image(paths[0].replace("\\", "/"), width=NoEscape(r'0.8\linewidth'))
+            with doc.create(Subsection(graph_titles[0])):
+                with doc.create(Figure(position='H')) as fig:
+                    fig.add_image(paths[0].replace("\\", "/"), width=NoEscape(r'0.8\linewidth'))
             doc.append(NewPage())
 
-            # --- Second and third images stacked vertically on one page ---
+            # --- S11 Magnitude + Phase stacked on one page ---
             if len(paths) >= 3:
-                with doc.create(Figure(position='h!')) as fig:
-                    fig.add_image(paths[1].replace("\\", "/"), width=NoEscape(r'0.8\linewidth'))
-                doc.append(NoEscape(r'\vspace{1cm}'))  # spacing between the two images
-                with doc.create(Figure(position='h!')) as fig:
-                    fig.add_image(paths[2].replace("\\", "/"), width=NoEscape(r'0.8\linewidth'))
+                with doc.create(Subsection(graph_titles[1])):
+                    with doc.create(Figure(position='H')) as fig:
+                        fig.add_image(paths[1].replace("\\", "/"), width=NoEscape(r'0.75\linewidth'))
+                doc.append(NoEscape(r'\vspace{0.5cm}'))
+                with doc.create(Subsection(graph_titles[2])):
+                    with doc.create(Figure(position='H')) as fig:
+                        fig.add_image(paths[2].replace("\\", "/"), width=NoEscape(r'0.75\linewidth'))
                 doc.append(NewPage())
 
-            # --- Fourth and fifth images stacked vertically on one page ---
+            # --- S21 Magnitude + Phase stacked on one page ---
             if len(paths) >= 5:
-                with doc.create(Figure(position='h!')) as fig:
-                    fig.add_image(paths[3].replace("\\", "/"), width=NoEscape(r'0.8\linewidth'))
-                doc.append(NoEscape(r'\vspace{1cm}'))
-                with doc.create(Figure(position='h!')) as fig:
-                    fig.add_image(paths[4].replace("\\", "/"), width=NoEscape(r'0.8\linewidth'))
+                with doc.create(Subsection(graph_titles[3])):
+                    with doc.create(Figure(position='H')) as fig:
+                        fig.add_image(paths[3].replace("\\", "/"), width=NoEscape(r'0.75\linewidth'))
+                doc.append(NoEscape(r'\vspace{0.5cm}'))
+                with doc.create(Subsection(graph_titles[4])):
+                    with doc.create(Figure(position='H')) as fig:
+                        fig.add_image(paths[4].replace("\\", "/"), width=NoEscape(r'0.75\linewidth'))
                 doc.append(NewPage())
 
 
@@ -746,6 +779,61 @@ class LatexExporter:
             # Fallback values if config reading fails
             return "---", "---", 1
     
+    def _get_ylim_for_export(self, s_param, graph_type):
+        try:
+            gfx = get_settings(
+                "INI/dut_measurement/graphics_config/graphics_config.ini",
+                "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini",
+                Path(__file__).resolve()
+            )
+            as_ = get_settings(
+                "INI/dut_measurement/auto_scale/auto_scale.ini",
+                "modules/dut_measurement/ui/utils/context_menu/auto_scale/auto_scale.ini",
+                Path(__file__).resolve()
+            )
+            tab1_sp = gfx.value("Tab1/SParameter", "S11")
+            tab1_gt = gfx.value("Tab1/GraphType1", "Magnitude")
+            tab2_sp = gfx.value("Tab2/SParameter", "S21")
+            tab2_gt = gfx.value("Tab2/GraphType2", "Phase")
+
+            if tab1_sp == s_param and tab1_gt == graph_type:
+                if not as_.value("AutoScale/enabled_left", True, type=bool):
+                    return (as_.value("AutoScale/ymin_left", 0.0, type=float),
+                            as_.value("AutoScale/ymax_left", 0.0, type=float))
+            if tab2_sp == s_param and tab2_gt == graph_type:
+                if not as_.value("AutoScale/enabled_right", True, type=bool):
+                    return (as_.value("AutoScale/ymin_right", 0.0, type=float),
+                            as_.value("AutoScale/ymax_right", 0.0, type=float))
+        except Exception:
+            pass
+        return None
+
+    def _read_magnitude_unit(self, graph_number=1):
+        try:
+            settings = get_settings(
+                "INI/dut_measurement/graphics_config/graphics_config.ini",
+                "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini",
+                Path(__file__).resolve()
+            )
+            return settings.value(f"Graphic{graph_number}/db_times", "dB")
+        except Exception:
+            return "dB"
+
+    def _magnitude_curve(self, s_data, param_tex, unit):
+        if unit == "dB":
+            y = 20 * np.log10(np.abs(s_data)) if s_data is not None else None
+            ylabel = rf"|{param_tex}| (dB)"
+            title  = rf"Magnitude $|{param_tex}|$ (dB)"
+        elif unit == "Power ratio":
+            y = np.abs(s_data) ** 2 if s_data is not None else None
+            ylabel = rf"|{param_tex}|²"
+            title  = rf"Power Ratio $|{param_tex}|^2$"
+        else:
+            y = np.abs(s_data) if s_data is not None else None
+            ylabel = rf"|{param_tex}|"
+            title  = rf"Magnitude $|{param_tex}|$"
+        return y, ylabel, title
+
     def _show_warning(self, title, message):
         """Show warning message box."""
         if self.parent_widget:

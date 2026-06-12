@@ -20,7 +20,8 @@ from pathlib import Path
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox, QWidget,
-    QCheckBox, QHBoxLayout, QLineEdit, QComboBox
+    QCheckBox, QHBoxLayout, QLineEdit, QComboBox, QFrame,
+    QRadioButton, QButtonGroup
 )
 from PySide6.QtCore import Qt, QLocale
 from PySide6.QtGui import QDoubleValidator
@@ -98,19 +99,38 @@ class GraphPreviewExportDialog(QDialog):
         screen_height = geometry.height()
         screen_width = geometry.width()
 
-        # Ajustar solo la altura, no el ancho
-        self.resize(800, int(screen_height * 0.7))
-        self.setMaximumSize(screen_width, screen_height)
+        dialog_h = max(660, min(780, int(screen_height * 0.72)))
+        self.setFixedSize(740, dialog_h)
 
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(16, 14, 16, 14)
+        main_layout.setSpacing(10)
 
-        # --- Instruction label
-        label = QLabel(
-            f"{self.pdf_preview_ready}.\n"
-            f"{self.pdf_preview_instruction}"
-        )
-        label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(label)
+        # --- Header row: title centered, page indicator pinned top-right ---
+        self.page_label = QLabel(f"1 / {self.total_graphs}")
+        self.page_label.setStyleSheet("color: #aaaaaa; font-size: 12px; font-weight: bold; min-width: 40px;")
+        self.page_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        title_label = QLabel(f"{self.pdf_preview_ready}")
+        title_label.setStyleSheet("font-weight: bold; font-size: 14px; color: #e0e0e0;")
+        title_label.setAlignment(Qt.AlignCenter)
+
+        # Left placeholder keeps the title visually centered despite page_label on right
+        left_ph = QWidget()
+        left_ph.setFixedWidth(50)
+
+        header_row = QHBoxLayout()
+        header_row.addWidget(left_ph)
+        header_row.addWidget(title_label, 1, Qt.AlignCenter)
+        header_row.addWidget(self.page_label, 0, Qt.AlignRight | Qt.AlignVCenter)
+        main_layout.addLayout(header_row)
+
+        subtitle_label = QLabel(f"{self.pdf_preview_instruction}")
+        subtitle_label.setAlignment(Qt.AlignCenter)
+        subtitle_label.setStyleSheet("font-size: 11px; color: #999999;")
+        main_layout.addWidget(subtitle_label)
+
+        main_layout.addSpacing(4)
 
         # --- Create figure and canvas ---
         self.fig, self.ax = plt.subplots()
@@ -118,6 +138,7 @@ class GraphPreviewExportDialog(QDialog):
         self.ax.set_facecolor("white")
         self.fig.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.18)
         self.canvas = FigureCanvas(self.fig)
+        self.canvas.setMinimumHeight(360)
         self.canvas.resizeEvent = self._on_canvas_resize
 
         # --- Previous / Next buttons ---
@@ -126,25 +147,30 @@ class GraphPreviewExportDialog(QDialog):
 
         self.prev_button.setFocusPolicy(Qt.NoFocus)
         self.next_button.setFocusPolicy(Qt.NoFocus)
-        btn_style = """
+
+        nav_btn_style = """
             QPushButton {
-                background-color: rgba(245, 245, 245, 0.9);
-                border: 1px solid #777;
+                background-color: #f0f0f0;
+                color: #333333;
+                border: 1px solid #cccccc;
                 border-radius: 5px;
                 font-weight: bold;
-                color: #333;
-                min-width: 70px;
-                max-width: 70px;
-                min-height: 20px;
-                max-height: 20px;   
-                padding: 2px 4px;
+                padding: 4px 16px;
+                min-width: 80px;
+                font-size: 12px;
             }
-            QPushButton:hover {
-                background-color: rgba(220, 220, 220, 0.95);
+            QPushButton:hover:enabled {
+                background-color: #e0e0e0;
+                border-color: #999999;
+            }
+            QPushButton:disabled {
+                background-color: #f8f8f8;
+                color: #bbbbbb;
+                border-color: #e0e0e0;
             }
         """
-        self.prev_button.setStyleSheet(btn_style)
-        self.next_button.setStyleSheet(btn_style)
+        self.prev_button.setStyleSheet(nav_btn_style)
+        self.next_button.setStyleSheet(nav_btn_style)
 
         # --- Marker checkboxes and frequency inputs
         self.marker_checkboxes = {}  # key=graph_index, value=(marker1, marker2)
@@ -232,8 +258,7 @@ class GraphPreviewExportDialog(QDialog):
         # --- Layout for markers and their inputs ---
         self.marker_layout = QHBoxLayout()
         self.marker_layout.setContentsMargins(0, 0, 0, 0)
-        self.marker_layout.setSpacing(20)
-        self.marker_layout.addStretch()
+        self.marker_layout.setSpacing(0)
 
         marker_container = QWidget()
         marker_container_layout = QHBoxLayout(marker_container)
@@ -242,39 +267,49 @@ class GraphPreviewExportDialog(QDialog):
         marker_container_layout.addLayout(self.marker_layout)
         marker_container_layout.addStretch()
 
-        # --- Canvas container with navigation buttons inside ---
-        self.canvas_container = QWidget()
-        canvas_layout = QVBoxLayout(self.canvas_container)
-        canvas_layout.setContentsMargins(0, 0, 0, 0)
-        canvas_layout.setSpacing(0)
+        # --- Canvas inside a framed container ---
+        canvas_frame = QFrame()
+        canvas_frame.setStyleSheet(
+            "QFrame { border: 1px solid #444444; border-radius: 4px; background-color: white; }"
+        )
+        frame_layout = QVBoxLayout(canvas_frame)
+        frame_layout.setContentsMargins(3, 3, 3, 3)
+        frame_layout.setSpacing(0)
+        frame_layout.addWidget(self.canvas)
 
-        # Add the Matplotlib canvas
-        canvas_layout.addWidget(self.canvas)
+        # --- Nav strip inside the white frame ---
+        nav_strip = QHBoxLayout()
+        nav_strip.setContentsMargins(8, 5, 8, 5)
+        nav_strip.addWidget(self.prev_button)
+        nav_strip.addStretch()
+        nav_strip.addWidget(self.next_button)
+        frame_layout.addLayout(nav_strip)
 
-        # --- Create an overlay widget on top of canvas for buttons ---
-        self.overlay_widget = QWidget(self.canvas)
-        self.overlay_widget.setAttribute(Qt.WA_TransparentForMouseEvents, False)
-        self.overlay_widget.setStyleSheet("background: transparent;")
-        self.overlay_widget.setGeometry(0, 0, self.canvas.width(), 40)
+        main_layout.addWidget(canvas_frame, alignment=Qt.AlignCenter)
 
-        # Layout for navigation buttons inside overlay
-        overlay_layout = QHBoxLayout(self.overlay_widget)
-        overlay_layout.setContentsMargins(10, 5, 10, 5)
-        overlay_layout.addWidget(self.prev_button, alignment=Qt.AlignLeft)
-        overlay_layout.addStretch()
-        overlay_layout.addWidget(self.next_button, alignment=Qt.AlignRight)
-
-        main_layout.addWidget(self.canvas_container, alignment=Qt.AlignCenter)
-
-        # --- Add a small vertical spacing between canvas and markers ---
-        main_layout.addSpacing(10)  # small gap
+        # --- Small spacing between canvas frame and markers ---
+        main_layout.addSpacing(6)
 
         # --- Marker container centered below canvas ---
         main_layout.addWidget(marker_container, alignment=Qt.AlignCenter)
 
-        main_layout.addSpacing(15)
+        main_layout.addSpacing(10)
 
-        # --- Export button ---
+        # --- Magnitude unit selector ---
+        rb_style = "QRadioButton { color: #cccccc; font-size: 12px; } QRadioButton::indicator { width: 13px; height: 13px; }"
+        self.rb_db = QRadioButton("dB")
+        self.rb_db.setChecked(True)
+        self.rb_db.setFocusPolicy(Qt.NoFocus)
+        self.rb_db.setStyleSheet(rb_style)
+        self.rb_linear = QRadioButton("Linear")
+        self.rb_linear.setFocusPolicy(Qt.NoFocus)
+        self.rb_linear.setStyleSheet(rb_style)
+        self.unit_group = QButtonGroup(self)
+        self.unit_group.addButton(self.rb_db)
+        self.unit_group.addButton(self.rb_linear)
+        self.unit_group.buttonClicked.connect(self._on_unit_changed)
+
+        # --- Bottom toolbar ---
         self.export_button = QPushButton(f"{self.pdf_preview_generate_report}")
         self.export_button.setEnabled(False)
         self.export_button.setStyleSheet("""
@@ -282,14 +317,23 @@ class GraphPreviewExportDialog(QDialog):
                 background-color: #4CAF50;
                 color: white;
                 font-weight: bold;
-                padding: 8px 16px;
-                border-radius: 6px;
+                padding: 6px 16px;
+                border-radius: 5px;
+                font-size: 12px;
             }
-            QPushButton:hover { background-color: #45a049; }
+            QPushButton:hover:enabled { background-color: #45a049; }
+            QPushButton:disabled { background-color: #2d6e30; color: #6a9e6c; }
         """)
         self.export_button.clicked.connect(self._generate_pdf)
-        main_layout.addWidget(self.export_button, alignment=Qt.AlignCenter)
-        main_layout.addStretch()
+
+        bottom_bar = QHBoxLayout()
+        bottom_bar.setContentsMargins(0, 4, 0, 0)
+        bottom_bar.addWidget(self.rb_db)
+        bottom_bar.addSpacing(10)
+        bottom_bar.addWidget(self.rb_linear)
+        bottom_bar.addStretch()
+        bottom_bar.addWidget(self.export_button)
+        main_layout.addLayout(bottom_bar)
 
         # --- Connect navigation ---
         self.prev_button.clicked.connect(self._show_previous_graph)
@@ -329,15 +373,6 @@ class GraphPreviewExportDialog(QDialog):
             self.ax.set_xlim(-1.1, 1.1)
             self.ax.set_ylim(-1.1, 1.1)
 
-        # Reposicionar overlay de botones
-        overlay_height = int(40 * scale)
-        self.overlay_widget.setGeometry(
-            0,
-            self.canvas.height() - overlay_height - 5,
-            self.canvas.width(),
-            overlay_height
-        )
-
         self.canvas.draw_idle()
 
     def _on_marker_input_changed(self):
@@ -347,39 +382,40 @@ class GraphPreviewExportDialog(QDialog):
 
     # --- Update marker checkboxes + frequency edits
     def _update_marker_checkboxes(self):
-        for i in reversed(range(self.marker_layout.count())):
-            item = self.marker_layout.itemAt(i)
-            if item:
-                widget = item.widget()
-                if widget:
-                    widget.setParent(None)
-                else:
-                    layout_item = item.layout()
-                    if layout_item:
-                        while layout_item.count():
-                            child = layout_item.takeAt(0)
-                            if child.widget():
-                                child.widget().setParent(None)
+        # Clear all items (widgets, spacers, sub-layouts)
+        while self.marker_layout.count():
+            self.marker_layout.takeAt(0)
 
-        self.marker_layout.addStretch()
         marker1, marker2 = self.marker_checkboxes[self.current_graph_index]
         edit1, combo1, edit2, combo2 = self.marker_freq_edits[self.current_graph_index]
 
-        # --- Marker 1 layout
-        vbox1 = QVBoxLayout()
-        vbox1.addWidget(marker1, alignment=Qt.AlignCenter)
-        vbox1.addWidget(edit1, alignment=Qt.AlignCenter)
-        vbox1.addWidget(combo1, alignment=Qt.AlignCenter)
+        # Detach widgets from any previous parent layout
+        for w in (marker1, edit1, combo1, marker2, edit2, combo2):
+            w.setParent(None)
 
-        # --- Marker 2 layout
+        # --- Marker 1: title centered, [input][unit] below ---
+        vbox1 = QVBoxLayout()
+        vbox1.setSpacing(10)
+        vbox1.addWidget(marker1, alignment=Qt.AlignCenter)
+        row1 = QHBoxLayout()
+        row1.setSpacing(8)
+        row1.addWidget(edit1)
+        row1.addWidget(combo1)
+        vbox1.addLayout(row1)
+
+        # --- Marker 2: title centered, [input][unit] below ---
         vbox2 = QVBoxLayout()
+        vbox2.setSpacing(5)
         vbox2.addWidget(marker2, alignment=Qt.AlignCenter)
-        vbox2.addWidget(edit2, alignment=Qt.AlignCenter)
-        vbox2.addWidget(combo2, alignment=Qt.AlignCenter)
+        row2 = QHBoxLayout()
+        row2.setSpacing(4)
+        row2.addWidget(edit2)
+        row2.addWidget(combo2)
+        vbox2.addLayout(row2)
 
         self.marker_layout.addLayout(vbox1)
+        self.marker_layout.addSpacing(30)
         self.marker_layout.addLayout(vbox2)
-        self.marker_layout.addStretch()
         self.canvas.draw_idle()
 
     # --- Plot graph ---
@@ -472,11 +508,16 @@ class GraphPreviewExportDialog(QDialog):
             legend.set_draggable(True)
 
         elif index == 1:
-            self.ax.plot(new_freqs, 20 * np.log10(np.abs(s11)), color="red", linewidth=1.3)
+            unit = self._selected_unit()
+            y_data, ylabel, title = self._magnitude_curve(s11, r"S_{11}", unit)
+            self.ax.plot(new_freqs, y_data, color="red", linewidth=1.3)
             self.ax.set_xlabel(f"{self.pdf_preview_s11_magnitude_x_axis}", fontsize=12)
-            self.ax.set_title(rf"{self.pdf_preview_s11_magnitude_title}", fontsize=12, pad=12)
-            self.ax.set_ylabel(rf"{self.pdf_preview_s11_magnitude_y_axis}")
+            self.ax.set_title(title, fontsize=12, pad=12)
+            self.ax.set_ylabel(ylabel)
             self.ax.grid(True, linestyle="--", alpha=0.6)
+            ylim = self._get_ylim_for_export("S11", "Magnitude")
+            if ylim:
+                self.ax.set_ylim(*ylim)
 
         elif index == 2:
             self.ax.plot(new_freqs, np.angle(s11, deg=True), color="red", linewidth=1.3)
@@ -484,18 +525,30 @@ class GraphPreviewExportDialog(QDialog):
             self.ax.set_xlabel(f"{self.pdf_preview_s11_phase_x_axis}", fontsize=12)
             self.ax.set_ylabel(rf"{self.pdf_preview_s11_phase_y_axis}", fontsize=12)
             self.ax.grid(True, linestyle="--", alpha=0.6)
+            ylim = self._get_ylim_for_export("S11", "Phase")
+            if ylim:
+                self.ax.set_ylim(*ylim)
+
         elif index == 3:
-            self.ax.plot(new_freqs, 20*np.log10(np.abs(s21)), color="blue", linewidth=1.3)
-            self.ax.set_title(rf"{self.pdf_preview_s21_magnitude_title}", fontsize=12, pad=12)
+            unit = self._selected_unit()
+            y_data, ylabel, title = self._magnitude_curve(s21, r"S_{21}", unit)
+            self.ax.plot(new_freqs, y_data, color="blue", linewidth=1.3)
+            self.ax.set_title(title, fontsize=12, pad=12)
             self.ax.set_xlabel(f"{self.pdf_preview_s21_magnitude_x_axis}", fontsize=12)
-            self.ax.set_ylabel(rf"{self.pdf_preview_s21_magnitude_y_axis}")
+            self.ax.set_ylabel(ylabel)
             self.ax.grid(True, linestyle="--", alpha=0.6)
+            ylim = self._get_ylim_for_export("S21", "Magnitude")
+            if ylim:
+                self.ax.set_ylim(*ylim)
         elif index == 4:
             phase_s21 = np.angle(np.exp(1j * freqs / 1e7), deg=True)
             self.ax.plot(new_freqs, phase_s21, color="blue", linewidth=1.3)
             self.ax.set_title(rf"{self.pdf_preview_s21_phase_title}", fontsize=12, pad=12)
             self.ax.set_xlabel(f"{self.pdf_preview_s21_phase_x_axis}", fontsize=12)
             self.ax.set_ylabel(rf"{self.pdf_preview_s21_phase_y_axis}", fontsize=12)
+            ylim = self._get_ylim_for_export("S21", "Phase")
+            if ylim:
+                self.ax.set_ylim(*ylim)
             self.ax.grid(True, linestyle="--", alpha=0.6)
 
         self.canvas.draw()
@@ -587,8 +640,9 @@ class GraphPreviewExportDialog(QDialog):
         self.export_button.setEnabled(self.current_graph_index == self.total_graphs - 1)
 
     def _update_nav_buttons(self):
-        self.prev_button.setVisible(self.current_graph_index > 0)
-        self.next_button.setVisible(self.current_graph_index < 4)
+        self.prev_button.setEnabled(self.current_graph_index > 0)
+        self.next_button.setEnabled(self.current_graph_index < self.total_graphs - 1)
+        self.page_label.setText(f"{self.current_graph_index + 1} / {self.total_graphs}")
 
     # --- Marker handling ---
     def _update_markers(self, graph_index=None):
@@ -845,7 +899,8 @@ class GraphPreviewExportDialog(QDialog):
                 s11_data=self.s11_data,
                 s21_data=self.s21_data,
                 measurement_name=self.measurement_name,
-                output_path=self.output_path
+                output_path=self.output_path,
+                magnitude_unit=self._selected_unit()
             )
             if success:
                 QMessageBox.information(self, "Export Complete",
@@ -858,6 +913,60 @@ class GraphPreviewExportDialog(QDialog):
             logger.exception("PDF export failed")
             QMessageBox.critical(self, "Export Failed",
                                  f"Error creating PDF:\n{str(e)}")
+
+    def _get_ylim_for_export(self, s_param, graph_type):
+        """Return (ymin, ymax) if a fixed Y range is configured for this graph, else None."""
+        try:
+            gfx = get_settings(
+                "INI/dut_measurement/graphics_config/graphics_config.ini",
+                "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini",
+                Path(__file__).resolve()
+            )
+            as_ = get_settings(
+                "INI/dut_measurement/auto_scale/auto_scale.ini",
+                "modules/dut_measurement/ui/utils/context_menu/auto_scale/auto_scale.ini",
+                Path(__file__).resolve()
+            )
+            tab1_sp = gfx.value("Tab1/SParameter", "S11")
+            tab1_gt = gfx.value("Tab1/GraphType1", "Magnitude")
+            tab2_sp = gfx.value("Tab2/SParameter", "S21")
+            tab2_gt = gfx.value("Tab2/GraphType2", "Phase")
+
+            if tab1_sp == s_param and tab1_gt == graph_type:
+                if not as_.value("AutoScale/enabled_left", True, type=bool):
+                    return (as_.value("AutoScale/ymin_left", 0.0, type=float),
+                            as_.value("AutoScale/ymax_left", 0.0, type=float))
+            if tab2_sp == s_param and tab2_gt == graph_type:
+                if not as_.value("AutoScale/enabled_right", True, type=bool):
+                    return (as_.value("AutoScale/ymin_right", 0.0, type=float),
+                            as_.value("AutoScale/ymax_right", 0.0, type=float))
+        except Exception:
+            pass
+        return None
+
+    def _selected_unit(self):
+        return "dB" if self.rb_db.isChecked() else "times"
+
+    def _on_unit_changed(self):
+        self._plot_graph(self.current_graph_index)
+        self._update_markers(self.current_graph_index)
+        self.canvas.draw_idle()
+
+    def _magnitude_curve(self, s_data, param_tex, unit):
+        if unit == "dB":
+            y = 20 * np.log10(np.abs(s_data))
+            ylabel = rf"$|{param_tex}|\ \mathrm{{(dB)}}$"
+            title  = rf"Magnitude $|{param_tex}|$ (dB)"
+        elif unit == "Power ratio":
+            y = np.abs(s_data) ** 2
+            ylabel = rf"$|{param_tex}|^2$"
+            title  = rf"Power Ratio $|{param_tex}|^2$"
+        else:
+            y = np.abs(s_data)
+            ylabel = rf"$|{param_tex}|$"
+            title  = rf"Magnitude $|{param_tex}|$"
+        return y, ylabel, title
+
 
 class NoEnterButton(QPushButton):
     def keyPressEvent(self, event):
