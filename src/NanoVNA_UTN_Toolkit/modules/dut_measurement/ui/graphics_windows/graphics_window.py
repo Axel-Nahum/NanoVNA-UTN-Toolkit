@@ -102,7 +102,7 @@ apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon"
 
 read_auto_scale_data = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scale.auto_scale", "read_auto_scale_data")
 
-JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
+DutResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.dut_resource_loader", "DutResourceLoader")
 
 ComplexKalman = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.kalman_filter.kalman_filter", "ComplexKalman")
 
@@ -114,7 +114,6 @@ class NanoVNAGraphics(QMainWindow):
     def __init__(self, s11=None, s21=None, freqs=None, left_graph_type="Smith Diagram", left_s_param="S11", vna_device=None, dut=None):
         super().__init__()
 
-        self.setWindowTitle("NanoVNA Toolkit - Graphics Window")
         self.setGeometry(100, 100, 1310, 710)
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -190,48 +189,50 @@ class NanoVNAGraphics(QMainWindow):
 
         current_lang = settings.value("Preferences/language", "en")
 
-        self.resourceLoader = JsonResourceLoader(
-            self_window = self, 
-            module = "dut_measurement", 
-            lang = current_lang, 
+        self.resourceLoader = DutResourceLoader(
+            self_window = self,
+            module = "dut_measurement",
+            lang = current_lang,
             json_resource = "dut_measurement_graphics.json"
         )
 
         self.resourceLoader.load_measurement_graphics_resources()
+        self.setWindowTitle(self.measurement_ui_window_title)
         self.resourceLoader.load_measurement_menu_resources()
 
-        self.resourceLoader = JsonResourceLoader(
-            self_window = self, 
-            module = "dut_measurement", 
-            lang = current_lang, 
+        self.resourceLoader = DutResourceLoader(
+            self_window = self,
+            module = "dut_measurement",
+            lang = current_lang,
             json_resource = "dut_measurement_features.json"
         )
 
         self.resourceLoader.load_export_touchstone_resources()
         self.resourceLoader.load_set_range_resources()
+        self.resourceLoader.load_file_menu_dialogs_resources()
 
-        self.resourceLoader = JsonResourceLoader(
-            self_window = self, 
-            module = "dut_measurement", 
-            lang = current_lang, 
+        self.resourceLoader = DutResourceLoader(
+            self_window = self,
+            module = "dut_measurement",
+            lang = current_lang,
             json_resource = "dut_measurement_kits.json"
         )
 
         self.resourceLoader.load_cal_kits_resources()
 
-        self.resourceLoader = JsonResourceLoader(
-            self_window = self, 
-            module = "dut_measurement", 
-            lang = current_lang, 
+        self.resourceLoader = DutResourceLoader(
+            self_window = self,
+            module = "dut_measurement",
+            lang = current_lang,
             json_resource = "dut_measurement_plot_manager.json"
         )
 
         self.resourceLoader.load_plot_manager_resources()
 
-        self.resourceLoader = JsonResourceLoader(
-            self_window = self, 
-            module = "dut_measurement", 
-            lang = current_lang, 
+        self.resourceLoader = DutResourceLoader(
+            self_window = self,
+            module = "dut_measurement",
+            lang = current_lang,
             json_resource = "dut_measurement_signal_filters.json"
         )
 
@@ -528,7 +529,7 @@ class NanoVNAGraphics(QMainWindow):
 
         current_lang = settings.value("Preferences/language", "en")
 
-        self.resourceLoader = JsonResourceLoader(
+        self.resourceLoader = DutResourceLoader(
             self_window=self,
             module="dut_measurement",
             lang=current_lang,

@@ -1,0 +1,51 @@
+{
+    "title": "Filtros de Señal",
+
+    "kalman": {
+        "title": "Filtro de Kalman",
+        "enable": "Habilitar Filtro:",
+        "preset": "Preset de Filtro:",
+        "advanced": "Avanzado...",
+        "disabledInfo": "El filtro de Kalman está deshabilitado.",
+
+        "presets": {
+            "off": "Desactivado",
+            "light": "Leve",
+            "medium": "Medio",
+            "strong": "Fuerte",
+            "custom": "Personalizado"
+        },
+
+        "advancedDialog": {
+            "title": "Filtro de Kalman - Avanzado",
+            "customParameters": "Parámetros Personalizados",
+
+            "processNoise": "Ruido de Proceso (Q)",
+            "processNoiseDescription": "Un Q mayor sigue variaciones rápidas de la señal. Un Q menor produce un suavizado más fuerte.",
+
+            "measurementNoise": "Ruido de Medición (R)",
+            "measurementNoiseDescription": "Un R mayor elimina más ruido de medición. Un R menor responde más rápido a los cambios.",
+
+            "apply": "Aplicar",
+            "cancel": "Cancelar"
+        }
+    },
+
+    "buttons": {
+        "apply": "Aplicar",
+        "cancel": "Cancelar"
+    },
+
+    "messages": {
+        "warningTitle": "Advertencia",
+
+        "missingValuesTitle": "Valores Faltantes",
+        "missingValues": "Por favor ingrese los valores de Q y R.",
+
+        "invalidValuesTitle": "Valores Inválidos",
+        "invalidValues": "Q y R deben ser números positivos.",
+
+        "missingKalmanValuesTitle": "Valores de Kalman Faltantes",
+        "missingKalmanValues": "Se seleccionó el preset personalizado pero no se ingresaron valores de Q/R."
+    }
+}

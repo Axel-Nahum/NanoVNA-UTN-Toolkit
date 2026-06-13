@@ -41,7 +41,7 @@ update_device_limits = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.
 
 apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
 
-JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
+DutResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.dut_resource_loader", "DutResourceLoader")
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
@@ -80,10 +80,10 @@ class CalibrationWizard(QMainWindow):
 
         current_lang = settings.value("Preferences/language", "en")
 
-        resourceLoader = JsonResourceLoader(
-            self_window = self, 
-            module = "dut_measurement", 
-            lang = current_lang, 
+        resourceLoader = DutResourceLoader(
+            self_window = self,
+            module = "dut_measurement",
+            lang = current_lang,
             json_resource = "dut_measurement_wizard.json"
         )
 
@@ -99,7 +99,7 @@ class CalibrationWizard(QMainWindow):
 
 #------------------------------------------------------------------------------------------------------------------------------------------
 
-        self.setWindowTitle("NanoVNA Toolkit - Calibration Wizard")
+        self.setWindowTitle(self.dut_wizard_ui_window_title)
         self.setGeometry(150, 150, 1150, 750)
 
         self.setFixedSize(1170, 750)

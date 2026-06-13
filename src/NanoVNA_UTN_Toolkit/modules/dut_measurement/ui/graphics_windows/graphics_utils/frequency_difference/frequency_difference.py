@@ -50,7 +50,7 @@ def show_frequency_difference_dialog(self):
 
     # --- CREATE DIALOG ---
     dialog = QDialog(self)
-    dialog.setWindowTitle("NanoVNA UTN Toolkit - Marker Differences")
+    dialog.setWindowTitle(self.measurement_ui_marker_diff_window_title)
     dialog.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.WindowCloseButtonHint)
 
     layout = QHBoxLayout()
@@ -62,14 +62,20 @@ def show_frequency_difference_dialog(self):
         dialog.setFixedSize(260, 120)
 
     # --- LEFT PANEL DISPLAY ---
+    diff_labels = {
+        "freq": self.measurement_ui_marker_diff_freq_label,
+        "mag": self.measurement_ui_marker_diff_mag_label,
+        "phase": self.measurement_ui_marker_diff_phase_label,
+    }
+
     if show_left:
         left_layout = QVBoxLayout()
-        left_title = QLabel("Left Panel Differences")
+        left_title = QLabel(self.measurement_ui_marker_diff_left_title)
         left_title.setAlignment(Qt.AlignCenter)
         left_layout.addWidget(left_title)
         for key in ["freq", "mag", "phase"]:
             row = QHBoxLayout()
-            row.addWidget(QLabel(f"{key.capitalize()} Diff:"))
+            row.addWidget(QLabel(diff_labels[key]))
             if key == "freq":
                 text = format_frequency_diff(left_diff[key])
             else:
@@ -81,12 +87,12 @@ def show_frequency_difference_dialog(self):
     # --- RIGHT PANEL DISPLAY ---
     if show_right:
         right_layout = QVBoxLayout()
-        right_title = QLabel("Right Panel Differences")
+        right_title = QLabel(self.measurement_ui_marker_diff_right_title)
         right_title.setAlignment(Qt.AlignCenter)
         right_layout.addWidget(right_title)
         for key in ["freq", "mag", "phase"]:
             row = QHBoxLayout()
-            row.addWidget(QLabel(f"{key.capitalize()} Diff:"))
+            row.addWidget(QLabel(diff_labels[key]))
             if key == "freq":
                 text = format_frequency_diff(right_diff[key])
             else:

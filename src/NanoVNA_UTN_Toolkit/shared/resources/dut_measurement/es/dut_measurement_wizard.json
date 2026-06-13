@@ -1,0 +1,45 @@
+{
+  "dut_measurement_wizard_ui": {
+    "window_title": "NanoVNA Toolkit - Asistente de Calibración",
+
+    "messages": {
+      "cal_warning_title": "NanoVNA UTN Toolkit - Advertencia de Calibración",
+      "cal_warning_message": "La operación de guardado está deshabilitada porque la calibración no se realizó desde cero.\nUtilice el asistente de calibración para crear una nueva calibración antes de guardar.",
+      "save_success_title": "Éxito",
+      "save_success_message": "¡Calibración guardada exitosamente!",
+      "save_duplicate_title": "Nombre Duplicado",
+      "save_duplicate_message": "El nombre del kit ya existe.\nPor favor elija otro nombre."
+    },
+
+    "intro_screen": {
+      "calibration_method_section": {
+        "title": "Métodos de Calibración",
+        "label_calibration_method_selection": "Seleccionar Método",
+        "method_osm": "OSM (Open - Short - Match)",
+        "method_normalization_open": "Normalización Abierta",
+        "method_normalization_short": "Normalización en Cortocircuito",
+        "method_normalization_thru": "Normalización en Through",
+        "method_open_short_normalization": "Normalización Abierta/Cortocircuito",
+        "method_1_port": "1-Port+N",
+        "method_E_R": "Enhanced-Response",
+        "description": []
+      },
+      "sweep_section": {
+        "title": "Configuración de Barrido",
+        "start_frec": "Frecuencia de Inicio:",
+        "stop_frec": "Frecuencia de Parada:",
+        "steps": "Número de Pasos:"
+      }
+    },
+    "steps" :{
+      "steps_title": "Método:",
+      "instruction_text": "Conecte el estándar {step_name} y presione Medir",
+      "measure_label_button": "Medir",
+      "re-measure_label_button": "Volver a Medir",
+      "label_measure": "Listo para medir",
+      "calibration_status": "Estado de Calibración:",
+      "label_save_cal": "Guardar Calibración",
+      "label_finish_button": "Finalizar"
+    }
+  }
+}

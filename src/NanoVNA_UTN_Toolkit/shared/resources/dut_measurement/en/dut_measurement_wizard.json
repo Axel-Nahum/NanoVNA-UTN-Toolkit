@@ -1,5 +1,16 @@
 {
   "dut_measurement_wizard_ui": {
+    "window_title": "NanoVNA Toolkit - Calibration Wizard",
+
+    "messages": {
+      "cal_warning_title": "NanoVNA UTN Toolkit - Calibration Warning",
+      "cal_warning_message": "Save operation is disabled because calibration was not performed from scratch.\nPlease use the calibration wizard to create a new calibration before saving.",
+      "save_success_title": "Success",
+      "save_success_message": "Calibration saved successfully!",
+      "save_duplicate_title": "Duplicate Name",
+      "save_duplicate_message": "The kit name already exists.\nPlease choose another name."
+    },
+
     "intro_screen": {
       "calibration_method_section": {
         "title": "Calibration Methods",

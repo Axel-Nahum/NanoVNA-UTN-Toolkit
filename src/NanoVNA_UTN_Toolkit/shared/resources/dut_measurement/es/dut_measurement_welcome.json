@@ -1,0 +1,29 @@
+{
+  "dut_measurement_ui": {
+    "window_title": "NanoVNA Toolkit - Ventana de Bienvenida",
+
+    "module_overview": {
+      "title": "Asistente de Calibración",
+      "label_calibration_button": "Abrir Asistente de Calibración",
+      "description": [
+          "La calibración es esencial para mediciones VNA precisas. Elimina errores sistemáticos ",
+          "de cables, conectores y el propio VNA midiendo estándares de referencia conocidos. ",
+          "El Asistente de Calibración lo guía paso a paso por este proceso, garantizando que sus ",
+          "mediciones sean precisas y confiables."
+      ]
+    },
+    "kit_section": {
+      "title": "Kits de Calibración",
+      "kit_selection_title": "Selección de Kit de Calibración",
+      "description_kit": "Seleccione un kit de calibración guardado del menú desplegable y presione Abrir.",
+      "default_method": "Ninguno",
+      "no_kit_selected": "Ningún kit de calibración seleccionado",
+      "label_kit_button": "Abrir Ventana de Gráficos",
+      "import_section_title": "Importar Paquete de Kit:",
+      "import_description": "Importar un kit de calibración completo con sus datos de calibración asociados.",
+      "import_button": "Importar Kit de Calibración",
+      "import_calibration_title": "Importar Calibración",
+      "import_calibration_description": "Importar un kit de calibración utilizado para corregir errores de medición en el sistema."
+    }
+  }
+}

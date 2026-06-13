@@ -46,7 +46,7 @@ dark_light_config = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mod
 
 apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
 
-JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
+DutResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.dut_resource_loader", "DutResourceLoader")
 
 stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
 
@@ -68,7 +68,7 @@ class NanoVNAWelcome(QMainWindow):
 
         current_lang = settings.value("Preferences/language", "en")
 
-        resourceLoader = JsonResourceLoader(
+        resourceLoader = DutResourceLoader(
             self_window = self,
             module = "dut_measurement",
             lang = current_lang,
@@ -111,7 +111,7 @@ class NanoVNAWelcome(QMainWindow):
             self.thru_calibration = None
             logging.warning("[CalibrationWizard] THRUCalibrationManager not available")
 
-        self.setWindowTitle("NanoVNA Toolkit - Welcome Window")
+        self.setWindowTitle(self.dut_welcome_ui_window_title)
 
         self.resize(1000, 500)
         self.setMinimumSize(900, 460)
@@ -278,11 +278,11 @@ class NanoVNAWelcome(QMainWindow):
         import_layout.setSpacing(10)
         import_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
 
-        import_title = QLabel("Import Calibration")
+        import_title = QLabel(self.dut_welcome_ui_import_calibration_title)
         import_title.setStyleSheet("font-weight: bold; font-size: 14px;")
 
         import_description = QLabel(
-            "Import a calibration kit used to correct measurement errors in the system.<br>"
+            f"{self.dut_welcome_ui_import_calibration_description}<br>"
             "Files:<br>"
             "<ul style='margin:0; padding-left:16px;'>"
             "<li>open.s1p</li>"

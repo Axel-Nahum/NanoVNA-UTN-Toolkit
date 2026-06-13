@@ -38,7 +38,7 @@ plt.rcParams['mathtext.rm'] = 'serif'
 
 logger = logging.getLogger(__name__)
 
-JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
+DutResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.dut_resource_loader", "DutResourceLoader")
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
@@ -89,10 +89,10 @@ class GraphPreviewExportDialog(QDialog):
 
         current_lang = settings.value("Preferences/language", "en")
 
-        self.resourceLoader = JsonResourceLoader(
-            self_window = self, 
-            module = "dut_measurement", 
-            lang = current_lang, 
+        self.resourceLoader = DutResourceLoader(
+            self_window = self,
+            module = "dut_measurement",
+            lang = current_lang,
             json_resource = "dut_measurement_features.json"
         )
 

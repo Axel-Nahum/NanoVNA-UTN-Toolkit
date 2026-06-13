@@ -18,11 +18,8 @@ get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.c
 def show_calibration_warning(self):
     msg = QMessageBox(self)
     msg.setIcon(QMessageBox.Warning)
-    msg.setWindowTitle("NanoVNA UTN Toolkit - Calibration Warning")
-    msg.setText(
-        "Save operation is disabled because calibration was not performed from scratch.\n"
-        "Please use the calibration wizard to create a new calibration before saving."
-    )
+    msg.setWindowTitle(self.dut_wizard_ui_cal_warning_title)
+    msg.setText(self.dut_wizard_ui_cal_warning_message)
     msg.exec()
 
 def save_kit_dialog(self):
@@ -99,9 +96,9 @@ def save_kit_dialog(self):
                     # Show success message
                     from PySide6.QtWidgets import QMessageBox
                     QMessageBox.information(
-                        self, 
-                        "Success", 
-                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: \n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                        self,
+                        self.dut_wizard_ui_save_success_title,
+                        f"Calibration '{name}' {self.dut_wizard_ui_save_success_message}\n\nSaved measurements: \n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
                     )
                     
                     # Stay in wizard - do not advance to graphics window
@@ -159,8 +156,8 @@ def save_kit_dialog(self):
                     existing_name = settings_calibration.value(f"{g}/kit_name", "")
                     if existing_name == name:
                         # Show warning message box if name exists
-                        QMessageBox.warning(dialog, "Duplicate Name",
-                                            f"The kit name '{name}' already exists.\nPlease choose another name.",
+                        QMessageBox.warning(dialog, self.dut_wizard_ui_save_duplicate_title,
+                                            f"The kit name '{name}' {self.dut_wizard_ui_save_duplicate_message}",
                                             QMessageBox.Ok)
                         return
 

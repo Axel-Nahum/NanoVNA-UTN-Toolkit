@@ -1,0 +1,36 @@
+{
+    "title": "Administrador de Gráfico",
+    "tools": {
+        "title": "Herramientas de Gráfico",
+        "plotView": "Vista de Gráfico",
+        "graphicsMarkersEditor": "Editor de Gráficos y Marcadores"
+    },
+    "display": {
+        "title": "Opciones de Visualización",
+        "showGrid": "Mostrar Grilla:",
+        "averaging": "Promediado:",
+        "graphic1": "Gráfico 1",
+        "graphic2": "Gráfico 2"
+    },
+    "kalman": {
+        "title": "Filtro de Kalman",
+        "enable": "Habilitar Filtro de Kalman:"
+    },
+    "axis": {
+        "title": "Configuración de Ejes (Límites Y)",
+        "autoScale": "Escala Automática:",
+        "yRange": "Rango Y:",
+        "yMinPlaceholder": "Mín.",
+        "yMaxPlaceholder": "Máx."
+    },
+    "buttons": {
+        "apply": "Aplicar",
+        "cancel": "Cancelar"
+    },
+    "messages": {
+        "warningTitle": "Advertencia",
+        "missingGraphic1": "Por favor ingrese los valores mínimo y máximo del eje Y para el Gráfico 1.",
+        "missingGraphic2": "Por favor ingrese los valores mínimo y máximo del eje Y para el Gráfico 2.",
+        "missingBothGraphics": "Por favor ingrese los valores mínimo y máximo del eje Y para el Gráfico 1 y el Gráfico 2."
+    }
+}

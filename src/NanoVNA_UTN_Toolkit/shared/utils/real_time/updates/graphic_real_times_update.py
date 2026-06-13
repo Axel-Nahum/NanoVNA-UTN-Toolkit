@@ -145,8 +145,16 @@ def update_plots_realtime(self):
         self.ymin_right       = data_config[4]
         self.ymax_right       = data_config[5]
 
-        s_data_left  = self.s11 if s_param_tab1 == "S11" else self.s21
-        s_data_right = self.s11 if s_param_tab2 == "S11" else self.s21
+        def _pick(s_param, graph_type):
+            # Smith Diagram needs unfiltered complex data — Kalman distorts the curve
+            raw_s11 = getattr(self, 's11_raw', self.s11)
+            raw_s21 = getattr(self, 's21_raw', self.s21)
+            if graph_type == "Smith Diagram":
+                return raw_s11 if s_param == "S11" else raw_s21
+            return self.s11 if s_param == "S11" else self.s21
+
+        s_data_left  = _pick(s_param_tab1, graph_type_tab1)
+        s_data_right = _pick(s_param_tab2, graph_type_tab2)
 
         if hasattr(self, "update_left_data_2") and self.update_left_data_2:
             try:

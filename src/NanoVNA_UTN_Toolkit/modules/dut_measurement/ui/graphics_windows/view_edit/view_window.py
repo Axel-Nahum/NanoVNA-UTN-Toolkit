@@ -38,7 +38,7 @@ dark_light_config = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mod
 
 apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
 
-JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
+DutResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.dut_resource_loader", "DutResourceLoader")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
@@ -62,10 +62,10 @@ class View(QMainWindow):
 
         current_lang = settings.value("Preferences/language", "en")
 
-        self.resourceLoader = JsonResourceLoader(
-            self_window = self, 
-            module = "dut_measurement", 
-            lang = current_lang, 
+        self.resourceLoader = DutResourceLoader(
+            self_window = self,
+            module = "dut_measurement",
+            lang = current_lang,
             json_resource = "dut_measurement_view_edit.json"
         )
 

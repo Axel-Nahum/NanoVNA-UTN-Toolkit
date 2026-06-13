@@ -16,19 +16,48 @@ ES: Primera pantalla del asistente. Arma el desplegable de tecnicas desde el
 
 import logging
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor, QPixmap
-from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QTextEdit, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text, image_path
 from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import all_descriptors
 
 logger = logging.getLogger(__name__)
 
-# Example setup photos shown in the method detail (per technique).
 _TECHNIQUE_PHOTOS = {
     "open_coax_liquids": ["probe_setup_example_1.png", "probe_setup_example_2.png"],
 }
+
+
+class _ScaledImageLabel(QLabel):
+    """QLabel that rescales its pixmap to fill available space. Never requests extra space."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._source = None
+        self.setAlignment(Qt.AlignCenter)
+        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+    def sizeHint(self):
+        return QSize(0, 0)
+
+    def minimumSizeHint(self):
+        return QSize(0, 0)
+
+    def setSourcePixmap(self, pixmap):
+        self._source = pixmap
+        self._rescale()
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._rescale()
+
+    def _rescale(self):
+        if self._source and not self._source.isNull() and self.width() > 0 and self.height() > 0:
+            self.setPixmap(
+                self._source.scaled(self.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            )
 
 
 def build_introduction_screen(self):
@@ -50,6 +79,8 @@ def build_introduction_screen(self):
 
     self.method_dropdown = QComboBox()
     self.method_dropdown.setEditable(False)
+    self.method_dropdown.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
+    self.method_dropdown.setMaximumWidth(500)
     self.method_dropdown.setStyleSheet("""
         QComboBox {
             background-color: #3b3b3b;
@@ -58,22 +89,24 @@ def build_introduction_screen(self):
             border-radius: 6px;
             padding: 8px;
             font-size: 14px;
-            min-width: 380px;
-            max-width: 450px;
         }
         QComboBox:hover { background-color: #4d4d4d; }
         QComboBox::drop-down { width: 0px; border: none; background: transparent; }
         QComboBox::down-arrow { image: none; width: 0px; height: 0px; }
+        QComboBox QAbstractItemView {
+            background-color: #3b3b3b;
+            color: white;
+            selection-background-color: #4d4d4d;
+            border: 1px solid white;
+        }
     """)
 
-    # Placeholder first item: selectable (selecting it disables Next).
     self.method_dropdown.addItem(texts.get("dropdown_placeholder", "Select Characterization Method"))
     placeholder_item = self.method_dropdown.model().item(0)
     placeholder_item.setForeground(QColor(120, 120, 120))
 
-    # One entry per registered technique. Store ids parallel to the combo.
     descriptors = all_descriptors()
-    self._technique_ids = [None]  # index 0 = placeholder
+    self._technique_ids = [None]
     for desc in descriptors:
         name = methods.get(desc.name_token, {}).get("title", desc.id)
         self.method_dropdown.addItem(name)
@@ -81,49 +114,70 @@ def build_introduction_screen(self):
 
     top.addWidget(self.method_dropdown)
 
-    # Detail area: description text (left) + example setup photos (right).
-    detail_row = QHBoxLayout()
+    # Info box: text on top, photos row fixed-height at bottom.
+    info_box = QWidget()
+    info_box.setObjectName("infoBox")
+    info_box.setStyleSheet("""
+        QWidget#infoBox {
+            background-color: #2b2b2b;
+            border: 2px solid #555555;
+            border-radius: 8px;
+        }
+    """)
+    info_box_layout = QVBoxLayout(info_box)
+    info_box_layout.setContentsMargins(12, 12, 12, 12)
+    info_box_layout.setSpacing(10)
 
     self.method_info = QTextEdit()
     self.method_info.setReadOnly(True)
-    self.method_info.setMinimumHeight(360)
     self.method_info.setStyleSheet("""
         QTextEdit {
             background-color: #2b2b2b;
             color: #dddddd;
-            border: 2px solid #555555;
-            border-radius: 8px;
-            padding: 12px;
+            border: none;
             font-size: 14px;
         }
     """)
     self.method_info.setText(texts.get("empty_description", ""))
-    detail_row.addWidget(self.method_info, stretch=3)
+    info_box_layout.addWidget(self.method_info, stretch=1)  # texto 1/3, fotos 2/3 del info box
 
-    photos_col = QVBoxLayout()
-    self._method_photo_labels = [QLabel(), QLabel()]
+    # Photos row — fixed height so it never affects the window size.
+    photos_row = QHBoxLayout()
+    photos_row.setSpacing(15)
+    photos_row.setContentsMargins(0, 0, 0, 0)
+    self._method_photo_labels = [_ScaledImageLabel(), _ScaledImageLabel()]
     for lbl in self._method_photo_labels:
-        lbl.setAlignment(Qt.AlignCenter)
         lbl.setVisible(False)
-        photos_col.addWidget(lbl)
-    photos_col.addStretch(1)
-    photos_container = QWidget()
-    photos_container.setLayout(photos_col)
-    detail_row.addWidget(photos_container, stretch=2)
+        lbl.setStyleSheet("border: 1px solid #555555; border-radius: 6px;")
+        photos_row.addWidget(lbl)
 
-    top.addLayout(detail_row)
+    photos_row_widget = QWidget()
+    photos_row_widget.setObjectName("photosRow")
+    photos_row_widget.setStyleSheet("QWidget#photosRow { background-color: #2b2b2b; border: none; }")
+    photos_row_widget.setLayout(photos_row)
+    photos_row_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    photos_row_widget.setMinimumHeight(0)
+    photos_row_widget.setVisible(False)
+    self._photos_row_widget = photos_row_widget
+    info_box_layout.addWidget(photos_row_widget, stretch=2)
+
+    top.addWidget(info_box, stretch=1)
 
     def _show_photos(technique_id):
         files = _TECHNIQUE_PHOTOS.get(technique_id, [])
+        any_loaded = False
         for lbl, fname in zip(self._method_photo_labels, files + [None, None]):
             if fname:
                 pix = QPixmap(image_path(fname))
                 if not pix.isNull():
-                    lbl.setPixmap(pix.scaledToWidth(320, Qt.SmoothTransformation))
+                    lbl.setSourcePixmap(pix)
                     lbl.setVisible(True)
+                    any_loaded = True
                     continue
+            lbl.setSourcePixmap(None)
             lbl.clear()
             lbl.setVisible(False)
+        self._photos_row_widget.setVisible(any_loaded)
 
     def on_method_changed(index):
         if index <= 0 or index >= len(self._technique_ids):
@@ -148,4 +202,4 @@ def build_introduction_screen(self):
 
     container = QWidget()
     container.setLayout(top)
-    self.content_layout.addWidget(container, alignment=Qt.AlignTop)
+    self.content_layout.addWidget(container)

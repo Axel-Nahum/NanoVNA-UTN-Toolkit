@@ -42,7 +42,7 @@ def open_plot_settings(self):
     """
 
     self.dialog = QDialog(self)
-    self.dialog.setWindowTitle("Plot Manager")
+    self.dialog.setWindowTitle(self.plot_manager_title)
     self.dialog.setFixedSize(660, 750)
     self.dialog.setStyleSheet(self.styleSheet())
 
@@ -236,10 +236,10 @@ def open_plot_settings(self):
     for w in (self.y1_min, self.y1_max, self.y2_min, self.y2_max):
         w.setAlignment(Qt.AlignCenter)
 
-    self.y1_min.setPlaceholderText("Min")
-    self.y1_max.setPlaceholderText("Max")
-    self.y2_min.setPlaceholderText("Min")
-    self.y2_max.setPlaceholderText("Max")
+    self.y1_min.setPlaceholderText(self.y_min_placeholder)
+    self.y1_max.setPlaceholderText(self.y_max_placeholder)
+    self.y2_min.setPlaceholderText(self.y_min_placeholder)
+    self.y2_max.setPlaceholderText(self.y_max_placeholder)
 
     # Pre-fill saved Y limits when auto-scale is disabled
     if not auto1_set_checked:

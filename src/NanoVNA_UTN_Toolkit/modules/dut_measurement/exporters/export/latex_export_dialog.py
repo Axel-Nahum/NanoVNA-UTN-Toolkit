@@ -23,7 +23,7 @@ from NanoVNA_UTN_Toolkit.modules.dut_measurement.exporters.latex_exporter import
 # Set up logging
 logger = logging.getLogger(__name__)
 
-JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
+DutResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.dut_resource_loader", "DutResourceLoader")
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
@@ -95,10 +95,10 @@ class LaTeXExportDialog(QDialog):
 
         current_lang = settings.value("Preferences/language", "en")
 
-        self.resourceLoader = JsonResourceLoader(
-            self_window = self, 
-            module = "dut_measurement", 
-            lang = current_lang, 
+        self.resourceLoader = DutResourceLoader(
+            self_window = self,
+            module = "dut_measurement",
+            lang = current_lang,
             json_resource = "dut_measurement_features.json"
         )
 

@@ -1,5 +1,21 @@
 {
   "measurement_graphics_ui": {
+    "window_title": "NanoVNA Toolkit - Graphics Window",
+
+    "panels": {
+      "left": "Left Panel",
+      "right": "Right Panel"
+    },
+
+    "marker_diff_dialog": {
+      "window_title": "NanoVNA UTN Toolkit - Marker Differences",
+      "left_panel_title": "Left Panel Differences",
+      "right_panel_title": "Right Panel Differences",
+      "freq_diff_label": "Freq Diff:",
+      "mag_diff_label": "Mag Diff:",
+      "phase_diff_label": "Phase Diff:"
+    },
+
     "menu_bar": {
       "file": "File",
       "plot": "Plot",

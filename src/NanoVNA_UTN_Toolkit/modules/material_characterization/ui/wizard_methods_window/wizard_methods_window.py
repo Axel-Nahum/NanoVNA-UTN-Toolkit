@@ -49,7 +49,7 @@ class CharacterizationWizard(QMainWindow):
             "NanoVNA Toolkit - Characterization Wizard"
         )
 
-        self.setGeometry(200, 200, 950, 620)
+        self.setGeometry(200, 200, 1050, 700)
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
         window_geometry = self.frameGeometry()
@@ -187,7 +187,7 @@ class CharacterizationWizard(QMainWindow):
             alignment=Qt.AlignLeft
         )
 
-        self.bottom_layout.setContentsMargins(0, 0, 0, 0)
+        self.bottom_layout.setContentsMargins(0, 15, 0, 0)
 
         self.bottom_layout.addStretch()
 

@@ -29,13 +29,13 @@ def import_touchstone_data_calibration(self):
 
     files, _ = QFileDialog.getOpenFileNames(
         self,
-        "Select Calibration Files",
+        self.file_menu_select_cal_files_title,
         "",
-        "Touchstone Files (*.s1p *.s2p);;All Files (*)"
+        self.file_menu_select_cal_files_filter
     )
 
     if not files:
-        QMessageBox.warning(self, "No Files Selected", "Please select the 4 calibration files.")
+        QMessageBox.warning(self, self.file_menu_no_files_title, self.file_menu_no_files_message)
         return
 
     required_names = ["open", "short", "load", "match", "thru"]
@@ -54,14 +54,14 @@ def import_touchstone_data_calibration(self):
         missing.append("thru")
 
     if missing:
-        QMessageBox.warning(self, "Missing Files", f"The following calibration files are missing: {', '.join(missing)}")
+        QMessageBox.warning(self, self.file_menu_missing_files_title, f"{self.file_menu_missing_files_prefix}{', '.join(missing)}")
         return
 
     if len(files) != 4:
-        QMessageBox.warning(self, "Invalid Selection", "You must select exactly 4 calibration files.")
+        QMessageBox.warning(self, self.file_menu_invalid_selection_title, self.file_menu_invalid_selection_message)
         return
 
-    QMessageBox.information(self, "Success", "All calibration files selected successfully!")
+    QMessageBox.information(self, self.file_menu_success_title, self.file_menu_success_message)
     print("Selected calibration files:")
     for f in files:
         print(f)
@@ -93,13 +93,13 @@ def import_touchstone_data_calibration(self):
 
     # "Select Method"
     dialog = QDialog(self)
-    dialog.setWindowTitle("NanoVNA UTN Toolkit - Select Method")
+    dialog.setWindowTitle(self.file_menu_select_method_title)
 
     main_layout = QVBoxLayout(dialog)
     main_layout.setContentsMargins(20, 20, 20, 20)
-    main_layout.setSpacing(15)  
+    main_layout.setSpacing(15)
 
-    label = QLabel("Select Method", dialog)
+    label = QLabel(self.file_menu_select_method_label, dialog)
     main_layout.addWidget(label)
 
     self.select_method = QComboBox()

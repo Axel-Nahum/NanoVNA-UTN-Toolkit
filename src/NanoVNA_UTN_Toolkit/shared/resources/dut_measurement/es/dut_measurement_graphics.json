@@ -1,0 +1,137 @@
+{
+  "measurement_graphics_ui": {
+    "window_title": "NanoVNA Toolkit - Ventana de Gráficos",
+
+    "panels": {
+      "left": "Panel Izquierdo",
+      "right": "Panel Derecho"
+    },
+
+    "marker_diff_dialog": {
+      "window_title": "NanoVNA UTN Toolkit - Diferencias de Marcadores",
+      "left_panel_title": "Diferencias del Panel Izquierdo",
+      "right_panel_title": "Diferencias del Panel Derecho",
+      "freq_diff_label": "Dif. Frec.:",
+      "mag_diff_label": "Dif. Mag.:",
+      "phase_diff_label": "Dif. Fase:"
+    },
+
+    "menu_bar": {
+      "file": "Archivo",
+      "plot": "Gráfico",
+      "edit": "Editar",
+      "view": "Vista",
+      "sweep": "Barrido",
+      "calibration": "Calibración",
+      "help": "Ayuda"
+    },
+
+    "top_bar": {
+      "button_connect": "Conectar",
+      "button_reconnect": "Reconectar",
+      "button_disconnect": "Desconectar",
+      "button_run_sweep": "Iniciar Barrido",
+      "button_reset_kalman": "Reiniciar Kalman",
+      "button_stop_sweep": "Detener Barrido",
+
+      "sweep_info": "Barrido: {start_freq} - {stop_freq}, {points} puntos",
+
+      "calibration_status": {
+        "no_calibration": "Sin Calibración",
+        "wizard_calibration": "Asistente de Calibración | Método: {calibration_method}",
+        "calibration_kit": "Kit de Calibración | Nombre: {kit_name} | Método: {method}",
+        "imported_dut": "Calibración DUT Importada"
+      }
+    },
+
+    "plots": {
+      "title_mag": "\\mathrm{{Magnitud}}\\;|{parameter}|\\;\\mathrm{{[{db_times}]}}",
+      "title_phase": "\\mathrm{{Fase}}\\;\\angle\\,{parameter}\\;(^\\circ)",
+      "waiting_text": "Iniciando \\ adquisición \\ continua \\ …",
+      "reset_text": "Reiniciando \\ Kalman \\ …",
+      "x_axis": "Frecuencia\\ (MHz)",
+      "y_axis": "|S11|"
+    },
+
+    "s_parameter_details": {
+      "title": "Detalles de Parámetros S",
+
+      "frequency": "Frecuencia:",
+      "s11_complex": "S11:",
+      "s21_complex": "S21:",
+
+      "magnitude_s11": "|S11|s:",
+      "magnitude_s21": "|S21|s:",
+
+      "phase": "Fase:"
+    },
+
+    "dut_parameters": {
+      "title": "Parámetros del DUT",
+
+      "zin": "Zin (Z0):",
+      "return_loss": "RL:",
+      "insertion_loss": "IL:",
+      "vswr": "VSWR:",
+      "group_delay": "Retardo de Grupo:"
+    },
+
+    "status_messages": {
+      "waiting_for_connection": "Esperando conexión del dispositivo...",
+      "device_connected": "Dispositivo conectado",
+      "device_disconnected": "Dispositivo desconectado",
+
+      "waiting_for_sweep": "Esperando\\ datos\\ de\\ barrido\\ ...",
+      "running_sweep": "Ejecutando barrido...",
+      "sweep_completed": "Barrido completado",
+
+      "calibration_loaded": "Calibración cargada",
+      "calibration_saved": "Calibración guardada",
+      "calibration_cleared": "Calibración eliminada",
+
+      "importing_dut": "Importando datos del DUT...",
+      "dut_loaded": "Datos del DUT cargados"
+    },
+
+    "marker_diff": {
+      "label_diff": "Dif. de Marcadores"
+    }
+  },
+  "menu": {
+    "file_menu": {
+      "import_touchstone_cal": "Importar Datos Touchstone (Calibración)",
+      "import_touchstone_dut": "Importar Datos Touchstone (DUT)",
+      "export_PDF": "Exportar PDF LaTeX",
+      "export_touchstone": "Exportar Datos Touchstone",
+      "export_errors": "Exportar Errores",
+      "back_to_menu": "Volver al menú"
+    },
+    "plot_menu": {
+      "plot_settings": "Configuración de Gráfico",
+      "signal_filters": "Filtros de Señal"
+    },
+    "edit_menu": {
+      "graphics_markers": "Gráficos/Marcadores"
+    },
+    "view_menu": {
+      "graphics": "Gráficos"
+    },
+    "sweep_menu": {
+      "option": "Opciones",
+      "run_sweep": "Iniciar Barrido",
+      "reset_kalman": "Reiniciar Kalman"
+    },
+    "calibration_menu": {
+      "cal_wizard": "Asistente de Calibración",
+      "no_calibration": "Sin Calibración",
+      "select_kit": "Seleccionar Calibración (Kit)",
+      "save_kit": "Guardar Calibración (Kit)",
+      "delete_kit": "Eliminar Calibración (Kit)"
+    },
+    "help_menu": {
+      "report": "Reporte",
+      "import Touchstone_dut": "Acerca de [EN]",
+      "export_PDF": "Acerca de [ES]"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "calibration_kits": {
+    "select_kit": {
+      "window_title": "NanoVNA UTN Toolkit - Seleccionar Kit de Calibración",
+      "select_text": "Seleccionar un Kit:",
+      "buttons": {
+        "cancel": "Cancelar",
+        "select": "Seleccionar"
+      }
+    },
+    "save_kit": {
+      "window_title": "Guardar Kit de Calibración",
+      "save_text": "Ingrese el nombre de calibración:\n\nMediciones para guardar:",
+      "buttons": {
+        "cancel": "Cancelar",
+        "save": "Guardar"
+      }
+    },
+    "delete_kit": {
+      "window_title": "NanoVNA UTN Toolkit - Eliminar Kits de Calibración",
+      "delete_text": "Seleccione kits para eliminar:",
+      "buttons": {
+        "cancel": "Cancelar",
+        "delete": "Eliminar"
+      }
+    }
+  }
+}

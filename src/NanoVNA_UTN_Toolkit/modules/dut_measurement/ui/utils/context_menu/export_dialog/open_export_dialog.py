@@ -16,8 +16,8 @@ def open_export_dialog(self, event):
     try:
         # Default to left figure
         figure_to_export = self.fig_left
-        panel_name = "Left Panel"
-        
+        panel_name = self.exporters_panel_left
+
         # Try to determine which canvas was clicked
         if hasattr(self, 'canvas_right') and widget_under_cursor:
             # Walk up the widget hierarchy to find the canvas
@@ -25,11 +25,11 @@ def open_export_dialog(self, event):
             while current_widget:
                 if current_widget == self.canvas_right:
                     figure_to_export = self.fig_right
-                    panel_name = "Right Panel"
+                    panel_name = self.exporters_panel_right
                     break
                 elif current_widget == self.canvas_left:
                     figure_to_export = self.fig_left
-                    panel_name = "Left Panel"
+                    panel_name = self.exporters_panel_left
                     break
                 current_widget = current_widget.parent()
 
@@ -58,9 +58,9 @@ def open_export_dialog(self, event):
             update_cursor_right = update_cursor_right
         )
 
-        self.export_dialog.setWindowTitle(f"NanoVNA UTN Toolkit - Export Graph - {panel_name}")
+        self.export_dialog.setWindowTitle(f"{self.exporters_window_title} - {panel_name}")
         self.export_dialog.exec()
-        
+
     except Exception as e:
         logging.error(f"Error opening export dialog: {e}")
-        QMessageBox.warning(self, "Export Error", f"Failed to open export dialog: {str(e)}")
+        QMessageBox.warning(self, self.file_menu_export_error_title, f"{self.file_menu_export_error_prefix}{str(e)}")

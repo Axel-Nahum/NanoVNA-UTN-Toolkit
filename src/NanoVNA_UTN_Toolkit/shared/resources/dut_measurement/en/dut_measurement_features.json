@@ -100,6 +100,8 @@
 
   "exporters": {
     "window_title": "NanoVNA UTN Toolkit - Export Graph",
+    "panel_left": "Left Panel",
+    "panel_right": "Right Panel",
     "exporters_preview": {
       "title": "Preview:"
     },
@@ -109,6 +111,23 @@
       "CSV": "Save as CSV",
       "close": "Close"
     }
+  },
+
+  "file_menu_dialogs": {
+    "select_cal_files_title": "Select Calibration Files",
+    "select_cal_files_filter": "Touchstone Files (*.s1p *.s2p);;All Files (*)",
+    "no_files_title": "No Files Selected",
+    "no_files_message": "Please select the 4 calibration files.",
+    "missing_files_title": "Missing Files",
+    "missing_files_prefix": "The following calibration files are missing: ",
+    "invalid_selection_title": "Invalid Selection",
+    "invalid_selection_message": "You must select exactly 4 calibration files.",
+    "success_title": "Success",
+    "success_message": "All calibration files selected successfully!",
+    "select_method_title": "NanoVNA UTN Toolkit - Select Method",
+    "select_method_label": "Select Method",
+    "export_error_title": "Export Error",
+    "export_error_prefix": "Failed to open export dialog: "
   },
 
   "set_range": {

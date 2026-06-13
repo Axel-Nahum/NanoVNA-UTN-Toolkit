@@ -21,7 +21,7 @@ dark_light_config = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mod
 
 apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
 
-JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
+MenuResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.menu_resource_loader", "MenuResourceLoader")
 
 open_preferences_dialog = safe_import("NanoVNA_UTN_Toolkit.shared.utils.preferences.preferences", "open_preferences_dialog")
 
@@ -53,7 +53,7 @@ class ModuleSelectionWindow(QMainWindow):
 
         current_lang = settings.value("Preferences/language", "en")
 
-        self.resourceLoader = JsonResourceLoader(
+        self.resourceLoader = MenuResourceLoader(
             self_window=self,
             module="menu_resource",
             lang=current_lang,
@@ -350,11 +350,11 @@ class ModuleSelectionWindow(QMainWindow):
                 f"[ModuleSelectionWindow] Device {device_type} available - opening material characterization module"
             )
 
-            """self.welcome_windows = MaterialCharacterizationWelcome(
+            self.welcome_windows = MaterialCharacterizationWelcome(
                 vna_device=self.vna
-            )"""
+            )
 
-            self.welcome_windows = CharacterizationFalse()
+            #self.welcome_windows = CharacterizationFalse()
 
         else:
 
@@ -362,8 +362,8 @@ class ModuleSelectionWindow(QMainWindow):
                 "[ModuleSelectionWindow] No device connected - using placeholder mode"
             )
 
-            #self.welcome_windows = MaterialCharacterizationWelcome()
-            self.welcome_windows = CharacterizationFalse()
+            self.welcome_windows = MaterialCharacterizationWelcome()
+            #self.welcome_windows = CharacterizationFalse()
 
         self.welcome_windows.show()
 

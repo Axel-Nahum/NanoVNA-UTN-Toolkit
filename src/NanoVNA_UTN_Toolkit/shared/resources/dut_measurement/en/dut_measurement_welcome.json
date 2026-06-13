@@ -1,5 +1,7 @@
 {
   "dut_measurement_ui": {
+    "window_title": "NanoVNA Toolkit - Welcome Window",
+
     "module_overview": {
       "title": "Calibration Wizard",
       "label_calibration_button": "Open Calibration Wizard",
@@ -19,7 +21,9 @@
       "label_kit_button": "Open Graphics Window",
       "import_section_title": "Import Kit Package:",
       "import_description": "Import a complete calibration kit with its associated calibration data.",
-      "import_button": "Import Calibration Kit"
+      "import_button": "Import Calibration Kit",
+      "import_calibration_title": "Import Calibration",
+      "import_calibration_description": "Import a calibration kit used to correct measurement errors in the system."
     }
   }
 }

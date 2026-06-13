@@ -19,7 +19,9 @@
     "axis": {
         "title": "Axis Settings (Y Limits)",
         "autoScale": "Auto Scale:",
-        "yRange": "Y Range:"
+        "yRange": "Y Range:",
+        "yMinPlaceholder": "Min",
+        "yMaxPlaceholder": "Max"
     },
     "buttons": {
         "apply": "Apply",

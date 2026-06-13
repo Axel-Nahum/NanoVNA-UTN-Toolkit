@@ -26,7 +26,7 @@ plt.rcParams['mathtext.rm'] = 'serif'
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
+DutResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.dut_resource_loader", "DutResourceLoader")
 
 class ExportDialog(QDialog):
     """Dialog for exporting graph data and images."""
@@ -47,7 +47,7 @@ class ExportDialog(QDialog):
 
         current_lang = settings.value("Preferences/language", "en")
 
-        self.resourceLoader = JsonResourceLoader(
+        self.resourceLoader = DutResourceLoader(
             self_window = self,
             module = "dut_measurement",
             lang = current_lang,

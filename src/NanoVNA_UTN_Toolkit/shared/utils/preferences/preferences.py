@@ -17,7 +17,7 @@ toggle_menu_dark_mode = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
+MenuResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.menu_resource_loader", "MenuResourceLoader")
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Open Preferences Dialog
@@ -261,7 +261,7 @@ def change_language(self, language, dialog):
 
         settings.setValue("Preferences/language", "ES")
 
-    resourceLoader = JsonResourceLoader(
+    resourceLoader = MenuResourceLoader(
         self_window=self,
         module="menu_resource",
         lang=current_lang,

@@ -1,0 +1,146 @@
+{
+  "pdf_export": {
+    "latex_pdf_export_setup": {
+      "window_title": "NanoVNA UTN Toolkit - Configuración de Exportación PDF LaTeX",
+      "compiler_status_group": {
+        "title": "Estado del Compilador LaTeX",
+        "checking_installation": "Verificando instalación de LaTeX...",
+        "scanning_system": "Escaneando el sistema en busca de compiladores LaTeX...",
+        "compiler_available": "Compilador LaTeX Disponible",
+        "compiler_not_found": "Compilador LaTeX No Encontrado",
+        "found_working_compiler": "Compilador LaTeX en funcionamiento encontrado:",
+        "manual_select_compiler": "O seleccionar compilador manualmente:",
+        "browse_compiler_button": "Buscar Compilador..."
+      },
+
+      "output_location_group": {
+        "title": "Ubicación de Salida",
+        "select_output_placeholder": "Seleccionar ubicación del archivo de salida...",
+        "browse_button": "Explorar...",
+        "output_hint": "Por favor seleccione dónde guardar el reporte PDF."
+      },
+      "buttons": {
+        "cancel": "Cancelar",
+        "export_disabled": "No se puede Exportar",
+        "export": "Exportar PDF"
+      }
+    },
+
+    "graph_preview": {
+
+      "window_title": "Vista Previa de Exportación de Gráfico",
+
+      "top_messages": {
+        "preview_ready": "La vista previa del gráfico está lista.",
+        "preview_instruction": "Use las flechas para explorar todas las vistas de medición antes de exportar el PDF."
+      },
+
+      "navigation_buttons": {
+        "previous": "← Anterior",
+        "next": "Siguiente →"
+      },
+
+      "markers": {
+        "marker_1": "Marcador 1",
+        "marker_2": "Marcador 2",
+        "frequency_unit": "kHz"
+      },
+
+      "buttons": {
+        "generate_report": "Generar Reporte PDF"
+      },
+
+      "plots": {
+        "s11_smith": {
+            "title": "Diagrama de Smith - $S_{11}$"
+        },
+
+        "s11_magnitude": {
+            "title": "Magnitud $|S_{11}|$ (dB)",
+            "x_axis": "Frecuencia (MHz)",
+            "y_axis": "$|S_{11}|$ (dB)"
+        },
+
+        "s11_phase": {
+            "title": "Fase $\\angle S_{11}$ ($^\\circ$)",
+            "x_axis": "Frecuencia (MHz)",
+            "y_axis": "$\\phi_{S_{11}}$ ($^\\circ$)"
+        },
+
+        "s21_magnitude": {
+            "title": "Magnitud $|S_{21}|$ (dB)",
+            "x_axis": "Frecuencia (MHz)",
+            "y_axis": "$|S_{21}|$ (dB)"
+        },
+
+        "s21_phase": {
+            "title": "Fase $\\angle S_{21}$ ($^\\circ$)",
+            "x_axis": "Frecuencia (MHz)",
+            "y_axis": "$\\phi_{S_{21}}$ ($^\\circ$)"
+        }
+      }
+    }
+  },
+
+  "export_touchstone": {
+    "window_title": "Seleccionar Formato Touchstone",
+    "export_title": "Elija el formato de exportación Touchstone:",
+
+    "buttons": {
+      "cancel": "Cancelar",
+      "export": "Exportar"
+    },
+
+    "options_sxp": {
+      "s1p": "Formato S1P - Puerto Simple (solo S11)",
+      "s2p": "Formato S2P - Dos Puertos (S11 y S21)",
+      "info": "Los archivos S1P contienen solo datos de reflexión S11.\nLos archivos S2P contienen datos de transmisión S11 y S21."
+    }
+  },
+
+  "exporters": {
+    "window_title": "NanoVNA UTN Toolkit - Exportar Gráfico",
+    "panel_left": "Panel Izquierdo",
+    "panel_right": "Panel Derecho",
+    "exporters_preview": {
+      "title": "Vista Previa:"
+    },
+    "buttons": {
+      "copy": "Copiar al Portapapeles",
+      "image": "Guardar como Imagen",
+      "CSV": "Guardar como CSV",
+      "close": "Cerrar"
+    }
+  },
+
+  "file_menu_dialogs": {
+    "select_cal_files_title": "Seleccionar Archivos de Calibración",
+    "select_cal_files_filter": "Touchstone Files (*.s1p *.s2p);;All Files (*)",
+    "no_files_title": "No se Seleccionaron Archivos",
+    "no_files_message": "Por favor seleccione los 4 archivos de calibración.",
+    "missing_files_title": "Archivos Faltantes",
+    "missing_files_prefix": "Los siguientes archivos de calibración faltan: ",
+    "invalid_selection_title": "Selección Inválida",
+    "invalid_selection_message": "Debe seleccionar exactamente 4 archivos de calibración.",
+    "success_title": "Éxito",
+    "success_message": "¡Todos los archivos de calibración seleccionados exitosamente!",
+    "select_method_title": "NanoVNA UTN Toolkit - Seleccionar Método",
+    "select_method_label": "Seleccionar Método",
+    "export_error_title": "Error de Exportación",
+    "export_error_prefix": "Error al abrir el diálogo de exportación: "
+  },
+
+  "set_range": {
+    "window_title": "NanoVNA UTN Toolkit - Establecer Rango Y",
+
+    "range_y": {
+        "y_min": "Y mín.:",
+        "y_max": "Y máx.:"
+    },
+
+    "buttons": {
+        "apply": "Aplicar",
+        "close": "Cerrar"
+    }
+  }
+}

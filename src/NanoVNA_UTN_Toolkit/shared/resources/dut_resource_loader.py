@@ -1,140 +1,18 @@
 from NanoVNA_UTN_Toolkit.utils import safe_import
 load_resource = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.load_resource", "load_resource")
 
-class JsonResourceLoader:
 
-    def __init__(self, self_window, module = "material_characterization", lang="en", json_resource = "characterization_methods"):
+class DutResourceLoader:
 
+    def __init__(self, self_window, module="dut_measurement", lang="en", json_resource="dut_measurement"):
         self.window = self_window
         self.module = module
         self.lang = lang
         self.json_resource = json_resource
 
     def _load_json(self):
+        return load_resource(self.module, self.lang, self.json_resource)
 
-        return load_resource(
-            self.module,
-            self.lang,
-            self.json_resource
-        )
-    
-# ------------------------------------------------------------------------------------------------------------------- #
-# Shared Resources
-# ------------------------------------------------------------------------------------------------------------------- #
-
-    def load_connection_resources(self):
-
-        raw_data = self._load_json()
-
-        connection_status = raw_data.get("status", {})
-        serial_status = raw_data.get("serialStatus", {})
-        device_information = raw_data.get("deviceInformation", {})
-
-        fields = device_information.get("fields", {})
-        board_field = fields.get("board", {})
-        version_field = fields.get("version", {})
-        device_type = fields.get("deviceType", {})
-        serial_number = fields.get("serialNumber", {})
-        platform = fields.get("platform", {})
-        architecture = fields.get("architecture", {})
-        built_time = fields.get("buildTime", {})
-        parameters = fields.get("parameters", {})
-        features = fields.get("features", {})
-
-        button_labels = raw_data.get("buttons", {})
-        refresh_button = button_labels.get("refresh", "")
-        disconnect_button = button_labels.get("disconnect", "")
-        clear_button = button_labels.get("clearLog", "")
-        stop_button = button_labels.get("stop", "")
-        open_menu_button = button_labels.get("openMenu", "")
-
-        # --------------------------------------------------------------------------------------------------------------- #
-        # Connection Status
-        # --------------------------------------------------------------------------------------------------------------- #
-
-        self.window.connection_status_connected = connection_status.get("connected", "")
-        self.window.connection_status_starting = connection_status.get("starting", "")
-        self.window.connection_status_disconnected = connection_status.get("disconnected", "")
-
-        self.window.no_interfaces_message = serial_status.get("noInterfaces", "")
-        self.window.searching_interfaces_message = serial_status.get("searchingInterfaces", "")
-        self.window.testing_interfaces_message = serial_status.get("testingInterfaces", "")
-        self.window.reading_device_info_message = serial_status.get("readingDeviceInfo", "")
-        self.window.reading_device_capabilities_message = serial_status.get("readingDeviceCapabilities", "")
-        self.window.device_connected_message = serial_status.get("deviceConnected", "")
-
-        # --------------------------------------------------------------------------------------------------------------- #
-        # Device Information Title
-        # --------------------------------------------------------------------------------------------------------------- #
-
-        self.window.device_info_title = device_information.get("title", "")
-
-        # ------------------------------------------------------------------------------------------------------------------- #
-        # Device Information
-        # ------------------------------------------------------------------------------------------------------------------- #
-
-        self.window.device_info_board_label = board_field.get("label", "")
-        self.window.device_info_board_value = board_field.get("value", "")
-
-        self.window.device_info_version_label = version_field.get("label", "")
-        self.window.device_info_version_value = version_field.get("value", "")
-
-        self.window.device_info_type_label = device_type.get("label", "")
-        self.window.device_info_type_value = device_type.get("value", "")
-
-        self.window.device_info_serial_label = serial_number.get("label", "")
-        self.window.device_info_serial_value = serial_number.get("value", "")
-
-        self.window.device_info_platform_label = platform.get("label", "")
-        self.window.device_info_platform_value = platform.get("value", "")
-
-        self.window.device_info_architecture_label = architecture.get("label", "")
-        self.window.device_info_architecture_value = architecture.get("value", "")
-
-        self.window.device_info_built_time_label = built_time.get("label", "")
-        self.window.device_info_built_time_value = built_time.get("value", "")
-
-        self.window.device_info_parameters_label = parameters.get("label", "")
-        self.window.device_info_parameters_value = parameters.get("value", "")
-
-        self.window.device_info_features_label = features.get("label", "")
-        self.window.device_info_features_value = features.get("value", "")
-
-        # ------------------------------------------------------------------------------------------------------------------- #
-        # Buttons
-        # ------------------------------------------------------------------------------------------------------------------- #
-
-        self.window.refresh_button_label = refresh_button
-        self.window.disconnect_button_label = disconnect_button
-        self.window.clear_log_button_label = clear_button
-        self.window.stop_button_label = stop_button
-        self.window.open_menu_button_label = open_menu_button
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Main Menu
-# ------------------------------------------------------------------------------------------------------------------- #
-
-    def load_main_menu_resources(self):
-
-        raw_data = self._load_json()
-
-        ui_data = raw_data.get("main_menu_ui", {})
-
-        header = ui_data.get("header", {})
-        modules = ui_data.get("modules", {})
-
-        dut_measurement = modules.get("dut_measurement", {})
-        materials_characterization = modules.get("materials_characterization", {})
-
-        self.window.menu_title = header.get("title", "")
-        self.window.menu_description = header.get("description", "")
-
-        self.window.dut_measurement_title = dut_measurement.get("title", "")
-        self.window.dut_measurement_description = dut_measurement.get("description", "")
-
-        self.window.materials_characterization_title = materials_characterization.get("title", "")
-        self.window.materials_characterization_description = materials_characterization.get("description", "")
-    
 # ------------------------------------------------------------------------------------------------------------------- #
 # DUT Measurement Module
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -144,6 +22,8 @@ class JsonResourceLoader:
         raw_data = self._load_json()
 
         ui_data = raw_data.get("dut_measurement_ui", {})
+
+        self.window.dut_welcome_ui_window_title = ui_data.get("window_title", "")
 
         module_overview = ui_data.get("module_overview", {})
         kit_section = ui_data.get("kit_section", {})
@@ -160,12 +40,24 @@ class JsonResourceLoader:
         self.window.dut_welcome_ui_import_section_title = kit_section.get("import_section_title", "")
         self.window.dut_welcome_ui_import_description = kit_section.get("import_description", "")
         self.window.dut_welcome_ui_import_button_text = kit_section.get("import_button", "")
+        self.window.dut_welcome_ui_import_calibration_title = kit_section.get("import_calibration_title", "")
+        self.window.dut_welcome_ui_import_calibration_description = kit_section.get("import_calibration_description", "")
 
     def load_dut_measurement_wizard_resources(self):
 
         raw_data = self._load_json()
 
         ui_data = raw_data.get("dut_measurement_wizard_ui", {})
+
+        self.window.dut_wizard_ui_window_title = ui_data.get("window_title", "")
+
+        messages = ui_data.get("messages", {})
+        self.window.dut_wizard_ui_cal_warning_title = messages.get("cal_warning_title", "")
+        self.window.dut_wizard_ui_cal_warning_message = messages.get("cal_warning_message", "")
+        self.window.dut_wizard_ui_save_success_title = messages.get("save_success_title", "")
+        self.window.dut_wizard_ui_save_success_message = messages.get("save_success_message", "")
+        self.window.dut_wizard_ui_save_duplicate_title = messages.get("save_duplicate_title", "")
+        self.window.dut_wizard_ui_save_duplicate_message = messages.get("save_duplicate_message", "")
 
         intro_screen = ui_data.get("intro_screen", {})
         steps_section = ui_data.get("steps", {})
@@ -211,6 +103,20 @@ class JsonResourceLoader:
         raw_data = self._load_json()
 
         ui_data = raw_data.get("measurement_graphics_ui", {})
+
+        self.window.measurement_ui_window_title = ui_data.get("window_title", "")
+
+        panels = ui_data.get("panels", {})
+        self.window.measurement_ui_panel_left = panels.get("left", "")
+        self.window.measurement_ui_panel_right = panels.get("right", "")
+
+        marker_diff = ui_data.get("marker_diff_dialog", {})
+        self.window.measurement_ui_marker_diff_window_title = marker_diff.get("window_title", "")
+        self.window.measurement_ui_marker_diff_left_title = marker_diff.get("left_panel_title", "")
+        self.window.measurement_ui_marker_diff_right_title = marker_diff.get("right_panel_title", "")
+        self.window.measurement_ui_marker_diff_freq_label = marker_diff.get("freq_diff_label", "")
+        self.window.measurement_ui_marker_diff_mag_label = marker_diff.get("mag_diff_label", "")
+        self.window.measurement_ui_marker_diff_phase_label = marker_diff.get("phase_diff_label", "")
 
         menu_bar = ui_data.get("menu_bar", {})
         top_bar = ui_data.get("top_bar", {})
@@ -701,6 +607,8 @@ class JsonResourceLoader:
         # ---------------------------------------------------------------- #
 
         self.window.exporters_window_title = exporters.get("window_title", "")
+        self.window.exporters_panel_left = exporters.get("panel_left", "")
+        self.window.exporters_panel_right = exporters.get("panel_right", "")
 
         # ---------------------------------------------------------------- #
         # Exporters Preview
@@ -716,6 +624,27 @@ class JsonResourceLoader:
         self.window.exporters_image_button = buttons.get("image", "")
         self.window.exporters_csv_button = buttons.get("CSV", "")
         self.window.exporters_close_button = buttons.get("close", "")
+
+    def load_file_menu_dialogs_resources(self):
+
+        raw_data = self._load_json()
+
+        fmd = raw_data.get("file_menu_dialogs", {})
+
+        self.window.file_menu_select_cal_files_title = fmd.get("select_cal_files_title", "")
+        self.window.file_menu_select_cal_files_filter = fmd.get("select_cal_files_filter", "")
+        self.window.file_menu_no_files_title = fmd.get("no_files_title", "")
+        self.window.file_menu_no_files_message = fmd.get("no_files_message", "")
+        self.window.file_menu_missing_files_title = fmd.get("missing_files_title", "")
+        self.window.file_menu_missing_files_prefix = fmd.get("missing_files_prefix", "")
+        self.window.file_menu_invalid_selection_title = fmd.get("invalid_selection_title", "")
+        self.window.file_menu_invalid_selection_message = fmd.get("invalid_selection_message", "")
+        self.window.file_menu_success_title = fmd.get("success_title", "")
+        self.window.file_menu_success_message = fmd.get("success_message", "")
+        self.window.file_menu_select_method_title = fmd.get("select_method_title", "")
+        self.window.file_menu_select_method_label = fmd.get("select_method_label", "")
+        self.window.file_menu_export_error_title = fmd.get("export_error_title", "")
+        self.window.file_menu_export_error_prefix = fmd.get("export_error_prefix", "")
 
     def load_set_range_resources(self):
 
@@ -859,7 +788,7 @@ class JsonResourceLoader:
 
         # --------------------------------------------------
         # Kalman Smoothing
-        #---------------------------------------------------
+        # --------------------------------------------------
 
         self.window.kalman_filter_title = kalman.get("title", "")
         self.window.kalman_enable_label = kalman.get("enable", "")
@@ -871,6 +800,9 @@ class JsonResourceLoader:
         self.window.auto_scale_label = axis.get("autoScale", "")
 
         self.window.y_range_label = axis.get("yRange", "")
+
+        self.window.y_min_placeholder = axis.get("yMinPlaceholder", "Min")
+        self.window.y_max_placeholder = axis.get("yMaxPlaceholder", "Max")
 
         # --------------------------------------------------
         # Buttons
@@ -1009,41 +941,3 @@ class JsonResourceLoader:
         self.window.missing_kalman_values_message = messages.get(
             "missingKalmanValues", ""
         )
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Material Characterization Module
-# ------------------------------------------------------------------------------------------------------------------- #
-
-    def load_characterization_welcome_resources(self):
-
-        raw_data = self._load_json()
-
-        ui_data = raw_data.get("material_characterization_ui", {})
-
-        module_overview = ui_data.get("module_overview", {})
-        characterization_section = ui_data.get("characterization_section", {})
-
-        self.window.charac_welcome_ui_module_overview_title = module_overview.get("title", "")
-        self.window.charac_welcome_ui_descriptions = module_overview.get("description", [])
-
-        self.window.charac_welcome_ui_characterization_title = characterization_section.get("title", "")
-        self.window.charac_welcome_ui_method_selection_title = characterization_section.get("method_selection_title", "")
-        self.window.charac_welcome_ui_no_characterization_selected = characterization_section.get("no_method_selected", "")
-        self.window.charac_welcome_ui_open_methods_button = characterization_section.get("open_methods_button", "")
-        self.window.charac_welcome_ui_import_section_title = characterization_section.get("import_section_title", "")
-        self.window.charac_welcome_ui_import_description = characterization_section.get("import_description", "")
-        self.window.charac_welcome_ui_import_button_text = characterization_section.get("import_button", "")
-
-    def load_characterization_method_resources(self):
-
-        raw_data = self._load_json()
-
-        self.window.charac_wizard_ui_method_title = raw_data.get("title", "")
-        self.window.charac_wizard_ui_method_select_label = raw_data.get("select_label", "")
-        self.window.charac_wizard_ui_method_dropdown_placeholder = raw_data.get("dropdown_placeholder", "")
-        self.window.charac_wizard_ui_method_label_description = raw_data.get("label_description", "")
-        self.window.charac_wizard_ui_method_empty_description = raw_data.get("empty_description", "")
-
-        return raw_data.get("methods", {})
-
-

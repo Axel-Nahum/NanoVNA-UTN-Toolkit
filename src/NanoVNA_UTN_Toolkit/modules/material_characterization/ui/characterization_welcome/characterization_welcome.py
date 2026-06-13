@@ -35,7 +35,7 @@ except ImportError as e:
 
 apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
 
-JsonResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.json_resource_loader", "JsonResourceLoader")
+CharacterizationResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.characterization_resource_loader", "CharacterizationResourceLoader")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
@@ -58,10 +58,10 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         current_lang = settings.value("Preferences/language", "en")
 
-        resourceLoader = JsonResourceLoader(
-            self_window = self, 
-            module = "material_characterization", 
-            lang = current_lang, 
+        resourceLoader = CharacterizationResourceLoader(
+            self_window = self,
+            module = "material_characterization",
+            lang = current_lang,
             json_resource = "characterization_welcome.json"
         )
 
