@@ -183,9 +183,15 @@ class ModuleSelectionWindow(QMainWindow):
 
         self.dut_button.setStyleSheet("""
             QPushButton {
+                background-color: #1a3a5c;
+                color: white;
+                border: 1px solid #2d5a8e;
+                border-radius: 6px;
                 font-size: 14px;
                 font-weight: bold;
             }
+            QPushButton:hover  { background-color: #254e7a; }
+            QPushButton:pressed { background-color: #12263d; }
         """)
 
         self.dut_button.clicked.connect(
@@ -243,9 +249,15 @@ class ModuleSelectionWindow(QMainWindow):
 
         self.materials_button.setStyleSheet("""
             QPushButton {
+                background-color: #1a3a5c;
+                color: white;
+                border: 1px solid #2d5a8e;
+                border-radius: 6px;
                 font-size: 14px;
                 font-weight: bold;
             }
+            QPushButton:hover  { background-color: #254e7a; }
+            QPushButton:pressed { background-color: #12263d; }
         """)
 
         self.materials_button.clicked.connect(
@@ -277,9 +289,16 @@ class ModuleSelectionWindow(QMainWindow):
         self.preferences_button.setFixedSize(180, 35)
         self.preferences_button.setStyleSheet("""
             QPushButton {
+                background-color: #1c2533;
+                color: #7ab3f5;
+                border: 1px solid #2d5a8e;
+                border-radius: 6px;
                 font-size: 13px;
-                border: none;
+                font-weight: 500;
+                padding: 4px 12px;
             }
+            QPushButton:hover  { background-color: #1a3a5c; color: #aacfff; border: 1px solid #4da6ff; }
+            QPushButton:pressed { background-color: #12263d; }
         """)
         self.preferences_button.clicked.connect(lambda: open_preferences_dialog(self))
 

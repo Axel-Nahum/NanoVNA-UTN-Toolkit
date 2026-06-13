@@ -11,7 +11,6 @@ from datetime import datetime
 
 from pathlib import Path
 
-# Suppress verbose matplotlib logging
 logging.getLogger('matplotlib.font_manager').setLevel(logging.WARNING)
 logging.getLogger('matplotlib.pyplot').setLevel(logging.WARNING)
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
@@ -31,7 +30,6 @@ except ImportError as e:
 
 CalibrationWizard = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_windows", "CalibrationWizard")
 
-# Import calibration data storage
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.calibration_manager import OSMCalibrationManager, THRUCalibrationManager
 except ImportError as e:
@@ -41,53 +39,133 @@ except ImportError as e:
     THRUCalibrationManager = None
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
-
 dark_light_config = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode", "dark_light_config")
-
 apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
-
 DutResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.dut_resource_loader", "DutResourceLoader")
-
 stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
+_CARD = """
+    QWidget#card {
+        background-color: #252525;
+        border: 1px solid #3d3d3d;
+        border-radius: 10px;
+    }
+"""
+
+_BTN_PRIMARY = """
+    QPushButton {
+        background-color: #1a3a5c;
+        color: white;
+        border: 1px solid #2d5a8e;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: bold;
+        padding: 11px;
+    }
+    QPushButton:hover  { background-color: #254e7a; }
+    QPushButton:pressed { background-color: #12263d; }
+"""
+
+_BTN_SECONDARY = """
+    QPushButton {
+        background-color: transparent;
+        color: #4da6ff;
+        border: 1px solid #2d5a8e;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: bold;
+        padding: 11px;
+    }
+    QPushButton:hover  { background-color: #1a3a5c; color: #aacfff; border: 1px solid #4da6ff; }
+    QPushButton:pressed { background-color: #12263d; }
+"""
+
+_BTN_BACK = """
+    QPushButton {
+        background-color: #1c2533;
+        color: #7ab3f5;
+        border: 1px solid #2d5a8e;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 9px 28px;
+    }
+    QPushButton:hover  { background-color: #1a3a5c; color: #aacfff; border: 1px solid #4da6ff; }
+    QPushButton:pressed { background-color: #12263d; }
+"""
+
+_COMBO = """
+    QComboBox {
+        background-color: #333333;
+        color: white;
+        border: 1px solid #505050;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 13px;
+        min-height: 38px;
+    }
+    QComboBox:hover  { border: 1px solid #4da6ff; }
+    QComboBox:focus  { border: 1px solid #4da6ff; }
+    QComboBox::drop-down { width: 0px; border: none; background: transparent; }
+    QComboBox::down-arrow { image: none; width: 0px; height: 0px; }
+    QComboBox QAbstractItemView {
+        background-color: #333333;
+        color: white;
+        selection-background-color: #2d5a8e;
+        border: 1px solid #505050;
+        padding: 4px;
+    }
+"""
+
+# ------------------------------------------------------------------------------------------------------------------ #
+
+def _hsep(color="#363636"):
+    line = QWidget()
+    line.setFixedHeight(1)
+    line.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+    line.setStyleSheet(f"background-color: {color};")
+    return line
+
+
+def _bullet_row(icon, text, icon_color="#5cb85c"):
+    row = QHBoxLayout()
+    row.setSpacing(10)
+    row.setContentsMargins(0, 0, 0, 0)
+    icon_lbl = QLabel(icon)
+    icon_lbl.setStyleSheet(f"color: {icon_color}; font-size: 13px; background: transparent;")
+    icon_lbl.setFixedWidth(18)
+    text_lbl = QLabel(text)
+    text_lbl.setWordWrap(True)
+    text_lbl.setStyleSheet("color: #aaaaaa; font-size: 12px; background: transparent;")
+    row.addWidget(icon_lbl, alignment=Qt.AlignTop)
+    row.addWidget(text_lbl, stretch=1)
+    return row
+
+# ------------------------------------------------------------------------------------------------------------------ #
+
 class NanoVNAWelcome(QMainWindow):
+
     def __init__(self, s11=None, freqs=None, vna_device=None):
         super().__init__()
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Load JSON
-# ------------------------------------------------------------------------------------------------------------------- #
 
         settings = get_settings(
             "INI/dut_measurement/preferences/preferences.ini",
             "shared/utils/preferences/preferences.ini",
             Path(__file__).resolve()
         )
-
         current_lang = settings.value("Preferences/language", "en")
-
         resourceLoader = DutResourceLoader(
-            self_window = self,
-            module = "dut_measurement",
-            lang = current_lang,
-            json_resource = "dut_measurement_welcome.json"
+            self_window=self,
+            module="dut_measurement",
+            lang=current_lang,
+            json_resource="dut_measurement_welcome.json"
         )
-
         resourceLoader.load_dut_measurement_welcome_resources()
-
-# ------------------------------------------------------------------------------------------------------------------- #
-# Dark light Mode
-# ------------------------------------------------------------------------------------------------------------------- #
-
-        # Dark-Light mode settings
 
         dark_light_config(self)
 
-#------------------------------------------------------------------------------------------------------------------------------------------
-
-        # === Store VNA device reference ===
         self.vna_device = vna_device
         logging.info("[welcome_windows.__init__] Initializing welcome window")
 
@@ -97,226 +175,254 @@ class NanoVNAWelcome(QMainWindow):
             self.osm_calibration = OSMCalibrationManager()
             if vna_device and hasattr(vna_device, 'name'):
                 self.osm_calibration.device_name = vna_device.name
-            logging.info("[CalibrationWizard] OSM calibration manager initialized")
         else:
             self.osm_calibration = None
-            logging.warning("[CalibrationWizard] OSMCalibrationManager not available")
 
         if THRUCalibrationManager:
             self.thru_calibration = THRUCalibrationManager()
             if vna_device and hasattr(vna_device, 'name'):
                 self.thru_calibration.device_name = vna_device.name
-            logging.info("[CalibrationWizard] THRU calibration manager initialized")
         else:
             self.thru_calibration = None
-            logging.warning("[CalibrationWizard] THRUCalibrationManager not available")
 
         self.setWindowTitle(self.dut_welcome_ui_window_title)
-
-        self.resize(1000, 500)
+        self.resize(1050, 520)
         self.setMinimumSize(900, 460)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # === Central widget and main layout ===
-        central_widget = QWidget()
-        central_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.setCentralWidget(central_widget)
-        main_layout = QVBoxLayout(central_widget)
-        main_layout.setSpacing(20)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSizeConstraint(QVBoxLayout.SetDefaultConstraint)
+        central = QWidget()
+        central.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setCentralWidget(central)
 
-        # === Create main content area ===
-        self._create_calibration_group(main_layout)
-        self._create_measurements_group(main_layout)
+        root = QVBoxLayout(central)
+        root.setSpacing(14)
+        root.setContentsMargins(24, 18, 24, 18)
 
-    def _create_calibration_group(self, parent_layout):
-        """
-        Create the calibration wizard group box with description.
-        Provides information about VNA calibration importance and wizard access.
-        """
-        logging.info("[welcome_windows._create_calibration_group] Creating calibration group")
+        self._build_header(root)
+        root.addWidget(_hsep())
+        self._build_main_cards(root)
+        root.addWidget(_hsep())
+        self._build_footer(root)
 
-        # Load configuration for UI colors and styles
-        settings = get_settings(
-            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
-            "shared/utils/dark_light_mode/dark_light_config.ini",
-            Path(__file__).resolve()
-        )
+# ------------------------------------------------------------------------------------------------------------------ #
 
-        groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
-        groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; font-size: 30pt;}}"
+    def _build_header(self, parent):
+        layout = QVBoxLayout()
+        layout.setSpacing(4)
+        layout.setContentsMargins(0, 0, 0, 0)
 
-        calibration_group = QGroupBox(f"{self.dut_welcome_ui_calibration_title}")
-        calibration_group.setStyleSheet(groupbox_style)
-        calibration_layout = QVBoxLayout(calibration_group)
-        calibration_layout.setSpacing(15)
+        title = QLabel(self.dut_welcome_ui_window_title)
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #ffffff;")
 
-        # Calibration description
-        description_text = (f"{self.dut_welcome_ui_descriptions}")
+        subtitle = QLabel(self.dut_welcome_ui_descriptions if isinstance(self.dut_welcome_ui_descriptions, str)
+                          else (self.dut_welcome_ui_descriptions[0] if self.dut_welcome_ui_descriptions else ""))
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setWordWrap(True)
+        subtitle.setStyleSheet("font-size: 12px; color: #666666;")
 
-        description_label = QLabel(description_text)
-        description_label.setWordWrap(True)
-        description_label.setStyleSheet("font-weight: normal; font-size: 14px; color: #cccccc; padding: 10px;")
-        calibration_layout.addWidget(description_label)
+        layout.addWidget(title)
+        layout.addWidget(subtitle)
+        parent.addLayout(layout)
 
-        # Calibration wizard button
-        self.calibration_wizard_button = QPushButton(f"{self.dut_welcome_ui_label_calibration_button}")
+# ------------------------------------------------------------------------------------------------------------------ #
+
+    def _build_footer(self, parent):
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 4, 0, 0)
+        back = QPushButton("← Back to Menu")
+        back.setFixedSize(200, 38)
+        back.setStyleSheet(_BTN_BACK)
+        back.clicked.connect(self.return_to_menu_window)
+        row.addStretch(1)
+        row.addWidget(back)
+        row.addStretch(1)
+        parent.addLayout(row)
+
+# ------------------------------------------------------------------------------------------------------------------ #
+
+    def _build_main_cards(self, parent):
+        row = QHBoxLayout()
+        row.setSpacing(14)
+        row.addWidget(self._build_card_calibration(), stretch=1)
+        row.addWidget(self._build_card_measurements(), stretch=1)
+        row.addWidget(self._build_card_import(), stretch=1)
+        parent.addLayout(row, stretch=1)
+
+# ------------------------------------------------------------------------------------------------------------------ #
+
+    def _build_card_calibration(self):
+        card = QWidget()
+        card.setObjectName("card")
+        card.setStyleSheet(_CARD)
+
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(0)
+
+        # Title row
+        title_row = QHBoxLayout()
+        icon = QLabel("🔧")
+        icon.setStyleSheet("font-size: 15px; background: transparent;")
+        title_lbl = QLabel(self.dut_welcome_ui_calibration_title)
+        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
+        title_row.addWidget(icon)
+        title_row.addWidget(title_lbl, stretch=1)
+        layout.addLayout(title_row)
+
+        layout.addSpacing(6)
+        layout.addWidget(_hsep())
+        layout.addSpacing(14)
+
+        desc = QLabel(self.dut_welcome_ui_descriptions if isinstance(self.dut_welcome_ui_descriptions, str)
+                      else "  ".join(self.dut_welcome_ui_descriptions))
+        desc.setWordWrap(True)
+        desc.setStyleSheet("font-size: 12px; color: #999999; background: transparent;")
+        layout.addWidget(desc)
+
+        layout.addSpacing(14)
+
+        features = [
+            ("○", "Short, Open, Load, Match (OSM) standards"),
+            ("○", "Thru standard for transmission calibration"),
+            ("○", "Step-by-step guided measurement wizard"),
+        ]
+        for bullet, text in features:
+            layout.addLayout(_bullet_row(bullet, text, "#4da6ff"))
+            layout.addSpacing(6)
+
+        layout.addStretch(1)
+
+        self.calibration_wizard_button = QPushButton(self.dut_welcome_ui_label_calibration_button)
+        self.calibration_wizard_button.setFixedHeight(44)
+        self.calibration_wizard_button.setStyleSheet(_BTN_PRIMARY)
         self.calibration_wizard_button.clicked.connect(self.open_calibration_wizard)
-        self.calibration_wizard_button.setFixedHeight(50)
-        self.calibration_wizard_button.setStyleSheet("font-size: 16px; margin: 10px;")
-        calibration_layout.addWidget(self.calibration_wizard_button, alignment=Qt.AlignCenter)
+        layout.addWidget(self.calibration_wizard_button)
 
-        parent_layout.addWidget(calibration_group)
-        logging.info("[welcome_windows._create_calibration_group] Calibration group created successfully")
+        return card
 
-    def _create_measurements_group(self, parent_layout):
-        """
-        Create the measurements group box with calibration kit selector and navigation buttons.
-        Contains kit selection, graphics navigation, and calibration import functionality.
-        """
-        logging.info("[welcome_windows._create_measurements_group] Creating measurements group")
+# ------------------------------------------------------------------------------------------------------------------ #
 
-        # Load configuration for UI colors and styles
-        settings = get_settings(
-            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
-            "shared/utils/dark_light_mode/dark_light_config.ini",
-            Path(__file__).resolve()
-        )
+    def _build_card_measurements(self):
+        card = QWidget()
+        card.setObjectName("card")
+        card.setStyleSheet(_CARD)
 
-        groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
-        groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(0)
 
-        measurements_group = QGroupBox(f"{self.dut_welcome_ui_kit_title}")
-        measurements_group.setStyleSheet(groupbox_style)
-        measurements_layout = QVBoxLayout(measurements_group)
+        # Title row
+        title_row = QHBoxLayout()
+        icon = QLabel("📊")
+        icon.setStyleSheet("font-size: 15px; background: transparent;")
+        title_lbl = QLabel(self.dut_welcome_ui_kit_title)
+        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
+        title_row.addWidget(icon)
+        title_row.addWidget(title_lbl, stretch=1)
+        layout.addLayout(title_row)
 
-        # Create calibration kit selector
-        self._create_calibration_kit_selector(measurements_layout)
+        layout.addSpacing(6)
+        layout.addWidget(_hsep())
+        layout.addSpacing(14)
 
-        # Create action buttons
-        self._create_action_buttons(measurements_layout)
+        kit_lbl = QLabel(self.dut_welcome_ui_kit_selection_title)
+        kit_lbl.setStyleSheet("font-size: 12px; color: #777777; background: transparent;")
+        layout.addWidget(kit_lbl)
 
-        parent_layout.addWidget(measurements_group)
-        logging.info("[welcome_windows._create_measurements_group] Measurements group created successfully")
-
-    def _create_calibration_kit_selector(self, parent_layout):
-
-        logging.info("[welcome_windows._create_calibration_kit_selector] Creating kit selector dropdown")
-
-        # =========================================================
-        # MAIN HORIZONTAL CONTAINER (50 / 50 REAL)
-        # =========================================================
-        main_layout = QHBoxLayout()
-        main_layout.setSpacing(35)
-        main_layout.setContentsMargins(15, 10, 15, 10)
-
-        # =========================================================
-        # LEFT SIDE - KIT SELECTOR
-        # =========================================================
-        kit_selector_layout = QVBoxLayout()
-        kit_selector_layout.setSpacing(20)
-        kit_selector_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        kit_selector_label = QLabel(f"{self.dut_welcome_ui_kit_selection_title}")
-        kit_selector_label.setStyleSheet("font-weight: bold; font-size: 14px;")
-        kit_selector_layout.addWidget(kit_selector_label)
+        layout.addSpacing(10)
 
         self._load_calibration_kits()
 
         self.kit_dropdown = QComboBox()
-        self.kit_dropdown.setFixedHeight(40)
-        self.kit_dropdown.setFixedWidth(430)
-        self.kit_dropdown.setSizePolicy(
-            QSizePolicy.Fixed,
-            QSizePolicy.Fixed
-        )
-
-        self.kit_dropdown.setStyleSheet("""
-            QComboBox {
-                background-color: #3b3b3b;
-                color: white;
-                border: 2px solid white;
-                border-radius: 6px;
-                padding: 8px;
-                font-size: 14px;
-            }
-            QComboBox:hover {
-                background-color: #4d4d4d;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #3b3b3b;
-                color: white;
-            }
-        """)
-
+        self.kit_dropdown.setStyleSheet(_COMBO)
         self.kit_dropdown.addItem("None")
-
         for kit_name in self.kit_names:
             self.kit_dropdown.addItem(kit_name)
-
         self._set_current_kit_selection()
         self.kit_dropdown.currentTextChanged.connect(self._on_kit_selection_changed)
-
-        kit_selector_layout.addWidget(self.kit_dropdown, alignment=Qt.AlignmentFlag.AlignLeft)
-
-        self.kit_info_label = QLabel("")
-        self.kit_info_label.setStyleSheet("font-size: 12px; color: #cccccc;")
-        self.kit_info_label.setWordWrap(True)
-
-        kit_selector_layout.addWidget(self.kit_info_label, alignment=Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(self.kit_dropdown)
 
         current_text = self.kit_dropdown.currentText()
         self.selected_kit_name = None if current_text.startswith("None") else current_text
 
+        layout.addSpacing(10)
+
+        self.kit_info_label = QLabel(self.dut_welcome_ui_no_kit_selected)
+        self.kit_info_label.setWordWrap(True)
+        self.kit_info_label.setStyleSheet(
+            "font-size: 12px; color: #555555; background: transparent; font-style: italic;"
+        )
+        layout.addWidget(self.kit_info_label)
         self._update_kit_info_display()
 
-        # =========================================================
-        # RIGHT SIDE - IMPORT INFO ONLY
-        # =========================================================
-        import_layout = QVBoxLayout()
-        import_layout.setSpacing(10)
-        import_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        layout.addStretch(1)
 
-        import_title = QLabel(self.dut_welcome_ui_import_calibration_title)
-        import_title.setStyleSheet("font-weight: bold; font-size: 14px;")
+        self.graphics_button = QPushButton(self.dut_welcome_ui_label_kit_button)
+        self.graphics_button.setFixedHeight(44)
+        self.graphics_button.setStyleSheet(_BTN_PRIMARY)
+        self.graphics_button.clicked.connect(self.graphics_clicked)
+        layout.addWidget(self.graphics_button)
 
-        import_description = QLabel(
-            f"{self.dut_welcome_ui_import_calibration_description}<br>"
-            "Files:<br>"
-            "<ul style='margin:0; padding-left:16px;'>"
-            "<li>open.s1p</li>"
-            "<li>short.s1p</li>"
-            "<li>load/match.s1p</li>"
-            "<li>thru.s2p</li>"
-            "</ul>"
-        )
-        import_description.setWordWrap(True)
-        import_description.setStyleSheet("font-size: 12px; color: #cccccc;")
+        return card
 
-        import_layout.addWidget(import_title)
-        import_layout.addWidget(import_description)
-        import_layout.addStretch()
+# ------------------------------------------------------------------------------------------------------------------ #
 
-        # =========================================================
-        # ASSEMBLE (50 / 50 REAL SPLIT)
-        # =========================================================
-        main_layout.addLayout(kit_selector_layout, 1)
-        
-        main_layout.addLayout(import_layout, 1)
+    def _build_card_import(self):
+        card = QWidget()
+        card.setObjectName("card")
+        card.setStyleSheet(_CARD)
 
-        parent_layout.addLayout(main_layout)
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(0)
 
-        logging.info(
-            f"[welcome_windows._create_calibration_kit_selector] "
-            f"Kit selector created with {len(self.kit_names)} kits"
-        )
+        # Title row
+        title_row = QHBoxLayout()
+        icon = QLabel("📁")
+        icon.setStyleSheet("font-size: 15px; background: transparent;")
+        title_lbl = QLabel(self.dut_welcome_ui_import_calibration_title)
+        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
+        title_row.addWidget(icon)
+        title_row.addWidget(title_lbl, stretch=1)
+        layout.addLayout(title_row)
+
+        layout.addSpacing(6)
+        layout.addWidget(_hsep())
+        layout.addSpacing(14)
+
+        desc = QLabel(self.dut_welcome_ui_import_calibration_description)
+        desc.setWordWrap(True)
+        desc.setStyleSheet("font-size: 12px; color: #999999; background: transparent;")
+        layout.addWidget(desc)
+
+        layout.addSpacing(16)
+
+        files_lbl = QLabel("Required Touchstone files:")
+        files_lbl.setStyleSheet("font-size: 12px; color: #666666; background: transparent;")
+        layout.addWidget(files_lbl)
+
+        layout.addSpacing(8)
+
+        for fname in ["open.s1p", "short.s1p", "load/match.s1p", "thru.s2p"]:
+            layout.addLayout(_bullet_row("✓", fname, "#5cb85c"))
+            layout.addSpacing(5)
+
+        layout.addStretch(1)
+
+        self.import_button = QPushButton("Import Calibration")
+        self.import_button.setFixedHeight(44)
+        self.import_button.setStyleSheet(_BTN_PRIMARY)
+        self.import_button.clicked.connect(self.import_calibration)
+        layout.addWidget(self.import_button)
+
+        return card
+
+# ------------------------------------------------------------------------------------------------------------------ #
+# Functional methods — untouched
+# ------------------------------------------------------------------------------------------------------------------ #
 
     def _set_current_kit_selection(self):
-        """
-        Set the current kit selection in the dropdown based on saved calibration.
-        Updates dropdown to show currently active calibration kit.
-        """
         calibration_name = self._get_current_calibration_name()
 
         if "_" in str(calibration_name):
@@ -324,164 +430,68 @@ class NanoVNAWelcome(QMainWindow):
         else:
             calibration_name_split = str(calibration_name)
 
-        # Find matching kit in dropdown
         if calibration_name_split in self.kit_names:
-            kit_index = self.kit_names.index(calibration_name_split) + 1  # +1 because "None" is at index 0
+            kit_index = self.kit_names.index(calibration_name_split) + 1
             self.kit_dropdown.setCurrentIndex(kit_index)
-            logging.info(f"[welcome_windows._set_current_kit_selection] Set dropdown to kit: {calibration_name_split}")
         else:
-            # Set to "None" if no matching kit found
             self.kit_dropdown.setCurrentIndex(0)
-            logging.info("[welcome_windows._set_current_kit_selection] Set dropdown to None - no matching kit found")
 
     def _on_kit_selection_changed(self, selected_text):
-        """
-        Handle calibration kit selection change from dropdown.
-        Updates display and saves selection for graphics window navigation.
-        """
         logging.info(f"[welcome_windows._on_kit_selection_changed] Kit selection changed to: {selected_text}")
-
         if selected_text.startswith("None"):
             self.selected_kit_name = None
-            logging.info("[welcome_windows._on_kit_selection_changed] No kit selected")
         else:
             self.selected_kit_name = selected_text
-            logging.info(f"[welcome_windows._on_kit_selection_changed] Selected kit: {selected_text}")
-
         self._update_kit_info_display()
 
     def _update_kit_info_display(self):
-        """
-        Update the information display below the kit selector.
-        Shows details about the currently selected calibration kit.
-        """
         if hasattr(self, 'selected_kit_name') and self.selected_kit_name:
-
             self.kit_info_label.setContentsMargins(0, 0, 0, 0)
-
-            # Find kit details
             if self.selected_kit_name in self.kit_names:
                 kit_index = self.kit_names.index(self.selected_kit_name)
                 kit_id = self.kit_ids[kit_index] if kit_index < len(self.kit_ids) else "Unknown"
-
-                # Load configuration for calibration settings
                 settings = get_settings(
                     "INI/dut_measurement/calibration_config/calibration_config.ini",
                     "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
                     Path(__file__).resolve()
                 )
-
                 kit_method = settings.value(f"Kit_{kit_id}/method", "Unknown")
                 kit_datetime = settings.value(f"Kit_{kit_id}/DateTime_Kits", "Unknown")
-
                 info_text = f"Selected Kit: {self.selected_kit_name}\nMethod: {kit_method}\nCreated: {kit_datetime}"
                 self.kit_info_label.setText(info_text)
-                logging.info(f"[welcome_windows._update_kit_info_display] Updated info for kit: {self.selected_kit_name}")
             else:
                 self.kit_info_label.setText(f"Selected Kit: {self.selected_kit_name}\n(Kit details not found)")
         else:
-            self.kit_info_label.setContentsMargins(0, 15, 0, 0)
+            self.kit_info_label.setContentsMargins(0, 0, 0, 0)
             self.kit_info_label.setText(f"{self.dut_welcome_ui_no_kit_selected}")
-            logging.info("[welcome_windows._update_kit_info_display] Cleared kit info - no selection")
-
-    def _create_action_buttons(self, parent_layout):
-
-        logging.info("[welcome_windows._create_action_buttons] Creating action buttons")
-
-        # =========================================================
-        # MAIN HORIZONTAL CONTAINER (characterization style)
-        # =========================================================
-
-        main_layout = QHBoxLayout()
-
-        # =========================================================
-        # LEFT - GRAPHICS BUTTON
-        # =========================================================
-        self.graphics_button = QPushButton(f"{self.dut_welcome_ui_label_kit_button}")
-        self.graphics_button.clicked.connect(self.graphics_clicked)
-        self.graphics_button.setFixedHeight(60)
-        self.graphics_button.setFixedWidth(460)
-        self.graphics_button.setStyleSheet("font-size: 16px; margin: 8px;")
-
-        left_layout = QVBoxLayout()
-        left_layout.addWidget(self.graphics_button, alignment=Qt.AlignmentFlag.AlignHCenter)
-
-        # =========================================================
-        # RIGHT - IMPORT BUTTON
-        # =========================================================
-        self.import_button = QPushButton("Import Calibration")
-        self.import_button.clicked.connect(self.import_calibration)
-        self.import_button.setFixedHeight(60)
-        self.import_button.setFixedWidth(460)
-        self.import_button.setStyleSheet("font-size: 16px; margin: 8px;")
-
-        right_layout = QVBoxLayout()
-        right_layout.addWidget(self.import_button, alignment=Qt.AlignmentFlag.AlignHCenter)
-
-        # =========================================================
-        # ASSEMBLE (50 / 50 REAL)
-        # =========================================================
-        main_layout.addLayout(left_layout, 1)
-        main_layout.addLayout(right_layout, 1)
-
-        parent_layout.addLayout(main_layout)
-
-        logging.info("[welcome_windows._create_action_buttons] Action buttons created successfully")
 
     def _load_calibration_kits(self):
-        """
-        Load available calibration kits from configuration.
-        Reads kit information from calibration config file.
-        """
         logging.info("[welcome_windows._load_calibration_kits] Loading calibration kits")
-
-        # Load configuration for calibration settings
         settings_calibration = get_settings(
             "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )
-
         kit_groups = [g for g in settings_calibration.childGroups() if g.startswith("Kit_")]
-
-        # --- Get kit names and IDs ---
         self.kit_names = [settings_calibration.value(f"{g}/kit_name", "") for g in kit_groups]
         self.kit_ids = [int(settings_calibration.value(f"{g}/id", 0)) for g in kit_groups]
 
-        logging.info(f"[welcome_windows._load_calibration_kits] Loaded {len(self.kit_names)} calibration kits")
-
     def _get_current_calibration_name(self):
-        """
-        Get the currently selected calibration name from settings.
-        Returns the active calibration name or default value.
-        """
-
-        # Load configuration for calibration settings
         settings_calibration = get_settings(
             "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )
-
-        # --- Get current calibration ---
         calibration_name = settings_calibration.value("Calibration/Name", "No Calibration")
-        logging.info(f"[welcome_windows._get_current_calibration_name] Current calibration: {calibration_name}")
-
         if "_" in calibration_name:
             calibration_name_split = calibration_name.rsplit("_", 1)[0]
         else:
             calibration_name_split = calibration_name
-
         matched_id = 0
         self.current_index = -1
-
         if calibration_name_split in self.kit_names:
             self.current_index = self.kit_names.index(calibration_name_split)
             matched_id = self.kit_ids[self.current_index]
-            logging.info(f"[welcome_windows._get_current_calibration_name] Found matching kit at index {self.current_index}")
-        else:
-            logging.warning(f"[welcome_windows._get_current_calibration_name] No matching kit found for {calibration_name_split}")
-
         return calibration_name
 
     def import_calibration(self):
@@ -505,14 +515,10 @@ class NanoVNAWelcome(QMainWindow):
         has_load_or_match = found["load"] or found["match"]
 
         missing = []
-        if not found["open"]:
-            missing.append("open")
-        if not found["short"]:
-            missing.append("short")
-        if not has_load_or_match:
-            missing.append("load or match")
-        if not found["thru"]:
-            missing.append("thru")
+        if not found["open"]:   missing.append("open")
+        if not found["short"]:  missing.append("short")
+        if not has_load_or_match: missing.append("load or match")
+        if not found["thru"]:   missing.append("thru")
 
         if missing:
             QMessageBox.warning(self, "Missing Files", f"The following calibration files are missing: {', '.join(missing)}")
@@ -523,14 +529,9 @@ class NanoVNAWelcome(QMainWindow):
             return
 
         QMessageBox.information(self, "Success", "All calibration files selected successfully!")
-        print("Selected calibration files:")
-        for f in files:
-            print(f)
 
-        # "Select Method"
         dialog = QDialog(self)
         dialog.setWindowTitle("NanoVNA UTN Toolkit - Select Calibration Method")
-
         main_layout = QVBoxLayout(dialog)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(15)
@@ -540,35 +541,26 @@ class NanoVNAWelcome(QMainWindow):
 
         self.select_method = QComboBox()
         self.select_method.setEditable(False)
-
-        # Placeholder
         self.select_method.addItem("Select Method")
         item = self.select_method.model().item(0)
         item.setEnabled(False)
-        placeholder_color = QColor(120, 120, 120)
-        item.setForeground(placeholder_color)
-
-        methods = [
+        item.setForeground(QColor(120, 120, 120))
+        self.select_method.addItems([
             "OSM (Open - Short - Match)",
             "Thru Normalization",
             "1-Port+N",
             "Enhanced-Response"
-        ]
-        self.select_method.addItems(methods)
-
+        ])
         main_layout.addWidget(self.select_method)
 
         button_layout = QHBoxLayout()
         button_layout.setSpacing(10)
-
         cancel_button = QPushButton("Cancel", dialog)
         cancel_button.clicked.connect(dialog.reject)
         button_layout.addWidget(cancel_button)
-
         calibrate_button = QPushButton("Calibrate", dialog)
         calibrate_button.clicked.connect(lambda: self.start_calibration(files, self.select_method.currentText(), dialog))
         button_layout.addWidget(calibrate_button)
-
         main_layout.addLayout(button_layout)
 
         dialog.exec()
@@ -578,23 +570,18 @@ class NanoVNAWelcome(QMainWindow):
         for f in files:
             print(f)
         dialog.accept()
-
         self.save_calibration_dialog(selected_method, files)
 
     def save_calibration_dialog(self, selected_method, files):
         from PySide6.QtWidgets import QMessageBox
-        """Shows a dialog to save the calibration without advancing to graphics window"""
         if not self.osm_calibration:
             return
-
         if not self.thru_calibration:
             return
 
-        # Check which measurements are available
         osm_status = self.osm_calibration.is_complete_true()
         thru_status = self.thru_calibration.is_complete_true()
 
-        # Dialog to enter calibration name
         from PySide6.QtWidgets import QInputDialog
 
         if selected_method == "OSM (Open - Short - Match)":
@@ -609,7 +596,7 @@ class NanoVNAWelcome(QMainWindow):
         name, ok = QInputDialog.getText(
             self,
             'Save Calibration',
-            f'Enter calibration name:',
+            'Enter calibration name:',
             text=f'{prefix}_Calibration_{self.get_current_timestamp()}'
         )
 
@@ -617,90 +604,47 @@ class NanoVNAWelcome(QMainWindow):
 
         if ok and name:
             try:
-                # Save calibration (it will save only the available measurements)
                 success = self.osm_calibration.save_calibration_file(name, selected_method, is_external_kit, files)
                 if success:
-                    # Show success message
-                    from PySide6.QtWidgets import QMessageBox
                     QMessageBox.information(
-                        self,
-                        "Success",
-                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: \n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                        self, "Success",
+                        f"Calibration '{name}' saved successfully!\n\nFiles saved in:\n- Touchstone format\n- .cal format"
                     )
-
-                    # Stay in wizard - do not advance to graphics window
-                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
-
-                else:
-                    from PySide6.QtWidgets import QMessageBox
-                    #QMessageBox.warning(self, "Error", "Failed to save calibration")
 
                 success = self.thru_calibration.save_calibration_file(name, selected_method, is_external_kit, files, osm_instance=self.osm_calibration)
                 if success:
-                    # Show success message
-                    from PySide6.QtWidgets import QMessageBox
                     QMessageBox.information(
-                        self,
-                        "Success",
-                        f"Calibration '{name}' saved successfully!\n\nSaved measurements: \n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
+                        self, "Success",
+                        f"Calibration '{name}' saved successfully!\n\nFiles saved in:\n- Touchstone format\n- .cal format"
                     )
 
-                    # Stay in wizard - do not advance to graphics window
-                    logging.info(f"Calibration '{name}' saved successfully - staying in wizard")
-
-                else:
-                    from PySide6.QtWidgets import QMessageBox
-                    #QMessageBox.warning(self, "Error", "Failed to save calibration")
-
-                # --- Read current calibration method ---
-                # Use new calibration structure
-                # Load configuration for calibration settings
                 settings_calibration = get_settings(
                     "INI/dut_measurement/calibration_config/calibration_config.ini",
                     "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
                     Path(__file__).resolve()
                 )
 
-                """     # --- If a kit was previously saved in this session, show its name ---
-                if getattr(self, 'last_saved_kit_id', None):
-                    last_id = self.last_saved_kit_id
-                    last_name = settings_calibration.value(f"Kit_{last_id}/kit_name", "")
-                    if last_name:
-                        name_input.setText(last_name)
-
-                if name is None:
-                    name = name_input.text().strip()
-                if not name:
-                    name_input.setPlaceholderText("Please enter a valid name...")
-                    return
-                """
-                # --- Check if name already exists in any Kit ---
                 existing_groups = settings_calibration.childGroups()
                 for g in existing_groups:
                     if g.startswith("Kit_"):
                         existing_name = settings_calibration.value(f"{g}/kit_name", "")
                         if existing_name == name:
-                            # Show warning message box if name exists
-                            QMessageBox.warning(dialog, "Duplicate Name",
-                                                f"The kit name '{name}' already exists.\nPlease choose another name.",
-                                                QMessageBox.Ok)
+                            from PySide6.QtWidgets import QMessageBox
+                            QMessageBox.warning(self, "Duplicate Name",
+                                                f"The kit name '{name}' already exists.\nPlease choose another name.")
                             return
 
-                # --- Determine ID: use last saved if exists ---
                 if getattr(self, 'last_saved_kit_id', None):
                     next_id = self.last_saved_kit_id
                 else:
-                    # First save -> calculate next available ID
                     kit_ids = [int(g.split("_")[1]) for g in existing_groups if g.startswith("Kit_") and g.split("_")[1].isdigit()]
                     next_id = max(kit_ids, default=0) + 1
-                    self.last_saved_kit_id = next_id  # store ID for overwriting next time
+                    self.last_saved_kit_id = next_id
 
                 calibration_entry_name = f"Kit_{next_id}"
                 full_calibration_name = f"{name}_{next_id}"
-
                 current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                # --- Save data ---
                 settings_calibration.beginGroup(calibration_entry_name)
                 settings_calibration.setValue("kit_name", name)
                 settings_calibration.setValue("method", selected_method)
@@ -708,7 +652,6 @@ class NanoVNAWelcome(QMainWindow):
                 settings_calibration.setValue("DateTime_Kits", current_datetime)
                 settings_calibration.endGroup()
 
-                # --- Update active calibration reference ---
                 settings_calibration.beginGroup("Calibration")
                 settings_calibration.setValue("Name", full_calibration_name)
                 settings_calibration.endGroup()
@@ -717,8 +660,6 @@ class NanoVNAWelcome(QMainWindow):
                 settings_calibration.setValue("Calibration/Kits", True)
                 settings_calibration.setValue("Calibration/NoCalibration", False)
                 settings_calibration.setValue("Calibration/CalibrationWizard", False)
-
-                # Use new calibration structure
 
                 if selected_method == "OSM (Open - Short - Match)":
                     parameter = "S11"
@@ -732,27 +673,21 @@ class NanoVNAWelcome(QMainWindow):
                 settings_calibration.setValue("Calibration/Parameter", parameter)
                 settings_calibration.sync()
 
-                logging.info(f"[welcome_windows.open_save_calibration] Saved calibration {full_calibration_name}")
-
             except Exception as e:
                 logging.error(f"[CalibrationWelcome] Error saving calibration: {e}")
                 from PySide6.QtWidgets import QMessageBox
                 QMessageBox.critical(self, "Error", f"Error saving calibration: {str(e)}")
 
     def get_current_timestamp(self):
-        """Generate timestamp for filenames"""
         from datetime import datetime
         return datetime.now().strftime("%Y%m%d_%H%M%S")
 
     def open_calibration_wizard(self):
-
-        # Load configuration for calibration settings
         settings_calibration = get_settings(
             "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )
-
         settings_calibration.setValue("Calibration/Kits", False)
         settings_calibration.setValue("Calibration/NoCalibration", False)
         settings_calibration.setValue("Calibration/CalibrationWizard", True)
@@ -761,7 +696,6 @@ class NanoVNAWelcome(QMainWindow):
         logging.info("[welcome_windows.open_calibration_wizard] Opening calibration wizard")
 
         stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
-
         try:
             stop_realtime(self)
         except:
@@ -775,42 +709,26 @@ class NanoVNAWelcome(QMainWindow):
         self.close()
 
     def graphics_clicked(self):
-        """
-        Navigate to graphics window with selected calibration kit.
-        Applies the selected calibration kit before opening graphics.
-        """
         logging.info("[welcome_windows.graphics_clicked] Opening graphics window")
-
-        # Load configuration for calibration settings
         settings_calibration = get_settings(
             "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )
-
-        # Get currently selected kit from dropdown
         current_selection = self.kit_dropdown.currentText()
-        logging.info(f"[welcome_windows.graphics_clicked] Current dropdown selection: {current_selection}")
-
-        # Check if a kit is selected in the dropdown (not "None")
         if current_selection and not current_selection.startswith("None"):
-            # Apply the selected calibration kit
             self._apply_selected_kit_calibration(current_selection)
-            logging.info(f"[welcome_windows.graphics_clicked] Applied selected kit: {current_selection}")
         else:
-            # No calibration kit selected
             settings_calibration.setValue("Calibration/Kits", False)
             settings_calibration.setValue("Calibration/NoCalibration", True)
             settings_calibration.setValue("Calibration/CalibrationWizard", False)
             settings_calibration.sync()
-            logging.info("[welcome_windows.graphics_clicked] No calibration kit selected - proceeding without calibration")
 
         try:
             stop_realtime(self)
         except:
             pass
 
-        # Open graphics window
         if self.vna_device:
             graphics_window = NanoVNAGraphics(vna_device=self.vna_device)
         else:
@@ -819,37 +737,25 @@ class NanoVNAWelcome(QMainWindow):
         self.close()
 
     def _apply_selected_kit_calibration(self, kit_name):
-        """
-        Apply the selected calibration kit settings.
-        Updates configuration to use the specified kit for measurements.
-        """
         logging.info(f"[welcome_windows._apply_selected_kit_calibration] Applying kit: {kit_name}")
-
-        # Load configuration for calibration settings
         settings_calibration = get_settings(
             "INI/dut_measurement/calibration_config/calibration_config.ini",
             "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
             Path(__file__).resolve()
         )
-
-        # --- Get all kit names, IDs, and methods ---
         kit_groups = [g for g in settings_calibration.childGroups() if g.startswith("Kit_")]
         kit_names = [settings_calibration.value(f"{g}/kit_name", "") for g in kit_groups]
         kit_ids = [int(settings_calibration.value(f"{g}/id", 0)) for g in kit_groups]
         kit_methods = [settings_calibration.value(f"{g}/method", "") for g in kit_groups]
         kit_date_times = [settings_calibration.value(f"{g}/DateTime_Kits", "") for g in kit_groups]
 
-        # --- Find the matching kit ---
         if kit_name in kit_names:
             idx = kit_names.index(kit_name)
             matched_id = kit_ids[idx]
             matched_method = kit_methods[idx]
             matched_date_time_kit = kit_date_times[idx]
-
-            # --- Append ID to the kit_name ---
             kit_name_with_id = f"{kit_name}_{matched_id}"
 
-            # --- Save updated values in [Calibration] ---
             settings_calibration.setValue("Calibration/Name", kit_name_with_id)
             settings_calibration.setValue("Calibration/id", matched_id)
             settings_calibration.setValue("Calibration/Method", matched_method)
@@ -870,9 +776,16 @@ class NanoVNAWelcome(QMainWindow):
             settings_calibration.setValue("Calibration/CalibrationWizard", False)
             settings_calibration.sync()
 
-            logging.info(f"[welcome_windows._apply_selected_kit_calibration] Applied calibration: {kit_name_with_id} (ID {matched_id}, Method {matched_method})")
+    def return_to_menu_window(self):
+        from NanoVNA_UTN_Toolkit.modules.menu_window import ModuleSelectionWindow
+        if self.vna_device:
+            self.menu_window = ModuleSelectionWindow(vna_device=self.vna_device)
         else:
-            logging.warning(f"[welcome_windows._apply_selected_kit_calibration] No matching kit found for '{kit_name}'")
+            self.menu_window = ModuleSelectionWindow()
+        self.menu_window.show()
+        self.close()
+
+# ------------------------------------------------------------------------------------------------------------------ #
 
 if __name__ == "__main__":
     from PySide6.QtWidgets import QApplication

@@ -313,9 +313,6 @@ class NanoVNAGraphics(QMainWindow):
 
         # --- Help menu actions ---
 
-        report_action = help_menu.addAction(f"{self.measurement_menu_report}")
-        report_action.triggered.connect(lambda: open_report_url(self))
-
         about_en_action = help_menu.addAction(f"{self.measurement_menu_about_en}")
         about_en_action.triggered.connect(lambda: show_about_dialog(self, 'en'))
 
