@@ -17,15 +17,15 @@ ES: Construye una lista vertical de todos los pasos del asistente para que el
 from __future__ import annotations
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques.base import StepKind, StandardKind
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
     get_reference_liquid,
 )
 
-CHECK_DONE = "☑"      # ☑
-CHECK_TODO = "☐"      # ☐
+CHECK_DONE = "☑"
+CHECK_TODO = "☐"
 
 
 def _step_name(wizard, step_def, texts, liquids):
@@ -56,41 +56,89 @@ def _step_done(wizard, step_def, position):
         return wizard.perm_calibration.is_standard_measured(step_def.standard.key)
     if step_def.kind is StepKind.CONFIG:
         return wizard.current_step > position
-    return False  # result has no check
+    return False
 
 
 def build_step_sidebar(wizard, descriptor, texts) -> QWidget:
     """Return a sidebar widget listing every step with status + highlight."""
     liquids = texts.get("liquids", {})
 
-    frame = QFrame()
-    frame.setFrameShape(QFrame.StyledPanel)
-    frame.setStyleSheet("QFrame { border: 1px solid #555; border-radius: 6px; }")
-    layout = QVBoxLayout(frame)
-    layout.setContentsMargins(10, 10, 10, 10)
-    layout.setSpacing(6)
+    outer = QWidget()
+    outer.setObjectName("sidebar")
+    outer.setStyleSheet("""
+        QWidget#sidebar {
+            background-color: #1a1a1a;
+            border: 1px solid #3a3a3a;
+            border-radius: 8px;
+        }
+    """)
+    outer.setFixedWidth(220)
+
+    layout = QVBoxLayout(outer)
+    layout.setContentsMargins(0, 16, 0, 16)
+    layout.setSpacing(2)
 
     header = QLabel(texts.get("sidebar", {}).get("title", "Steps"))
-    header.setStyleSheet("font-weight: bold; font-size: 13px; border: none;")
+    header.setStyleSheet(
+        "font-weight: bold; font-size: 14px; color: #ffffff;"
+        "padding: 0 16px 6px 16px; border: none; background: transparent;"
+    )
     layout.addWidget(header)
+
+    sep = QFrame()
+    sep.setFrameShape(QFrame.HLine)
+    sep.setStyleSheet("border: none; border-top: 1px solid #3a3a3a; margin: 0 10px 6px 10px;")
+    layout.addWidget(sep)
 
     for position, step_def in enumerate(descriptor.steps, start=1):
         name = _step_name(wizard, step_def, texts, liquids)
         done = _step_done(wizard, step_def, position)
         is_current = position == wizard.current_step
 
-        glyph = CHECK_DONE if done else CHECK_TODO
-        label = QLabel(f"{glyph}  {position}. {name}")
+        row = QWidget()
+        row.setObjectName(f"stepRow{position}")
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(14, 7, 14, 7)
+        row_layout.setSpacing(8)
+
         if is_current:
-            label.setStyleSheet(
-                "border: none; font-size: 13px; font-weight: bold; color: #4da6ff;"
+            row.setStyleSheet(
+                f"QWidget#stepRow{position} {{"
+                "background-color: #1a3a5c;"
+                "border-left: 3px solid #4da6ff;"
+                "}}"
+            )
+            icon = QLabel("▶")
+            icon.setStyleSheet("color: #4da6ff; font-size: 11px; border: none; background: transparent;")
+            lbl = QLabel(f"{position}. {name}")
+            lbl.setStyleSheet(
+                "color: #4da6ff; font-size: 13px; font-weight: bold;"
+                "border: none; background: transparent;"
             )
         elif done:
-            label.setStyleSheet("border: none; font-size: 12px; color: #7ec97e;")
+            row.setStyleSheet(f"QWidget#stepRow{position} {{ background: transparent; }}")
+            icon = QLabel("✓")
+            icon.setStyleSheet("color: #7ec97e; font-size: 12px; border: none; background: transparent;")
+            lbl = QLabel(f"{position}. {name}")
+            lbl.setStyleSheet(
+                "color: #7ec97e; font-size: 12px;"
+                "border: none; background: transparent;"
+            )
         else:
-            label.setStyleSheet("border: none; font-size: 12px; color: #aaaaaa;")
-        layout.addWidget(label)
+            row.setStyleSheet(f"QWidget#stepRow{position} {{ background: transparent; }}")
+            icon = QLabel("○")
+            icon.setStyleSheet("color: #555555; font-size: 12px; border: none; background: transparent;")
+            lbl = QLabel(f"{position}. {name}")
+            lbl.setStyleSheet(
+                "color: #777777; font-size: 12px;"
+                "border: none; background: transparent;"
+            )
+
+        icon.setFixedWidth(16)
+        lbl.setWordWrap(True)
+        row_layout.addWidget(icon, alignment=Qt.AlignTop)
+        row_layout.addWidget(lbl, stretch=1)
+        layout.addWidget(row)
 
     layout.addStretch(1)
-    frame.setFixedWidth(210)
-    return frame
+    return outer

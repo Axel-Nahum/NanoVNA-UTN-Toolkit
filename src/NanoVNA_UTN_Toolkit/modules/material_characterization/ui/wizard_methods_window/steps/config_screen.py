@@ -64,10 +64,11 @@ def build_config_screen(wizard, descriptor, step_def):
     dev_name, valid_points, min_hz, max_hz = _device_caps(wizard)
 
     columns = QHBoxLayout()
+    columns.setSpacing(16)
     columns.addWidget(build_step_sidebar(wizard, descriptor, texts), stretch=0)
 
     root = QVBoxLayout()
-    root.setSpacing(12)
+    root.setSpacing(14)
 
     # --- Connected device info ------------------------------------------- #
     if dev_name:
@@ -81,12 +82,23 @@ def build_config_screen(wizard, descriptor, step_def):
     else:
         dev_label = QLabel(cfg.get("no_device", "No nanoVNA connected (using default limits)."))
     dev_label.setWordWrap(True)
-    dev_label.setStyleSheet("font-size: 12px; color: #4da6ff; padding: 2px;")
-    root.addWidget(dev_label)
+    dev_label.setStyleSheet("font-size: 12px; color: #5ab3ff; border: none; background: transparent;")
+
+    info_card = QWidget()
+    info_card.setObjectName("infoCard")
+    info_card.setStyleSheet(
+        "QWidget#infoCard { background-color: #12263d; border: 1px solid #2d5a8e; border-radius: 6px; }"
+    )
+    info_card_layout = QHBoxLayout(info_card)
+    info_card_layout.setContentsMargins(12, 8, 12, 8)
+    info_card_layout.addWidget(dev_label)
+    root.addWidget(info_card)
 
     # --- Sweep configuration --------------------------------------------- #
     sweep_group = QGroupBox(cfg.get("sweep_title", "Sweep Configuration"))
     sweep_form = QFormLayout(sweep_group)
+    sweep_form.setVerticalSpacing(10)
+    sweep_form.setHorizontalSpacing(16)
 
     wizard.start_freq_input = QDoubleSpinBox()
     wizard.start_freq_input.setDecimals(4)
@@ -113,6 +125,8 @@ def build_config_screen(wizard, descriptor, step_def):
     # --- Unknown liquid + temperature ------------------------------------ #
     sample_group = QGroupBox(cfg.get("sample_title", "Sample"))
     sample_form = QFormLayout(sample_group)
+    sample_form.setVerticalSpacing(10)
+    sample_form.setHorizontalSpacing(16)
 
     wizard.unknown_name_input = QLineEdit()
     wizard.unknown_name_input.setMaxLength(_UNKNOWN_NAME_MAXLEN)
@@ -140,6 +154,8 @@ def build_config_screen(wizard, descriptor, step_def):
     # --- Reference liquids (fixed in MVP) -------------------------------- #
     ref_group = QGroupBox(cfg.get("references_title", "Reference Liquids"))
     ref_form = QFormLayout(ref_group)
+    ref_form.setVerticalSpacing(10)
+    ref_form.setHorizontalSpacing(16)
     for i, std in enumerate(descriptor.reference_standards, start=1):
         key = std.default_liquid_key
         name = liquids.get(key, get_reference_liquid(key).display_name) if key else "-"
@@ -153,6 +169,7 @@ def build_config_screen(wizard, descriptor, step_def):
     root.addStretch(1)
 
     # --- Initialize from session, then wire commits ----------------------- #
+
     _init_widgets(wizard, valid_points, min_hz, max_hz)
     _commit(wizard, descriptor)
 
@@ -180,11 +197,55 @@ def build_config_screen(wizard, descriptor, step_def):
 
     form_container = QWidget()
     form_container.setLayout(root)
+    form_container.setStyleSheet("""
+        QGroupBox {
+            border: 1px solid #4a4a4a;
+            border-radius: 8px;
+            margin-top: 14px;
+            padding: 10px 10px 10px 10px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 12px;
+            padding: 0 6px;
+            color: #dddddd;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        QDoubleSpinBox, QComboBox, QLineEdit {
+            background-color: #3b3b3b;
+            color: white;
+            border: 1px solid #555555;
+            border-radius: 4px;
+            padding: 4px 8px;
+            min-height: 30px;
+            font-size: 13px;
+        }
+        QDoubleSpinBox:focus, QComboBox:focus, QLineEdit:focus {
+            border: 1px solid #4da6ff;
+        }
+        QComboBox::drop-down { width: 20px; border: none; background: #3b3b3b; }
+        QComboBox QAbstractItemView {
+            background-color: #3b3b3b;
+            color: white;
+            selection-background-color: #2d5a8e;
+            border: 1px solid #555;
+        }
+        QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
+            background-color: #4a4a4a;
+            border: none;
+            width: 18px;
+        }
+        QLabel {
+            color: #cccccc;
+            font-size: 13px;
+        }
+    """)
     columns.addWidget(form_container, stretch=1)
 
     container = QWidget()
     container.setLayout(columns)
-    wizard.content_layout.addWidget(container, alignment=Qt.AlignTop)
+    wizard.content_layout.addWidget(container)
 
 
 def _fmt_hz(hz):
