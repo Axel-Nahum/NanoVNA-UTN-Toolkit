@@ -25,7 +25,7 @@ from typing import Any, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import FuncFormatter, MaxNLocator
 from PySide6.QtWidgets import QSizePolicy
 
 logger = logging.getLogger(__name__)
@@ -45,14 +45,41 @@ def _freq_formatter(value, _pos):
     return f"{value:.0f} Hz"
 
 
+def _make_freq_axis(freqs):
+    """Return (unit_str, FuncFormatter) for a clean single-unit x-axis.
+
+    Ticks show plain numbers (e.g. 0.5, 1, 1.5) without trailing zeros;
+    the unit appears only in the axis label ("Frequency (GHz)").
+    """
+    max_f = float(np.max(np.asarray(freqs, dtype=float)))
+    if max_f >= 0.5e9:
+        div, unit = 1e9, "GHz"
+    elif max_f >= 0.5e6:
+        div, unit = 1e6, "MHz"
+    elif max_f >= 0.5e3:
+        div, unit = 1e3, "kHz"
+    else:
+        div, unit = 1.0, "Hz"
+
+    def _fmt(value, _pos, _div=div):
+        v = value / _div
+        s = f"{v:.4f}".rstrip("0").rstrip(".")
+        return s
+
+    return unit, FuncFormatter(_fmt)
+
+
 class EpsilonChartConfig:
     """Styling for the permittivity chart."""
 
     def __init__(self):
-        self.background_color = "white"
-        self.real_color = "#1f77b4"     # epsilon_r'
-        self.loss_color = "#d62728"     # epsilon_r''
-        self.candidate_color = "#999999"
+        self.background_color = "#1e1e1e"
+        self.text_color = "#cccccc"
+        self.grid_color = "#444444"
+        self.spine_color = "#555555"
+        self.real_color = "#4da6ff"
+        self.loss_color = "#d62728"
+        self.candidate_color = "#555555"
         self.linewidth = 2.0
         self.candidate_linewidth = 0.8
         self.candidate_alpha = 0.35
@@ -72,8 +99,9 @@ class EpsilonChartManager:
                                     real_label=r"$\varepsilon_r'$",
                                     loss_label=r"$\varepsilon_r''$"):
         """Create an empty permittivity chart and (optionally) add it to a layout."""
-        self.fig, self.ax = plt.subplots(figsize=figsize)
-        self.fig.subplots_adjust(left=0.13, right=0.95, top=0.88, bottom=0.15)
+        self.fig, self.ax = plt.subplots(figsize=figsize, layout="constrained")
+        # Extra breathing room above the title and below the x-axis ticks.
+        self.fig.get_layout_engine().set(h_pad=0.25, rect=[0.0, 0.04, 0.95, 0.94])
         self.fig.patch.set_facecolor(self.config.background_color)
         self.ax.set_facecolor(self.config.background_color)
 
@@ -81,14 +109,18 @@ class EpsilonChartManager:
         self._loss_label = loss_label
         self._title = title
 
-        self.ax.set_title(title, fontsize=13, pad=14)
-        self.ax.set_xlabel(r"$\mathrm{Frequency}$", fontsize=12)
-        self.ax.set_ylabel(r"$\varepsilon_r$", fontsize=12)
-        self.ax.grid(True, linestyle=":", alpha=0.6)
-        self.ax.xaxis.set_major_formatter(FuncFormatter(_freq_formatter))
+        self.ax.set_title(title, fontsize=13, pad=10, color=self.config.text_color)
+        self.ax.set_ylabel(r"$\varepsilon_r$", fontsize=12, color=self.config.text_color)
+        self.ax.grid(True, linestyle=":", alpha=0.4, color=self.config.grid_color)
+        self.ax.tick_params(colors=self.config.text_color)
+        for spine in self.ax.spines.values():
+            spine.set_color(self.config.spine_color)
 
         self.canvas = FigureCanvas(self.fig)
-        self.canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        # Ignored: Qt never uses the canvas sizeHint() so canvas.draw() cannot
+        # trigger a layout cascade that would grow the wizard window.
+        self.canvas.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+        self.canvas.setMinimumSize(1, 1)
 
         if container_layout is not None:
             container_layout.addWidget(self.canvas)
@@ -111,12 +143,19 @@ class EpsilonChartManager:
             freqs = np.asarray(freqs, dtype=float)
             eps_selected = np.asarray(eps_selected, dtype=complex)
 
+            unit, freq_fmt = _make_freq_axis(freqs)
+
             ax.clear()
-            ax.set_title(getattr(self, "_title", r"$\varepsilon_r$ vs Frequency"), fontsize=13, pad=14)
-            ax.set_xlabel(r"$\mathrm{Frequency}$", fontsize=12)
-            ax.set_ylabel(r"$\varepsilon_r$", fontsize=12)
-            ax.grid(True, linestyle=":", alpha=0.6)
-            ax.xaxis.set_major_formatter(FuncFormatter(_freq_formatter))
+            ax.set_facecolor(self.config.background_color)
+            ax.set_title(getattr(self, "_title", r"$\varepsilon_r$ vs Frequency"), fontsize=13, pad=10, color=self.config.text_color)
+            ax.set_xlabel(f"Frequency ({unit})", fontsize=12, color=self.config.text_color)
+            ax.set_ylabel(r"$\varepsilon_r$", fontsize=12, color=self.config.text_color)
+            ax.grid(True, linestyle=":", alpha=0.4, color=self.config.grid_color)
+            ax.xaxis.set_major_locator(MaxNLocator(nbins=6, prune="both"))
+            ax.xaxis.set_major_formatter(freq_fmt)
+            ax.tick_params(colors=self.config.text_color)
+            for spine in ax.spines.values():
+                spine.set_color(self.config.spine_color)
 
             if candidates is not None:
                 candidates = np.asarray(candidates, dtype=complex)

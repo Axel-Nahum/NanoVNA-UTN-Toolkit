@@ -98,6 +98,7 @@ class NanoVNAStatusApp(QMainWindow):
 
         self.setWindowTitle(f"{self.device_info_title}")
         self.setGeometry(100, 100, 900, 700)
+        self.setFixedSize(900, 700)
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
         window_geometry = self.frameGeometry()

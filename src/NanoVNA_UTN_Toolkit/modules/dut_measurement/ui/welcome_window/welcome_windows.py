@@ -186,9 +186,7 @@ class NanoVNAWelcome(QMainWindow):
             self.thru_calibration = None
 
         self.setWindowTitle(self.dut_welcome_ui_window_title)
-        self.resize(1050, 520)
-        self.setMinimumSize(900, 460)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.setFixedSize(1050, 520)
 
         central = QWidget()
         central.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)

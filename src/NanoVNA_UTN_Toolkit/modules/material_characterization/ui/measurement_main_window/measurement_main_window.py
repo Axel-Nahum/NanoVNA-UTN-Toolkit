@@ -2,18 +2,15 @@
 Measurement results window for material characterization.
 
 EN: Displays the computed complex permittivity of the unknown liquid: an info
-    strip (technique, temperature, reference liquids, sweep), a per-frequency
-    results table (epsilon_r', epsilon_r'', loss tangent), the epsilon_r(f)
-    plot and the DUT S11 on a Smith chart. Reads everything from the wizard
-    window's calibration manager. Full save/export is a Stage 2 feature.
+    strip (technique, temperature, reference liquids, sweep) and a full-width
+    epsilon_r(f) chart. The results table and the DUT S11 Smith chart are
+    accessible from the View menu. Export is available via right-click on the
+    chart.
 
 ES: Muestra la permitividad compleja calculada del líquido incógnita: una
-    franja de información (técnica, temperatura, líquidos de referencia,
-    barrido), una tabla de resultados por frecuencia (epsilon_r', epsilon_r'',
-    tangente de pérdidas), el gráfico de epsilon_r(f) y el S11 del DUT en una
-    carta de Smith. Lee todo desde el administrador de calibración de la ventana
-    del asistente. El guardado/exportado completo es una funcionalidad de la
-    Etapa 2.
+    franja de información y un gráfico epsilon_r(f) a pantalla completa.
+    La tabla de resultados y el diagrama de Smith S11 están en el menú View.
+    El export se realiza con click derecho sobre el gráfico.
 """
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
@@ -24,8 +21,8 @@ import numpy as np
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QAction, QGuiApplication
 from PySide6.QtWidgets import (
-    QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton, QTableWidget,
-    QTableWidgetItem, QVBoxLayout, QWidget,
+    QApplication, QDialog, QHBoxLayout, QLabel, QMainWindow, QMenu,
+    QScrollArea, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 try:
@@ -42,8 +39,20 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_
     get_reference_liquid,
 )
 
-# Cap the number of table rows for readability on large sweeps.
-_MAX_TABLE_ROWS = 250
+_MAX_TABLE_ROWS = 500
+
+_CARD = "QWidget#card { background-color: #252525; border: 1px solid #3d3d3d; border-radius: 10px; }"
+_BADGE = (
+    "QLabel { background-color: #1e2a3a; color: #7ab3f5; border: 1px solid #2d5a8e;"
+    " border-radius: 5px; padding: 3px 10px; font-size: 11px; }"
+)
+
+
+def _hsep(color="#363636"):
+    line = QWidget()
+    line.setFixedHeight(1)
+    line.setStyleSheet(f"background-color: {color}; border: none;")
+    return line
 
 
 class MeasurementMainWindow(QMainWindow):
@@ -54,9 +63,13 @@ class MeasurementMainWindow(QMainWindow):
         self.vna = vna_device
         self.wizard_window = wizard_window
         self._texts = load_text("characterization_measurement_main.json")
+        self._epsilon_fig = None
+        self._s11_fig = None
+        self._epsilon_canvas = None
+        self._result = None
 
         self.setWindowTitle(self._texts.get("window_title", "Material Characterization - Results"))
-        self.setGeometry(200, 200, 1100, 700)
+        self.setGeometry(200, 200, 1150, 720)
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
         window_geometry = self.frameGeometry()
@@ -69,14 +82,27 @@ class MeasurementMainWindow(QMainWindow):
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
+        self.main_layout.setContentsMargins(20, 14, 20, 14)
+        self.main_layout.setSpacing(10)
 
-        title = QLabel(self._texts.get("title", "Permittivity Results"))
-        title.setStyleSheet("font-size: 20px; font-weight: bold;")
-        self.main_layout.addWidget(title, alignment=Qt.AlignTop)
-
+        self._build_header()
+        self.main_layout.addWidget(_hsep())
         self._build_info_strip()
+        self.main_layout.addWidget(_hsep())
         self._build_body()
         self._create_menus()
+
+    # --------------------------------------------------------------------- #
+
+    def _build_header(self):
+        title = QLabel(self._texts.get("title", "Permittivity Results"))
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("font-size: 22px; font-weight: bold; color: #ffffff; border: none;")
+        subtitle = QLabel("Complex permittivity ε_r(f) of the characterized material")
+        subtitle.setAlignment(Qt.AlignCenter)
+        subtitle.setStyleSheet("font-size: 12px; color: #666666; border: none;")
+        self.main_layout.addWidget(title)
+        self.main_layout.addWidget(subtitle)
 
     # --------------------------------------------------------------------- #
 
@@ -93,23 +119,39 @@ class MeasurementMainWindow(QMainWindow):
 
         refs_text = "-"
         if cal is not None and cal.ref1_key and cal.ref2_key:
-            refs_text = f"{get_reference_liquid(cal.ref1_key).display_name} / " \
-                        f"{get_reference_liquid(cal.ref2_key).display_name}"
+            refs_text = (
+                f"{get_reference_liquid(cal.ref1_key).display_name} / "
+                f"{get_reference_liquid(cal.ref2_key).display_name}"
+            )
 
-        parts = [
-            f"{info.get('technique', 'Technique:')} {technique}",
-            f"{info.get('temperature', 'Temperature:')} {temp:.1f} °C" if temp is not None else "",
-            f"{info.get('references', 'Reference liquids:')} {refs_text}",
-            (f"{info.get('sweep', 'Sweep:')} {start/1e6:.3f}–{stop/1e6:.3f} MHz, {steps} pts"
-             if start is not None and stop is not None else ""),
+        badges = [
+            (info.get("technique", "Technique"), technique),
+            (info.get("temperature", "Temperature"), f"{temp:.1f} °C" if temp is not None else "—"),
+            (info.get("references", "References"), refs_text),
+            (info.get("sweep", "Sweep"),
+             f"{start/1e6:.3f}–{stop/1e6:.3f} MHz, {steps} pts"
+             if start is not None and stop is not None else "—"),
         ]
-        strip = QLabel("    |    ".join(p for p in parts if p))
-        strip.setWordWrap(True)
-        strip.setStyleSheet("font-size: 12px; color: #cccccc; padding: 4px;")
-        self.main_layout.addWidget(strip)
+
+        row = QHBoxLayout()
+        row.setSpacing(8)
+        row.setContentsMargins(0, 4, 0, 4)
+        row.addStretch()
+        for label_text, value_text in badges:
+            badge = QLabel(f"<b>{label_text}</b>  {value_text}")
+            badge.setStyleSheet(
+                "background-color: #1e2a3a; color: #7ab3f5; border: 1px solid #2d5a8e;"
+                " border-radius: 5px; padding: 4px 12px; font-size: 11px;"
+            )
+            row.addWidget(badge)
+        row.addStretch()
+        self.main_layout.addLayout(row)
+
+    # --------------------------------------------------------------------- #
 
     def _build_body(self):
         result = getattr(self.wizard_window, "epsilon_result", None)
+        self._result = result
 
         if result is None:
             placeholder = QLabel(self._texts.get(
@@ -120,12 +162,133 @@ class MeasurementMainWindow(QMainWindow):
             self.main_layout.addWidget(placeholder, stretch=1)
             return
 
-        body = QHBoxLayout()
-        body.addWidget(self._build_table(result), stretch=2)
-        body.addWidget(self._build_plots(result), stretch=3)
-        self.main_layout.addLayout(body, stretch=1)
+        self.main_layout.addWidget(self._build_epsilon_chart(result), stretch=1)
 
-    def _build_table(self, result):
+    # --------------------------------------------------------------------- #
+
+    def _build_epsilon_chart(self, result):
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.charts.epsilon_chart import (
+            EpsilonChartManager,
+        )
+        exp = self._texts.get("export", {})
+
+        geo = QGuiApplication.primaryScreen().availableGeometry()
+        max_h = geo.height() // 2
+        max_w = geo.width() - 80
+
+        card = QWidget()
+        card.setObjectName("card")
+        card.setStyleSheet(_CARD)
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(16, 16, 16, 12)
+        card_layout.setSpacing(8)
+
+        chart_layout = QVBoxLayout()
+        chart_layout.setContentsMargins(0, 0, 0, 0)
+        chart_layout.setSpacing(0)
+
+        manager = EpsilonChartManager()
+        title = exp.get("epsilon_title", "εr — {sample}").format(sample=self._sample_name())
+        fig, ax, canvas = manager.create_wizard_epsilon_chart(
+            result.f_hz, figsize=(7, 6.5), container_layout=chart_layout,
+            title=title,
+            real_label=self._texts.get("table", {}).get("eps_real", "ε′"),
+            loss_label=self._texts.get("table", {}).get("eps_imag", "ε″"),
+        )
+        manager.update_epsilon_curves(
+            ax, result.f_hz, result.eps_selected, canvas=canvas,
+            candidates=result.eps_candidates,
+        )
+        self._epsilon_manager = manager
+        self._epsilon_fig = fig
+        self._epsilon_canvas = canvas
+
+        canvas.setMaximumWidth(max_w)
+        canvas.setContextMenuPolicy(Qt.CustomContextMenu)
+        canvas.customContextMenuRequested.connect(self._show_chart_context_menu)
+
+        card_layout.addLayout(chart_layout, 1)
+        card_layout.addWidget(_hsep())
+
+        caption = QLabel(
+            "ε′ = real part (energy storage)  ·  ε″ = imaginary part (dielectric losses)  ·  "
+            "Faint grey curves are the other candidate roots  ·  Right-click to export"
+        )
+        caption.setWordWrap(True)
+        caption.setStyleSheet("font-size: 11px; color: #555555; border: none; background: transparent;")
+        card_layout.addWidget(caption)
+
+        return card
+
+    # --------------------------------------------------------------------- #
+
+    def _show_chart_context_menu(self, pos):
+        menu = QMenu(self)
+        exp = self._texts.get("export", {})
+        export_action = QAction(exp.get("export_epsilon", "Export εr image…"), self)
+        export_action.triggered.connect(
+            lambda: self._export_figure(self._epsilon_fig, f"epsilon_{self._sample_name()}")
+        )
+        menu.addAction(export_action)
+        menu.exec(self._epsilon_canvas.mapToGlobal(pos))
+
+    # --------------------------------------------------------------------- #
+
+    def _show_s11_window(self):
+        cal = getattr(self.wizard_window, "perm_calibration", None)
+        dut = cal.get_measurement("dut") if cal is not None else None
+        if dut is None:
+            return
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("S11 — Smith Chart (DUT)")
+        dlg.setMinimumSize(520, 520)
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(8, 8, 8, 8)
+
+        try:
+            from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import SmithChartManager
+            sm = SmithChartManager()
+            s11_fig, _ax, _canvas, _c1, _c2 = sm.create_graphics_panel_smith_chart(
+                s_data=dut[1], freqs=dut[0], s_param="S11 (DUT)",
+                figsize=(5, 5), container_layout=layout, trace_color="orange",
+            )
+            self._s11_fig = s11_fig
+
+            _canvas.setContextMenuPolicy(Qt.CustomContextMenu)
+            _canvas.customContextMenuRequested.connect(
+                lambda pos: self._s11_context_menu(pos, _canvas)
+            )
+        except Exception as exc:
+            logging.error("[MeasurementMainWindow] S11 chart failed: %s", exc)
+            layout.addWidget(QLabel(f"Could not render S11 chart: {exc}"))
+
+        dlg.show()
+        self._s11_dialog = dlg
+
+    def _s11_context_menu(self, pos, canvas):
+        menu = QMenu(self)
+        exp = self._texts.get("export", {})
+        action = QAction(exp.get("export_s11", "Export S11 image…"), self)
+        action.triggered.connect(
+            lambda: self._export_figure(self._s11_fig, f"s11_{self._sample_name()}")
+        )
+        menu.addAction(action)
+        menu.exec(canvas.mapToGlobal(pos))
+
+    # --------------------------------------------------------------------- #
+
+    def _show_table_window(self):
+        result = self._result
+        if result is None:
+            return
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Results Table")
+        dlg.setMinimumSize(480, 600)
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(8, 8, 8, 8)
+
         t = self._texts.get("table", {})
         table = QTableWidget()
         table.setColumnCount(4)
@@ -147,73 +310,17 @@ class MeasurementMainWindow(QMainWindow):
             re = float(np.real(eps[i]))
             loss = float(-np.imag(eps[i]))
             tand = loss / re if re not in (0.0,) and np.isfinite(re) else float("nan")
-            values = [f"{f_hz[i]/1e6:.3f} MHz", f"{re:.3f}", f"{loss:.3f}", f"{tand:.4f}"]
-            for c, val in enumerate(values):
+            for c, val in enumerate([f"{f_hz[i]/1e6:.3f} MHz", f"{re:.3f}", f"{loss:.3f}", f"{tand:.4f}"]):
                 table.setItem(r, c, QTableWidgetItem(val))
 
         table.resizeColumnsToContents()
-        return table
-
-    def _sample_name(self):
-        name = (getattr(self.wizard_window, "unknown_liquid_name", "") or "").strip()
-        return name or "sample"
-
-    def _build_plots(self, result):
-        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.charts.epsilon_chart import (
-            EpsilonChartManager,
-        )
-        exp = self._texts.get("export", {})
-
-        container = QWidget()
-        layout = QVBoxLayout(container)
-        self._epsilon_fig = None
-        self._s11_fig = None
-
-        # epsilon_r(f) plot
-        manager = EpsilonChartManager()
-        title = exp.get("epsilon_title", "εr — {sample}").format(sample=self._sample_name())
-        fig, ax, canvas = manager.create_wizard_epsilon_chart(
-            result.f_hz, figsize=(6, 3.5), container_layout=layout, title=title,
-            real_label=self._texts.get("table", {}).get("eps_real", "ε′"),
-            loss_label=self._texts.get("table", {}).get("eps_imag", "ε″"),
-        )
-        manager.update_epsilon_curves(
-            ax, result.f_hz, result.eps_selected, canvas=canvas,
-            candidates=result.eps_candidates,
-        )
-        self._epsilon_manager = manager
-        self._epsilon_fig = fig
-
-        eps_btn = QPushButton(exp.get("export_epsilon", "Export εr image"))
-        eps_btn.clicked.connect(lambda: self._export_figure(
-            self._epsilon_fig, f"epsilon_{self._sample_name()}"))
-        layout.addWidget(eps_btn)
-
-        # DUT S11 on a Smith chart (reuse shared util, read-only)
-        cal = getattr(self.wizard_window, "perm_calibration", None)
-        dut = cal.get_measurement("dut") if cal is not None else None
-        if dut is not None:
-            try:
-                from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import SmithChartManager
-                sm = SmithChartManager()
-                s11_fig, _ax, _canvas, _c1, _c2 = sm.create_graphics_panel_smith_chart(
-                    s_data=dut[1], freqs=dut[0], s_param="S11 (DUT)",
-                    figsize=(4, 4), container_layout=layout, trace_color="orange",
-                )
-                self._s11_fig = s11_fig
-                s11_btn = QPushButton(exp.get("export_s11", "Export S11 image"))
-                s11_btn.clicked.connect(lambda: self._export_figure(
-                    self._s11_fig, f"s11_{self._sample_name()}"))
-                layout.addWidget(s11_btn)
-            except Exception as exc:  # noqa: BLE001
-                logging.error("[MeasurementMainWindow] S11 chart failed: %s", exc)
-
-        return container
+        layout.addWidget(table)
+        dlg.show()
+        self._table_dialog = dlg
 
     # --------------------------------------------------------------------- #
 
     def _export_figure(self, fig, default_stem):
-        """Save a matplotlib figure in high quality (dpi=300), like the rest of the app."""
         if fig is None:
             return
         from PySide6.QtWidgets import QFileDialog, QMessageBox
@@ -232,19 +339,36 @@ class MeasurementMainWindow(QMainWindow):
                 self, exp.get("ok_title", "Saved"),
                 exp.get("ok_message", "Figure saved to:\n{path}").format(path=path),
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logging.error("[MeasurementMainWindow] export failed: %s", exc)
             QMessageBox.critical(self, "Export Error", f"Failed to save image: {exc}")
+
+    # --------------------------------------------------------------------- #
+
+    def _sample_name(self):
+        name = (getattr(self.wizard_window, "unknown_liquid_name", "") or "").strip()
+        return name or "sample"
 
     # --------------------------------------------------------------------- #
 
     def _create_menus(self):
         menu = self._texts.get("menu", {})
         menubar = self.menuBar()
+
         file_menu = menubar.addMenu(menu.get("file", "File"))
         back_action = QAction(menu.get("back_to_menu", "Back to menu"), self)
         back_action.triggered.connect(self.return_to_menu_window)
         file_menu.addAction(back_action)
+
+        view_menu = menubar.addMenu(menu.get("view", "View"))
+
+        s11_action = QAction(menu.get("show_s11", "S11 — Smith Chart"), self)
+        s11_action.triggered.connect(self._show_s11_window)
+        view_menu.addAction(s11_action)
+
+        table_action = QAction(menu.get("show_table", "Results Table"), self)
+        table_action.triggered.connect(self._show_table_window)
+        view_menu.addAction(table_action)
 
     def return_to_menu_window(self):
         if self.vna:

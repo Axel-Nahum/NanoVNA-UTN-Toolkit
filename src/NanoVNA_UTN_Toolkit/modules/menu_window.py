@@ -73,7 +73,7 @@ class ModuleSelectionWindow(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         self.setWindowTitle(f"{self.menu_title}")
-        self.resize(850, 500)
+        self.setFixedSize(850, 500)
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
         window_geometry = self.frameGeometry()

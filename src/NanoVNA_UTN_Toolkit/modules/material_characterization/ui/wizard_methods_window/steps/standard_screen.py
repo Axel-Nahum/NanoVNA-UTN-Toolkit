@@ -34,9 +34,22 @@ import logging
 
 import numpy as np
 from matplotlib.lines import Line2D
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
+
+
+class _HalfWidthFilter(QObject):
+    """Caps a target widget to at most half the observed widget's width."""
+
+    def __init__(self, target: QWidget, parent: QWidget):
+        super().__init__(parent)
+        self._target = target
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.Resize:
+            self._target.setFixedWidth(max(300, obj.width() // 2))
+        return False
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text, image_path
 from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques.base import StandardKind
@@ -78,11 +91,17 @@ def build_standard_screen(wizard, descriptor, step_def):
     # Per-screen render state (mutated by the checkbox).
     state = {"show_indicative": True}
 
-    columns = QHBoxLayout()
-    columns.addWidget(build_step_sidebar(wizard, descriptor, texts), stretch=0)
+    # Left half: sidebar + instructions (occupies exactly the left 50% of the window)
+    left_half_layout = QHBoxLayout()
+    left_half_layout.setContentsMargins(0, 0, 0, 0)
+    left_half_layout.setSpacing(8)
+    left_half_layout.addWidget(build_step_sidebar(wizard, descriptor, texts), stretch=0)
 
     # --- Middle: instructions + photo + control -------------------------- #
     mid = QVBoxLayout()
+    mid.setSpacing(0)
+    mid.setContentsMargins(8, 8, 8, 8)
+
     instr = QLabel(instruction_html)
     instr.setWordWrap(True)
     instr.setStyleSheet("font-size: 14px;")
@@ -92,6 +111,7 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     # Temperature reminder (reference liquids depend on it).
     if is_reference:
+        mid.addSpacing(10)
         temp_reminder = QLabel(std_texts.get(
             "temperature_reminder", "Configured temperature: {temp:.1f} °C"
         ).format(temp=float(getattr(wizard, "temperature_c", 25.0))))
@@ -106,21 +126,29 @@ def build_standard_screen(wizard, descriptor, step_def):
             photo = QLabel()
             photo.setAlignment(Qt.AlignCenter)
             photo.setPixmap(pix.scaledToWidth(260, Qt.SmoothTransformation))
+            mid.addSpacing(26)
             mid.addWidget(photo)
 
-    mid.addSpacing(8)
+    mid.addSpacing(20)
+
     already = wizard.perm_calibration.is_standard_measured(standard.key)
     measure_btn = QPushButton(
         std_texts.get("remeasure_button", "Measure again") if already
         else std_texts.get("measure_button", "Measure")
     )
     measure_btn.setFixedHeight(38)
-    mid.addWidget(measure_btn)
+    measure_btn.setFixedWidth(220)
+    mid.addWidget(measure_btn, alignment=Qt.AlignHCenter)
+
+    mid.addSpacing(10)
 
     wizard.status_label = QLabel(
         _success_text(std_texts, name) if already
         else std_texts.get("status_ready", "Ready to measure")
     )
+    wizard.status_label.setAlignment(Qt.AlignCenter)
+    wizard.status_label.setWordWrap(True)
+    wizard.status_label.setFixedHeight(44)
     wizard.status_label.setStyleSheet(
         f"font-size: 12px; padding: 4px; color: {'lightgreen' if already else 'gray'};"
     )
@@ -129,17 +157,23 @@ def build_standard_screen(wizard, descriptor, step_def):
     # Indicative-curve show/hide (reference steps only).
     indicative_chk = None
     if is_reference:
+        mid.addSpacing(12)
         indicative_chk = QCheckBox(std_texts.get("show_indicative", "Show indicative reference"))
         indicative_chk.setChecked(True)
-        mid.addWidget(indicative_chk)
+        mid.addWidget(indicative_chk, alignment=Qt.AlignHCenter)
 
     mid.addStretch(1)
     mid_container = QWidget()
     mid_container.setLayout(mid)
-    columns.addWidget(mid_container, stretch=2)
+    left_half_layout.addWidget(mid_container, stretch=1)
 
-    # --- Right: Smith chart ---------------------------------------------- #
+    left_half = QWidget()
+    left_half.setLayout(left_half_layout)
+
+    # Right half: Smith chart — starts exactly at the window midpoint.
+    # Equal margins (8 px each side) give symmetric padding around the canvas.
     right = QVBoxLayout()
+    right.setContentsMargins(8, 4, 8, 4)
     from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import create_wizard_smith_chart
     fig, ax, canvas = create_wizard_smith_chart(
         start_freq=wizard.get_sweep_start_frequency(),
@@ -149,13 +183,26 @@ def build_standard_screen(wizard, descriptor, step_def):
         figsize=(6, 6),
     )
     wizard.current_fig, wizard.current_ax, wizard.current_canvas = fig, ax, canvas
-    right_container = QWidget()
-    right_container.setLayout(right)
-    columns.addWidget(right_container, stretch=3)
+    right_half = QWidget()
+    right_half.setLayout(right)
+
+    # Two equal halves → chart always occupies the right 50% of the window.
+    columns = QHBoxLayout()
+    columns.setContentsMargins(0, 0, 0, 0)
+    columns.setSpacing(0)
+    columns.addWidget(left_half, stretch=1)
+    columns.addWidget(right_half, stretch=1)
 
     container = QWidget()
     container.setLayout(columns)
-    wizard.content_layout.addWidget(container)
+
+    # Pin right_half to exactly half the container via setFixedWidth so that
+    # canvas.draw() during measure cannot trigger a layout reflow.
+    right_half.setFixedWidth(max(300, (1200 - 40) // 2))
+    _chart_filter = _HalfWidthFilter(right_half, container)
+    container.installEventFilter(_chart_filter)
+
+    wizard.content_layout.addWidget(container, stretch=1)
 
     stored = wizard.perm_calibration.get_measurement(standard.key) if already else None
     _render(wizard, standard, name, color, std_texts, stored, state["show_indicative"])
@@ -182,10 +229,32 @@ def _on_measure(wizard, standard, name, color, button, std_texts, state):
         return
     freqs, s11 = result
     wizard.perm_calibration.set_measurement(standard.key, freqs, s11)
+    # A new measurement invalidates the cached epsilon result so that step 7
+    # recomputes on the next visit instead of showing stale data.
+    wizard.epsilon_result = None
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     button.setText(std_texts.get("remeasure_button", "Measure again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11), state["show_indicative"])
     wizard.next_button.setEnabled(True)
+
+
+def _short_legend_name(standard, name):
+    """Return a compact legend label for the S11 trace."""
+    if standard.key in ("open", "short"):
+        return standard.key.capitalize()
+    # Strip "Reference liquid: " prefix (or locale variants)
+    short = name
+    for prefix in ("Reference liquid: ", "Líquido de referencia: ", "Liquido de referencia: "):
+        if short.startswith(prefix):
+            short = short[len(prefix):]
+            break
+    # If name contains an all-caps abbreviation in parentheses (e.g. "Isopropyl Alcohol (IPA)")
+    # use that abbreviation directly to keep the legend narrow.
+    if "(" in short and short.endswith(")"):
+        abbrev = short[short.rfind("(") + 1:-1]
+        if abbrev.isupper() and 1 < len(abbrev) <= 6:
+            return abbrev
+    return short
 
 
 def _render(wizard, standard, name, color, std_texts, measured, show_indicative):
@@ -199,38 +268,39 @@ def _render(wizard, standard, name, color, std_texts, measured, show_indicative)
     builder.ax = ax
 
     ax.clear()
+    ax.get_figure().subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
     start = wizard.get_sweep_start_frequency()
     stop = wizard.get_sweep_stop_frequency()
     points = wizard.get_sweep_steps()
     base = builder.create_empty_network(start, stop, points)
     base.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
     builder._configure_smith_chart_appearance()
+    ax.set_title(r"$\mathrm{Smith\ Diagram}$", fontsize=14, pad=30,
+                 color=builder.config.text_color)
 
     handles, labels = [], []
-    exp_label = std_texts.get("expected_label", "expected")
 
     if standard.key == "open":
         ax.plot([1.0], [0.0], marker="o", markerfacecolor="none", markeredgecolor="gray",
                 markeredgewidth=1.5, markersize=12, linestyle="None", zorder=1)
         handles.append(Line2D([0], [0], marker="o", markerfacecolor="none",
                               markeredgecolor="gray", linestyle="None"))
-        labels.append(f"{exp_label}: Open (+1)")
+        labels.append(r"$\Gamma = +1$")
     elif standard.key == "short":
         ax.plot([-1.0], [0.0], marker="o", markerfacecolor="none", markeredgecolor="gray",
                 markeredgewidth=1.5, markersize=12, linestyle="None", zorder=1)
         handles.append(Line2D([0], [0], marker="o", markerfacecolor="none",
                               markeredgecolor="gray", linestyle="None"))
-        labels.append(f"{exp_label}: Short (-1)")
+        labels.append(r"$\Gamma = -1$")
     elif standard.kind is StandardKind.REFERENCE_LIQUID and standard.default_liquid_key and show_indicative:
         try:
             liquid = get_reference_liquid(standard.default_liquid_key)
             f = np.linspace(start, stop, points)
             s_ind = indicative_s11(liquid, f, getattr(wizard, "temperature_c", 25.0))
-            # Same color as the measured trace, dotted.
             ax.plot(np.real(s_ind), np.imag(s_ind), linestyle=":", color=color,
                     linewidth=1.4, zorder=1)
             handles.append(Line2D([0], [0], linestyle=":", color=color))
-            labels.append(std_texts.get("indicative_label", "indicative (nominal model)"))
+            labels.append(r"$S_{11}$ — indicative")
         except Exception as exc:  # noqa: BLE001
             logger.error("[standard_screen] indicative curve failed: %s", exc)
 
@@ -241,10 +311,22 @@ def _render(wizard, standard, name, color, std_texts, measured, show_indicative)
                 markersize=3, zorder=3)
         builder.add_start_point_marker(s11, color=color)
         handles.append(Line2D([0], [0], color=color))
-        labels.append(f"S11 - {name}")
+        labels.append(rf"$S_{{11}}$ — {_short_legend_name(standard, name)}")
 
     if handles:
-        ax.legend(handles, labels, loc="upper left", bbox_to_anchor=(-0.17, 1.14), fontsize=9)
+        # Upper-left corner of the axes is diagonally outside the Smith unit circle.
+        # transAxes pins the box so it never drifts when the window is resized.
+        # Reference-liquid and DUT steps have 2-line legends so we shrink them.
+        small = standard.kind is StandardKind.REFERENCE_LIQUID or standard.key == "dut"
+        ax.legend(handles, labels,
+                  loc="upper left",
+                  bbox_to_anchor=(-0.22, 1.14),
+                  bbox_transform=ax.transAxes,
+                  fontsize=8.0 if small else 9.5,
+                  framealpha=0.93,
+                  handlelength=1.0 if small else 1.2,
+                  borderpad=0.3 if small else 0.4,
+                  labelspacing=0.2 if small else 0.25)
 
     if wizard.current_canvas:
         wizard.current_canvas.draw()

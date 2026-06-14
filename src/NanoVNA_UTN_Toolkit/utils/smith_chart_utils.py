@@ -82,12 +82,13 @@ class SmithChartBuilder:
         logging.info(f"[SmithChartBuilder] Creating figure with figsize={figsize}")
             
         self.fig, self.ax = plt.subplots(figsize=figsize)
+        self.fig.set_layout_engine("none")
         self.fig.subplots_adjust(**layout_params)
-        
+
         # Set background colors
         self.fig.patch.set_facecolor(self.config.background_color)
         self.ax.set_facecolor(self.config.background_color)
-        
+
         return self.fig, self.ax
     
     def create_canvas(self):
@@ -97,6 +98,7 @@ class SmithChartBuilder:
             
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.canvas.setMinimumSize(1, 1)
         return self.canvas
     
     def draw_base_smith_chart(self, network=None, draw_labels=True, show_legend=False):
@@ -276,25 +278,29 @@ class SmithChartManager:
         self.config = config if config else SmithChartConfig()
         self.builder = SmithChartBuilder(self.config)
     
-    def create_wizard_smith_chart(self, start_freq, stop_freq, num_points, 
+    def create_wizard_smith_chart(self, start_freq, stop_freq, num_points,
                                  figsize=(5, 5), container_layout=None):
         """Create Smith chart for calibration wizard use."""
         # Setup figure
         fig, ax = self.builder.setup_figure(figsize=figsize)
-        
+
         # Create empty base network
         network = self.builder.create_empty_network(start_freq, stop_freq, num_points)
-        
+
         # Draw base Smith chart
         self.builder.draw_base_smith_chart(network, draw_labels=True, show_legend=False)
-        
+
         # Create canvas
         canvas = self.builder.create_canvas()
-        
+
+        # Ignored policy: Qt never uses the canvas sizeHint() for layout calculations.
+        # This prevents canvas.draw() from triggering a layout cascade that grows the window.
+        canvas.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+
         # Add to layout if provided
         if container_layout:
             container_layout.addWidget(canvas)
-        
+
         return fig, ax, canvas
     
     def create_graphics_panel_smith_chart(self, s_data, freqs, s_param="S11",

@@ -49,7 +49,8 @@ class CharacterizationWizard(QMainWindow):
             "NanoVNA Toolkit - Characterization Wizard"
         )
 
-        self.setGeometry(200, 200, 1050, 700)
+        self.setGeometry(200, 200, 1200, 700)
+        self.setFixedSize(1200, 700)
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
         window_geometry = self.frameGeometry()
@@ -132,6 +133,7 @@ class CharacterizationWizard(QMainWindow):
             self.title_label,
             alignment=Qt.AlignTop
         )
+        self.header_layout.addSpacing(10)
 
         self.main_layout.addLayout(self.header_layout)
 

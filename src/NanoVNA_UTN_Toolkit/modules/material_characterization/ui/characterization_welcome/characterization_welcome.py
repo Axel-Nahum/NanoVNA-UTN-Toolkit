@@ -178,6 +178,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         self.setWindowTitle("NanoVNA Toolkit - Material Characterization")
         self.setGeometry(100, 100, 980, 480)
+        self.setFixedSize(980, 480)
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
         window_geometry = self.frameGeometry()

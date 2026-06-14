@@ -63,9 +63,10 @@ def build_config_screen(wizard, descriptor, step_def):
 
     dev_name, valid_points, min_hz, max_hz = _device_caps(wizard)
 
-    columns = QHBoxLayout()
-    columns.setSpacing(16)
-    columns.addWidget(build_step_sidebar(wizard, descriptor, texts), stretch=0)
+    left_half_layout = QHBoxLayout()
+    left_half_layout.setContentsMargins(0, 0, 0, 0)
+    left_half_layout.setSpacing(8)
+    left_half_layout.addWidget(build_step_sidebar(wizard, descriptor, texts), stretch=0)
 
     root = QVBoxLayout()
     root.setSpacing(14)
@@ -197,11 +198,19 @@ def build_config_screen(wizard, descriptor, step_def):
 
     form_container = QWidget()
     form_container.setLayout(root)
-    columns.addWidget(form_container, stretch=1)
+    left_half_layout.addWidget(form_container, stretch=1)
+
+    left_half = QWidget()
+    left_half.setLayout(left_half_layout)
+
+    columns = QHBoxLayout()
+    columns.setContentsMargins(0, 0, 0, 0)
+    columns.setSpacing(0)
+    columns.addWidget(left_half, stretch=1)
 
     container = QWidget()
     container.setLayout(columns)
-    wizard.content_layout.addWidget(container)
+    wizard.content_layout.addWidget(container, stretch=1)
 
 
 def _fmt_hz(hz):

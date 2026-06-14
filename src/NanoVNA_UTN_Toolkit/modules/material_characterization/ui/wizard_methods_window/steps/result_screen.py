@@ -27,10 +27,21 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtWidgets import (
     QComboBox, QHBoxLayout, QLabel, QPlainTextEdit, QVBoxLayout, QWidget,
 )
+
+
+class _HalfWidthFilter(QObject):
+    def __init__(self, target, parent):
+        super().__init__(parent)
+        self._target = target
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.Resize:
+            self._target.setFixedWidth(max(300, obj.width() // 2))
+        return False
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.charts.epsilon_chart import (
@@ -50,18 +61,26 @@ def build_result_screen(wizard, descriptor, step_def):
     rtexts = texts.get("result", {})
     wizard.title_label.setText(rtexts.get("title", "Permittivity Result"))
 
-    result = None
-    try:
-        result = wizard.perm_calibration.compute_epsilon()
-    except Exception as exc:  # noqa: BLE001
-        logger.error("[result_screen] compute_epsilon failed: %s", exc)
-    wizard.epsilon_result = result
+    # Reuse cached result when navigating back/forward without re-measuring.
+    # The cache is invalidated (set to None) in _on_measure whenever a new
+    # measurement is stored, so revisiting after a re-measurement recomputes.
+    result = getattr(wizard, "epsilon_result", None)
+    if result is None:
+        try:
+            result = wizard.perm_calibration.compute_epsilon()
+        except Exception as exc:  # noqa: BLE001
+            logger.error("[result_screen] compute_epsilon failed: %s", exc)
+        wizard.epsilon_result = result
 
-    columns = QHBoxLayout()
-    columns.addWidget(build_step_sidebar(wizard, descriptor, texts), stretch=0)
+    # Left half: sidebar + summary (same structure as standard_screen)
+    left_half_layout = QHBoxLayout()
+    left_half_layout.setContentsMargins(0, 0, 0, 0)
+    left_half_layout.setSpacing(8)
+    left_half_layout.addWidget(build_step_sidebar(wizard, descriptor, texts), stretch=0)
 
     # --- Middle: summary + warnings + intermediate data ------------------ #
     mid = QVBoxLayout()
+    mid.setContentsMargins(8, 8, 8, 8)
     if result is None:
         msg = QLabel(rtexts.get(
             "compute_failed",
@@ -70,22 +89,28 @@ def build_result_screen(wizard, descriptor, step_def):
         msg.setWordWrap(True)
         msg.setStyleSheet("color: #d62728; font-size: 14px;")
         mid.addWidget(msg)
+        mid.addStretch(1)
     else:
         _build_summary(wizard, mid, result, rtexts)
         _build_warnings(wizard, mid, result, rtexts)
         _build_intermediate(mid, result, rtexts)
-    mid.addStretch(1)
+        mid.addStretch(1)
     mid_container = QWidget()
     mid_container.setLayout(mid)
-    columns.addWidget(mid_container, stretch=2)
+    left_half_layout.addWidget(mid_container, stretch=1)
 
-    # --- Right: epsilon chart -------------------------------------------- #
+    left_half = QWidget()
+    left_half.setLayout(left_half_layout)
+
+    # Right half: epsilon chart — same position/size as Smith chart in other steps
     right = QVBoxLayout()
+    right.setContentsMargins(8, 4, 8, 4)
     if result is not None:
         manager = EpsilonChartManager()
-        real_label = rtexts.get("real_label", "ε′ (real part — energy storage)")
-        loss_label = rtexts.get("loss_label", "ε″ (imaginary part — losses)")
-        title = rtexts.get("chart_title", "εr — {sample}").format(sample=_sample_name(wizard, rtexts))
+        real_label = rtexts.get("real_label", r"$\varepsilon_r'$")
+        loss_label = rtexts.get("loss_label", r"$\varepsilon_r''$")
+        title = rtexts.get("chart_title", r"$\varepsilon_r$" + " — {sample}").format(
+            sample=_sample_name(wizard, rtexts))
         fig, ax, canvas = manager.create_wizard_epsilon_chart(
             result.f_hz, figsize=(6.5, 5), container_layout=right,
             title=title, real_label=real_label, loss_label=loss_label,
@@ -94,23 +119,26 @@ def build_result_screen(wizard, descriptor, step_def):
             ax, result.f_hz, result.eps_selected, canvas=canvas,
             candidates=result.eps_candidates,
         )
-        caption = QLabel(rtexts.get(
-            "axes_caption",
-            "ε′ = real part (energy storage) · ε″ = imaginary part (dielectric losses). "
-            "Faint grey curves are the other candidate roots.",
-        ))
-        caption.setWordWrap(True)
-        caption.setStyleSheet("font-size: 11px; color: gray;")
-        right.addWidget(caption)
         wizard.result_epsilon_manager = manager
 
-    right_container = QWidget()
-    right_container.setLayout(right)
-    columns.addWidget(right_container, stretch=3)
+    right_half = QWidget()
+    right_half.setLayout(right)
+
+    # Two equal halves — sidebar stays in the same position as every other step
+    columns = QHBoxLayout()
+    columns.setContentsMargins(0, 0, 0, 0)
+    columns.setSpacing(0)
+    columns.addWidget(left_half, stretch=1)
+    columns.addWidget(right_half, stretch=1)
 
     container = QWidget()
     container.setLayout(columns)
-    wizard.content_layout.addWidget(container)
+
+    right_half.setFixedWidth(max(300, (1200 - 40) // 2))
+    _chart_filter = _HalfWidthFilter(right_half, container)
+    container.installEventFilter(_chart_filter)
+
+    wizard.content_layout.addWidget(container, stretch=1)
 
     wizard.next_button.setEnabled(True)
 
@@ -184,15 +212,21 @@ def _build_intermediate(layout, result, rtexts):
 
     text_box = QPlainTextEdit()
     text_box.setReadOnly(True)
-    text_box.setMaximumHeight(220)
-    text_box.setStyleSheet("font-family: Consolas, monospace; font-size: 12px;")
+    text_box.setMinimumHeight(80)
+    text_box.setStyleSheet(
+        "font-family: Consolas, monospace; font-size: 12px;"
+        " background-color: #ffffff; color: #1a1a1a; border: 1px solid #cccccc;"
+    )
     layout.addWidget(text_box)
 
     def render(idx_in_combo):
         i = selector.itemData(idx_in_combo)
         if i is None:
             return
-        text_box.setPlainText(_format_equation(result, int(i), rtexts))
+        content = _format_equation(result, int(i), rtexts)
+        text_box.setPlainText(content)
+        n_lines = content.count('\n') + 1
+        text_box.setFixedHeight(n_lines * 17 + 44.5)
 
     selector.currentIndexChanged.connect(render)
     render(selector.currentIndex())
