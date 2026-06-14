@@ -56,7 +56,10 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
         settings.setValue("Dark_Light/QGroupBox_title/color", "white")
 
         # --- QGroupBox border ---
-        settings.setValue("Dark_Light/QGroupBox/border", "1.5px solid white")
+        settings.setValue("Dark_Light/QGroupBox/border", "1px solid white")
+        settings.setValue("Dark_Light/QGroupBox/border-radius", "8px")
+        settings.setValue("Dark_Light/QGroupBox/margin-top", "1.5ex")
+        settings.setValue("Dark_Light/QGroupBox/padding", "8px")
 
         # --- QLabel ---
         settings.setValue("Dark_Light/QLabel/color", "white")
@@ -315,9 +318,12 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
 
         # --- QGroupBox title ---
         settings.setValue("Dark_Light/QGroupBox_title/color", "black")
-        
+
         # --- QGroupBox border ---
-        settings.setValue("Dark_Light/QGroupBox/border", "1.5px solid #b0b0b0")
+        settings.setValue("Dark_Light/QGroupBox/border", "1px solid #b0b0b0")
+        settings.setValue("Dark_Light/QGroupBox/border-radius", "8px")
+        settings.setValue("Dark_Light/QGroupBox/margin-top", "14px")
+        settings.setValue("Dark_Light/QGroupBox/padding", "8px")
 
         # --- QLabel ---
         settings.setValue("Dark_Light/QLabel/color", "black")
@@ -576,6 +582,9 @@ def dark_light_config(self):
     # QGroupBox
     groupbox_title_color = settings.value("Dark_Light/QGroupBox_title/color", "white")
     groupbox_border = settings.value("Dark_Light/QGroupBox/border", "1.5px solid white")
+    groupbox_border_radius = settings.value("Dark_Light/QGroupBox/border-radius", "8px")
+    groupbox_margin_top = settings.value("Dark_Light/QGroupBox/margin-top", "1.5ex")
+    groupbox_padding = settings.value("Dark_Light/QGroupBox/padding", "8px")
 
     # QLabel
     label_color = settings.value("Dark_Light/QLabel/color", "white")
@@ -829,7 +838,17 @@ def dark_light_config(self):
         }}
 
         /* QGroupBox */
-        QGroupBox:title {{
+        QGroupBox {{
+            border: {groupbox_border};
+            border-radius: {groupbox_border_radius};
+            margin-top: {groupbox_margin_top};
+            padding: {groupbox_padding};
+        }}
+
+        QGroupBox::title {{
+            subcontrol-origin: margin;
+            left: 12px;
+            padding: 0 6px;
             color: {groupbox_title_color};
         }}
 

@@ -142,7 +142,6 @@ def previous_step(self):
         show_step_screen(self, self.current_step - 1)
         
 def show_first_screen(self):
-
     """Initial screen: Calibration Methods dropdown (aligned near top)."""
     clear_content(self)
 
@@ -151,7 +150,6 @@ def show_first_screen(self):
     self.next_button.setEnabled(False)
     self.save_button.setVisible(False)
 
-    # Reset all calibration managers so each method starts fresh
     if self.osm_calibration:
         self.osm_calibration.clear_all_measurements()
     if self.thru_calibration:
@@ -159,10 +157,6 @@ def show_first_screen(self):
     if hasattr(self, 'os_calibration') and self.os_calibration:
         self.os_calibration.clear_all_measurements()
 
-    # Clear stale widget references — the QLabels from the previous step screen
-    # are scheduled for deletion via deleteLater(); keeping them here would cause
-    # RuntimeError when update_calibration_status_display calls setText after
-    # QApplication.processEvents() fires the deferred deletion.
     self.calibration_status_widgets = {}
 
     self.next_button.setText("▶▶")
@@ -172,55 +166,56 @@ def show_first_screen(self):
         pass
     self.next_button.clicked.connect(lambda: next_step(self))
 
+    _CARD = "QWidget#card { background-color: #252525; border: 1px solid #3d3d3d; border-radius: 10px; }"
+
+    def _hsep_line(color="#363636"):
+        line = QWidget()
+        line.setFixedHeight(1)
+        line.setStyleSheet(f"background-color: {color}; border: none;")
+        return line
+
     top_container = QVBoxLayout()
-    top_container.setAlignment(Qt.AlignTop)
-
-    settings = get_settings(
-        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
-        "shared/utils/dark_light_mode/dark_light_config.ini",
-        Path(__file__).resolve()
-    )
-
-    groupbox_border = settings.value("Dark_Light/QGroupBox/color", "1px solid #b0b0b0")
-    groupbox_style = f"QGroupBox {{ border: {groupbox_border}; border-radius: 5px; margin-top: 1.3ex; padding-top: 6px; }} QGroupBox::title {{ subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }}"
-    frame_style = f"QFrame {{ border: {groupbox_border}; border-radius: 8px; padding: 10px; }}"
+    top_container.setSpacing(14)
+    top_container.setContentsMargins(0, 0, 0, 0)
 
     # ================================================
-    # FRAME 1: Calibration Methods
+    # CARD 1: Calibration Methods
     # ================================================
-    methods_frame = QFrame()
-    methods_frame.setStyleSheet(frame_style)
-    methods_frame_layout = QVBoxLayout(methods_frame)
-    methods_frame_layout.setContentsMargins(10, 10, 10, 10)
+    methods_card = QWidget()
+    methods_card.setObjectName("card")
+    methods_card.setStyleSheet(_CARD)
+    mcl = QVBoxLayout(methods_card)
+    mcl.setContentsMargins(20, 20, 20, 20)
+    mcl.setSpacing(0)
 
     label = QLabel(f"{self.dut_wizard_ui_title}")
-    label.setStyleSheet("font-size: 18px; font-weight: bold; border: none;")
+    label.setStyleSheet("font-size: 18px; font-weight: bold; border: none; background: transparent;")
     label.setAlignment(Qt.AlignCenter)
+    mcl.addWidget(label)
+    mcl.addSpacing(8)
+    mcl.addWidget(_hsep_line())
+    mcl.addSpacing(12)
 
     methods_description = QLabel(
         "Calibration methods are used to correct measurement errors in the system. "
         "They include techniques for reflection (S11) calibration and transmission (S21) calibration, "
         "allowing accurate compensation of system imperfections."
     )
-    methods_description.setStyleSheet("font-size: 13px; border: none;")
+    methods_description.setStyleSheet("font-size: 13px; border: none; background: transparent; color: #999999;")
     methods_description.setWordWrap(True)
+    mcl.addWidget(methods_description)
+    mcl.addSpacing(14)
 
     self.freq_dropdown = QComboBox()
     self.freq_dropdown.setFixedWidth(600)
-
     self.freq_dropdown.addItem(self.dut_wizard_ui_label_method_selection)
     self.freq_dropdown.model().item(0).setEnabled(False)
+    self.freq_dropdown.model().item(0).setForeground(QColor("#777777"))
     self.freq_dropdown.setStyleSheet("""
-        QComboBox {
-            qproperty-alignment: 'AlignCenter';
-        }
-        QComboBox {
-            text-align: center;
-        }
-        """
-    )
+        QComboBox { qproperty-alignment: 'AlignCenter'; }
+        QComboBox { text-align: center; }
+    """)
     self.freq_dropdown.setItemDelegate(CenterDelegate(self.freq_dropdown))
-
     self.freq_dropdown.addItems([
         "OSM (Open - Short - Match)",
         "Open/Short Normalization",
@@ -228,7 +223,6 @@ def show_first_screen(self):
         "1-Port+N",
         "Enhanced-Response"
     ])
-
     self.freq_dropdown.currentIndexChanged.connect(
         lambda index: (
             setattr(self, "selected_method", self.freq_dropdown.currentText()),
@@ -241,161 +235,128 @@ def show_first_screen(self):
     dropdown_layout.addStretch()
     dropdown_layout.addWidget(self.freq_dropdown)
     dropdown_layout.addStretch()
+    mcl.addLayout(dropdown_layout)
+    mcl.addSpacing(16)
 
-    # ================================================
-    # GROUPBOX (FIX REAL)
-    # ================================================
-    methods_group = QGroupBox("Calibration Methods by Parameter")
-    methods_group.setStyleSheet(groupbox_style)
-    methods_group_layout = QVBoxLayout(methods_group)
-    methods_group_layout.setContentsMargins(10, 10, 10, 10)
+    mcl.addWidget(_hsep_line("#2d2d2d"))
+    mcl.addSpacing(10)
 
-    # S11 / S21 container
-    methods_row = QWidget()
-    main_layout = QHBoxLayout(methods_row)
-    main_layout.setContentsMargins(0, 0, 0, 0)
-    main_layout.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+    inner_ref_lbl = QLabel("Calibration Methods by Parameter")
+    inner_ref_lbl.setStyleSheet("font-size: 12px; color: #666666; background: transparent; border: none;")
+    mcl.addWidget(inner_ref_lbl)
+    mcl.addSpacing(14)
 
     def _lbl(text):
         l = QLabel(text)
         l.setAlignment(Qt.AlignCenter)
-        l.setStyleSheet("font-size: 13px; border: none;")
+        l.setStyleSheet("font-size: 12px; border: none; background: transparent;")
         return l
 
-    # LEFT (S11)
+    methods_row = QWidget()
+    methods_row.setStyleSheet("background: transparent;")
+    main_row_layout = QHBoxLayout(methods_row)
+    main_row_layout.setContentsMargins(0, 0, 0, 0)
+    main_row_layout.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+
     s11_box = QVBoxLayout()
-    s11_box.setContentsMargins(0, 0, 0, 0)
-    s11_box.setSpacing(2)
+    s11_box.setSpacing(6)
     s11_box.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
     s11_title = QLabel("S11 (reflection)")
-    s11_title.setStyleSheet("font-weight: bold; font-size: 13px; border: none;")
+    s11_title.setStyleSheet("font-weight: bold; font-size: 13px; border: none; background: transparent;")
     s11_title.setAlignment(Qt.AlignCenter)
     s11_box.addWidget(s11_title)
     s11_box.addWidget(_lbl("OSM (Open - Short - Match)"))
     s11_box.addWidget(_lbl("Normalization Open or Short"))
 
-    # MIDDLE (S21)
-    s21_box = QVBoxLayout()
-    s21_box.setContentsMargins(0, 0, 0, 0)
-    s21_box.setSpacing(2)
-    s21_box.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
-    s21_title = QLabel("S21 (transmission)")
-    s21_title.setStyleSheet("font-weight: bold; font-size: 13px; border: none;")
-    s21_title.setAlignment(Qt.AlignCenter)
-    s21_box.addWidget(s21_title)
-    s21_box.addWidget(_lbl("Normalization Thru"))
-
-    # RIGHT (S11 + S21)
     s11_s21_box = QVBoxLayout()
-    s11_s21_box.setContentsMargins(0, 0, 0, 0)
-    s11_s21_box.setSpacing(2)
+    s11_s21_box.setSpacing(6)
     s11_s21_box.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
     s11_s21_title = QLabel("S11 (reflection) and S21 (transmission)")
-    s11_s21_title.setStyleSheet("font-weight: bold; font-size: 13px; border: none;")
+    s11_s21_title.setStyleSheet("font-weight: bold; font-size: 13px; border: none; background: transparent;")
     s11_s21_title.setAlignment(Qt.AlignCenter)
     s11_s21_box.addWidget(s11_s21_title)
     s11_s21_box.addWidget(_lbl("1-Port+N"))
     s11_s21_box.addWidget(_lbl("Enhanced-Response"))
 
-    # BUILD ROW
-    main_layout.addStretch()
-    main_layout.addLayout(s11_box)
-    main_layout.addSpacing(40)
-    main_layout.addLayout(s11_s21_box)
-    main_layout.addSpacing(40)
-    main_layout.addLayout(s21_box)
-    main_layout.addStretch()
+    s21_box = QVBoxLayout()
+    s21_box.setSpacing(6)
+    s21_box.setAlignment(Qt.AlignHCenter | Qt.AlignTop)
+    s21_title = QLabel("S21 (transmission)")
+    s21_title.setStyleSheet("font-weight: bold; font-size: 13px; border: none; background: transparent;")
+    s21_title.setAlignment(Qt.AlignCenter)
+    s21_box.addWidget(s21_title)
+    s21_box.addWidget(_lbl("Normalization Thru"))
 
-    methods_group_layout.addWidget(methods_row)
+    main_row_layout.addStretch()
+    main_row_layout.addLayout(s11_box)
+    main_row_layout.addSpacing(40)
+    main_row_layout.addLayout(s11_s21_box)
+    main_row_layout.addSpacing(40)
+    main_row_layout.addLayout(s21_box)
+    main_row_layout.addStretch()
+
+    mcl.addWidget(methods_row)
 
     # ================================================
-    # FRAME ASSEMBLY
+    # CARD 2: Sweep Settings
     # ================================================
-    methods_frame_layout.addWidget(label)
-    methods_frame_layout.addWidget(methods_description)
-    methods_frame_layout.addSpacing(15)
-    methods_frame_layout.addLayout(dropdown_layout)
-    methods_frame_layout.addWidget(methods_group)
-
-    # ================================================
-    # FRAME 2: Sweep Settings (SIN CAMBIOS)
-    # ================================================
-    sweep_frame = QFrame()
-    sweep_frame.setStyleSheet(frame_style)
-    sweep_frame_layout = QVBoxLayout(sweep_frame)
-    sweep_frame_layout.setContentsMargins(15, 15, 15, 15)
-    sweep_frame_layout.setSpacing(10)
+    sweep_card = QWidget()
+    sweep_card.setObjectName("card")
+    sweep_card.setStyleSheet(_CARD)
+    scl = QVBoxLayout(sweep_card)
+    scl.setContentsMargins(20, 20, 20, 20)
+    scl.setSpacing(0)
 
     label_sweep_title = QLabel("Sweep Settings")
-    label_sweep_title.setStyleSheet("font-size: 18px; font-weight: bold; border: none;")
+    label_sweep_title.setStyleSheet("font-size: 18px; font-weight: bold; border: none; background: transparent;")
     label_sweep_title.setAlignment(Qt.AlignCenter)
+    scl.addWidget(label_sweep_title)
+    scl.addSpacing(8)
+    scl.addWidget(_hsep_line())
+    scl.addSpacing(12)
 
-    sweep_description = QLabel(
-        "Sweep settings define the frequency range and resolution used for all measurements. "
-        "The selected values directly affect both reflection and transmission results."
-    )
-    sweep_description.setStyleSheet("font-size: 13px; border: none;")
-    sweep_description.setWordWrap(True)
-
-    sweep_group = QGroupBox(f"{self.dut_wizard_ui_sweep_title}")
-    sweep_group.setStyleSheet(groupbox_style)
     sweep_layout = QFormLayout()
+    sweep_layout.setVerticalSpacing(12)
+    sweep_layout.setHorizontalSpacing(16)
 
     start_freq_layout = QHBoxLayout()
+    start_freq_layout.setSpacing(10)
     self.start_freq_input = QDoubleSpinBox()
     self.start_freq_input.setDecimals(4)
     self.start_freq_input.setValue(50)
     start_freq_layout.addWidget(self.start_freq_input)
-
     self.start_freq_unit = QComboBox()
     self.start_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
     self.start_freq_unit.setCurrentText("kHz")
     self.start_freq_unit.setItemDelegate(CenterDelegate(self.start_freq_unit))
     start_freq_layout.addWidget(self.start_freq_unit)
-
     label_start_freq = QLabel(f"{self.dut_wizard_ui_start_freq}")
-
-    label_start_freq.setStyleSheet("""
-        QLabel {
-            border: none;
-            background: transparent;
-        }
-    """)
+    label_start_freq.setStyleSheet("border: none; background: transparent;")
     sweep_layout.addRow(label_start_freq, start_freq_layout)
 
     stop_freq_layout = QHBoxLayout()
+    stop_freq_layout.setSpacing(10)
     self.stop_freq_input = QDoubleSpinBox()
     self.stop_freq_input.setDecimals(4)
     self.stop_freq_input.setValue(1.5)
     stop_freq_layout.addWidget(self.stop_freq_input)
-
     self.stop_freq_unit = QComboBox()
     self.stop_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
     self.stop_freq_unit.setCurrentText("GHz")
     self.stop_freq_unit.setItemDelegate(CenterDelegate(self.stop_freq_unit))
     stop_freq_layout.addWidget(self.stop_freq_unit)
-
     label_stop_freq = QLabel(f"{self.dut_wizard_ui_stop_freq}")
-    label_stop_freq.setStyleSheet(
-        """
-        QLabel {
-            border: none; 
-            background: transparent;
-            }
-        """
-    )
-
+    label_stop_freq.setStyleSheet("border: none; background: transparent;")
     sweep_layout.addRow(label_stop_freq, stop_freq_layout)
 
     self.steps_input = SmartDatapointsSpinBox()
     self.steps_input.setMinimum(1)
     self.steps_input.setMaximum(32000)
     self.steps_input.setValue(101)
-
     self.steps_input.setStyleSheet("""
         QSpinBox {
             background-color: #2e2e2e;
-            color: white;;
+            color: white;
             border-radius: 8px;
             font-size: 14px;
             min-height: 20px;
@@ -410,47 +371,41 @@ def show_first_screen(self):
             width: 16px;
         }
         QSpinBox::up-button:hover, QSpinBox::down-button:hover { background-color: #5d5d5d; }
-                                   QSpinBox::up-arrow {
+        QSpinBox::up-arrow {
             image: none;
             border-left: 2px solid transparent;
             border-right: 2px solid transparent;
             border-bottom: 3px solid white;
-            width: 0px;
-            height: 0px;
+            width: 0px; height: 0px;
         }
-
         QSpinBox::down-arrow {
             image: none;
             border-left: 2px solid transparent;
             border-right: 2px solid transparent;
             border-top: 3px solid white;
-            width: 0px;
-            height: 0px;
+            width: 0px; height: 0px;
         }
     """)
-
     label_steps = QLabel(f"{self.dut_wizard_ui_steps}")
-    label_steps.setStyleSheet(
-        """
-        QLabel {
-            border: none;
-        }
-    """)
-
+    label_steps.setStyleSheet("border: none; background: transparent;")
     sweep_layout.addRow(label_steps, self.steps_input)
 
-    sweep_group.setLayout(sweep_layout)
+    sweep_description = QLabel(
+        "Sweep settings define the frequency range and resolution used for all measurements. "
+        "The selected values directly affect both reflection and transmission results."
+    )
+    sweep_description.setStyleSheet("font-size: 13px; border: none; background: transparent; color: #999999;")
+    sweep_description.setWordWrap(True)
+    scl.addWidget(sweep_description)
+    scl.addSpacing(16)
 
-    sweep_frame_layout.addWidget(label_sweep_title)
-    sweep_frame_layout.addWidget(sweep_description)
-    sweep_frame_layout.addWidget(sweep_group)
+    scl.addLayout(sweep_layout)
 
     # ================================================
     # FINAL LAYOUT
     # ================================================
-    top_container.addWidget(methods_frame)
-    top_container.addSpacing(10)
-    top_container.addWidget(sweep_frame)
+    top_container.addWidget(methods_card)
+    top_container.addWidget(sweep_card)
 
     self.content_layout.addLayout(top_container)
 

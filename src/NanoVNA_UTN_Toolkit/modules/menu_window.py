@@ -142,7 +142,8 @@ class ModuleSelectionWindow(QMainWindow):
         dut_card.setFixedSize(300, 230)
         dut_card.setStyleSheet("""
             QFrame {
-                border: 1px solid gray;
+                background-color: #252525;
+                border: 1px solid #3d3d3d;
                 border-radius: 10px;
                 padding: 10px;
             }
@@ -216,7 +217,8 @@ class ModuleSelectionWindow(QMainWindow):
         materials_card.setFixedSize(300, 230)
         materials_card.setStyleSheet("""
             QFrame {
-                border: 1px solid gray;
+                background-color: #252525;
+                border: 1px solid #3d3d3d;
                 border-radius: 10px;
                 padding: 10px;
             }

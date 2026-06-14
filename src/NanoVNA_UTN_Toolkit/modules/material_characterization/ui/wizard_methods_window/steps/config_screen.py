@@ -197,50 +197,6 @@ def build_config_screen(wizard, descriptor, step_def):
 
     form_container = QWidget()
     form_container.setLayout(root)
-    form_container.setStyleSheet("""
-        QGroupBox {
-            border: 1px solid #4a4a4a;
-            border-radius: 8px;
-            margin-top: 14px;
-            padding: 10px 10px 10px 10px;
-        }
-        QGroupBox::title {
-            subcontrol-origin: margin;
-            left: 12px;
-            padding: 0 6px;
-            color: #dddddd;
-            font-size: 13px;
-            font-weight: bold;
-        }
-        QDoubleSpinBox, QComboBox, QLineEdit {
-            background-color: #3b3b3b;
-            color: white;
-            border: 1px solid #555555;
-            border-radius: 4px;
-            padding: 4px 8px;
-            min-height: 30px;
-            font-size: 13px;
-        }
-        QDoubleSpinBox:focus, QComboBox:focus, QLineEdit:focus {
-            border: 1px solid #4da6ff;
-        }
-        QComboBox::drop-down { width: 20px; border: none; background: #3b3b3b; }
-        QComboBox QAbstractItemView {
-            background-color: #3b3b3b;
-            color: white;
-            selection-background-color: #2d5a8e;
-            border: 1px solid #555;
-        }
-        QAbstractSpinBox::up-button, QAbstractSpinBox::down-button {
-            background-color: #4a4a4a;
-            border: none;
-            width: 18px;
-        }
-        QLabel {
-            color: #cccccc;
-            font-size: 13px;
-        }
-    """)
     columns.addWidget(form_container, stretch=1)
 
     container = QWidget()

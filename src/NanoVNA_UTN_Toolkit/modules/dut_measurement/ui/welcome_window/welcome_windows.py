@@ -261,14 +261,9 @@ class NanoVNAWelcome(QMainWindow):
         layout.setSpacing(0)
 
         # Title row
-        title_row = QHBoxLayout()
-        icon = QLabel("🔧")
-        icon.setStyleSheet("font-size: 15px; background: transparent;")
         title_lbl = QLabel(self.dut_welcome_ui_calibration_title)
         title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
-        title_row.addWidget(icon)
-        title_row.addWidget(title_lbl, stretch=1)
-        layout.addLayout(title_row)
+        layout.addWidget(title_lbl)
 
         layout.addSpacing(6)
         layout.addWidget(_hsep())
@@ -313,14 +308,9 @@ class NanoVNAWelcome(QMainWindow):
         layout.setSpacing(0)
 
         # Title row
-        title_row = QHBoxLayout()
-        icon = QLabel("📊")
-        icon.setStyleSheet("font-size: 15px; background: transparent;")
         title_lbl = QLabel(self.dut_welcome_ui_kit_title)
         title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
-        title_row.addWidget(icon)
-        title_row.addWidget(title_lbl, stretch=1)
-        layout.addLayout(title_row)
+        layout.addWidget(title_lbl)
 
         layout.addSpacing(6)
         layout.addWidget(_hsep())
@@ -378,14 +368,9 @@ class NanoVNAWelcome(QMainWindow):
         layout.setSpacing(0)
 
         # Title row
-        title_row = QHBoxLayout()
-        icon = QLabel("📁")
-        icon.setStyleSheet("font-size: 15px; background: transparent;")
         title_lbl = QLabel(self.dut_welcome_ui_import_calibration_title)
         title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
-        title_row.addWidget(icon)
-        title_row.addWidget(title_lbl, stretch=1)
-        layout.addLayout(title_row)
+        layout.addWidget(title_lbl)
 
         layout.addSpacing(6)
         layout.addWidget(_hsep())

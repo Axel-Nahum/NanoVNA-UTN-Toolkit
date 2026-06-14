@@ -256,15 +256,9 @@ class MaterialCharacterizationWelcome(QMainWindow):
         layout.setSpacing(0)
 
         # Card title
-        title_row = QHBoxLayout()
-        icon = QLabel("⚙")
-        icon.setStyleSheet("font-size: 16px; color: #4da6ff; background: transparent;")
         title_lbl = QLabel(self.charac_welcome_ui_method_selection_title)
         title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
-        title_row.addWidget(icon)
-        title_row.addWidget(title_lbl, stretch=1)
-        title_row.addStretch()
-        layout.addLayout(title_row)
+        layout.addWidget(title_lbl)
 
         layout.addSpacing(6)
         layout.addWidget(_hsep())
@@ -324,15 +318,9 @@ class MaterialCharacterizationWelcome(QMainWindow):
         layout.setSpacing(0)
 
         # Card title
-        title_row = QHBoxLayout()
-        icon = QLabel("📦")
-        icon.setStyleSheet("font-size: 15px; background: transparent;")
         title_lbl = QLabel(self.charac_welcome_ui_import_section_title)
         title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
-        title_row.addWidget(icon)
-        title_row.addWidget(title_lbl, stretch=1)
-        title_row.addStretch()
-        layout.addLayout(title_row)
+        layout.addWidget(title_lbl)
 
         layout.addSpacing(6)
         layout.addWidget(_hsep())
