@@ -79,10 +79,13 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
         else:
             y_data = np.abs(s_data)
     elif graph_type == "Phase":
-        # Unwrap then normalize to avoid ±180° oscillation
-        y_data = np.degrees(np.unwrap(np.angle(s_data)))
-        if np.mean(y_data) < -90:
-            y_data += 360
+        raw = np.degrees(np.angle(s_data))
+        if np.mean(raw > 160) > 0.15 and np.mean(raw < -160) > 0.15:
+            y_data = np.degrees(np.unwrap(np.angle(s_data)))
+        else:
+            y_data = raw
+        if len(y_data) > 1:
+            y_data[0] = y_data[1]
     else:
         return
 

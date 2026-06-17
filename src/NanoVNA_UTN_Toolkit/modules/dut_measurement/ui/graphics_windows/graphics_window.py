@@ -134,32 +134,34 @@ class NanoVNAGraphics(QMainWindow):
         # flag reset real time
 
         settings = get_settings(
-            "INI/dut_measurement/signal_filters/plot_config.ini",
+            "INI/dut_measurement/signal_filters/signal_filters.ini",
             "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
             Path(__file__).resolve()
         )
 
-        is_kalman_enabled = settings.value("Kalman/enabled", False, type=bool)
+        is_kalman_enabled = settings.value("kalman/enabled", False, type=bool)
 
-        preset = settings.value("Kalman/preset", "default")
+        preset = settings.value("kalman/preset", "Medium")
+
+        process_noise = 0.01
+        measurement_noise = 0.1
 
         if preset == "Custom":
-            process_noise = settings.value("Kalman/custom_Q", 0.0001, type=float)
-            measurement_noise = settings.value("Kalman/custom_R", 10.0, type=float)
+            process_noise = settings.value("kalman/custom_Q", 0.0001, type=float)
+            measurement_noise = settings.value("kalman/custom_R", 10.0, type=float)
         elif preset == "Light":
-            process_noise = settings.value("Kalman/Q", 0.01, type=float)
-            measurement_noise = settings.value("Kalman/R", 1.0, type=float)
+            process_noise = 0.1
+            measurement_noise = 0.01
         elif preset == "Medium":
-            process_noise = settings.value("Kalman/Q", 0.001, type=float)
-            measurement_noise = settings.value("Kalman/R", 0.1, type=float)
+            process_noise = 0.01
+            measurement_noise = 0.1
         elif preset == "Strong":
-            process_noise = settings.value("Kalman/Q", 0.0001, type=float)
-            measurement_noise = settings.value("Kalman/R", 0.01, type=float)
+            process_noise = 0.001
+            measurement_noise = 1.0
 
-        # kalman filters for real-time data smoothing
-        if is_kalman_enabled:
-            self.kf_s11 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
-            self.kf_s21 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
+        # kalman filters always created so _done never hits AttributeError
+        self.kf_s11 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
+        self.kf_s21 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
 
         # Auto Scale
 

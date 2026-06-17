@@ -225,6 +225,25 @@ def _done(self, freqs, s11, s21, thread, worker, gen):
     self.s11_raw = s11
     self.s21_raw = s21
 
+    # spike removal — only when a calibration method is active
+    cal_settings = get_settings(
+        "INI/dut_measurement/calibration_config/calibration_config.ini",
+        "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
+        Path(__file__).resolve()
+    )
+    _is_calibrated = (
+        not cal_settings.value("Calibration/NoCalibration", False, type=bool)
+        and (
+            cal_settings.value("Calibration/Method", "---") != "---"
+            or cal_settings.value("Calibration/Kits", False, type=bool)
+        )
+    )
+    if _is_calibrated:
+        s11 = _remove_spikes(s11, freqs)
+        s21 = _remove_spikes(s21, freqs)
+        s11 = _remove_phase_spikes(s11, freqs)
+        s21 = _remove_phase_spikes(s21, freqs)
+
     # kalman filter for smoothing
     if is_kalman_enabled:
         s11_f = np.array([self.kf_s11.update(x) for x in s11])
@@ -275,7 +294,53 @@ def _abort(self):
 
 
 # ------------------------------------------------------------------------------------------------------------------ #
-# CALIBRATION 
+# SPIKE REMOVAL
+# ------------------------------------------------------------------------------------------------------------------ #
+
+_SPIKE_THRESHOLD       = 3.0
+_PHASE_SPIKE_MULT      = 2.0
+_PHASE_SPIKE_FLOOR_DEG = 1.0
+_SPIKE_PASSES          = 2
+
+def _remove_spikes(s_data, freqs, threshold=_SPIKE_THRESHOLD, passes=_SPIKE_PASSES):
+    s = np.array(s_data, dtype=complex)
+    freqs = np.asarray(freqs, dtype=float)
+    n = min(len(s), len(freqs))
+    s, freqs = s[:n], freqs[:n]
+
+    for _ in range(passes):
+        mag = np.abs(s)
+        for i in range(1, n - 1):
+            local_avg = (mag[i - 1] + mag[i + 1]) / 2.0
+            if local_avg > 0 and mag[i] >= threshold * local_avg:
+                t = (freqs[i] - freqs[i - 1]) / (freqs[i + 1] - freqs[i - 1])
+                s[i] = s[i - 1] + t * (s[i + 1] - s[i - 1])
+                mag[i] = abs(s[i])
+
+    return s
+
+
+def _remove_phase_spikes(s_data, freqs, multiplier=_PHASE_SPIKE_MULT, floor_deg=_PHASE_SPIKE_FLOOR_DEG, passes=_SPIKE_PASSES):
+    s = np.array(s_data, dtype=complex)
+    freqs = np.asarray(freqs, dtype=float)
+    n = min(len(s), len(freqs))
+    s, freqs = s[:n], freqs[:n]
+    floor_rad = np.deg2rad(floor_deg)
+
+    for _ in range(passes):
+        phase = np.unwrap(np.angle(s))
+        for i in range(1, n - 1):
+            neighbor_avg = (phase[i - 1] + phase[i + 1]) / 2.0
+            neighbor_diff = abs(phase[i + 1] - phase[i - 1])
+            deviation = abs(phase[i] - neighbor_avg)
+            if deviation >= max(floor_rad, multiplier * neighbor_diff):
+                t = (freqs[i] - freqs[i - 1]) / (freqs[i + 1] - freqs[i - 1])
+                s[i] = s[i - 1] + t * (s[i + 1] - s[i - 1])
+
+    return s
+
+# ------------------------------------------------------------------------------------------------------------------ #
+# CALIBRATION
 # ------------------------------------------------------------------------------------------------------------------ #
 
 def _build_calibration_fn(self):

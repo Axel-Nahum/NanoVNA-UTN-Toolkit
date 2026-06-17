@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import sys
 import os
+import multiprocessing
+multiprocessing.freeze_support()
 import shutil
 import logging
 from PySide6.QtWidgets import QApplication
