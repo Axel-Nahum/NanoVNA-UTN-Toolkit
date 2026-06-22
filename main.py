@@ -115,6 +115,12 @@ def ensure_paths():
 # ----------------------------
 def run_app():
     try:
+        # Route Qt's internal C++ messages through Python logging (with a Python
+        # stack trace for warnings). Must run before QApplication is created so
+        # even early Qt start-up messages are captured.
+        from NanoVNA_UTN_Toolkit.shared.utils.qt_logging import install_qt_message_handler
+        install_qt_message_handler()
+
         app = QApplication(sys.argv)
         window = NanoVNAStatusApp()
         sys.exit(app.exec())

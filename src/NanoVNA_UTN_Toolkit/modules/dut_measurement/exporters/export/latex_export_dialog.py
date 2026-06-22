@@ -19,6 +19,7 @@ from PySide6.QtGui import QIcon, QPixmap
 
 # Import the LaTeX detection functions
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.exporters.latex_exporter import _find_latex_compiler, _test_latex_compiler
+from NanoVNA_UTN_Toolkit.shared.utils.qt_logging import log_thread_checkpoint
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -394,6 +395,9 @@ class LaTeXExportDialog(QDialog):
         logger.info("LaTeX Export Dialog closing")
         if self.checker_thread and self.checker_thread.isRunning():
             logger.info("Terminating background LaTeX checker thread")
+            # closeEvent runs on the GUI thread; flags loudly if not (self-wait).
+            log_thread_checkpoint("latex_export_dialog.closeEvent: wait on checker_thread",
+                                  target_thread=self.checker_thread)
             self.checker_thread.terminate()
             self.checker_thread.wait()
         event.accept()

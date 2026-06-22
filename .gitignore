@@ -208,3 +208,8 @@ __marimo__/
 
 # Material characterization generated measurement results (runtime outputs)
 src/NanoVNA_UTN_Toolkit/modules/material_characterization/calibration/probe_results/
+
+# temporary files generated during development and testing of fluid measurement module
+medicion_fluidos/
+Plan*.md
+*Trello.md

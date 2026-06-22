@@ -6,6 +6,7 @@ import skrf as rf
 from pathlib import Path
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
+from NanoVNA_UTN_Toolkit.shared.utils.qt_logging import log_thread_checkpoint
 
 # ---------------- imports externos ---------------- #
 
@@ -99,6 +100,34 @@ class SweepWorker(QObject):
             self.error.emit(str(e))
 
 # =========================================================
+# GUI-THREAD CONTROLLER
+# =========================================================
+#
+# SweepWorker is moved to a QThread, so its signals are emitted from the worker
+# thread. A signal connected to a context-less lambda (no QObject receiver) runs
+# SYNCHRONOUSLY in the worker thread, which means on_sweep_finished/on_sweep_error
+# would touch widgets (canvas draw, setText, QMessageBox) off the GUI thread.
+# Connecting to a bound method of this GUI-thread QObject forces a queued
+# connection so the handlers run on the GUI thread instead.
+
+class _SweepController(QObject):
+
+    def __init__(self, window):
+        super().__init__()  # created on the GUI thread (run_sweep runs there)
+        self._window = window
+
+    def on_finished(self, result):  # runs on the GUI thread
+        log_thread_checkpoint("graphics_refresh: sweep finished handler (expected GUI)")
+        on_sweep_finished(self._window, result)
+
+    def on_error(self, msg):  # runs on the GUI thread
+        log_thread_checkpoint("graphics_refresh: sweep error handler (expected GUI)")
+        on_sweep_error(self._window, msg)
+
+    def on_thread_finished(self):  # teardown point
+        log_thread_checkpoint("graphics_refresh: worker thread finished, deleting")
+
+# =========================================================
 # MAIN THREAD FUNCTIONS
 # =========================================================
 
@@ -156,14 +185,24 @@ def run_sweep(self):
     )
 
     self.worker.moveToThread(self.thread)
+
+    # GUI-thread controller so the result/error handlers run on the GUI thread.
+    self._sweep_controller = _SweepController(self)
+
     self.thread.started.connect(self.worker.run)
     self.worker.progress.connect(self.sweep_progress_bar.setValue)
-    self.worker.finished.connect(lambda result: on_sweep_finished(self, result))
-    self.worker.error.connect(lambda msg: on_sweep_error(self, msg))
+    self.worker.finished.connect(self._sweep_controller.on_finished)
+    self.worker.error.connect(self._sweep_controller.on_error)
+    # Quit + delete on both outcomes (the previous code leaked the thread on error).
     self.worker.finished.connect(self.thread.quit)
+    self.worker.error.connect(self.thread.quit)
     self.worker.finished.connect(self.worker.deleteLater)
+    self.worker.error.connect(self.worker.deleteLater)
+    self.thread.finished.connect(self._sweep_controller.on_thread_finished)
     self.thread.finished.connect(self.thread.deleteLater)
+    self.thread.finished.connect(self._sweep_controller.deleteLater)
     self.thread.start()
+    log_thread_checkpoint("graphics_refresh.run_sweep: worker thread started", target_thread=self.thread)
 
 
 def on_sweep_finished(self, result):

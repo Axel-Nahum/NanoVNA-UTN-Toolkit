@@ -7,6 +7,7 @@ import sys
 import logging
 from ....workers.device_worker import DeviceWorker
 from ....modules.dut_measurement.ui.log_handler import GuiLogHandler
+from ....shared.utils.qt_logging import log_thread_checkpoint
 
 from pathlib import Path
 
@@ -611,6 +612,9 @@ class NanoVNAStatusApp(QMainWindow):
         if self.worker_thread:
             # Ensure thread completes and is cleaned up
             if self.worker_thread.isRunning():
+                # Must run on the GUI thread; flags loudly otherwise (self-wait).
+                log_thread_checkpoint("connection_window.on_detection_finished: wait on worker_thread",
+                                      target_thread=self.worker_thread)
                 self.worker_thread.quit()
                 self.worker_thread.wait(2000)  # Wait up to 2 seconds
             self.worker_thread = None
@@ -643,6 +647,9 @@ class NanoVNAStatusApp(QMainWindow):
         # Wait for thread to finish properly
         if self.worker_thread and self.worker_thread.isRunning():
             logger.debug("Waiting for worker thread to finish...")
+            # closeEvent always runs on the GUI thread; flags loudly otherwise.
+            log_thread_checkpoint("connection_window.closeEvent: wait on worker_thread",
+                                  target_thread=self.worker_thread)
             self.worker_thread.quit()
             if not self.worker_thread.wait(5000):  # Wait up to 5 seconds
                 logger.warning("Thread did not finish gracefully, forcing termination")

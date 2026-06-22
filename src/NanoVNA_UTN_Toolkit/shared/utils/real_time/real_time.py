@@ -8,8 +8,12 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal, QThread, QTimer
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
+from NanoVNA_UTN_Toolkit.shared.utils.qt_logging import log_thread_checkpoint
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
+
+# Consecutive failed real-time sweeps tolerated before declaring the device lost.
+_RT_MAX_RETRIES = 5
 
 # ------------------------------------------------------------------------------------------------------------------ #
 # WORKER
@@ -65,7 +69,10 @@ class SweepWorker(QObject):
             self.sweep_finished.emit(freqs, s11, s21)
 
         except Exception as e:
-            logging.exception("[SweepWorker] error")
+            # Concise here: the GUI side (_fail) logs the user-facing message with a
+            # retry counter. Full traceback only at DEBUG so it never floods the log
+            # when the device is unplugged mid-sweep.
+            logging.debug("[SweepWorker] error", exc_info=True)
             self.sweep_failed.emit(str(e))
 
 # ------------------------------------------------------------------------------------------------------------------ #
@@ -108,6 +115,8 @@ def start_realtime(self):
 
     self._rt_active = True
     self._rt_busy = False
+    self._rt_failures = 0
+    self._rt_proc_errors = 0
 
     self.realtime_interval_ms = getattr(self, "realtime_interval_ms", 100)
 
@@ -128,8 +137,47 @@ def stop_realtime(self):
     _abort(self)
 
 # ------------------------------------------------------------------------------------------------------------------ #
-# CORE LOOP
+# CORE LOOP — GUI-THREAD CONTROLLER
 # ------------------------------------------------------------------------------------------------------------------ #
+#
+# SweepWorker is moved to a QThread, so it emits its signals FROM the worker
+# thread. In PySide6 a signal connected to a context-less lambda/functor (no
+# QObject receiver) is invoked SYNCHRONOUSLY in the *emitting* thread — Qt has no
+# receiver affinity to queue against, so it cannot marshal the call to the GUI
+# thread. That is what made the result handler and the thread-stop run in the
+# worker thread: _safe_stop_thread then called thread.wait() on the worker thread
+# itself -> "QThread::wait: Thread tried to wait on itself", and _done() updated
+# matplotlib canvases off the GUI thread.
+#
+# Connecting instead to a *bound method of a QObject that lives in the GUI thread*
+# makes Qt use a queued connection, so the slot runs on the GUI thread. This tiny
+# controller (created in _trigger, i.e. on the GUI thread) provides those slots.
+
+class _RealtimeController(QObject):
+
+    def __init__(self, window, gen):
+        super().__init__()  # created on the GUI thread -> GUI-thread affinity
+        self._window = window
+        self._gen = gen
+
+    def on_finished(self, freqs, s11, s21):  # runs on the GUI thread
+        log_thread_checkpoint("real_time: sweep_finished handler (expected GUI)")
+        try:
+            _done(self._window, freqs, s11, s21, self._gen)
+        except Exception as e:
+            _handle_processing_error(self._window, e)
+
+    def on_failed(self, msg):  # runs on the GUI thread
+        log_thread_checkpoint("real_time: sweep_failed handler (expected GUI)")
+        try:
+            _fail(self._window, msg, self._gen)
+        except Exception:
+            logging.exception("[real_time] on_failed handler error")
+            self._window._rt_busy = False
+
+    def on_thread_finished(self):  # teardown point (where quit()+wait() used to run)
+        log_thread_checkpoint("real_time: worker thread finished, deleting")
+
 
 def _trigger(self):
 
@@ -140,7 +188,8 @@ def _trigger(self):
         return
 
     if not self.vna_device or not self.vna_device.connected():
-        stop_realtime(self)
+        # Port already closed -> no point retrying; go straight to disconnected UI.
+        _handle_realtime_disconnect(self)
         return
 
     self._rt_busy = True
@@ -154,57 +203,43 @@ def _trigger(self):
         getattr(self, "dut", None)
     )
 
-    thread = QThread(self)  
+    thread = QThread(self)  # QThread object has GUI-thread affinity
     worker.moveToThread(thread)
-
-    thread.started.connect(worker.run)
 
     gen = self._rt_generation
 
-    worker.sweep_finished.connect(
-        lambda f, s11, s21: _done(self, f, s11, s21, thread, worker, gen)
-    )
+    # The controller lives on the GUI thread; its bound-method slots therefore run
+    # on the GUI thread (queued connection), unlike a context-less lambda.
+    controller = _RealtimeController(self, gen)
 
-    worker.sweep_failed.connect(
-        lambda msg: _fail(self, msg, thread, worker, gen)
-    )
+    thread.started.connect(worker.run)
 
-    # SAFE CLEANUP (NO BLOCKING WAIT INSIDE CALLBACK CONTEXT)
-    worker.sweep_finished.connect(lambda: _schedule_thread_stop(thread))
-    worker.sweep_failed.connect(lambda: _schedule_thread_stop(thread))
+    # Results -> GUI thread.
+    worker.sweep_finished.connect(controller.on_finished)
+    worker.sweep_failed.connect(controller.on_failed)
+
+    # Lifecycle: quit the worker's event loop, then delete everything. There is no
+    # wait() anywhere, so the self-wait warning can no longer occur. quit() is a
+    # bound method of the GUI-thread QThread, so it is also marshalled correctly.
+    worker.sweep_finished.connect(thread.quit)
+    worker.sweep_failed.connect(thread.quit)
+    thread.finished.connect(controller.on_thread_finished)
+    thread.finished.connect(worker.deleteLater)
+    thread.finished.connect(thread.deleteLater)
+    thread.finished.connect(controller.deleteLater)
 
     thread.start()
+    log_thread_checkpoint("real_time._trigger: worker thread started", target_thread=thread)
 
     self._rt_thread = thread
     self._rt_worker = worker
-
-
-# ------------------------------------------------------------------------------------------------------------------ #
-# SAFE THREAD STOP 
-# ------------------------------------------------------------------------------------------------------------------ #
-
-def _schedule_thread_stop(thread):
-    QTimer.singleShot(0, lambda: _safe_stop_thread(thread))
-
-
-def _safe_stop_thread(thread):
-
-    if thread is None:
-        return
-
-    try:
-        thread.quit()
-        thread.wait(2000)
-    except RuntimeError:
-        return
-
-    thread.deleteLater()
+    self._rt_controller = controller
 
 # ------------------------------------------------------------------------------------------------------------------ #
 # DONE
 # ------------------------------------------------------------------------------------------------------------------ #
 
-def _done(self, freqs, s11, s21, thread, worker, gen):
+def _done(self, freqs, s11, s21, gen):
 
     # ----------------------------------------------------
     # Plot Manager settings
@@ -218,10 +253,13 @@ def _done(self, freqs, s11, s21, thread, worker, gen):
 
     is_kalman_enabled = settings.value("kalman/enabled", False, type=bool)
 
-    if gen != self._rt_generation:
+    if gen != self._rt_generation or not getattr(self, "_rt_active", False):
         return
 
-    # data read from worker, now safe to stop thread and clean up worker references
+    # Successful read -> the device is responsive again; clear the failure streaks.
+    self._rt_failures = 0
+    self._rt_proc_errors = 0
+
     self.s11_raw = s11
     self.s21_raw = s21
 
@@ -265,14 +303,89 @@ def _done(self, freqs, s11, s21, thread, worker, gen):
 # FAIL
 # ------------------------------------------------------------------------------------------------------------------ #
 
-def _fail(self, msg, thread, worker, gen):
+def _fail(self, msg, gen):
 
-    if gen != self._rt_generation:
+    if gen != self._rt_generation or not getattr(self, "_rt_active", False):
         return
 
-    logging.error("[real_time] sweep failed: %s", msg)
+    self._rt_busy = False
+    self._rt_failures = getattr(self, "_rt_failures", 0) + 1
+
+    if self._rt_failures < _RT_MAX_RETRIES:
+        # Transient: let the timer retry on the next tick. One concise WARNING per
+        # retry instead of a full traceback flood.
+        logging.warning("[real_time] sweep failed (%d/%d), retrying: %s",
+                        self._rt_failures, _RT_MAX_RETRIES, msg)
+    else:
+        logging.error("[real_time] sweep failed %d/%d times: %s",
+                      self._rt_failures, _RT_MAX_RETRIES, msg)
+        _handle_realtime_disconnect(self)
+
+
+# ------------------------------------------------------------------------------------------------------------------ #
+# DEVICE-LOST HANDLER
+# ------------------------------------------------------------------------------------------------------------------ #
+
+def _handle_realtime_disconnect(self):
+    """Give up after too many failed sweeps: stop the loop, keep the last data on
+    screen, and surface the reconnect button so the user can retry."""
+
+    # Stop the loop first — this is what ends the flood of failing sweeps.
+    stop_realtime(self)
+    self._rt_failures = 0
+
+    # Reflect "real-time stopped" in the checkbox without re-firing on_realtime_toggled.
+    if hasattr(self, "realtime_checkbox"):
+        self.realtime_checkbox.blockSignals(True)
+        self.realtime_checkbox.setChecked(True)  # "Single Sweep Mode" => real-time off
+        self.realtime_checkbox.blockSignals(False)
+
+    # Restore the normal sweep-button label (it read "Reset Kalman" during real-time).
+    if hasattr(self, "sweep_button"):
+        self.sweep_button.setText(getattr(self, "measurement_ui_button_run_sweep", "Run Sweep"))
+
+    # Make the reconnect button available. The last measured data is left untouched
+    # on the plots (self.freqs / self.s11 / self.s21 are not cleared).
+    try:
+        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh import (
+            update_reconnect_button_state,
+        )
+        update_reconnect_button_state(self)
+    except Exception:
+        logging.debug("[real_time] update_reconnect_button_state failed", exc_info=True)
+
+    logging.warning(
+        "[real_time] NanoVNA unresponsive after %d retries - real-time stopped. "
+        "Last data kept on screen; press Reconnect to retry.", _RT_MAX_RETRIES
+    )
+
+
+def _handle_processing_error(self, exc):
+    """A sweep result failed to process (e.g. a bug in _done / Kalman). Bounded
+    logging so a persistent error never floods the log, and stop real-time after
+    too many in a row. Last good data stays on screen."""
 
     self._rt_busy = False
+    self._rt_proc_errors = getattr(self, "_rt_proc_errors", 0) + 1
+
+    if self._rt_proc_errors == 1:
+        # Full traceback once, so the underlying bug stays debuggable.
+        logging.error("[real_time] error processing sweep result: %s", exc, exc_info=True)
+    elif self._rt_proc_errors < _RT_MAX_RETRIES:
+        logging.warning("[real_time] error processing sweep result (%d/%d): %s",
+                        self._rt_proc_errors, _RT_MAX_RETRIES, exc)
+    else:
+        logging.error("[real_time] real-time stopped after %d consecutive processing errors: %s",
+                      _RT_MAX_RETRIES, exc)
+        stop_realtime(self)
+        self._rt_proc_errors = 0
+        # Leave the UI usable; last measured data stays on the plots.
+        if hasattr(self, "realtime_checkbox"):
+            self.realtime_checkbox.blockSignals(True)
+            self.realtime_checkbox.setChecked(True)
+            self.realtime_checkbox.blockSignals(False)
+        if hasattr(self, "sweep_button"):
+            self.sweep_button.setText(getattr(self, "measurement_ui_button_run_sweep", "Run Sweep"))
 
 # ------------------------------------------------------------------------------------------------------------------ #
 # ABORT
@@ -286,11 +399,20 @@ def _abort(self):
     if worker:
         worker.abort()
 
-    if thread:
-        QTimer.singleShot(0, lambda: _safe_stop_thread(thread))
+    if thread is not None:
+        # _abort runs on the GUI thread (called from stop_realtime). quit() is
+        # non-blocking; the thread.finished -> deleteLater chain set up in
+        # _trigger tears the thread down. No wait() -> no self-wait risk.
+        # The checkpoint flags loudly if this ever runs on the worker thread.
+        log_thread_checkpoint("real_time._abort: stopping worker thread", target_thread=thread)
+        try:
+            thread.quit()
+        except RuntimeError:
+            pass
 
     self._rt_worker = None
     self._rt_thread = None
+    self._rt_controller = None
 
 
 # ------------------------------------------------------------------------------------------------------------------ #

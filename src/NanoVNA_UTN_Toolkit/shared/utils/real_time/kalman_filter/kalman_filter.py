@@ -41,7 +41,9 @@ class SParameterKalman:
         self.kf.predict()
         self.kf.update(np.array([[value]]))
 
-        return float(self.kf.x[0])
+        # self.kf.x has shape (1, 1); self.kf.x[0] is a 1-D array, and float() of a
+        # non-0-d array raises TypeError in NumPy >= 2.0. Index the scalar directly.
+        return float(self.kf.x[0, 0])
 
 class ComplexKalman:
 
