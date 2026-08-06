@@ -218,7 +218,6 @@ class MeasurementMainWindow(QMainWindow):
         )
         manager.update_epsilon_curves(
             ax, result.f_hz, result.eps_selected, canvas=canvas,
-            candidates=result.eps_candidates,
         )
         self._epsilon_manager = manager
         self._epsilon_fig = fig
@@ -397,7 +396,6 @@ class MeasurementMainWindow(QMainWindow):
                 self._result.f_hz,
                 self._result.eps_selected,
                 canvas=self._epsilon_canvas,
-                candidates=self._result.eps_candidates,
             )
         except Exception as exc:
             logging.error("[MeasurementMainWindow] redraw_chart failed: %s", exc)

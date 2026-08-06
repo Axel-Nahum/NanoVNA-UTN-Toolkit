@@ -35,6 +35,17 @@ plt.rcParams["font.family"] = "serif"
 plt.rcParams["mathtext.rm"] = "serif"
 
 
+def _fill_nans(y: np.ndarray) -> np.ndarray:
+    """Linearly interpolate over NaN/inf gaps in a 1-D real array."""
+    finite = np.isfinite(y)
+    if finite.all() or not finite.any():
+        return y
+    x = np.arange(len(y))
+    out = y.copy()
+    out[~finite] = np.interp(x[~finite], x[finite], y[finite])
+    return out
+
+
 def _freq_formatter(value, _pos):
     if value >= 1e9:
         return f"{value / 1e9:.2f} GHz"
@@ -129,7 +140,7 @@ class EpsilonChartManager:
         return self.fig, self.ax, self.canvas
 
     def update_epsilon_curves(self, ax, freqs, eps_selected, canvas=None,
-                              candidates=None):
+                              candidates=None, autoscale=True):
         """
         Draw the selected permittivity branch (and optional faint candidates).
 
@@ -169,8 +180,8 @@ class EpsilonChartManager:
                         zorder=1,
                     )
 
-            real = np.real(eps_selected)
-            loss = -np.imag(eps_selected)   # eps'' for eps = eps' - j*eps''
+            real = _fill_nans(np.real(eps_selected))
+            loss = _fill_nans(-np.imag(eps_selected))   # eps'' for eps = eps' - j*eps''
 
             ax.plot(freqs, real, color=self.config.real_color,
                     linewidth=self.config.real_linewidth,
@@ -180,6 +191,18 @@ class EpsilonChartManager:
                     label=getattr(self, "_loss_label", r"$\varepsilon_r''$"), zorder=3)
 
             ax.legend(loc="upper right")
+
+            if autoscale:
+                all_y = np.concatenate([real, loss])
+                finite_y = all_y[np.isfinite(all_y)]
+                if len(finite_y) > 0:
+                    y_min, y_max = float(finite_y.min()), float(finite_y.max())
+                    y_margin = (y_max - y_min) * 0.05 if y_max != y_min else 1.0
+                    ax.set_ylim(y_min - y_margin, y_max + y_margin)
+
+                freq_range = float(freqs[-1] - freqs[0])
+                x_margin = freq_range * 0.05
+                ax.set_xlim(float(freqs[0]) - x_margin, float(freqs[-1]) + x_margin)
 
             if canvas:
                 canvas.draw()

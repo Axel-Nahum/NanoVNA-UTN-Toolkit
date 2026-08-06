@@ -117,7 +117,7 @@ def build_result_screen(wizard, descriptor, step_def):
         )
         manager.update_epsilon_curves(
             ax, result.f_hz, result.eps_selected, canvas=canvas,
-            candidates=result.eps_candidates,
+            candidates=result.eps_candidates, autoscale=False,
         )
         fixed_ylim = ax.get_ylim()
         wizard.result_epsilon_manager = manager
@@ -334,7 +334,7 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
     def _draw_branch(b: int):
         eps_curve = tracked[:, b]
         gray = np.column_stack([tracked[:, j] for j in range(5) if j != b])
-        manager.update_epsilon_curves(ax, result.f_hz, eps_curve, canvas=None, candidates=gray)
+        manager.update_epsilon_curves(ax, result.f_hz, eps_curve, canvas=None, candidates=gray, autoscale=False)
         if fixed_ylim is not None:
             ax.set_ylim(fixed_ylim)
         canvas.draw()
@@ -351,7 +351,7 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
         else:
             manager.update_epsilon_curves(
                 ax, result.f_hz, result.eps_selected, canvas=None,
-                candidates=result.eps_candidates,
+                candidates=result.eps_candidates, autoscale=False,
             )
             if fixed_ylim is not None:
                 ax.set_ylim(fixed_ylim)
