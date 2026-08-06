@@ -1,0 +1,40 @@
+{
+  "window_title": "Edit Permittivity Chart",
+
+  "tabs": {
+    "real": "ε′  (Real Part)",
+    "imag": "ε″  (Losses)"
+  },
+
+  "groups": {
+    "curve_real": " Edit Curve ε′ ",
+    "curve_imag": " Edit Curve ε″ ",
+    "markers": " Edit Markers ",
+    "chart": " Chart "
+  },
+
+  "trace": {
+    "trace_color": "Trace color:",
+    "trace_width": "Trace width:"
+  },
+
+  "markers": {
+    "marker_1_color": "Marker 1 color:",
+    "marker_2_color": "Marker 2 color:",
+    "marker_1_size": "Marker 1 size:",
+    "marker_2_size": "Marker 2 size:"
+  },
+
+  "chart_settings": {
+    "background_color": "Background color:",
+    "text_color": "Text color:",
+    "axis_color": "Axis color:"
+  },
+
+  "buttons": {
+    "cancel": "Cancel",
+    "apply": "Apply"
+  },
+
+  "menu_entry": "Edit Chart…"
+}

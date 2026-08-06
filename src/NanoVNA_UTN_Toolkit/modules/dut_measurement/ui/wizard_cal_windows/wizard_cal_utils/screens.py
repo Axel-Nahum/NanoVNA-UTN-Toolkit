@@ -504,7 +504,7 @@ def show_step_screen(self, step, parent = None):
             instruction_text = "Open or Short standard already measured ✓"
             instruction_style = "font-size: 14px; padding: 8px; color: lightgreen;"
         else:
-            instruction_text = "Connect Open or Short standard and press Measure"
+            instruction_text = " or Short standard and press Measure"
             instruction_style = "font-size: 14px; padding: 8px; color: yellow;"
     else:
         if is_measured:

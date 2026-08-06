@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QListWidget, QListWidgetItem,
-    QLabel, QPushButton, QWidget, QScrollArea
+    QLabel, QPushButton, QWidget, QScrollArea, QApplication
 )
 
 from PySide6.QtCore import Qt
@@ -24,7 +24,7 @@ handle_all_kits_deleted, handle_deleted_current_kit = safe_import("NanoVNA_UTN_T
 
 get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils", "get_calibration_path")
 
-stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
+stop_realtime, _trigger = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime", "_trigger")
 
 update_calibration_label_from_method = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.calibration.calibration", "update_calibration_label_from_method")
 
@@ -38,10 +38,8 @@ def open_calibration_wizard(self):
 
         stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
 
-        try:
-            stop_realtime(self)
-        except:
-            pass
+        stop_realtime(self)
+        _trigger(self)
         
         if self.vna_device:
             self.welcome_windows = CalibrationWizard(self.vna_device, parent = self, caller="graphics")
@@ -49,17 +47,11 @@ def open_calibration_wizard(self):
             self.welcome_windows = CalibrationWizard(parent = self, caller="graphics")
         self.welcome_windows.show()
         self.close()
-        self.deleteLater()
 
 def open_no_calibration(self):
 
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_window import NanoVNAGraphics
-
-    try:
-        stop_realtime(self)
-    except:
-        pass
-
+    
     logging.info("[graphics_window.open_no_calibration] Opening no calibration")
 
     # Load configuration for calibration settings
@@ -77,13 +69,21 @@ def open_no_calibration(self):
     settings_calibration.setValue("CalibrationWizard", False)
     settings_calibration.endGroup()
 
+    logging.warning(f"OPEN self={hex(id(self))}")
+    self._opening_new_window = True
+
+    stop_realtime(self)
+
+    QApplication.processEvents()
+
     if self.vna_device:
-        self.graphic_window = NanoVNAGraphics(vna_device = self.vna_device)
+        self.graphic_window = NanoVNAGraphics(vna_device=self.vna_device)
     else:
         self.graphic_window = NanoVNAGraphics()
+
     self.graphic_window.show()
+
     self.close()
-    self.deleteLater()
 
 def select_kit_dialog(self): 
 

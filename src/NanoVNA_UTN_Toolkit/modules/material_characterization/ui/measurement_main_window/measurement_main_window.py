@@ -16,6 +16,7 @@ ES: Muestra la permitividad compleja calculada del líquido incógnita: una
 from NanoVNA_UTN_Toolkit.utils import safe_import
 import sys
 import logging
+from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import Qt
@@ -24,6 +25,13 @@ from PySide6.QtWidgets import (
     QApplication, QDialog, QHBoxLayout, QLabel, QMainWindow, QMenu,
     QScrollArea, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
+
+get_settings = safe_import(
+    "NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings"
+)
+
+_CHART_INI_EXE = "INI/material_characterization/characterization_chart_config/characterization_chart_config.ini"
+_CHART_INI_DEV = "modules/material_characterization/ui/measurement_main_window/characterization_chart_config/characterization_chart_config.ini"
 
 try:
     from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import dark_light_config
@@ -169,8 +177,21 @@ class MeasurementMainWindow(QMainWindow):
     def _build_epsilon_chart(self, result):
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.charts.epsilon_chart import (
             EpsilonChartManager,
+            EpsilonChartConfig,
         )
         exp = self._texts.get("export", {})
+
+        # Load persisted chart style from INI
+        _s = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+        config = EpsilonChartConfig()
+        config.real_color = _s.value("Epsilon_Real/TraceColor", config.real_color)
+        config.real_linewidth = float(_s.value("Epsilon_Real/TraceWidth", config.real_linewidth))
+        config.loss_color = _s.value("Epsilon_Imag/TraceColor", config.loss_color)
+        config.loss_linewidth = float(_s.value("Epsilon_Imag/TraceWidth", config.loss_linewidth))
+        config.background_color = _s.value("Epsilon_Real/BackgroundColor", config.background_color)
+        config.text_color = _s.value("Epsilon_Real/TextColor", config.text_color)
+        config.spine_color = _s.value("Epsilon_Real/AxisColor", config.spine_color)
+        config.grid_color = _s.value("Epsilon_Real/AxisColor", config.grid_color)
 
         geo = QGuiApplication.primaryScreen().availableGeometry()
         max_h = geo.height() // 2
@@ -187,7 +208,7 @@ class MeasurementMainWindow(QMainWindow):
         chart_layout.setContentsMargins(0, 0, 0, 0)
         chart_layout.setSpacing(0)
 
-        manager = EpsilonChartManager()
+        manager = EpsilonChartManager(config=config)
         title = exp.get("epsilon_title", "εr — {sample}").format(sample=self._sample_name())
         fig, ax, canvas = manager.create_wizard_epsilon_chart(
             result.f_hz, figsize=(7, 6.5), container_layout=chart_layout,
@@ -201,6 +222,7 @@ class MeasurementMainWindow(QMainWindow):
         )
         self._epsilon_manager = manager
         self._epsilon_fig = fig
+        self._epsilon_ax = ax
         self._epsilon_canvas = canvas
 
         canvas.setMaximumWidth(max_w)
@@ -369,6 +391,36 @@ class MeasurementMainWindow(QMainWindow):
         table_action = QAction(menu.get("show_table", "Results Table"), self)
         table_action.triggered.connect(self._show_table_window)
         view_menu.addAction(table_action)
+
+        edit_menu = menubar.addMenu(menu.get("edit", "Edit"))
+        edit_chart_action = QAction(menu.get("edit_chart", "Edit Chart…"), self)
+        edit_chart_action.triggered.connect(self._open_edit_chart)
+        edit_menu.addAction(edit_chart_action)
+
+    def _open_edit_chart(self):
+        if not hasattr(self, "_epsilon_manager") or self._epsilon_manager is None:
+            return
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.edit_characterization.edit_characterization_window import (
+            EditCharacterization,
+        )
+        self._edit_chart_window = EditCharacterization(self)
+        self._edit_chart_window.show()
+
+    def redraw_chart(self):
+        if not hasattr(self, "_epsilon_ax") or self._epsilon_ax is None:
+            return
+        if self._result is None or self._epsilon_manager is None:
+            return
+        try:
+            self._epsilon_manager.update_epsilon_curves(
+                self._epsilon_ax,
+                self._result.f_hz,
+                self._result.eps_selected,
+                canvas=self._epsilon_canvas,
+                candidates=self._result.eps_candidates,
+            )
+        except Exception as exc:
+            logging.error("[MeasurementMainWindow] redraw_chart failed: %s", exc)
 
     def return_to_menu_window(self):
         if self.vna:

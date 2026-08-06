@@ -1,0 +1,40 @@
+{
+  "window_title": "Editar Gráfico de Permitividad",
+
+  "tabs": {
+    "real": "ε′  (Parte Real)",
+    "imag": "ε″  (Pérdidas)"
+  },
+
+  "groups": {
+    "curve_real": " Editar Curva ε′ ",
+    "curve_imag": " Editar Curva ε″ ",
+    "markers": " Editar Marcadores ",
+    "chart": " Gráfico "
+  },
+
+  "trace": {
+    "trace_color": "Color de traza:",
+    "trace_width": "Ancho de traza:"
+  },
+
+  "markers": {
+    "marker_1_color": "Color marcador 1:",
+    "marker_2_color": "Color marcador 2:",
+    "marker_1_size": "Tamaño marcador 1:",
+    "marker_2_size": "Tamaño marcador 2:"
+  },
+
+  "chart_settings": {
+    "background_color": "Color de fondo:",
+    "text_color": "Color de texto:",
+    "axis_color": "Color de ejes:"
+  },
+
+  "buttons": {
+    "cancel": "Cancelar",
+    "apply": "Aplicar"
+  },
+
+  "menu_entry": "Editar Gráfico…"
+}

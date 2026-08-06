@@ -31,6 +31,8 @@ ES: Pantalla de medicion generica de tres columnas, reutilizada para cada
 from __future__ import annotations
 
 import logging
+import sys
+import os
 
 import numpy as np
 from matplotlib.lines import Line2D
@@ -72,7 +74,6 @@ _STEP_IMAGE = {
     "ref2": "probe_in_liquid.png",
     "dut": "probe_in_liquid.png",
 }
-
 
 def build_standard_screen(wizard, descriptor, step_def):
     texts = load_text("characterization_wizard.json")
@@ -120,8 +121,30 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     # Helper photo.
     img_file = _STEP_IMAGE.get(standard.key)
+
     if img_file:
-        pix = QPixmap(image_path(img_file))
+
+        import os
+        import sys
+
+        if getattr(sys, "frozen", False):
+            base = sys._MEIPASS
+        else:
+            base = os.path.abspath("src/NanoVNA_UTN_Toolkit")  # o tu raíz del proyecto si querés afinarlo
+
+        img_path = os.path.join(
+            base,
+            "modules",
+            "material_characterization",
+            "assets",
+            "images",
+            img_file
+        )
+
+        print(f"path de imagen: {img_path}")
+
+        pix = QPixmap(img_path)
+
         if not pix.isNull():
             photo = QLabel()
             photo.setAlignment(Qt.AlignCenter)

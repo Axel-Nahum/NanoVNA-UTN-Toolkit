@@ -398,7 +398,7 @@ def create_edit_tab1(self, tabs, nano_window):
             # Phase
             ax.set_xlabel(f"{self.edit_graphics_g1_phase_x_axis}", color=f"{get_text_color()}")
             ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % _ls(s_param1), color=f"{get_text_color()}")
-            ax.set_title(rf"${self.edit_graphics_g1_phase_title.format(parameter=_ls(s_param1))}$", color=f"{get_text_color()}")
+            ax.set_title(self.edit_graphics_g1_phase_title.format(parameter=_ls(s_param1)), color=f"{get_text_color()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color()}")
@@ -895,7 +895,7 @@ def create_edit_tab2(self, tabs, nano_window):
             # Phase
             ax.set_xlabel(f"{self.edit_graphics_g2_phase_x_axis}", color=f"{get_text_color2()}")
             ax.set_ylabel(r"$\phi_{%s}\ [^\circ]$" % _ls(s_param2), color=f"{get_text_color2()}")
-            ax.set_title(rf"${self.edit_graphics_g2_phase_title.format(parameter=_ls(s_param2))}$", color=f"{get_text_color2()}")
+            ax.set_title(self.edit_graphics_g2_phase_title.format(parameter=_ls(s_param2)), color=f"{get_text_color2()}")
 
             ax.tick_params(axis='x', colors=f"{get_axis_color2()}")
             ax.tick_params(axis='y', colors=f"{get_axis_color2()}")

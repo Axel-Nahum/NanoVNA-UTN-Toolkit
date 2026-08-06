@@ -127,6 +127,8 @@ class NanoVNAGraphics(QMainWindow):
         self.is_real_time_init = False
         self._initial_sweep_done = False
 
+        self._opening_new_window = False
+
         # Store VNA device reference
         self.dut = dut
         self.vna_device = vna_device
@@ -478,7 +480,6 @@ class NanoVNAGraphics(QMainWindow):
         self.connection_window = NanoVNAStatusApp()
         self.connection_window.show()
         self.close()
-        self.deleteLater()
 
 # =================== RIGHT CLICK ==================
 

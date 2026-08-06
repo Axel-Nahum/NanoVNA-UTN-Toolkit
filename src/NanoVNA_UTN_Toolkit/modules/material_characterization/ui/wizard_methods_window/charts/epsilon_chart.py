@@ -80,7 +80,8 @@ class EpsilonChartConfig:
         self.real_color = "#4da6ff"
         self.loss_color = "#d62728"
         self.candidate_color = "#555555"
-        self.linewidth = 2.0
+        self.real_linewidth = 2.0
+        self.loss_linewidth = 2.0
         self.candidate_linewidth = 0.8
         self.candidate_alpha = 0.35
 
@@ -172,10 +173,10 @@ class EpsilonChartManager:
             loss = -np.imag(eps_selected)   # eps'' for eps = eps' - j*eps''
 
             ax.plot(freqs, real, color=self.config.real_color,
-                    linewidth=self.config.linewidth,
+                    linewidth=self.config.real_linewidth,
                     label=getattr(self, "_real_label", r"$\varepsilon_r'$"), zorder=3)
             ax.plot(freqs, loss, color=self.config.loss_color,
-                    linewidth=self.config.linewidth,
+                    linewidth=self.config.loss_linewidth,
                     label=getattr(self, "_loss_label", r"$\varepsilon_r''$"), zorder=3)
 
             ax.legend(loc="upper right")
