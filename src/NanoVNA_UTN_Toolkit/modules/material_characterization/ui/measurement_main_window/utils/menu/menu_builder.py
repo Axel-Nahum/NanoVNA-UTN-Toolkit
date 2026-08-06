@@ -21,6 +21,10 @@ def build_menu(main_window) -> None:
     export_s11_action.triggered.connect(main_window._export_s11_touchstone)
     file_menu.addAction(export_s11_action)
 
+    export_pdf_action = QAction(menu.get("export_pdf", "Export PDF Report…"), main_window)
+    export_pdf_action.triggered.connect(main_window._export_pdf)
+    file_menu.addAction(export_pdf_action)
+
     # ------------------------------------------------------------------ #
     # View
     # ------------------------------------------------------------------ #

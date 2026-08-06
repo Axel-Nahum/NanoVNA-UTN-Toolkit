@@ -26,6 +26,7 @@
     "file": "File",
     "back_to_menu": "Back to menu",
     "export_s11_touchstone": "Export Touchstone S11…",
+    "export_pdf": "Export PDF Report…",
     "view": "View",
     "show_s11": "S11 — Smith Chart",
     "show_table": "Results Table",

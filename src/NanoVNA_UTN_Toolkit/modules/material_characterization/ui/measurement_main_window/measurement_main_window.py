@@ -400,35 +400,32 @@ class MeasurementMainWindow(QMainWindow):
         except Exception as exc:
             logging.error("[MeasurementMainWindow] redraw_chart failed: %s", exc)
 
-    def _export_s11_touchstone(self):
-        from PySide6.QtWidgets import QFileDialog, QMessageBox
-        cal = getattr(self.wizard_window, "perm_calibration", None)
-        dut = cal.get_measurement("dut") if cal is not None else None
-        if dut is None:
-            QMessageBox.warning(self, "Export S11", "No S11 data available.")
+    def _export_pdf(self):
+        from PySide6.QtWidgets import QMessageBox
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.latex_export_setup_dialog import (
+            PermittivityLatexSetupDialog,
+        )
+
+        if self._result is None:
+            QMessageBox.warning(self, "Export PDF", "No permittivity result available.")
             return
 
-        freqs, s11 = np.asarray(dut[0], dtype=float), np.asarray(dut[1], dtype=complex)
-        stem = f"s11_{self._sample_name()}"
-        safe_stem = "".join(c if c.isalnum() or c in "-_ " else "_" for c in stem).strip() or "s11"
-        path, _ = QFileDialog.getSaveFileName(
-            self, "Export Touchstone S11", f"{safe_stem}.s1p",
-            "Touchstone S1P (*.s1p);;All Files (*)",
-        )
-        if not path:
+        cal = getattr(self.wizard_window, "perm_calibration", None)
+        if cal is None or cal.get_measurement("dut") is None:
+            QMessageBox.warning(self, "Export PDF", "No S11 data available.")
             return
-        try:
-            lines = [
-                f"! S11 — {self._sample_name()}",
-                "# Hz S RI R 50",
-            ]
-            for f, s in zip(freqs, s11):
-                lines.append(f"{f:.6f} {s.real:.10f} {s.imag:.10f}")
-            Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
-            QMessageBox.information(self, "Saved", f"S11 Touchstone saved to:\n{path}")
-        except Exception as exc:
-            logging.error("[MeasurementMainWindow] export S11 touchstone failed: %s", exc)
-            QMessageBox.critical(self, "Export Error", f"Failed to save file:\n{exc}")
+
+        dlg = PermittivityLatexSetupDialog(
+            parent=self,
+            default_filename=f"characterization_{self._sample_name()}",
+        )
+        dlg.exec()
+
+    def _export_s11_touchstone(self):
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.export_s11_touchstone import (
+            export_s11_touchstone,
+        )
+        export_s11_touchstone(self)
 
     def return_to_menu_window(self):
         if self.vna:
