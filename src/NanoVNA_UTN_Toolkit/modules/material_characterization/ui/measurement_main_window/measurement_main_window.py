@@ -181,20 +181,9 @@ class MeasurementMainWindow(QMainWindow):
         )
         exp = self._texts.get("export", {})
 
-        # Load persisted chart style from INI
-        _s = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
-        config = EpsilonChartConfig()
-        config.real_color = _s.value("Epsilon_Real/TraceColor", config.real_color)
-        config.real_linewidth = float(_s.value("Epsilon_Real/TraceWidth", config.real_linewidth))
-        config.loss_color = _s.value("Epsilon_Imag/TraceColor", config.loss_color)
-        config.loss_linewidth = float(_s.value("Epsilon_Imag/TraceWidth", config.loss_linewidth))
-        config.background_color = _s.value("Epsilon_Real/BackgroundColor", config.background_color)
-        config.text_color = _s.value("Epsilon_Real/TextColor", config.text_color)
-        config.spine_color = _s.value("Epsilon_Real/AxisColor", config.spine_color)
-        config.grid_color = _s.value("Epsilon_Real/AxisColor", config.grid_color)
+        config = self._make_chart_config(EpsilonChartConfig())
 
         geo = QGuiApplication.primaryScreen().availableGeometry()
-        max_h = geo.height() // 2
         max_w = geo.width() - 80
 
         card = QWidget()
@@ -224,11 +213,17 @@ class MeasurementMainWindow(QMainWindow):
         self._epsilon_ax = ax
         self._epsilon_canvas = canvas
 
+        # Build marker data row BEFORE setup_markers so labels exist when sliders init
+        marker_bar = self._build_marker_data_row()
+
+        self._setup_markers(fig, ax, canvas, result)
+
         canvas.setMaximumWidth(max_w)
         canvas.setContextMenuPolicy(Qt.CustomContextMenu)
         canvas.customContextMenuRequested.connect(self._show_chart_context_menu)
 
         card_layout.addLayout(chart_layout, 1)
+        card_layout.addWidget(marker_bar)
         card_layout.addWidget(_hsep())
 
         caption = QLabel(
@@ -240,6 +235,175 @@ class MeasurementMainWindow(QMainWindow):
         card_layout.addWidget(caption)
 
         return card
+
+    # --------------------------------------------------------------------- #
+
+    def _build_marker_data_row(self):
+        """Two plain white labels below the canvas showing live frequency + permittivity."""
+        from PySide6.QtWidgets import QSizePolicy
+
+        _lstyle = "color: #ffffff; font-size: 13px; border: none; background: transparent;"
+
+        row = QWidget()
+        row.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(4, 6, 4, 6)
+        row_layout.setSpacing(0)
+
+        self._marker1_info_label = QLabel("—")
+        self._marker1_info_label.setStyleSheet(_lstyle)
+        self._marker1_info_label.setAlignment(Qt.AlignCenter)
+
+        sep = QLabel("|")
+        sep.setStyleSheet("color: #444444; font-size: 13px; border: none; background: transparent;")
+        sep.setAlignment(Qt.AlignCenter)
+        sep.setFixedWidth(20)
+
+        self._marker2_info_label = QLabel("—")
+        self._marker2_info_label.setStyleSheet(_lstyle)
+        self._marker2_info_label.setAlignment(Qt.AlignCenter)
+
+        row_layout.addWidget(self._marker1_info_label, 1)
+        row_layout.addWidget(sep)
+        row_layout.addWidget(self._marker2_info_label, 1)
+
+        return row
+
+    # --------------------------------------------------------------------- #
+
+    def _make_chart_config(self, config):
+        """Reload EpsilonChartConfig fields from the persisted INI."""
+        _s = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+        config.real_color = _s.value("Epsilon_Real/TraceColor", config.real_color)
+        config.real_linewidth = float(_s.value("Epsilon_Real/TraceWidth", config.real_linewidth))
+        config.loss_color = _s.value("Epsilon_Imag/TraceColor", config.loss_color)
+        config.loss_linewidth = float(_s.value("Epsilon_Imag/TraceWidth", config.loss_linewidth))
+        config.background_color = _s.value("Epsilon_Real/BackgroundColor", config.background_color)
+        config.text_color = _s.value("Epsilon_Real/TextColor", config.text_color)
+        config.spine_color = _s.value("Epsilon_Real/AxisColor", config.spine_color)
+        config.grid_color = _s.value("Epsilon_Real/AxisColor", config.grid_color)
+        return config
+
+    # --------------------------------------------------------------------- #
+
+    def _setup_markers(self, fig, ax, canvas, result):
+        """Add two matplotlib sliders + marker cursors to the permittivity chart."""
+        from matplotlib.widgets import Slider
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.charts.epsilon_chart import (
+            _fill_nans,
+        )
+
+        _s = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+        m1_color = _s.value("Epsilon_Real/MarkerColor1", "#ff0000")
+        m2_color = _s.value("Epsilon_Imag/MarkerColor1", "#ff0000")
+        m1_size  = float(_s.value("Epsilon_Real/MarkerWidth1", "6"))
+        m2_size  = float(_s.value("Epsilon_Imag/MarkerWidth1", "6"))
+
+        freqs = np.asarray(result.f_hz, dtype=float)
+        n = len(freqs)
+        # Store pre-computed arrays for use in redraw restores
+        self._marker_freqs     = freqs
+        self._marker_real_eps  = _fill_nans(np.real(result.eps_selected))
+        self._marker_loss_eps  = _fill_nans(-np.imag(result.eps_selected))
+        self._marker_n         = n
+
+        # Disable constrained layout, then explicitly reposition the main axes
+        # to leave room at the bottom for the two slider axes.
+        try:
+            fig.set_layout_engine("none")
+        except Exception:
+            pass
+        # [left, bottom, width, height] in figure-normalized coords (0–1)
+        ax.set_position([0.10, 0.22, 0.86, 0.68])
+
+        # Marker cursors on the main axes (x in Hz, same as update_epsilon_curves)
+        self._cursor1, = ax.plot([], [], "o", markersize=m1_size, color=m1_color,
+                                  zorder=5, clip_on=True)
+        self._cursor2, = ax.plot([], [], "o", markersize=m2_size, color=m2_color,
+                                  zorder=5, clip_on=True)
+
+        # Two slider axes side by side at the bottom of the figure
+        sl1_ax = fig.add_axes([0.08, 0.08, 0.38, 0.06])
+        sl2_ax = fig.add_axes([0.54, 0.08, 0.38, 0.06])
+        for sax in (sl1_ax, sl2_ax):
+            sax.set_facecolor("#2a2a2a")
+            for spine in sax.spines.values():
+                spine.set_color("#444444")
+
+        try:
+            slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=0,      valstep=1,
+                             track_color="#555555",
+                             handle_style={"facecolor": m1_color, "edgecolor": m1_color, "size": 10})
+            slider2 = Slider(sl2_ax, "", 0, n - 1, valinit=n // 2, valstep=1,
+                             track_color="#555555",
+                             handle_style={"facecolor": m2_color, "edgecolor": m2_color, "size": 10})
+        except TypeError:
+            slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=0,      valstep=1, color=m1_color)
+            slider2 = Slider(sl2_ax, "", 0, n - 1, valinit=n // 2, valstep=1, color=m2_color)
+
+        for s in (slider1, slider2):
+            try:
+                s.vline.set_visible(False)
+            except Exception:
+                pass
+            s.label.set_visible(False)
+            s.valtext.set_visible(False)
+
+        def _fmt_freq(hz):
+            return f"{hz/1e9:.4f} GHz" if hz >= 0.5e9 else f"{hz/1e6:.4f} MHz"
+
+        def _fmt_freq(hz):
+            return f"{hz/1e9:.4f} GHz" if hz >= 0.5e9 else f"{hz/1e6:.4f} MHz"
+
+        def _upd1(val):
+            if not hasattr(self, "_cursor1") or self._cursor1 is None:
+                return
+            idx = min(max(int(round(val)), 0), self._marker_n - 1)
+            self._cursor1.set_data([self._marker_freqs[idx]], [self._marker_real_eps[idx]])
+            if hasattr(self, "_marker1_info_label"):
+                f_str = _fmt_freq(self._marker_freqs[idx])
+                self._marker1_info_label.setText(f"f = {f_str}    ε' = {self._marker_real_eps[idx]:.4f}")
+            canvas.draw_idle()
+
+        def _upd2(val):
+            if not hasattr(self, "_cursor2") or self._cursor2 is None:
+                return
+            idx = min(max(int(round(val)), 0), self._marker_n - 1)
+            self._cursor2.set_data([self._marker_freqs[idx]], [self._marker_loss_eps[idx]])
+            if hasattr(self, "_marker2_info_label"):
+                f_str = _fmt_freq(self._marker_freqs[idx])
+                self._marker2_info_label.setText(f"f = {f_str}    −j · ε'' = {self._marker_loss_eps[idx]:.4f}")
+            canvas.draw_idle()
+
+        slider1.on_changed(lambda val: _upd1(int(val)))
+        slider2.on_changed(lambda val: _upd2(int(val)))
+
+        self._slider1 = slider1
+        self._slider2 = slider2
+
+        _upd1(0)
+        _upd2(n // 2)
+
+    # --------------------------------------------------------------------- #
+
+    def _restore_markers_after_redraw(self):
+        """Re-add marker cursors to the axes after ax.clear() clears them."""
+        if not hasattr(self, "_slider1") or self._epsilon_ax is None:
+            return
+        _s = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+        m1_color = _s.value("Epsilon_Real/MarkerColor1", "#ff0000")
+        m2_color = _s.value("Epsilon_Imag/MarkerColor1", "#ff0000")
+        m1_size  = float(_s.value("Epsilon_Real/MarkerWidth1", "6"))
+        m2_size  = float(_s.value("Epsilon_Imag/MarkerWidth1", "6"))
+
+        ax = self._epsilon_ax
+        self._cursor1, = ax.plot([], [], "o", markersize=m1_size, color=m1_color, zorder=5)
+        self._cursor2, = ax.plot([], [], "o", markersize=m2_size, color=m2_color, zorder=5)
+
+        idx1 = min(max(int(self._slider1.val), 0), self._marker_n - 1)
+        idx2 = min(max(int(self._slider2.val), 0), self._marker_n - 1)
+        self._cursor1.set_data([self._marker_freqs[idx1]], [self._marker_real_eps[idx1]])
+        self._cursor2.set_data([self._marker_freqs[idx2]], [self._marker_loss_eps[idx2]])
 
     # --------------------------------------------------------------------- #
 
@@ -391,12 +555,20 @@ class MeasurementMainWindow(QMainWindow):
         if self._result is None or self._epsilon_manager is None:
             return
         try:
+            from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.charts.epsilon_chart import (
+                EpsilonChartConfig,
+            )
+            self._epsilon_manager.config = self._make_chart_config(EpsilonChartConfig())
+            # Pass canvas=None so update_epsilon_curves doesn't draw mid-way;
+            # we draw once at the end after restoring the marker cursors.
             self._epsilon_manager.update_epsilon_curves(
                 self._epsilon_ax,
                 self._result.f_hz,
                 self._result.eps_selected,
-                canvas=self._epsilon_canvas,
+                canvas=None,
             )
+            self._restore_markers_after_redraw()
+            self._epsilon_canvas.draw_idle()
         except Exception as exc:
             logging.error("[MeasurementMainWindow] redraw_chart failed: %s", exc)
 
