@@ -29,6 +29,7 @@
     "show_s11": "S11 — Diagrama de Smith",
     "show_table": "Tabla de Resultados",
     "edit": "Editar",
-    "edit_chart": "Editar Gráfico…"
+    "edit_chart": "Editar Gráfico…",
+    "help": "Ayuda"
   }
 }

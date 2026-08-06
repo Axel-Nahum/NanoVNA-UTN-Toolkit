@@ -29,7 +29,7 @@ import logging
 import numpy as np
 from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtWidgets import (
-    QComboBox, QHBoxLayout, QLabel, QPlainTextEdit, QVBoxLayout, QWidget,
+    QCheckBox, QComboBox, QHBoxLayout, QLabel, QPlainTextEdit, QVBoxLayout, QWidget,
 )
 
 
@@ -93,8 +93,8 @@ def build_result_screen(wizard, descriptor, step_def):
     else:
         _build_summary(wizard, mid, result, rtexts)
         _build_warnings(wizard, mid, result, rtexts)
-        _build_intermediate(mid, result, rtexts)
-        mid.addStretch(1)
+        # _build_intermediate is called after right half so it gets manager/ax/canvas
+
     mid_container = QWidget()
     mid_container.setLayout(mid)
     left_half_layout.addWidget(mid_container, stretch=1)
@@ -119,7 +119,11 @@ def build_result_screen(wizard, descriptor, step_def):
             ax, result.f_hz, result.eps_selected, canvas=canvas,
             candidates=result.eps_candidates,
         )
+        fixed_ylim = ax.get_ylim()
         wizard.result_epsilon_manager = manager
+
+        _build_intermediate(mid, result, rtexts, manager, ax, canvas, fixed_ylim)
+        mid.addStretch(1)
 
     right_half = QWidget()
     right_half.setLayout(right)
@@ -187,7 +191,72 @@ def _build_warnings(wizard, layout, result, rtexts):
         layout.addWidget(item)
 
 
-def _build_intermediate(layout, result, rtexts):
+def _greedy_assign(prev_vals: np.ndarray, candidates: np.ndarray) -> np.ndarray:
+    """One-to-one nearest-neighbour assignment of candidates to previous track values."""
+    n = len(prev_vals)
+    m = len(candidates)
+    assigned = np.full(n, np.nan + 0j, dtype=complex)
+    used_cand = [False] * m
+
+    pairs = []
+    for pi in range(n):
+        if not np.isfinite(prev_vals[pi]):
+            continue
+        for ci in range(m):
+            if np.isfinite(candidates[ci]):
+                pairs.append((abs(candidates[ci] - prev_vals[pi]), pi, ci))
+    pairs.sort(key=lambda x: x[0])
+
+    used_prev = [False] * n
+    for _, pi, ci in pairs:
+        if not used_prev[pi] and not used_cand[ci]:
+            assigned[pi] = candidates[ci]
+            used_prev[pi] = True
+            used_cand[ci] = True
+
+    return assigned
+
+
+def _track_all_branches(result) -> np.ndarray:
+    """
+    Track 5 continuous branches.
+    Column 0 = eps_selected (algorithm auto).
+    Columns 1-4 = remaining roots tracked by continuity.
+    Returns shape (n_freq, 5).
+    """
+    n_freq = len(result.f_hz)
+    tracked = np.full((n_freq, 5), np.nan + 0j, dtype=complex)
+    tracked[:, 0] = result.eps_selected
+
+    for i in range(n_freq):
+        sel_idx = int(result.selected_index[i])
+        if sel_idx < 0:
+            continue  # gap frequency — leave branches 1-4 as NaN
+
+        remaining = np.array(
+            [result.eps_candidates[i, j] for j in range(5) if j != sel_idx],
+            dtype=complex,
+        )  # shape (4,)
+
+        prev = tracked[i - 1, 1:] if i > 0 else np.full(4, np.nan + 0j, dtype=complex)
+
+        if i == 0 or not np.any(np.isfinite(prev)):
+            # Seed: order by real part descending (physically valid first)
+            valid_mask = np.isfinite(remaining) & (np.real(remaining) > 0)
+            valid = remaining[valid_mask]
+            invalid = remaining[~valid_mask]
+            if len(valid) > 1:
+                valid = valid[np.argsort(-np.real(valid))]
+            ordered = np.concatenate([valid, invalid])
+            for b in range(min(4, len(ordered))):
+                tracked[i, b + 1] = ordered[b]
+        else:
+            tracked[i, 1:] = _greedy_assign(prev, remaining)
+
+    return tracked
+
+
+def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=None, fixed_ylim=None):
     """Copyable block: general 5th-order equation + per-frequency coefficients."""
     layout.addSpacing(10)
     title = QLabel(rtexts.get("intermediate_title", "Intermediate data (5th-order equation)"))
@@ -226,10 +295,72 @@ def _build_intermediate(layout, result, rtexts):
         content = _format_equation(result, int(i), rtexts)
         text_box.setPlainText(content)
         n_lines = content.count('\n') + 1
-        text_box.setFixedHeight(n_lines * 17 + 44.5)
+        text_box.setFixedHeight(n_lines * 14 + 30)
 
     selector.currentIndexChanged.connect(render)
     render(selector.currentIndex())
+
+    # --- Branch override ---
+    if manager is None or ax is None or canvas is None:
+        return
+
+    tracked = _track_all_branches(result)  # shape (n_freq, 5)
+
+    layout.addSpacing(10)
+
+    chk = QCheckBox(rtexts.get("branch_override_label", "Override automatic branch selection"))
+    layout.addWidget(chk)
+
+    combo_container = QWidget()
+    combo_container.setVisible(False)
+    combo_row = QHBoxLayout(combo_container)
+    combo_row.setContentsMargins(4, 4, 0, 0)
+    combo_row.addWidget(QLabel(rtexts.get("branch_label", "Branch:")))
+    branch_combo = QComboBox()
+    for b in range(5):
+        branch_data = tracked[:, b]
+        valid = np.isfinite(branch_data) & (np.real(branch_data) > 0)
+        if np.any(valid):
+            mean_real = float(np.nanmean(np.real(branch_data[valid])))
+            suffix = f"ε′ ≈ {mean_real:.2f}"
+        else:
+            suffix = "no valid data"
+        label = f"Branch 1 (Auto) — {suffix}" if b == 0 else f"Branch {b + 1} — {suffix}"
+        branch_combo.addItem(label, b)
+    branch_combo.setCurrentIndex(0)
+    combo_row.addWidget(branch_combo, stretch=1)
+    layout.addWidget(combo_container)
+
+    def _draw_branch(b: int):
+        eps_curve = tracked[:, b]
+        gray = np.column_stack([tracked[:, j] for j in range(5) if j != b])
+        manager.update_epsilon_curves(ax, result.f_hz, eps_curve, canvas=None, candidates=gray)
+        if fixed_ylim is not None:
+            ax.set_ylim(fixed_ylim)
+        canvas.draw()
+
+    def _apply_branch(branch_idx):
+        b = branch_combo.itemData(branch_idx)
+        if b is not None:
+            _draw_branch(b)
+
+    def _on_check(checked):
+        combo_container.setVisible(bool(checked))
+        if checked:
+            _draw_branch(branch_combo.currentIndex())
+        else:
+            manager.update_epsilon_curves(
+                ax, result.f_hz, result.eps_selected, canvas=None,
+                candidates=result.eps_candidates,
+            )
+            if fixed_ylim is not None:
+                ax.set_ylim(fixed_ylim)
+            canvas.draw()
+
+    chk.toggled.connect(_on_check)
+    branch_combo.currentIndexChanged.connect(
+        lambda idx: _apply_branch(idx) if chk.isChecked() else None
+    )
 
 
 def _format_equation(result, i, rtexts):
@@ -246,9 +377,12 @@ def _format_equation(result, i, rtexts):
     lines.append(f"  third_term = {_fmt_c(result.third_term[i])}")
     if np.all(np.isfinite(coeffs)):
         x_roots = np.roots(coeffs)
+        root_strs = [_fmt_c(r) for r in x_roots]
+        eps_strs  = [_fmt_c(r ** 2) for r in x_roots]
+        col_w = max(len(s) for s in root_strs)
         lines.append("  x roots:")
-        for r in x_roots:
-            lines.append(f"    {_fmt_c(r)}   ->  εr = {_fmt_c(r**2)}")
+        for rs, es in zip(root_strs, eps_strs):
+            lines.append(f"    {rs.ljust(col_w)}   ->  εr = {es}")
     else:
         lines.append("  x roots: " + rtexts.get("no_root", "no physical root")
                      + " (non-finite coefficients at this frequency)")
@@ -265,7 +399,7 @@ def _fmt_c(z):
     if not np.isfinite(z.real) or not np.isfinite(z.imag):
         return "nan"
     sign = "+" if z.imag >= 0 else "-"
-    return f"{z.real:.4g} {sign} {abs(z.imag):.4g}j"
+    return f"{z.real:.2f} {sign} {abs(z.imag):.2f}j"
 
 
 def _fmt_hz(hz):

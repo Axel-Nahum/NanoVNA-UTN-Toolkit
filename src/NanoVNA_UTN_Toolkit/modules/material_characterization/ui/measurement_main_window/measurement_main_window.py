@@ -374,28 +374,8 @@ class MeasurementMainWindow(QMainWindow):
     # --------------------------------------------------------------------- #
 
     def _create_menus(self):
-        menu = self._texts.get("menu", {})
-        menubar = self.menuBar()
-
-        file_menu = menubar.addMenu(menu.get("file", "File"))
-        back_action = QAction(menu.get("back_to_menu", "Back to menu"), self)
-        back_action.triggered.connect(self.return_to_menu_window)
-        file_menu.addAction(back_action)
-
-        view_menu = menubar.addMenu(menu.get("view", "View"))
-
-        s11_action = QAction(menu.get("show_s11", "S11 — Smith Chart"), self)
-        s11_action.triggered.connect(self._show_s11_window)
-        view_menu.addAction(s11_action)
-
-        table_action = QAction(menu.get("show_table", "Results Table"), self)
-        table_action.triggered.connect(self._show_table_window)
-        view_menu.addAction(table_action)
-
-        edit_menu = menubar.addMenu(menu.get("edit", "Edit"))
-        edit_chart_action = QAction(menu.get("edit_chart", "Edit Chart…"), self)
-        edit_chart_action.triggered.connect(self._open_edit_chart)
-        edit_menu.addAction(edit_chart_action)
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.menu.menu_builder import build_menu
+        build_menu(self)
 
     def _open_edit_chart(self):
         if not hasattr(self, "_epsilon_manager") or self._epsilon_manager is None:
