@@ -15,6 +15,12 @@ def build_menu(main_window) -> None:
     back_action.triggered.connect(main_window.return_to_menu_window)
     file_menu.addAction(back_action)
 
+    file_menu.addSeparator()
+
+    export_s11_action = QAction(menu.get("export_s11_touchstone", "Export Touchstone S11…"), main_window)
+    export_s11_action.triggered.connect(main_window._export_s11_touchstone)
+    file_menu.addAction(export_s11_action)
+
     # ------------------------------------------------------------------ #
     # View
     # ------------------------------------------------------------------ #
