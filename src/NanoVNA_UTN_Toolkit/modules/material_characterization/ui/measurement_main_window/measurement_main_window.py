@@ -222,11 +222,16 @@ class MeasurementMainWindow(QMainWindow):
         self._epsilon_ax = ax
         self._epsilon_canvas = canvas
 
-        # Apply saved grid state
+        # Apply saved grid + y-range state
         _pm = get_settings(_PM_INI_EXE, _PM_INI_DEV, Path(__file__).resolve())
         self._grid_enabled = _pm.value("grid/current_state", True, type=bool)
         if not self._grid_enabled:
             ax.grid(False)
+        if not _pm.value("auto_scale/current_state", True, type=bool):
+            _ymin = _pm.value("set_range/ymin", None, type=float)
+            _ymax = _pm.value("set_range/ymax", None, type=float)
+            if _ymin is not None and _ymax is not None and _ymax > _ymin:
+                ax.set_ylim(_ymin, _ymax)
 
         # Build marker data row BEFORE setup_markers so labels exist when sliders init
         marker_bar = self._build_marker_data_row()
@@ -454,6 +459,16 @@ class MeasurementMainWindow(QMainWindow):
     def _toggle_grid(self):
         self._apply_grid(not getattr(self, "_grid_enabled", True))
 
+    def _apply_y_autoscale(self):
+        self.redraw_chart()
+
+    def _apply_y_limits(self, ymin: float, ymax: float):
+        if not hasattr(self, "_epsilon_ax") or self._epsilon_ax is None:
+            return
+        self._epsilon_ax.set_ylim(ymin, ymax)
+        if hasattr(self, "_epsilon_canvas") and self._epsilon_canvas:
+            self._epsilon_canvas.draw_idle()
+
     def _open_chart_export_dialog(self):
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.chart_export_dialog import (
             ChartExportDialog,
@@ -634,6 +649,12 @@ class MeasurementMainWindow(QMainWindow):
             )
             if not getattr(self, "_grid_enabled", True):
                 self._epsilon_ax.grid(False)
+            _pm2 = get_settings(_PM_INI_EXE, _PM_INI_DEV, Path(__file__).resolve())
+            if not _pm2.value("auto_scale/current_state", True, type=bool):
+                _ymin = _pm2.value("set_range/ymin", None, type=float)
+                _ymax = _pm2.value("set_range/ymax", None, type=float)
+                if _ymin is not None and _ymax is not None and _ymax > _ymin:
+                    self._epsilon_ax.set_ylim(_ymin, _ymax)
             self._restore_markers_after_redraw()
             self._epsilon_canvas.draw_idle()
         except Exception as exc:

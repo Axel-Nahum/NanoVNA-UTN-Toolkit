@@ -3,7 +3,6 @@ Plot Manager dialog for the permittivity measurement main window.
 
 Same layout and style as the DUT plot manager but with a single graphic
 column and no View button (Edit only in Graphics Tools).
-Buttons are visible but not yet functional — wired later.
 """
 
 from pathlib import Path
@@ -12,7 +11,7 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
     QDialog, QFrame, QGridLayout, QHBoxLayout, QLabel,
-    QCheckBox, QLineEdit, QPushButton, QSizePolicy, QVBoxLayout,
+    QCheckBox, QLineEdit, QMessageBox, QPushButton, QSizePolicy, QVBoxLayout,
 )
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
@@ -130,7 +129,6 @@ def open_plot_manager(main_window):
 
     grid_chk = QCheckBox()
     grid_chk.setChecked(pm_settings.value("grid/current_state", True, type=bool))
-    grid_chk.setEnabled(True)
 
     disp_grid.addWidget(_bold("Show Grid:"), 1, 0, Qt.AlignLeft)
     disp_grid.addWidget(grid_chk, 1, 1, 1, 2, Qt.AlignCenter)
@@ -158,10 +156,9 @@ def open_plot_manager(main_window):
     ag1.setStyleSheet("font-weight: bold; font-size: 15px; border: none;")
     axis_grid.addWidget(ag1, 0, 1, 1, 2)
 
-    auto_chk = QCheckBox()
     auto_checked = pm_settings.value("auto_scale/current_state", True, type=bool)
+    auto_chk = QCheckBox()
     auto_chk.setChecked(auto_checked)
-    auto_chk.setEnabled(False)
 
     axis_grid.addWidget(_bold("Auto Scale:"), 1, 0, Qt.AlignLeft)
     axis_grid.addWidget(auto_chk, 1, 1, 1, 2, Qt.AlignCenter)
@@ -173,21 +170,43 @@ def open_plot_manager(main_window):
     y_min.setPlaceholderText("Min")
     y_min.setAlignment(Qt.AlignCenter)
     y_min.setValidator(validator)
-    y_min.setEnabled(False)
 
     y_max = QLineEdit()
     y_max.setPlaceholderText("Max")
     y_max.setAlignment(Qt.AlignCenter)
     y_max.setValidator(validator)
-    y_max.setEnabled(False)
 
+    # Populate Y range fields
     if not auto_checked:
+        y_min.setEnabled(True)
+        y_max.setEnabled(True)
         vmin = pm_settings.value("set_range/ymin", None, type=float)
         vmax = pm_settings.value("set_range/ymax", None, type=float)
+        if vmin is None or vmax is None:
+            _ax = getattr(main_window, "_epsilon_ax", None)
+            if _ax is not None:
+                lo, hi = _ax.get_ylim()
+                vmin, vmax = lo, hi
         if vmin is not None:
             y_min.setText(f"{vmin:.6g}")
         if vmax is not None:
             y_max.setText(f"{vmax:.6g}")
+    else:
+        y_min.setEnabled(False)
+        y_max.setEnabled(False)
+
+    def _on_auto_changed(state):
+        checked = bool(state)
+        y_min.setEnabled(not checked)
+        y_max.setEnabled(not checked)
+        if not checked:
+            _ax = getattr(main_window, "_epsilon_ax", None)
+            if _ax is not None:
+                lo, hi = _ax.get_ylim()
+                y_min.setText(f"{lo:.6g}")
+                y_max.setText(f"{hi:.6g}")
+
+    auto_chk.stateChanged.connect(_on_auto_changed)
 
     axis_grid.addWidget(_bold("Y Range:"), 3, 0, Qt.AlignLeft)
 
@@ -212,10 +231,16 @@ def open_plot_manager(main_window):
 
     apply_btn = QPushButton("Apply")
     apply_btn.setMinimumSize(100, 30)
-    apply_btn.clicked.connect(lambda: _apply_settings(main_window, dialog, grid_chk))
+    apply_btn.setDefault(False)
+    apply_btn.setAutoDefault(False)
+    apply_btn.clicked.connect(
+        lambda: _apply_settings(main_window, dialog, grid_chk, auto_chk, y_min, y_max)
+    )
 
     cancel_btn = QPushButton("Cancel")
     cancel_btn.setMinimumSize(100, 30)
+    cancel_btn.setDefault(False)
+    cancel_btn.setAutoDefault(False)
     cancel_btn.clicked.connect(dialog.reject)
 
     actions.addWidget(apply_btn)
@@ -226,8 +251,54 @@ def open_plot_manager(main_window):
     dialog.exec()
 
 
-def _apply_settings(main_window, dialog, grid_chk):
+def _apply_settings(main_window, dialog, grid_chk, auto_chk, y_min, y_max):
+    auto = auto_chk.isChecked()
+    vmin = vmax = None
+
+    if not auto:
+        min_txt = y_min.text().strip()
+        max_txt = y_max.text().strip()
+
+        if not min_txt or not max_txt:
+            QMessageBox.warning(
+                dialog,
+                "Invalid Range",
+                "Both Min and Max fields must be filled in before applying.",
+            )
+            return
+
+        try:
+            vmin = float(min_txt)
+            vmax = float(max_txt)
+        except ValueError:
+            QMessageBox.warning(
+                dialog,
+                "Invalid Range",
+                "Min and Max must be valid numbers.",
+            )
+            return
+
+        if vmax <= vmin:
+            QMessageBox.warning(
+                dialog,
+                "Invalid Range",
+                "Max must be strictly greater than Min.",
+            )
+            return
+
+    pm = get_settings(_INI_EXE, _INI_DEV, Path(__file__).resolve())
+    pm.setValue("auto_scale/current_state", auto)
+    if vmin is not None:
+        pm.setValue("set_range/ymin", vmin)
+        pm.setValue("set_range/ymax", vmax)
+
     main_window._apply_grid(grid_chk.isChecked())
+
+    if auto:
+        main_window._apply_y_autoscale()
+    else:
+        main_window._apply_y_limits(vmin, vmax)
+
     dialog.accept()
 
 
