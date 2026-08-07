@@ -30,9 +30,12 @@ from PySide6.QtWidgets import QSizePolicy
 
 logger = logging.getLogger(__name__)
 
-plt.rcParams["mathtext.fontset"] = "cm"
-plt.rcParams["font.family"] = "serif"
-plt.rcParams["mathtext.rm"] = "serif"
+plt.rcParams.update({
+    "mathtext.fontset":           "cm",
+    "font.family":                "serif",
+    "mathtext.rm":                "serif",
+    "axes.formatter.use_mathtext": True,   # y-axis tick numbers in CM font
+})
 
 
 def _fill_nans(y: np.ndarray) -> np.ndarray:
@@ -75,7 +78,7 @@ def _make_freq_axis(freqs):
     def _fmt(value, _pos, _div=div):
         v = value / _div
         s = f"{v:.4f}".rstrip("0").rstrip(".")
-        return s
+        return f"${s}$"
 
     return unit, FuncFormatter(_fmt)
 
@@ -160,7 +163,7 @@ class EpsilonChartManager:
             ax.clear()
             ax.set_facecolor(self.config.background_color)
             ax.set_title(getattr(self, "_title", r"$\varepsilon_r$ vs Frequency"), fontsize=13, pad=10, color=self.config.text_color)
-            ax.set_xlabel(f"Frequency ({unit})", fontsize=12, color=self.config.text_color)
+            ax.set_xlabel(rf"Frequency $(\mathrm{{{unit}}})$", fontsize=12, color=self.config.text_color)
             ax.set_ylabel(r"$\varepsilon_r$", fontsize=12, color=self.config.text_color)
             ax.grid(True, linestyle=":", alpha=0.4, color=self.config.grid_color)
             ax.xaxis.set_major_locator(MaxNLocator(nbins=6, prune="both"))

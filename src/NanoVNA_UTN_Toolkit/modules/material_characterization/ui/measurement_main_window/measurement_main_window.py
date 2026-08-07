@@ -352,27 +352,28 @@ class MeasurementMainWindow(QMainWindow):
         def _fmt_freq(hz):
             return f"{hz/1e9:.4f} GHz" if hz >= 0.5e9 else f"{hz/1e6:.4f} MHz"
 
-        def _fmt_freq(hz):
-            return f"{hz/1e9:.4f} GHz" if hz >= 0.5e9 else f"{hz/1e6:.4f} MHz"
-
         def _upd1(val):
             if not hasattr(self, "_cursor1") or self._cursor1 is None:
                 return
             idx = min(max(int(round(val)), 0), self._marker_n - 1)
-            self._cursor1.set_data([self._marker_freqs[idx]], [self._marker_real_eps[idx]])
+            freq = self._marker_freqs[idx]
+            eps_r = self._marker_real_eps[idx]
+            self._cursor1.set_data([freq], [eps_r])
             if hasattr(self, "_marker1_info_label"):
-                f_str = _fmt_freq(self._marker_freqs[idx])
-                self._marker1_info_label.setText(f"f = {f_str}    ε' = {self._marker_real_eps[idx]:.4f}")
+                self._marker1_info_label.setText(
+                    f"f = {_fmt_freq(freq)}    ε' = {eps_r:.4f}")
             canvas.draw_idle()
 
         def _upd2(val):
             if not hasattr(self, "_cursor2") or self._cursor2 is None:
                 return
             idx = min(max(int(round(val)), 0), self._marker_n - 1)
-            self._cursor2.set_data([self._marker_freqs[idx]], [self._marker_loss_eps[idx]])
+            freq = self._marker_freqs[idx]
+            eps_i = self._marker_loss_eps[idx]
+            self._cursor2.set_data([freq], [eps_i])
             if hasattr(self, "_marker2_info_label"):
-                f_str = _fmt_freq(self._marker_freqs[idx])
-                self._marker2_info_label.setText(f"f = {f_str}    −j · ε'' = {self._marker_loss_eps[idx]:.4f}")
+                self._marker2_info_label.setText(
+                    f"f = {_fmt_freq(freq)}    ε'' = {eps_i:.4f}")
             canvas.draw_idle()
 
         slider1.on_changed(lambda val: _upd1(int(val)))
@@ -409,13 +410,38 @@ class MeasurementMainWindow(QMainWindow):
 
     def _show_chart_context_menu(self, pos):
         menu = QMenu(self)
-        exp = self._texts.get("export", {})
-        export_action = QAction(exp.get("export_epsilon", "Export εr image…"), self)
-        export_action.triggered.connect(
-            lambda: self._export_figure(self._epsilon_fig, f"epsilon_{self._sample_name()}")
-        )
+        export_action = QAction("Export…", self)
+        export_action.triggered.connect(self._open_chart_export_dialog)
         menu.addAction(export_action)
         menu.exec(self._epsilon_canvas.mapToGlobal(pos))
+
+    def _open_chart_export_dialog(self):
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.chart_export_dialog import (
+            ChartExportDialog,
+        )
+        # Gather current marker positions and colors for the preview boxes
+        marker_data = None
+        if hasattr(self, "_slider1") and hasattr(self, "_marker_freqs"):
+            _s = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+            idx1 = int(self._slider1.val)
+            idx2 = int(self._slider2.val)
+            marker_data = {
+                "freqs":     self._marker_freqs,
+                "real_eps":  self._marker_real_eps,
+                "loss_eps":  self._marker_loss_eps,
+                "idx1":      idx1,
+                "idx2":      idx2,
+                "m1_color":  _s.value("Epsilon_Real/MarkerColor1", "#ff0000"),
+                "m2_color":  _s.value("Epsilon_Imag/MarkerColor1", "#ff0000"),
+            }
+        dlg = ChartExportDialog(
+            parent=self,
+            fig=self._epsilon_fig,
+            result=self._result,
+            sample_name=self._sample_name(),
+            marker_data=marker_data,
+        )
+        dlg.exec()
 
     # --------------------------------------------------------------------- #
 
