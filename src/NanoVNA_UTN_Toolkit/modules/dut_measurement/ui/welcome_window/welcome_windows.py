@@ -228,7 +228,7 @@ class NanoVNAWelcome(QMainWindow):
     def _build_footer(self, parent):
         row = QHBoxLayout()
         row.setContentsMargins(0, 4, 0, 0)
-        back = QPushButton("← Back to Menu")
+        back = QPushButton(self.dut_welcome_ui_back_button)
         back.setFixedSize(200, 38)
         back.setStyleSheet(_BTN_BACK)
         back.clicked.connect(self.return_to_menu_window)

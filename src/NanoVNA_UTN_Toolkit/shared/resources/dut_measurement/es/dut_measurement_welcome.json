@@ -1,6 +1,8 @@
 {
   "dut_measurement_ui": {
-    "window_title": "NanoVNA Toolkit - Ventana de Bienvenida",
+    "window_title": "Mediciones DUTs",
+
+    "back_button": "← Volver al Menú",
 
     "module_overview": {
       "title": "Asistente de Calibración",

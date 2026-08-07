@@ -24,6 +24,7 @@ class DutResourceLoader:
         ui_data = raw_data.get("dut_measurement_ui", {})
 
         self.window.dut_welcome_ui_window_title = ui_data.get("window_title", "")
+        self.window.dut_welcome_ui_back_button = ui_data.get("back_button", "← Back to Menu")
 
         module_overview = ui_data.get("module_overview", {})
         kit_section = ui_data.get("kit_section", {})

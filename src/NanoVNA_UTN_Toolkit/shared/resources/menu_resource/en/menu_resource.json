@@ -6,8 +6,8 @@
     },
     "modules": {
       "dut_measurement": {
-        "title": "DUT Measurement",
-        "description": "Measure and analyze DUT responses using NanoVNA data."
+        "title": "DUTs Measurements",
+        "description": "Measure and analyze DUTs responses using NanoVNA data."
       },
       "materials_characterization": {
         "title": "Materials Characterization",

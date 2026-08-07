@@ -1,5 +1,9 @@
 {
   "material_characterization_ui": {
+    "window_title": "NanoVNA Toolkit — Caracterización de Materiales",
+    "header_title": "Caracterización de Materiales",
+    "back_button": "← Volver al Menú",
+
     "module_overview": {
       "title": "Resumen del Módulo",
       "description": [
@@ -12,12 +16,18 @@
     "characterization_section": {
       "title": "Caracterización de Materiales",
       "method_selection_title": "Selección del Kit de Caracterización:",
+      "kit_selection_subtitle": "Seleccione el kit de caracterización a usar con el asistente de medición.",
       "default_method": "Ninguno",
-      "no_calibration_selected": "No se seleccionó ningún método de caracterización",
+      "no_method_selected": "No se seleccionó ningún método de caracterización",
       "open_methods_button": "Abrir Métodos de Caracterización",
       "import_section_title": "Importar Paquete de Caracterización:",
       "import_description": "Importa un paquete completo de caracterización que ya contiene sus datos de calibración y configuración asociados.",
-      "import_button": "Importar Métodos"
+      "import_button": "Importar Métodos",
+      "features": [
+        "Kit de calibración preconfigurado para el método seleccionado",
+        "Configuración y parámetros del método de medición",
+        "Datos de referencia y configuración de caracterización"
+      ]
     }
   }
 }

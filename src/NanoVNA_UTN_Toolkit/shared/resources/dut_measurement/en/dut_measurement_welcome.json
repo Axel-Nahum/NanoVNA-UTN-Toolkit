@@ -1,6 +1,8 @@
 {
   "dut_measurement_ui": {
-    "window_title": "NanoVNA Toolkit - Welcome Window",
+    "window_title": "DUTs Measurements",
+
+    "back_button": "← Back to Menu",
 
     "module_overview": {
       "title": "Calibration Wizard",
@@ -27,4 +29,3 @@
     }
   }
 }
-

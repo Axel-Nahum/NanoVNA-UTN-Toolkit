@@ -26,16 +26,22 @@ class CharacterizationResourceLoader:
         module_overview = ui_data.get("module_overview", {})
         characterization_section = ui_data.get("characterization_section", {})
 
+        self.window.charac_welcome_ui_window_title = ui_data.get("window_title", "NanoVNA Toolkit — Material Characterization")
+        self.window.charac_welcome_ui_header_title = ui_data.get("header_title", "Material Characterization")
+        self.window.charac_welcome_ui_back_button = ui_data.get("back_button", "← Back to Menu")
+
         self.window.charac_welcome_ui_module_overview_title = module_overview.get("title", "")
         self.window.charac_welcome_ui_descriptions = module_overview.get("description", [])
 
         self.window.charac_welcome_ui_characterization_title = characterization_section.get("title", "")
         self.window.charac_welcome_ui_method_selection_title = characterization_section.get("method_selection_title", "")
+        self.window.charac_welcome_ui_kit_selection_subtitle = characterization_section.get("kit_selection_subtitle", "")
         self.window.charac_welcome_ui_no_characterization_selected = characterization_section.get("no_method_selected", "")
         self.window.charac_welcome_ui_open_methods_button = characterization_section.get("open_methods_button", "")
         self.window.charac_welcome_ui_import_section_title = characterization_section.get("import_section_title", "")
         self.window.charac_welcome_ui_import_description = characterization_section.get("import_description", "")
         self.window.charac_welcome_ui_import_button_text = characterization_section.get("import_button", "")
+        self.window.charac_welcome_ui_features = characterization_section.get("features", [])
 
     def load_characterization_method_resources(self):
 

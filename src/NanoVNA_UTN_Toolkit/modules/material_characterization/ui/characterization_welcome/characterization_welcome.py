@@ -176,7 +176,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         apply_window_icon(self)
 
-        self.setWindowTitle("NanoVNA Toolkit - Material Characterization")
+        self.setWindowTitle(self.charac_welcome_ui_window_title)
         self.setGeometry(100, 100, 980, 480)
         self.setFixedSize(980, 480)
 
@@ -207,7 +207,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         center.setSpacing(4)
         center.setContentsMargins(0, 0, 0, 0)
 
-        title = QLabel("Material Characterization")
+        title = QLabel(self.charac_welcome_ui_header_title)
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-size: 20px; font-weight: bold; color: #ffffff;")
 
@@ -226,7 +226,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         row = QHBoxLayout()
         row.setContentsMargins(0, 4, 0, 0)
 
-        back = QPushButton("← Back to Menu")
+        back = QPushButton(self.charac_welcome_ui_back_button)
         back.setFixedSize(200, 38)
         back.setStyleSheet(_BTN_BACK)
         back.clicked.connect(self.return_to_menu_window)
@@ -266,7 +266,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         layout.addSpacing(14)
 
         # Subtitle
-        sub = QLabel("Select the characterization kit to use with the measurement wizard.")
+        sub = QLabel(self.charac_welcome_ui_kit_selection_subtitle)
         sub.setWordWrap(True)
         sub.setStyleSheet("font-size: 12px; color: #777777; background: transparent;")
         layout.addWidget(sub)
@@ -336,13 +336,8 @@ class MaterialCharacterizationWelcome(QMainWindow):
         layout.addSpacing(18)
 
         # Feature bullets
-        features = [
-            ("✓", "Pre-configured calibration kit for the selected method", "#5cb85c"),
-            ("✓", "Measurement method settings and parameters",             "#5cb85c"),
-            ("✓", "Reference data and characterization configuration",      "#5cb85c"),
-        ]
-        for bullet_icon, text, color in features:
-            row = _bullet_row(bullet_icon, text, color)
+        for text in self.charac_welcome_ui_features:
+            row = _bullet_row("✓", text, "#5cb85c")
             layout.addLayout(row)
             layout.addSpacing(8)
 
