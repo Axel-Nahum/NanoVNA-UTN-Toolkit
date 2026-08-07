@@ -33,6 +33,9 @@ get_settings = safe_import(
 _CHART_INI_EXE = "INI/material_characterization/characterization_chart_config/characterization_chart_config.ini"
 _CHART_INI_DEV = "modules/material_characterization/ui/measurement_main_window/characterization_chart_config/characterization_chart_config.ini"
 
+_PM_INI_EXE = "INI/material_characterization/plot_manager/plot_manager.ini"
+_PM_INI_DEV = "modules/material_characterization/ui/measurement_main_window/utils/menu/plot_manager/plot_manager.ini"
+
 try:
     from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import dark_light_config
     from NanoVNA_UTN_Toolkit.modules.menu_window import ModuleSelectionWindow
@@ -218,6 +221,12 @@ class MeasurementMainWindow(QMainWindow):
         self._epsilon_fig = fig
         self._epsilon_ax = ax
         self._epsilon_canvas = canvas
+
+        # Apply saved grid state
+        _pm = get_settings(_PM_INI_EXE, _PM_INI_DEV, Path(__file__).resolve())
+        self._grid_enabled = _pm.value("grid/current_state", True, type=bool)
+        if not self._grid_enabled:
+            ax.grid(False)
 
         # Build marker data row BEFORE setup_markers so labels exist when sliders init
         marker_bar = self._build_marker_data_row()
@@ -416,10 +425,34 @@ class MeasurementMainWindow(QMainWindow):
 
     def _show_chart_context_menu(self, pos):
         menu = QMenu(self)
+        grid_label = "Hide Grid" if getattr(self, "_grid_enabled", True) else "Show Grid"
+        grid_action = QAction(grid_label, self)
+        grid_action.triggered.connect(self._toggle_grid)
+        menu.addAction(grid_action)
+        menu.addSeparator()
         export_action = QAction("Export…", self)
         export_action.triggered.connect(self._open_chart_export_dialog)
         menu.addAction(export_action)
         menu.exec(self._epsilon_canvas.mapToGlobal(pos))
+
+    def _apply_grid(self, state: bool):
+        if not hasattr(self, "_epsilon_ax") or self._epsilon_ax is None:
+            return
+        self._grid_enabled = state
+        if state:
+            cfg = getattr(self._epsilon_manager, "config", None)
+            grid_color = cfg.grid_color if cfg else "#444444"
+            self._epsilon_ax.grid(True, linestyle=":", alpha=0.4, color=grid_color)
+        else:
+            self._epsilon_ax.grid(False)
+        get_settings(_PM_INI_EXE, _PM_INI_DEV, Path(__file__).resolve()).setValue(
+            "grid/current_state", state
+        )
+        if hasattr(self, "_epsilon_canvas") and self._epsilon_canvas:
+            self._epsilon_canvas.draw_idle()
+
+    def _toggle_grid(self):
+        self._apply_grid(not getattr(self, "_grid_enabled", True))
 
     def _open_chart_export_dialog(self):
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.chart_export_dialog import (
@@ -599,6 +632,8 @@ class MeasurementMainWindow(QMainWindow):
                 self._result.eps_selected,
                 canvas=None,
             )
+            if not getattr(self, "_grid_enabled", True):
+                self._epsilon_ax.grid(False)
             self._restore_markers_after_redraw()
             self._epsilon_canvas.draw_idle()
         except Exception as exc:

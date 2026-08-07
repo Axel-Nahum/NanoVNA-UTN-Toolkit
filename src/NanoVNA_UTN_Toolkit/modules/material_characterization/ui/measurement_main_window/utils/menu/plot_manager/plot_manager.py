@@ -54,7 +54,7 @@ def open_plot_manager(main_window):
     )
     border = dl_settings.value("Dark_Light/QGroupBox/color", "1px solid #999")
     frame_style = f"""
-        QFrame {{
+        QFrame#pm_frame {{
             border: {border};
             border-radius: 8px;
             padding: 12px;
@@ -73,6 +73,7 @@ def open_plot_manager(main_window):
     main.setContentsMargins(15, 15, 15, 15)
 
     frame = QFrame()
+    frame.setObjectName("pm_frame")
     frame.setStyleSheet(frame_style)
 
     layout = QVBoxLayout(frame)
@@ -129,7 +130,7 @@ def open_plot_manager(main_window):
 
     grid_chk = QCheckBox()
     grid_chk.setChecked(pm_settings.value("grid/current_state", True, type=bool))
-    grid_chk.setEnabled(False)
+    grid_chk.setEnabled(True)
 
     disp_grid.addWidget(_bold("Show Grid:"), 1, 0, Qt.AlignLeft)
     disp_grid.addWidget(grid_chk, 1, 1, 1, 2, Qt.AlignCenter)
@@ -211,7 +212,7 @@ def open_plot_manager(main_window):
 
     apply_btn = QPushButton("Apply")
     apply_btn.setMinimumSize(100, 30)
-    apply_btn.clicked.connect(dialog.accept)   # no-op for now
+    apply_btn.clicked.connect(lambda: _apply_settings(main_window, dialog, grid_chk))
 
     cancel_btn = QPushButton("Cancel")
     cancel_btn.setMinimumSize(100, 30)
@@ -223,6 +224,11 @@ def open_plot_manager(main_window):
 
     main.addWidget(frame)
     dialog.exec()
+
+
+def _apply_settings(main_window, dialog, grid_chk):
+    main_window._apply_grid(grid_chk.isChecked())
+    dialog.accept()
 
 
 def _open_edit(main_window, dialog):
