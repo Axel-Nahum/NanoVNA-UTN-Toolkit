@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
 
 get_settings = safe_import(
     "NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings"
@@ -44,6 +45,7 @@ def _bold(text: str, size: int = 15) -> QLabel:
 
 def open_plot_manager(main_window):
     """Open the Plot Manager modal dialog."""
+    t = load_text("characterization_plot_manager.json")
     pm_settings = get_settings(_INI_EXE, _INI_DEV, Path(__file__).resolve())
 
     dl_settings = get_settings(
@@ -61,7 +63,7 @@ def open_plot_manager(main_window):
     """
 
     dialog = QDialog(main_window)
-    dialog.setWindowTitle("Plot Manager")
+    dialog.setWindowTitle(t.get("title", "Plot Manager"))
     dialog.setFixedSize(660, 750)
     dialog.setStyleSheet(main_window.styleSheet())
     dialog.setSizeGripEnabled(True)
@@ -81,15 +83,16 @@ def open_plot_manager(main_window):
     # =====================================================
     # TITLE
     # =====================================================
-    title = QLabel("Plot Manager")
-    title.setAlignment(Qt.AlignCenter)
-    title.setStyleSheet("font-size: 25px; font-weight: bold; border: none;")
-    layout.addWidget(title)
+    title_lbl = QLabel(t.get("title", "Plot Manager"))
+    title_lbl.setAlignment(Qt.AlignCenter)
+    title_lbl.setStyleSheet("font-size: 25px; font-weight: bold; border: none;")
+    layout.addWidget(title_lbl)
 
     # =====================================================
     # TOOLS
     # =====================================================
-    tools_title = QLabel("Graphics Tools")
+    tools_t = t.get("tools", {})
+    tools_title = QLabel(tools_t.get("title", "Graphics Tools"))
     tools_title.setAlignment(Qt.AlignCenter)
     tools_title.setStyleSheet("font-size: 18px; font-weight: bold; border: none;")
     layout.addWidget(tools_title)
@@ -97,8 +100,10 @@ def open_plot_manager(main_window):
     tools = QHBoxLayout()
     tools.addStretch()
 
-    edit_btn = QPushButton("Graphics && Markers Editor")
+    edit_btn = QPushButton(tools_t.get("graphicsMarkersEditor", "Graphics && Markers Editor"))
     edit_btn.setMinimumSize(200, 45)
+    edit_btn.setDefault(False)
+    edit_btn.setAutoDefault(False)
     edit_btn.clicked.connect(lambda: _open_edit(main_window, dialog))
     tools.addWidget(edit_btn)
 
@@ -111,7 +116,8 @@ def open_plot_manager(main_window):
     # =====================================================
     # DISPLAY OPTIONS
     # =====================================================
-    display_title = QLabel("Display Options")
+    disp_t = t.get("display", {})
+    display_title = QLabel(disp_t.get("title", "Display Options"))
     display_title.setAlignment(Qt.AlignCenter)
     display_title.setStyleSheet("font-size: 18px; font-weight: bold; border: none;")
     layout.addWidget(display_title)
@@ -122,7 +128,7 @@ def open_plot_manager(main_window):
     disp_grid.setColumnStretch(1, 2)
     disp_grid.setColumnStretch(2, 2)
 
-    g1 = QLabel("Permittivity Chart (εᵣ)")
+    g1 = QLabel(disp_t.get("chart", "Permittivity Chart (εᵣ)"))
     g1.setAlignment(Qt.AlignCenter)
     g1.setStyleSheet("font-weight: bold; font-size: 15px; border: none;")
     disp_grid.addWidget(g1, 0, 1, 1, 2)
@@ -130,7 +136,7 @@ def open_plot_manager(main_window):
     grid_chk = QCheckBox()
     grid_chk.setChecked(pm_settings.value("grid/current_state", True, type=bool))
 
-    disp_grid.addWidget(_bold("Show Grid:"), 1, 0, Qt.AlignLeft)
+    disp_grid.addWidget(_bold(disp_t.get("showGrid", "Show Grid:")), 1, 0, Qt.AlignLeft)
     disp_grid.addWidget(grid_chk, 1, 1, 1, 2, Qt.AlignCenter)
 
     layout.addLayout(disp_grid)
@@ -140,7 +146,8 @@ def open_plot_manager(main_window):
     # =====================================================
     # AXIS SETTINGS
     # =====================================================
-    axis_title = QLabel("Axis Settings (Y Limits)")
+    axis_t = t.get("axis", {})
+    axis_title = QLabel(axis_t.get("title", "Axis Settings (Y Limits)"))
     axis_title.setAlignment(Qt.AlignCenter)
     axis_title.setStyleSheet("font-size: 18px; font-weight: bold; border: none;")
     layout.addWidget(axis_title)
@@ -151,7 +158,7 @@ def open_plot_manager(main_window):
     axis_grid.setColumnStretch(1, 2)
     axis_grid.setColumnStretch(2, 2)
 
-    ag1 = QLabel("Permittivity Chart (εᵣ)")
+    ag1 = QLabel(axis_t.get("chart", "Permittivity Chart (εᵣ)"))
     ag1.setAlignment(Qt.AlignCenter)
     ag1.setStyleSheet("font-weight: bold; font-size: 15px; border: none;")
     axis_grid.addWidget(ag1, 0, 1, 1, 2)
@@ -160,19 +167,19 @@ def open_plot_manager(main_window):
     auto_chk = QCheckBox()
     auto_chk.setChecked(auto_checked)
 
-    axis_grid.addWidget(_bold("Auto Scale:"), 1, 0, Qt.AlignLeft)
+    axis_grid.addWidget(_bold(axis_t.get("autoScale", "Auto Scale:")), 1, 0, Qt.AlignLeft)
     axis_grid.addWidget(auto_chk, 1, 1, 1, 2, Qt.AlignCenter)
 
     validator = QDoubleValidator()
     validator.setNotation(QDoubleValidator.StandardNotation)
 
     y_min = QLineEdit()
-    y_min.setPlaceholderText("Min")
+    y_min.setPlaceholderText(axis_t.get("yMinPlaceholder", "Min"))
     y_min.setAlignment(Qt.AlignCenter)
     y_min.setValidator(validator)
 
     y_max = QLineEdit()
-    y_max.setPlaceholderText("Max")
+    y_max.setPlaceholderText(axis_t.get("yMaxPlaceholder", "Max"))
     y_max.setAlignment(Qt.AlignCenter)
     y_max.setValidator(validator)
 
@@ -208,7 +215,7 @@ def open_plot_manager(main_window):
 
     auto_chk.stateChanged.connect(_on_auto_changed)
 
-    axis_grid.addWidget(_bold("Y Range:"), 3, 0, Qt.AlignLeft)
+    axis_grid.addWidget(_bold(axis_t.get("yRange", "Y Range:")), 3, 0, Qt.AlignLeft)
 
     range_row = QHBoxLayout()
     range_row.setSpacing(15)
@@ -226,18 +233,19 @@ def open_plot_manager(main_window):
     # =====================================================
     # ACTIONS
     # =====================================================
+    btn_t = t.get("buttons", {})
     actions = QHBoxLayout()
     actions.addStretch()
 
-    apply_btn = QPushButton("Apply")
+    apply_btn = QPushButton(btn_t.get("apply", "Apply"))
     apply_btn.setMinimumSize(100, 30)
     apply_btn.setDefault(False)
     apply_btn.setAutoDefault(False)
     apply_btn.clicked.connect(
-        lambda: _apply_settings(main_window, dialog, grid_chk, auto_chk, y_min, y_max)
+        lambda: _apply_settings(main_window, dialog, grid_chk, auto_chk, y_min, y_max, t)
     )
 
-    cancel_btn = QPushButton("Cancel")
+    cancel_btn = QPushButton(btn_t.get("cancel", "Cancel"))
     cancel_btn.setMinimumSize(100, 30)
     cancel_btn.setDefault(False)
     cancel_btn.setAutoDefault(False)
@@ -251,7 +259,8 @@ def open_plot_manager(main_window):
     dialog.exec()
 
 
-def _apply_settings(main_window, dialog, grid_chk, auto_chk, y_min, y_max):
+def _apply_settings(main_window, dialog, grid_chk, auto_chk, y_min, y_max, t):
+    msgs = t.get("messages", {})
     auto = auto_chk.isChecked()
     vmin = vmax = None
 
@@ -262,8 +271,8 @@ def _apply_settings(main_window, dialog, grid_chk, auto_chk, y_min, y_max):
         if not min_txt or not max_txt:
             QMessageBox.warning(
                 dialog,
-                "Invalid Range",
-                "Both Min and Max fields must be filled in before applying.",
+                msgs.get("warningTitle", "Invalid Range"),
+                msgs.get("emptyFields", "Both Min and Max fields must be filled in before applying."),
             )
             return
 
@@ -273,16 +282,16 @@ def _apply_settings(main_window, dialog, grid_chk, auto_chk, y_min, y_max):
         except ValueError:
             QMessageBox.warning(
                 dialog,
-                "Invalid Range",
-                "Min and Max must be valid numbers.",
+                msgs.get("warningTitle", "Invalid Range"),
+                msgs.get("invalidNumber", "Min and Max must be valid numbers."),
             )
             return
 
         if vmax <= vmin:
             QMessageBox.warning(
                 dialog,
-                "Invalid Range",
-                "Max must be strictly greater than Min.",
+                msgs.get("warningTitle", "Invalid Range"),
+                msgs.get("minGreaterMax", "Max must be strictly greater than Min."),
             )
             return
 

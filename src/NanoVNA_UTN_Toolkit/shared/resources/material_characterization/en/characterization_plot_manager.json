@@ -1,0 +1,30 @@
+{
+    "title": "Plot Manager",
+    "tools": {
+        "title": "Graphics Tools",
+        "graphicsMarkersEditor": "Graphics & Markers Editor"
+    },
+    "display": {
+        "title": "Display Options",
+        "chart": "Permittivity Chart (εᵣ)",
+        "showGrid": "Show Grid:"
+    },
+    "axis": {
+        "title": "Axis Settings (Y Limits)",
+        "chart": "Permittivity Chart (εᵣ)",
+        "autoScale": "Auto Scale:",
+        "yRange": "Y Range:",
+        "yMinPlaceholder": "Min",
+        "yMaxPlaceholder": "Max"
+    },
+    "buttons": {
+        "apply": "Apply",
+        "cancel": "Cancel"
+    },
+    "messages": {
+        "warningTitle": "Invalid Range",
+        "emptyFields": "Both Min and Max fields must be filled in before applying.",
+        "invalidNumber": "Min and Max must be valid numbers.",
+        "minGreaterMax": "Max must be strictly greater than Min."
+    }
+}

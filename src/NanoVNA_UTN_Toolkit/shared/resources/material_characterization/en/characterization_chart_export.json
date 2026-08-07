@@ -1,0 +1,29 @@
+{
+    "window_title": "Export — Permittivity Chart — {sample}",
+    "preview_hint": "Preview  —  drag boxes to reposition · resize from edges",
+    "buttons": {
+        "copy_clipboard": "Copy to Clipboard",
+        "save_image": "Save as Image",
+        "save_csv": "Save as CSV",
+        "close": "Close"
+    },
+    "dialogs": {
+        "save_image_title": "Save Chart Image",
+        "save_csv_title": "Save CSV",
+        "image_filter": "PNG Files (*.png);;PDF Files (*.pdf);;SVG Files (*.svg)",
+        "csv_filter": "CSV Files (*.csv)"
+    },
+    "messages": {
+        "copied_title": "Copied",
+        "copied_text": "Chart copied to clipboard at 300 DPI.",
+        "saved_title": "Saved",
+        "image_saved": "Image saved to:\n{path}",
+        "csv_saved": "CSV saved to:\n{path}",
+        "no_data_title": "No Data",
+        "no_data_text": "No permittivity data available.",
+        "error_title": "Error",
+        "copy_failed": "Failed to copy:\n{error}",
+        "image_failed": "Failed to save image:\n{error}",
+        "csv_failed": "Failed to save CSV:\n{error}"
+    }
+}

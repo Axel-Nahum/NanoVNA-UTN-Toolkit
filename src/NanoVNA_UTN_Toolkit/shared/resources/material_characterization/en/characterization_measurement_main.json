@@ -9,9 +9,9 @@
   },
   "table": {
     "frequency": "Frequency",
-    "eps_real": "epsilon_r'",
-    "eps_imag": "epsilon_r''",
-    "loss_tangent": "tan delta"
+    "eps_real": "ε′",
+    "eps_imag": "ε″",
+    "loss_tangent": "tan δ"
   },
   "no_result": "No permittivity result is available. Please complete the wizard.",
   "export": {
@@ -27,11 +27,13 @@
     "back_to_menu": "Back to menu",
     "export_s11_touchstone": "Export Touchstone S11…",
     "export_pdf": "Export PDF Report…",
-    "view": "View",
+    "plots": "Plots",
+    "plot_manager": "Plot Manager",
     "show_s11": "S11 — Smith Chart",
     "show_table": "Results Table",
-    "edit": "Edit",
-    "edit_chart": "Edit Chart…",
-    "help": "Help"
+    "calibration": "Calibration",
+    "help": "Help",
+    "about_en": "About (EN)",
+    "about_es": "About (ES)"
   }
 }

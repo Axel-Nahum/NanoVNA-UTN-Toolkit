@@ -9,9 +9,9 @@
   },
   "table": {
     "frequency": "Frecuencia",
-    "eps_real": "epsilon_r'",
-    "eps_imag": "epsilon_r''",
-    "loss_tangent": "tan delta"
+    "eps_real": "ε′",
+    "eps_imag": "ε″",
+    "loss_tangent": "tan δ"
   },
   "no_result": "No hay un resultado de permitividad disponible. Complete el asistente.",
   "export": {
@@ -27,11 +27,13 @@
     "back_to_menu": "Volver al menú",
     "export_s11_touchstone": "Exportar Touchstone S11…",
     "export_pdf": "Exportar Informe PDF…",
-    "view": "Ver",
+    "plots": "Gráficos",
+    "plot_manager": "Administrador de Gráfico",
     "show_s11": "S11 — Diagrama de Smith",
     "show_table": "Tabla de Resultados",
-    "edit": "Editar",
-    "edit_chart": "Editar Gráfico…",
-    "help": "Ayuda"
+    "calibration": "Calibración",
+    "help": "Ayuda",
+    "about_en": "Acerca de (EN)",
+    "about_es": "Acerca de (ES)"
   }
 }

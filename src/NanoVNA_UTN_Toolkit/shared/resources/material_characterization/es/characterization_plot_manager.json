@@ -1,0 +1,30 @@
+{
+    "title": "Administrador de Gráfico",
+    "tools": {
+        "title": "Herramientas de Gráfico",
+        "graphicsMarkersEditor": "Editor de Gráficos y Marcadores"
+    },
+    "display": {
+        "title": "Opciones de Visualización",
+        "chart": "Gráfico de Permitividad (εᵣ)",
+        "showGrid": "Mostrar Grilla:"
+    },
+    "axis": {
+        "title": "Configuración de Ejes (Límites Y)",
+        "chart": "Gráfico de Permitividad (εᵣ)",
+        "autoScale": "Escala Automática:",
+        "yRange": "Rango Y:",
+        "yMinPlaceholder": "Mín.",
+        "yMaxPlaceholder": "Máx."
+    },
+    "buttons": {
+        "apply": "Aplicar",
+        "cancel": "Cancelar"
+    },
+    "messages": {
+        "warningTitle": "Rango Inválido",
+        "emptyFields": "Debe completar los campos Mín. y Máx. antes de aplicar.",
+        "invalidNumber": "Mín. y Máx. deben ser números válidos.",
+        "minGreaterMax": "Máx. debe ser estrictamente mayor que Mín."
+    }
+}

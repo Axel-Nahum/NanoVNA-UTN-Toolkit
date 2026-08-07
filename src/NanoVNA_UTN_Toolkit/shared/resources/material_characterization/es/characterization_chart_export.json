@@ -1,0 +1,29 @@
+{
+    "window_title": "Exportar — Gráfico de Permitividad — {sample}",
+    "preview_hint": "Vista previa  —  arrastrá los cuadros para moverlos · redimensioná desde los bordes",
+    "buttons": {
+        "copy_clipboard": "Copiar al Portapapeles",
+        "save_image": "Guardar como Imagen",
+        "save_csv": "Guardar como CSV",
+        "close": "Cerrar"
+    },
+    "dialogs": {
+        "save_image_title": "Guardar Imagen del Gráfico",
+        "save_csv_title": "Guardar CSV",
+        "image_filter": "PNG Files (*.png);;PDF Files (*.pdf);;SVG Files (*.svg)",
+        "csv_filter": "CSV Files (*.csv)"
+    },
+    "messages": {
+        "copied_title": "Copiado",
+        "copied_text": "Gráfico copiado al portapapeles a 300 DPI.",
+        "saved_title": "Guardado",
+        "image_saved": "Imagen guardada en:\n{path}",
+        "csv_saved": "CSV guardado en:\n{path}",
+        "no_data_title": "Sin Datos",
+        "no_data_text": "No hay datos de permitividad disponibles.",
+        "error_title": "Error",
+        "copy_failed": "Error al copiar:\n{error}",
+        "image_failed": "Error al guardar la imagen:\n{error}",
+        "csv_failed": "Error al guardar el CSV:\n{error}"
+    }
+}

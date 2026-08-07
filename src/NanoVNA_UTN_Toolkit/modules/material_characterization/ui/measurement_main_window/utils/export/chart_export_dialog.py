@@ -25,6 +25,8 @@ from PySide6.QtWidgets import (
     QMessageBox, QPushButton, QSizePolicy, QVBoxLayout,
 )
 
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,12 +37,15 @@ class ChartExportDialog(QDialog):
                  sample_name="sample", marker_data=None):
         super().__init__(parent)
 
+        self._t = load_text("characterization_chart_export.json")
+
         screen = QGuiApplication.primaryScreen().availableGeometry()
         w = min(int(screen.width()  * 0.80), 1100)
         h = min(int(screen.height() * 0.82), 780)
         self.setMinimumSize(w, h)
         self.resize(w, h)
-        self.setWindowTitle(f"Export — Permittivity Chart — {sample_name}")
+        title_tpl = self._t.get("window_title", "Export — Permittivity Chart — {sample}")
+        self.setWindowTitle(title_tpl.format(sample=sample_name))
         self.setModal(True)
 
         self._source_fig   = fig
@@ -62,7 +67,8 @@ class ChartExportDialog(QDialog):
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(8)
 
-        lbl = QLabel("Preview  —  drag boxes to reposition · resize from edges")
+        btn_t = self._t.get("buttons", {})
+        lbl = QLabel(self._t.get("preview_hint", "Preview  —  drag boxes to reposition · resize from edges"))
         lbl.setStyleSheet("color: #aaaaaa; font-size: 11px; border: none;")
         layout.addWidget(lbl)
 
@@ -78,21 +84,21 @@ class ChartExportDialog(QDialog):
 
         btn_row = QHBoxLayout()
 
-        copy_btn = QPushButton("Copy to Clipboard")
+        copy_btn = QPushButton(btn_t.get("copy_clipboard", "Copy to Clipboard"))
         copy_btn.clicked.connect(self._copy_to_clipboard)
         btn_row.addWidget(copy_btn)
 
-        image_btn = QPushButton("Save as Image")
+        image_btn = QPushButton(btn_t.get("save_image", "Save as Image"))
         image_btn.clicked.connect(self._save_as_image)
         btn_row.addWidget(image_btn)
 
-        csv_btn = QPushButton("Save as CSV")
+        csv_btn = QPushButton(btn_t.get("save_csv", "Save as CSV"))
         csv_btn.clicked.connect(self._save_as_csv)
         btn_row.addWidget(csv_btn)
 
         btn_row.addStretch()
 
-        close_btn = QPushButton("Close")
+        close_btn = QPushButton(btn_t.get("close", "Close"))
         close_btn.clicked.connect(self.close)
         btn_row.addWidget(close_btn)
 
@@ -396,6 +402,8 @@ class ChartExportDialog(QDialog):
         return fig_copy
 
     def _copy_to_clipboard(self):
+        msgs = self._t.get("messages", {})
+        dlgs = self._t.get("dialogs", {})
         try:
             fig = self._prepare_export_figure()
             buf = io.BytesIO()
@@ -405,16 +413,27 @@ class ChartExportDialog(QDialog):
             pixmap = QPixmap()
             pixmap.loadFromData(buf.getvalue())
             QApplication.clipboard().setPixmap(pixmap)
-            QMessageBox.information(self, "Copied", "Chart copied to clipboard at 300 DPI.")
+            QMessageBox.information(
+                self,
+                msgs.get("copied_title", "Copied"),
+                msgs.get("copied_text", "Chart copied to clipboard at 300 DPI."),
+            )
         except Exception as exc:
             logger.error("[ChartExportDialog] clipboard: %s", exc)
-            QMessageBox.critical(self, "Error", f"Failed to copy:\n{exc}")
+            QMessageBox.critical(
+                self,
+                msgs.get("error_title", "Error"),
+                msgs.get("copy_failed", "Failed to copy:\n{error}").format(error=exc),
+            )
 
     def _save_as_image(self):
+        msgs = self._t.get("messages", {})
+        dlgs = self._t.get("dialogs", {})
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save Chart Image",
+            self,
+            dlgs.get("save_image_title", "Save Chart Image"),
             f"{self._sample_name}_permittivity.png",
-            "PNG Files (*.png);;PDF Files (*.pdf);;SVG Files (*.svg)",
+            dlgs.get("image_filter", "PNG Files (*.png);;PDF Files (*.pdf);;SVG Files (*.svg)"),
         )
         if not path:
             return
@@ -422,19 +441,34 @@ class ChartExportDialog(QDialog):
             fig = self._prepare_export_figure()
             fig.savefig(path, dpi=300, bbox_inches="tight")
             plt.close(fig)
-            QMessageBox.information(self, "Saved", f"Image saved to:\n{path}")
+            QMessageBox.information(
+                self,
+                msgs.get("saved_title", "Saved"),
+                msgs.get("image_saved", "Image saved to:\n{path}").format(path=path),
+            )
         except Exception as exc:
             logger.error("[ChartExportDialog] image save: %s", exc)
-            QMessageBox.critical(self, "Error", f"Failed to save image:\n{exc}")
+            QMessageBox.critical(
+                self,
+                msgs.get("error_title", "Error"),
+                msgs.get("image_failed", "Failed to save image:\n{error}").format(error=exc),
+            )
 
     def _save_as_csv(self):
+        msgs = self._t.get("messages", {})
+        dlgs = self._t.get("dialogs", {})
         if self._result is None:
-            QMessageBox.warning(self, "No Data", "No permittivity data available.")
+            QMessageBox.warning(
+                self,
+                msgs.get("no_data_title", "No Data"),
+                msgs.get("no_data_text", "No permittivity data available."),
+            )
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "Save CSV",
+            self,
+            dlgs.get("save_csv_title", "Save CSV"),
             f"{self._sample_name}_permittivity.csv",
-            "CSV Files (*.csv)",
+            dlgs.get("csv_filter", "CSV Files (*.csv)"),
         )
         if not path:
             return
@@ -448,10 +482,18 @@ class ChartExportDialog(QDialog):
                 writer.writerow(["Frequency (Hz)", "Epsilon_real", "Epsilon_imag"])
                 for freq, er, ei in zip(f_hz, e_real, e_imag):
                     writer.writerow([f"{freq:.4f}", f"{er:.6f}", f"{ei:.6f}"])
-            QMessageBox.information(self, "Saved", f"CSV saved to:\n{path}")
+            QMessageBox.information(
+                self,
+                msgs.get("saved_title", "Saved"),
+                msgs.get("csv_saved", "CSV saved to:\n{path}").format(path=path),
+            )
         except Exception as exc:
             logger.error("[ChartExportDialog] CSV save: %s", exc)
-            QMessageBox.critical(self, "Error", f"Failed to save CSV:\n{exc}")
+            QMessageBox.critical(
+                self,
+                msgs.get("error_title", "Error"),
+                msgs.get("csv_failed", "Failed to save CSV:\n{error}").format(error=exc),
+            )
 
     # ------------------------------------------------------------------ #
 
