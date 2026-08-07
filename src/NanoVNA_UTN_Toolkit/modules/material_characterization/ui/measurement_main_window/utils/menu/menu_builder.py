@@ -4,6 +4,14 @@ from PySide6.QtGui import QAction
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
 from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import toggle_menu_dark_mode
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.menu.plot_manager.plot_manager import (
+    open_plot_manager,
+)
+
+show_about_dialog = safe_import(
+    "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu",
+    "show_about_dialog",
+)
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
@@ -36,19 +44,25 @@ def build_menu(main_window) -> None:
     file_menu.addAction(export_pdf_action)
 
     # ------------------------------------------------------------------ #
-    # View
+    # Plots
     # ------------------------------------------------------------------ #
-    view_menu = menubar.addMenu(menu.get("view", "View"))
+    plots_menu = menubar.addMenu(menu.get("plots", "Plots"))
+
+    plot_manager_action = QAction(menu.get("plot_manager", "Plot Manager"), main_window)
+    plot_manager_action.triggered.connect(lambda: open_plot_manager(main_window))
+    plots_menu.addAction(plot_manager_action)
+
+    plots_menu.addSeparator()
 
     s11_action = QAction(menu.get("show_s11", "S11 — Smith Chart"), main_window)
     s11_action.triggered.connect(main_window._show_s11_window)
-    view_menu.addAction(s11_action)
+    plots_menu.addAction(s11_action)
 
     table_action = QAction(menu.get("show_table", "Results Table"), main_window)
     table_action.triggered.connect(main_window._show_table_window)
-    view_menu.addAction(table_action)
+    plots_menu.addAction(table_action)
 
-    view_menu.addSeparator()
+    plots_menu.addSeparator()
 
     _dl = get_settings(_DL_INI_EXE, _DL_INI_DEV, Path(__file__).resolve())
     _theme_label = _dl.value("Dark_Light/text_light_dark", "Dark Mode 🌙")
@@ -56,18 +70,23 @@ def build_menu(main_window) -> None:
     theme_action.triggered.connect(
         lambda _checked=False, a=theme_action: toggle_menu_dark_mode(main_window, a)
     )
-    view_menu.addAction(theme_action)
+    plots_menu.addAction(theme_action)
 
     # ------------------------------------------------------------------ #
-    # Edit
+    # Calibration / Kits
     # ------------------------------------------------------------------ #
-    edit_menu = menubar.addMenu(menu.get("edit", "Edit"))
-
-    edit_chart_action = QAction(menu.get("edit_chart", "Edit Chart…"), main_window)
-    edit_chart_action.triggered.connect(main_window._open_edit_chart)
-    edit_menu.addAction(edit_chart_action)
+    menubar.addMenu(menu.get("calibration", "Calibration"))
 
     # ------------------------------------------------------------------ #
-    # Help  (empty for now — to be expanded)
+    # Help
     # ------------------------------------------------------------------ #
-    menubar.addMenu(menu.get("help", "Help"))
+    help_menu = menubar.addMenu(menu.get("help", "Help"))
+
+    if show_about_dialog:
+        about_en = QAction(menu.get("about_en", "About (EN)"), main_window)
+        about_en.triggered.connect(lambda: show_about_dialog(main_window, "en"))
+        help_menu.addAction(about_en)
+
+        about_es = QAction(menu.get("about_es", "About (ES)"), main_window)
+        about_es.triggered.connect(lambda: show_about_dialog(main_window, "es"))
+        help_menu.addAction(about_es)
