@@ -1,4 +1,14 @@
+from pathlib import Path
+
 from PySide6.QtGui import QAction
+
+from NanoVNA_UTN_Toolkit.utils import safe_import
+from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import toggle_menu_dark_mode
+
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
+
+_DL_INI_EXE = "INI/dut_measurement/dark_light_config/dark_light_config.ini"
+_DL_INI_DEV = "shared/utils/dark_light_mode/dark_light_config.ini"
 
 
 def build_menu(main_window) -> None:
@@ -37,6 +47,16 @@ def build_menu(main_window) -> None:
     table_action = QAction(menu.get("show_table", "Results Table"), main_window)
     table_action.triggered.connect(main_window._show_table_window)
     view_menu.addAction(table_action)
+
+    view_menu.addSeparator()
+
+    _dl = get_settings(_DL_INI_EXE, _DL_INI_DEV, Path(__file__).resolve())
+    _theme_label = _dl.value("Dark_Light/text_light_dark", "Dark Mode 🌙")
+    theme_action = QAction(_theme_label, main_window)
+    theme_action.triggered.connect(
+        lambda _checked=False, a=theme_action: toggle_menu_dark_mode(main_window, a)
+    )
+    view_menu.addAction(theme_action)
 
     # ------------------------------------------------------------------ #
     # Edit

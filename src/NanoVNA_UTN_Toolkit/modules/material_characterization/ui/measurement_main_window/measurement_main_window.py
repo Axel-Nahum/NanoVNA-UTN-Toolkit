@@ -86,6 +86,12 @@ class MeasurementMainWindow(QMainWindow):
 
         apply_window_icon(self)
         dark_light_config(self)
+        _dl = get_settings(
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+            "shared/utils/dark_light_mode/dark_light_config.ini",
+            Path(__file__).resolve(),
+        )
+        self.is_dark_mode = _dl.value("Dark_Light/is_dark_mode", False, type=bool)
 
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
@@ -105,10 +111,10 @@ class MeasurementMainWindow(QMainWindow):
     def _build_header(self):
         title = QLabel(self._texts.get("title", "Permittivity Results"))
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 22px; font-weight: bold; color: #ffffff; border: none;")
+        title.setStyleSheet("font-size: 22px; font-weight: bold; border: none;")
         subtitle = QLabel("Complex permittivity ε_r(f) of the characterized material")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("font-size: 12px; color: #666666; border: none;")
+        subtitle.setStyleSheet("font-size: 12px; border: none;")
         self.main_layout.addWidget(title)
         self.main_layout.addWidget(subtitle)
 
@@ -166,7 +172,7 @@ class MeasurementMainWindow(QMainWindow):
                 "no_result", "No permittivity result is available. Please complete the wizard."
             ))
             placeholder.setAlignment(Qt.AlignCenter)
-            placeholder.setStyleSheet("font-size: 15px; color: gray;")
+            placeholder.setStyleSheet("font-size: 15px;")
             self.main_layout.addWidget(placeholder, stretch=1)
             return
 
@@ -231,7 +237,7 @@ class MeasurementMainWindow(QMainWindow):
             "Faint grey curves are the other candidate roots  ·  Right-click to export"
         )
         caption.setWordWrap(True)
-        caption.setStyleSheet("font-size: 11px; color: #555555; border: none; background: transparent;")
+        caption.setStyleSheet("font-size: 11px; border: none; background: transparent;")
         card_layout.addWidget(caption)
 
         return card
@@ -242,7 +248,7 @@ class MeasurementMainWindow(QMainWindow):
         """Two plain white labels below the canvas showing live frequency + permittivity."""
         from PySide6.QtWidgets import QSizePolicy
 
-        _lstyle = "color: #ffffff; font-size: 13px; border: none; background: transparent;"
+        _lstyle = "font-size: 13px; border: none; background: transparent;"
 
         row = QWidget()
         row.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -255,7 +261,7 @@ class MeasurementMainWindow(QMainWindow):
         self._marker1_info_label.setAlignment(Qt.AlignCenter)
 
         sep = QLabel("|")
-        sep.setStyleSheet("color: #444444; font-size: 13px; border: none; background: transparent;")
+        sep.setStyleSheet("font-size: 13px; border: none; background: transparent;")
         sep.setAlignment(Qt.AlignCenter)
         sep.setFixedWidth(20)
 
