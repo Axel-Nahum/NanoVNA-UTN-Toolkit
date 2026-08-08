@@ -59,6 +59,8 @@ _BADGE = (
 )
 
 
+
+
 def _hsep(color="#363636"):
     line = QWidget()
     line.setFixedHeight(1)
@@ -295,7 +297,7 @@ class MeasurementMainWindow(QMainWindow):
         self._marker1_info_label.setAlignment(Qt.AlignCenter)
 
         sep = QLabel("|")
-        sep.setStyleSheet("font-size: 13px; border: none; background: transparent;")
+        sep.setStyleSheet(_lstyle)
         sep.setAlignment(Qt.AlignCenter)
         sep.setFixedWidth(20)
 
@@ -421,7 +423,7 @@ class MeasurementMainWindow(QMainWindow):
             s.valtext.set_visible(False)
 
         def _fmt_freq(hz):
-            return f"{hz/1e9:.4f} GHz" if hz >= 0.5e9 else f"{hz/1e6:.4f} MHz"
+            return f"{hz/1e9:.4f} GHz" if hz >= 1e9 else f"{hz/1e6:.4f} MHz"
 
         self._marker_updating = False
 
@@ -488,7 +490,7 @@ class MeasurementMainWindow(QMainWindow):
 
         # Persist link state
         _link_ini = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
-        self._cursors_linked = _link_ini.value("markers/linked", "true").lower() != "false"
+        self._cursors_linked = str(_link_ini.value("markers/linked", "true")).lower() != "false"
 
         def _toggle_link():
             self._cursors_linked = not self._cursors_linked
@@ -505,8 +507,8 @@ class MeasurementMainWindow(QMainWindow):
 
         # ---- Cursor visibility toggle ---- #
         _vis_ini = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
-        self._cursor1_visible = _vis_ini.value("markers/visible_1", "true").lower() != "false"
-        self._cursor2_visible = _vis_ini.value("markers/visible_2", "true").lower() != "false"
+        self._cursor1_visible = str(_vis_ini.value("markers/visible_1", "true")).lower() != "false"
+        self._cursor2_visible = str(_vis_ini.value("markers/visible_2", "true")).lower() != "false"
 
         def _set_cursor1_visible(visible: bool):
             self._cursor1_visible = visible
@@ -665,33 +667,81 @@ class MeasurementMainWindow(QMainWindow):
     # --------------------------------------------------------------------- #
 
     def _show_s11_window(self):
+        from PySide6.QtWidgets import QSlider, QSizePolicy
+        from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import SmithChartManager
+
         cal = getattr(self.wizard_window, "perm_calibration", None)
         dut = cal.get_measurement("dut") if cal is not None else None
         if dut is None:
             return
 
+        freqs    = np.asarray(dut[0], dtype=float)
+        s11_data = np.asarray(dut[1], dtype=complex)
+        n = len(freqs)
+
         dlg = QDialog(self)
         dlg.setWindowTitle("S11 — Smith Chart (DUT)")
-        dlg.setMinimumSize(520, 520)
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(8, 8, 8, 8)
+        dlg.setMinimumSize(520, 600)
+        outer = QVBoxLayout(dlg)
+        outer.setContentsMargins(10, 10, 10, 10)
+        outer.setSpacing(6)
 
         try:
-            from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import SmithChartManager
+            _M_COLOR = "#ff6600"
+
             sm = SmithChartManager()
-            s11_fig, _ax, _canvas, _c1, _c2 = sm.create_graphics_panel_smith_chart(
-                s_data=dut[1], freqs=dut[0], s_param="S11 (DUT)",
-                figsize=(5, 5), container_layout=layout, trace_color="orange",
+            s11_fig, _ax, _canvas, cursor, _ = sm.create_graphics_panel_smith_chart(
+                s_data=s11_data, freqs=freqs, s_param="S11 (DUT)",
+                figsize=(4.8, 4.8), container_layout=None,
+                trace_color="orange", marker_color=_M_COLOR,
             )
             self._s11_fig = s11_fig
+            cursor.set_visible(True)
 
+            _canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             _canvas.setContextMenuPolicy(Qt.CustomContextMenu)
             _canvas.customContextMenuRequested.connect(
                 lambda pos: self._s11_context_menu(pos, _canvas)
             )
+            outer.addWidget(_canvas, stretch=1)
+
+            # ── Qt slider ─────────────────────────────────────────────────
+            qsl = QSlider(Qt.Horizontal)
+            qsl.setRange(0, n - 1)
+            qsl.setValue(0)
+            qsl.setStyleSheet(
+                "QSlider::groove:horizontal {"
+                "  height: 4px; background: #444444; border-radius: 2px; }"
+                "QSlider::handle:horizontal {"
+                "  width: 14px; height: 14px; margin: -5px 0;"
+                f"  background: {_M_COLOR}; border-radius: 7px; }}"
+                "QSlider::sub-page:horizontal {"
+                f"  background: {_M_COLOR}; border-radius: 2px; }}"
+            )
+            outer.addWidget(qsl)
+
+            # ── Info label ────────────────────────────────────────────────
+            info_lbl = QLabel("—")
+            info_lbl.setAlignment(Qt.AlignCenter)
+            info_lbl.setStyleSheet("font-size: 12px; border: none; background: transparent;")
+            outer.addWidget(info_lbl)
+
+            def _fmt_freq(hz):
+                return f"{hz/1e9:.4f} GHz" if hz >= 1e9 else f"{hz/1e6:.4f} MHz"
+
+            def _upd_s11(idx):
+                idx = min(max(idx, 0), n - 1)
+                cursor.set_data([np.real(s11_data[idx])], [np.imag(s11_data[idx])])
+                mag = 20 * np.log10(abs(s11_data[idx])) if abs(s11_data[idx]) > 1e-12 else -np.inf
+                info_lbl.setText(f"f = {_fmt_freq(freqs[idx])}    |S11| = {mag:.2f} dB")
+                _canvas.draw_idle()
+
+            qsl.valueChanged.connect(_upd_s11)
+            _upd_s11(0)
+
         except Exception as exc:
             logging.error("[MeasurementMainWindow] S11 chart failed: %s", exc)
-            layout.addWidget(QLabel(f"Could not render S11 chart: {exc}"))
+            outer.addWidget(QLabel(f"Could not render S11 chart: {exc}"))
 
         dlg.show()
         self._s11_dialog = dlg
