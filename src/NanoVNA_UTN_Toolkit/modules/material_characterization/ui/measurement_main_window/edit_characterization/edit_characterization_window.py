@@ -56,7 +56,7 @@ class EditCharacterization(QMainWindow):
         tab_texts = texts.get("tabs", {})
 
         self.setWindowTitle(texts.get("window_title", "Edit Permittivity Chart"))
-        self.setFixedSize(800, 630)
+        self.setFixedSize(920, 660)
 
         central = QWidget()
         layout = QVBoxLayout(central)

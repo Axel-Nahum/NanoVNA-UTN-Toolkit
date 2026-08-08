@@ -43,7 +43,7 @@ _GROUPBOX_STYLE = (
     " padding-top: 6px; }"
     " QGroupBox::title { subcontrol-origin: margin; left: 10px; padding: 0 3px 0 3px; }"
 )
-_CANVAS_SIZE = 300
+_CANVAS_SIZE = 360
 
 
 def _swatch(color: str) -> QFrame:
@@ -68,6 +68,16 @@ def _pick_color(btn: QFrame, on_change):
             )
             on_change()
     return handler
+
+
+def _fill_nans(y: np.ndarray) -> np.ndarray:
+    finite = np.isfinite(y)
+    if finite.all() or not finite.any():
+        return y
+    x = np.arange(len(y))
+    out = y.copy()
+    out[~finite] = np.interp(x[~finite], x[finite], y[finite])
+    return out
 
 
 def _dummy_data():
@@ -222,29 +232,33 @@ def create_tab_real(main_window, texts: Dict):
 
     result = getattr(main_window, "_result", None)
     if result is not None:
-        freqs = result.f_hz
-        real_data = np.real(result.eps_selected)
+        freqs     = result.f_hz
+        real_data = _fill_nans(np.real(result.eps_selected))
     else:
         freqs, real_data, _ = _dummy_data()
 
     def draw():
         ax.clear()
-        c = _get_color(btn_trace)
+        c    = _get_color(btn_trace)
         bg_c = _get_color(btn_bg)
         tc_c = _get_color(btn_text)
         ac_c = _get_color(btn_axis)
-        w = spin_w.value()
+        w    = spin_w.value()
         fig.patch.set_facecolor(bg_c)
         ax.set_facecolor(bg_c)
-        ax.plot(freqs, real_data, color=c, linewidth=w, label=r"$\varepsilon_r'$")
-        ax.set_xlabel("Frequency", color=tc_c, fontsize=9)
+        ax.plot(freqs / 1e6, real_data, color=c, linewidth=w, label=r"$\varepsilon_r'$")
+        _mk_s = get_settings(_INI_EXE, _INI_DEV, Path(__file__).resolve())
+        _idx1 = min(max(int(_mk_s.value("markers/index_1", 0)), 0), len(freqs) - 1)
+        ax.plot(freqs[_idx1] / 1e6, real_data[_idx1], "o",
+                color=_get_color(btn_mc1), markersize=spin_ms1.value(), zorder=5)
+        ax.set_xlabel("Frequency (MHz)", color=tc_c, fontsize=9)
         ax.set_ylabel(r"$\varepsilon_r'$", color=tc_c, fontsize=10)
         ax.set_title(r"$\varepsilon_r'$", color=tc_c, fontsize=10, pad=6)
         ax.tick_params(colors=ac_c, labelsize=7)
         for spine in ax.spines.values():
             spine.set_color(ac_c)
         ax.grid(True, linestyle=":", alpha=0.4, color=ac_c)
-        ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=4))
         ax.legend(loc="upper right", labelcolor=tc_c, facecolor=bg_c,
                   edgecolor=ac_c, fontsize=8)
         canvas.draw()
@@ -252,12 +266,14 @@ def create_tab_real(main_window, texts: Dict):
     draw()
 
     btn_trace.mousePressEvent = _pick_color(btn_trace, draw)
-    btn_mc1.mousePressEvent = _pick_color(btn_mc1, draw)
-    btn_mc2.mousePressEvent = _pick_color(btn_mc2, draw)
-    btn_bg.mousePressEvent = _pick_color(btn_bg, draw)
-    btn_text.mousePressEvent = _pick_color(btn_text, draw)
-    btn_axis.mousePressEvent = _pick_color(btn_axis, draw)
+    btn_mc1.mousePressEvent   = _pick_color(btn_mc1, draw)
+    btn_mc2.mousePressEvent   = _pick_color(btn_mc2, draw)
+    btn_bg.mousePressEvent    = _pick_color(btn_bg, draw)
+    btn_text.mousePressEvent  = _pick_color(btn_text, draw)
+    btn_axis.mousePressEvent  = _pick_color(btn_axis, draw)
     spin_w.valueChanged.connect(lambda _: draw())
+    spin_ms1.valueChanged.connect(lambda _: draw())
+    spin_ms2.valueChanged.connect(lambda _: draw())
 
     def get_trace_color(): return _get_color(btn_trace)
     def get_trace_width(): return spin_w.value()
@@ -396,29 +412,33 @@ def create_tab_imag(main_window, texts: Dict):
 
     result = getattr(main_window, "_result", None)
     if result is not None:
-        freqs = result.f_hz
-        loss_data = -np.imag(result.eps_selected)
+        freqs     = result.f_hz
+        loss_data = _fill_nans(-np.imag(result.eps_selected))
     else:
         freqs, _, loss_data = _dummy_data()
 
     def draw():
         ax.clear()
-        c = _get_color(btn_trace)
+        c    = _get_color(btn_trace)
         bg_c = _get_color(btn_bg)
         tc_c = _get_color(btn_text)
         ac_c = _get_color(btn_axis)
-        w = spin_w.value()
+        w    = spin_w.value()
         fig.patch.set_facecolor(bg_c)
         ax.set_facecolor(bg_c)
-        ax.plot(freqs, loss_data, color=c, linewidth=w, label=r"$\varepsilon_r''$")
-        ax.set_xlabel("Frequency", color=tc_c, fontsize=9)
+        ax.plot(freqs / 1e6, loss_data, color=c, linewidth=w, label=r"$\varepsilon_r''$")
+        _mk_s = get_settings(_INI_EXE, _INI_DEV, Path(__file__).resolve())
+        _idx2 = min(max(int(_mk_s.value("markers/index_2", 0)), 0), len(freqs) - 1)
+        ax.plot(freqs[_idx2] / 1e6, loss_data[_idx2], "o",
+                color=_get_color(btn_mc1), markersize=spin_ms1.value(), zorder=5)
+        ax.set_xlabel("Frequency (MHz)", color=tc_c, fontsize=9)
         ax.set_ylabel(r"$\varepsilon_r''$", color=tc_c, fontsize=10)
         ax.set_title(r"$\varepsilon_r''$", color=tc_c, fontsize=10, pad=6)
         ax.tick_params(colors=ac_c, labelsize=7)
         for spine in ax.spines.values():
             spine.set_color(ac_c)
         ax.grid(True, linestyle=":", alpha=0.4, color=ac_c)
-        ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=4))
         ax.legend(loc="upper right", labelcolor=tc_c, facecolor=bg_c,
                   edgecolor=ac_c, fontsize=8)
         canvas.draw()
@@ -426,12 +446,14 @@ def create_tab_imag(main_window, texts: Dict):
     draw()
 
     btn_trace.mousePressEvent = _pick_color(btn_trace, draw)
-    btn_mc1.mousePressEvent = _pick_color(btn_mc1, draw)
-    btn_mc2.mousePressEvent = _pick_color(btn_mc2, draw)
-    btn_bg.mousePressEvent = _pick_color(btn_bg, draw)
-    btn_text.mousePressEvent = _pick_color(btn_text, draw)
-    btn_axis.mousePressEvent = _pick_color(btn_axis, draw)
+    btn_mc1.mousePressEvent   = _pick_color(btn_mc1, draw)
+    btn_mc2.mousePressEvent   = _pick_color(btn_mc2, draw)
+    btn_bg.mousePressEvent    = _pick_color(btn_bg, draw)
+    btn_text.mousePressEvent  = _pick_color(btn_text, draw)
+    btn_axis.mousePressEvent  = _pick_color(btn_axis, draw)
     spin_w.valueChanged.connect(lambda _: draw())
+    spin_ms1.valueChanged.connect(lambda _: draw())
+    spin_ms2.valueChanged.connect(lambda _: draw())
 
     def get_trace_color(): return _get_color(btn_trace)
     def get_trace_width(): return spin_w.value()

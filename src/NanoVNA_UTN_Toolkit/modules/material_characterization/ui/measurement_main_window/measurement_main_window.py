@@ -396,16 +396,21 @@ class MeasurementMainWindow(QMainWindow):
 
         fig.canvas.mpl_connect("resize_event", _adjust_layout)
 
+        # Restore last saved marker positions (clamped to valid range)
+        _ini_mk = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+        _init_idx1 = 0
+        _init_idx2 = 0
+
         try:
-            slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=0,     valstep=1,
+            slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=_init_idx1, valstep=1,
                              track_color="#555555",
                              handle_style={"facecolor": m1_color, "edgecolor": m1_color, "size": 10})
-            slider2 = Slider(sl2_ax, "", 0, n - 1, valinit=0, valstep=1,
+            slider2 = Slider(sl2_ax, "", 0, n - 1, valinit=_init_idx2, valstep=1,
                              track_color="#555555",
                              handle_style={"facecolor": m2_color, "edgecolor": m2_color, "size": 10})
         except TypeError:
-            slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=0, valstep=1, color=m1_color)
-            slider2 = Slider(sl2_ax, "", 0, n - 1, valinit=0, valstep=1, color=m2_color)
+            slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=_init_idx1, valstep=1, color=m1_color)
+            slider2 = Slider(sl2_ax, "", 0, n - 1, valinit=_init_idx2, valstep=1, color=m2_color)
 
         for s in (slider1, slider2):
             try:
@@ -428,6 +433,9 @@ class MeasurementMainWindow(QMainWindow):
             if hasattr(self, "_marker1_info_label"):
                 self._marker1_info_label.setText(
                     f"f = {_fmt_freq(freq)}    ε' = {eps_r:.4f}")
+            get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
+                "markers/index_1", idx
+            )
             canvas.draw_idle()
 
         def _upd2(val):
@@ -440,6 +448,9 @@ class MeasurementMainWindow(QMainWindow):
             if hasattr(self, "_marker2_info_label"):
                 self._marker2_info_label.setText(
                     f"f = {_fmt_freq(freq)}    ε'' = {eps_i:.4f}")
+            get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
+                "markers/index_2", idx
+            )
             canvas.draw_idle()
 
         slider1.on_changed(lambda val: _upd1(int(val)))
@@ -448,8 +459,8 @@ class MeasurementMainWindow(QMainWindow):
         self._slider1 = slider1
         self._slider2 = slider2
 
-        _upd1(0)
-        _upd2(0)
+        _upd1(_init_idx1)
+        _upd2(_init_idx2)
 
     # --------------------------------------------------------------------- #
 
