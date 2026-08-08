@@ -128,39 +128,59 @@ class MeasurementMainWindow(QMainWindow):
         wiz = self.wizard_window
         cal = getattr(wiz, "perm_calibration", None)
 
-        technique = getattr(wiz, "selected_method", "") or ""
+        technique = getattr(wiz, "selected_method", "") or "—"
         temp = getattr(wiz, "temperature_c", None)
         start = getattr(wiz, "sweep_start_freq", None)
         stop = getattr(wiz, "sweep_stop_freq", None)
         steps = getattr(wiz, "sweep_steps", None)
 
-        refs_text = "-"
+        refs_text = "—"
         if cal is not None and cal.ref1_key and cal.ref2_key:
             refs_text = (
                 f"{get_reference_liquid(cal.ref1_key).display_name} / "
                 f"{get_reference_liquid(cal.ref2_key).display_name}"
             )
 
-        badges = [
-            (info.get("technique", "Technique"), technique),
-            (info.get("temperature", "Temperature"), f"{temp:.1f} °C" if temp is not None else "—"),
-            (info.get("references", "References"), refs_text),
-            (info.get("sweep", "Sweep"),
-             f"{start/1e6:.3f}–{stop/1e6:.3f} MHz, {steps} pts"
+        items = [
+            (info.get("technique",    "Technique"),   technique),
+            (info.get("temperature",  "Temperature"), f"{temp:.1f} °C" if temp is not None else "—"),
+            (info.get("references",   "References"),  refs_text),
+            (info.get("sweep",        "Sweep"),
+             f"{start/1e6:.3f}–{stop/1e6:.3f} MHz · {steps} pts"
              if start is not None and stop is not None else "—"),
         ]
 
+        _BADGE = (
+            "background-color: #1e2a3a; border: 1px solid #2d5a8e;"
+            " border-radius: 6px; padding: 4px 14px;"
+        )
+        _KEY_STYLE = "font-size: 10px; font-weight: bold; color: #5a8fc0; border: none; background: transparent;"
+        _VAL_STYLE = "font-size: 12px; color: #7ab3f5; border: none; background: transparent;"
+
         row = QHBoxLayout()
-        row.setSpacing(8)
-        row.setContentsMargins(0, 4, 0, 4)
+        row.setSpacing(16)
+        row.setContentsMargins(0, 6, 0, 6)
         row.addStretch()
-        for label_text, value_text in badges:
-            badge = QLabel(f"<b>{label_text}</b>  {value_text}")
-            badge.setStyleSheet(
-                "background-color: #1e2a3a; color: #7ab3f5; border: 1px solid #2d5a8e;"
-                " border-radius: 5px; padding: 4px 12px; font-size: 11px;"
-            )
+
+        for label_text, value_text in items:
+            badge = QWidget()
+            badge.setStyleSheet(_BADGE)
+            badge_layout = QVBoxLayout(badge)
+            badge_layout.setContentsMargins(0, 4, 0, 4)
+            badge_layout.setSpacing(2)
+
+            key_lbl = QLabel(label_text.rstrip(":"))
+            key_lbl.setAlignment(Qt.AlignCenter)
+            key_lbl.setStyleSheet(_KEY_STYLE)
+
+            val_lbl = QLabel(value_text)
+            val_lbl.setAlignment(Qt.AlignCenter)
+            val_lbl.setStyleSheet(_VAL_STYLE)
+
+            badge_layout.addWidget(key_lbl)
+            badge_layout.addWidget(val_lbl)
             row.addWidget(badge)
+
         row.addStretch()
         self.main_layout.addLayout(row)
 
@@ -248,7 +268,7 @@ class MeasurementMainWindow(QMainWindow):
 
         caption = QLabel(
             "ε′ = real part (energy storage)  ·  ε″ = imaginary part (dielectric losses)  ·  "
-            "Faint grey curves are the other candidate roots  ·  Right-click to export"
+            "Right-click to export"
         )
         caption.setWordWrap(True)
         caption.setStyleSheet("font-size: 11px; border: none; background: transparent;")
@@ -321,45 +341,71 @@ class MeasurementMainWindow(QMainWindow):
 
         freqs = np.asarray(result.f_hz, dtype=float)
         n = len(freqs)
-        # Store pre-computed arrays for use in redraw restores
-        self._marker_freqs     = freqs
-        self._marker_real_eps  = _fill_nans(np.real(result.eps_selected))
-        self._marker_loss_eps  = _fill_nans(-np.imag(result.eps_selected))
-        self._marker_n         = n
+        self._marker_freqs    = freqs
+        self._marker_real_eps = _fill_nans(np.real(result.eps_selected))
+        self._marker_loss_eps = _fill_nans(-np.imag(result.eps_selected))
+        self._marker_n        = n
 
-        # Disable constrained layout, then explicitly reposition the main axes
-        # to leave room at the bottom for the two slider axes.
         try:
             fig.set_layout_engine("none")
         except Exception:
             pass
-        # [left, bottom, width, height] in figure-normalized coords (0–1)
-        ax.set_position([0.10, 0.22, 0.86, 0.68])
 
-        # Marker cursors on the main axes (x in Hz, same as update_epsilon_curves)
+        # ------------------------------------------------------------------ #
+        # Pixel-based layout: sliders occupy a fixed pixel band at the bottom
+        # so they never overlap the x-axis labels regardless of window size.
+        # ------------------------------------------------------------------ #
+        _SL_H_PX   = 26   # slider track height in pixels
+        _SL_BOT_PX = 10   # padding below sliders
+        _GAP_PX    = 54   # gap between slider top and main-axes bottom
+                          # (absorbs x-axis tick labels at any dpi/size)
+
+        def _compute_positions():
+            fig_h = fig.get_size_inches()[1] * fig.dpi
+            sl_bot = _SL_BOT_PX / fig_h
+            sl_h   = _SL_H_PX / fig_h
+            ax_bot = (_SL_BOT_PX + _SL_H_PX + _GAP_PX) / fig_h
+            ax_h   = max(0.30, 1.0 - ax_bot - 0.06)
+            return sl_bot, sl_h, ax_bot, ax_h
+
+        sl_bot0, sl_h0, ax_bot0, ax_h0 = _compute_positions()
+        ax.set_position([0.10, ax_bot0, 0.86, ax_h0])
+
+        # Marker cursors
         self._cursor1, = ax.plot([], [], "o", markersize=m1_size, color=m1_color,
                                   zorder=5, clip_on=True)
         self._cursor2, = ax.plot([], [], "o", markersize=m2_size, color=m2_color,
                                   zorder=5, clip_on=True)
 
-        # Two slider axes side by side at the bottom of the figure
-        sl1_ax = fig.add_axes([0.08, 0.08, 0.38, 0.06])
-        sl2_ax = fig.add_axes([0.54, 0.08, 0.38, 0.06])
+        # Slider axes
+        sl1_ax = fig.add_axes([0.08, sl_bot0, 0.38, sl_h0])
+        sl2_ax = fig.add_axes([0.54, sl_bot0, 0.38, sl_h0])
         for sax in (sl1_ax, sl2_ax):
             sax.set_facecolor("#2a2a2a")
             for spine in sax.spines.values():
                 spine.set_color("#444444")
 
+        def _adjust_layout(event=None):
+            try:
+                sl_bot, sl_h, ax_bot, ax_h = _compute_positions()
+                ax.set_position([0.10, ax_bot, 0.86, ax_h])
+                sl1_ax.set_position([0.08, sl_bot, 0.38, sl_h])
+                sl2_ax.set_position([0.54, sl_bot, 0.38, sl_h])
+            except Exception:
+                pass
+
+        fig.canvas.mpl_connect("resize_event", _adjust_layout)
+
         try:
-            slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=0,      valstep=1,
+            slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=0,     valstep=1,
                              track_color="#555555",
                              handle_style={"facecolor": m1_color, "edgecolor": m1_color, "size": 10})
-            slider2 = Slider(sl2_ax, "", 0, n - 1, valinit=n // 2, valstep=1,
+            slider2 = Slider(sl2_ax, "", 0, n - 1, valinit=0, valstep=1,
                              track_color="#555555",
                              handle_style={"facecolor": m2_color, "edgecolor": m2_color, "size": 10})
         except TypeError:
-            slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=0,      valstep=1, color=m1_color)
-            slider2 = Slider(sl2_ax, "", 0, n - 1, valinit=n // 2, valstep=1, color=m2_color)
+            slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=0, valstep=1, color=m1_color)
+            slider2 = Slider(sl2_ax, "", 0, n - 1, valinit=0, valstep=1, color=m2_color)
 
         for s in (slider1, slider2):
             try:
@@ -403,7 +449,7 @@ class MeasurementMainWindow(QMainWindow):
         self._slider2 = slider2
 
         _upd1(0)
-        _upd2(n // 2)
+        _upd2(0)
 
     # --------------------------------------------------------------------- #
 
