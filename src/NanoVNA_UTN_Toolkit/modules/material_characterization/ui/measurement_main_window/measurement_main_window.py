@@ -423,7 +423,11 @@ class MeasurementMainWindow(QMainWindow):
         def _fmt_freq(hz):
             return f"{hz/1e9:.4f} GHz" if hz >= 0.5e9 else f"{hz/1e6:.4f} MHz"
 
+        self._marker_updating = False
+
         def _upd1(val):
+            if self._marker_updating:
+                return
             if not hasattr(self, "_cursor1") or self._cursor1 is None:
                 return
             idx = min(max(int(round(val)), 0), self._marker_n - 1)
@@ -436,9 +440,23 @@ class MeasurementMainWindow(QMainWindow):
             get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                 "markers/index_1", idx
             )
+            if getattr(self, "_cursors_linked", False):
+                self._marker_updating = True
+                slider2.set_val(idx)
+                self._marker_updating = False
+                if hasattr(self, "_cursor2") and self._cursor2 is not None:
+                    self._cursor2.set_data([freq], [self._marker_loss_eps[idx]])
+                if hasattr(self, "_marker2_info_label"):
+                    self._marker2_info_label.setText(
+                        f"f = {_fmt_freq(freq)}    ε'' = {self._marker_loss_eps[idx]:.4f}")
+                get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
+                    "markers/index_2", idx
+                )
             canvas.draw_idle()
 
         def _upd2(val):
+            if self._marker_updating:
+                return
             if not hasattr(self, "_cursor2") or self._cursor2 is None:
                 return
             idx = min(max(int(round(val)), 0), self._marker_n - 1)
@@ -451,13 +469,73 @@ class MeasurementMainWindow(QMainWindow):
             get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                 "markers/index_2", idx
             )
+            if getattr(self, "_cursors_linked", False):
+                self._marker_updating = True
+                slider1.set_val(idx)
+                self._marker_updating = False
+                if hasattr(self, "_cursor1") and self._cursor1 is not None:
+                    self._cursor1.set_data([freq], [self._marker_real_eps[idx]])
+                if hasattr(self, "_marker1_info_label"):
+                    self._marker1_info_label.setText(
+                        f"f = {_fmt_freq(freq)}    ε' = {self._marker_real_eps[idx]:.4f}")
+                get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
+                    "markers/index_1", idx
+                )
             canvas.draw_idle()
 
         slider1.on_changed(lambda val: _upd1(int(val)))
         slider2.on_changed(lambda val: _upd2(int(val)))
 
+        # Persist link state
+        _link_ini = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+        self._cursors_linked = _link_ini.value("markers/linked", "true").lower() != "false"
+
+        def _toggle_link():
+            self._cursors_linked = not self._cursors_linked
+            get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
+                "markers/linked", self._cursors_linked
+            )
+            if self._cursors_linked:
+                slider2.set_val(int(slider1.val))
+
+        self._toggle_cursors_link = _toggle_link
+
         self._slider1 = slider1
         self._slider2 = slider2
+
+        # ---- Cursor visibility toggle ---- #
+        _vis_ini = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+        self._cursor1_visible = _vis_ini.value("markers/visible_1", "true").lower() != "false"
+        self._cursor2_visible = _vis_ini.value("markers/visible_2", "true").lower() != "false"
+
+        def _set_cursor1_visible(visible: bool):
+            self._cursor1_visible = visible
+            if hasattr(self, "_cursor1") and self._cursor1 is not None:
+                self._cursor1.set_visible(visible)
+            if hasattr(self, "_marker1_info_label"):
+                self._marker1_info_label.setVisible(visible)
+            get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
+                "markers/visible_1", visible
+            )
+            canvas.draw_idle()
+
+        def _set_cursor2_visible(visible: bool):
+            self._cursor2_visible = visible
+            if hasattr(self, "_cursor2") and self._cursor2 is not None:
+                self._cursor2.set_visible(visible)
+            if hasattr(self, "_marker2_info_label"):
+                self._marker2_info_label.setVisible(visible)
+            get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
+                "markers/visible_2", visible
+            )
+            canvas.draw_idle()
+
+        self._set_cursor1_visible = _set_cursor1_visible
+        self._set_cursor2_visible = _set_cursor2_visible
+
+        # Apply persisted state before first draw
+        _set_cursor1_visible(self._cursor1_visible)
+        _set_cursor2_visible(self._cursor2_visible)
 
         _upd1(_init_idx1)
         _upd2(_init_idx2)
@@ -483,14 +561,36 @@ class MeasurementMainWindow(QMainWindow):
         self._cursor1.set_data([self._marker_freqs[idx1]], [self._marker_real_eps[idx1]])
         self._cursor2.set_data([self._marker_freqs[idx2]], [self._marker_loss_eps[idx2]])
 
+        self._cursor1.set_visible(getattr(self, "_cursor1_visible", True))
+        self._cursor2.set_visible(getattr(self, "_cursor2_visible", True))
+
     # --------------------------------------------------------------------- #
 
     def _show_chart_context_menu(self, pos):
         menu = QMenu(self)
+
         grid_label = "Hide Grid" if getattr(self, "_grid_enabled", True) else "Show Grid"
         grid_action = QAction(grid_label, self)
         grid_action.triggered.connect(self._toggle_grid)
         menu.addAction(grid_action)
+
+        if hasattr(self, "_set_cursor1_visible"):
+            menu.addSeparator()
+            vis1 = getattr(self, "_cursor1_visible", True)
+            vis2 = getattr(self, "_cursor2_visible", True)
+            c1_action = QAction("Hide ε′ cursor" if vis1 else "Show ε′ cursor", self)
+            c1_action.triggered.connect(lambda: self._set_cursor1_visible(not vis1))
+            menu.addAction(c1_action)
+            c2_action = QAction("Hide ε″ cursor" if vis2 else "Show ε″ cursor", self)
+            c2_action.triggered.connect(lambda: self._set_cursor2_visible(not vis2))
+            menu.addAction(c2_action)
+
+        if hasattr(self, "_toggle_cursors_link"):
+            linked = getattr(self, "_cursors_linked", False)
+            link_action = QAction("Unlink cursors" if linked else "Link cursors", self)
+            link_action.triggered.connect(self._toggle_cursors_link)
+            menu.addAction(link_action)
+
         menu.addSeparator()
         export_action = QAction("Export…", self)
         export_action.triggered.connect(self._open_chart_export_dialog)
