@@ -8,7 +8,8 @@
     "sweep": "Barrido:"
   },
   "table": {
-    "frequency": "Frecuencia",
+    "window_title": "Tabla de Resultados",
+    "frequency": "Frecuencia (MHz)",
     "eps_real": "ε′",
     "eps_imag": "ε″",
     "loss_tangent": "tan δ"

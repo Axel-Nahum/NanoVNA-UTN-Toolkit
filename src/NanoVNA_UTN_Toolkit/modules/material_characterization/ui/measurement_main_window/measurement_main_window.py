@@ -594,38 +594,323 @@ class MeasurementMainWindow(QMainWindow):
         if result is None:
             return
 
-        dlg = QDialog(self)
-        dlg.setWindowTitle("Results Table")
-        dlg.setMinimumSize(480, 600)
-        layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(8, 8, 8, 8)
+        import csv
+        from PySide6.QtWidgets import QFileDialog, QFrame, QMessageBox, QPushButton
 
         t = self._texts.get("table", {})
+        wiz = self.wizard_window
+        _is_dark = self.palette().window().color().lightness() < 128
+
+        # ── Palette ────────────────────────────────────────────────────────
+        if _is_dark:
+            title_color    = "#c8daf5"       # azul claro solo para titulo
+            key_color      = "#5a8fc0"       # azul para keys del strip
+            val_color      = "#7ab3f5"       # azul para vals del strip
+            strip_bg       = "#1a2640"
+            strip_bdr      = "#2d5a8e"
+            tbl_bg         = "#0e0e12"       # casi negro neutro
+            tbl_alt        = "#1a1a22"       # gris muy oscuro neutro
+            tbl_text       = "#e0e0e0"       # gris claro puro, sin azul
+            tbl_grid       = "#232323"       # gris oscuro para grilla
+            hdr_bg         = "#0f1e30"       # azul oscuro solo para header
+            hdr_fg         = "#7ab3f5"       # azul claro en header
+            hdr_bdr        = "#2a2a2a"       # separador header→filas gris
+            hdr_grid       = "#1e1e1e"       # divisor entre columnas de header
+            sel_bg         = "#1e4878"       # azul para selección
+            sel_fg         = "#ffffff"
+            scroll_track   = "#111116"       # gris casi negro
+            scroll_handle  = "#3a3a44"       # gris medio
+            scroll_hover   = "#555560"       # gris más claro en hover
+            scroll_press   = "#28282e"       # gris oscuro al presionar
+            legend_color   = "#606070"
+            btn_bg         = "#1a1a24"
+            btn_fg         = "#7ab3f5"       # azul solo en texto del botón
+            btn_bdr        = "#2d5a8e"
+            btn_hover      = "#1e3a60"
+            btn_press      = "#142a50"
+            outer_bdr      = "#2a2a30"       # borde del frame gris oscuro
+        else:
+            title_color    = "#1a2a3a"
+            key_color      = "#3a6090"
+            val_color      = "#1a3a5c"
+            strip_bg       = "#dce8f5"
+            strip_bdr      = "#9bbcd8"
+            tbl_bg         = "#ffffff"
+            tbl_alt        = "#f4f4f6"       # gris muy claro neutro
+            tbl_text       = "#1a1a1a"
+            tbl_grid       = "#d0d0d8"
+            hdr_bg         = "#dce8f5"
+            hdr_fg         = "#1a3a5c"
+            hdr_bdr        = "#9bbcd8"
+            hdr_grid       = "#c0ccd8"
+            sel_bg         = "#b8d4f8"
+            sel_fg         = "#0a1a2a"
+            scroll_track   = "#e4e4e8"
+            scroll_handle  = "#aaaabc"
+            scroll_hover   = "#888898"
+            scroll_press   = "#6a6a80"
+            legend_color   = "#8080a0"
+            btn_bg         = "#dce8f5"
+            btn_fg         = "#1a3a5c"
+            btn_bdr        = "#9bbcd8"
+            btn_hover      = "#c8dcf0"
+            btn_press      = "#b0ccec"
+            outer_bdr      = "#9bbcd8"
+
+        # ── Dialog ─────────────────────────────────────────────────────────
+        dlg = QDialog(self)
+        dlg.setWindowTitle(t.get("window_title", "Results Table"))
+        dlg.setMinimumSize(580, 680)
+        dlg.setStyleSheet(self.styleSheet())
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 16)
+        layout.setSpacing(0)
+
+        # ── Title ──────────────────────────────────────────────────────────
+        title_lbl = QLabel(t.get("window_title", "Results Table"))
+        title_lbl.setAlignment(Qt.AlignCenter)
+        title_lbl.setStyleSheet(
+            f"font-size: 18px; font-weight: bold; color: {title_color};"
+            " padding-bottom: 10px; border: none;"
+        )
+        layout.addWidget(title_lbl)
+
+        # ── Info strip ─────────────────────────────────────────────────────
+        f_hz = result.f_hz
+        eps  = result.eps_selected
+        n_pts = len(f_hz)
+        temp = getattr(wiz, "temperature_c", None)
+        temp_str  = f"{temp:.1f} °C" if temp is not None else "—"
+        freq_str  = f"{f_hz[0]/1e6:.3f} – {f_hz[-1]/1e6:.3f} MHz"
+
+        info_items = [
+            ("Number of points", str(n_pts)),
+            ("Frequency range",  freq_str),
+            ("Temperature",      temp_str),
+        ]
+
+        info_strip = QWidget()
+        info_strip.setStyleSheet(
+            f"background-color: {strip_bg}; border: 1px solid {strip_bdr};"
+            " border-radius: 8px;"
+        )
+        info_row = QHBoxLayout(info_strip)
+        info_row.setContentsMargins(16, 10, 16, 10)
+        info_row.setSpacing(0)
+
+        for idx, (key, val) in enumerate(info_items):
+            if idx > 0:
+                sep = QWidget()
+                sep.setFixedWidth(1)
+                sep.setFixedHeight(28)
+                sep.setStyleSheet(f"background-color: {strip_bdr}; border: none;")
+                info_row.addWidget(sep)
+
+            cell = QWidget()
+            cell.setStyleSheet("border: none; background: transparent;")
+            cell_l = QVBoxLayout(cell)
+            cell_l.setContentsMargins(16, 0, 16, 0)
+            cell_l.setSpacing(1)
+
+            k_lbl = QLabel(key)
+            k_lbl.setAlignment(Qt.AlignCenter)
+            k_lbl.setStyleSheet(
+                f"font-size: 10px; font-weight: bold; color: {key_color};"
+                " border: none; background: transparent;"
+            )
+            v_lbl = QLabel(val)
+            v_lbl.setAlignment(Qt.AlignCenter)
+            v_lbl.setStyleSheet(
+                f"font-size: 12px; color: {val_color};"
+                " border: none; background: transparent;"
+            )
+            cell_l.addWidget(k_lbl)
+            cell_l.addWidget(v_lbl)
+            info_row.addWidget(cell, stretch=1)
+
+        layout.addWidget(info_strip)
+        layout.addSpacing(12)
+
+        # ── Table ──────────────────────────────────────────────────────────
+        def _fmt(v, decimals):
+            return "—" if not np.isfinite(v) else f"{v:.{decimals}f}"
+
+        stride   = max(1, n_pts // _MAX_TABLE_ROWS)
+        rows_idx = list(range(0, n_pts, stride))
+
         table = QTableWidget()
         table.setColumnCount(4)
         table.setHorizontalHeaderLabels([
-            t.get("frequency", "Frequency"),
-            t.get("eps_real", "epsilon_r'"),
-            t.get("eps_imag", "epsilon_r''"),
-            t.get("loss_tangent", "tan delta"),
+            t.get("frequency",    "Frequency (MHz)"),
+            t.get("eps_real",     "ε′"),
+            t.get("eps_imag",     "ε″"),
+            t.get("loss_tangent", "tan δ"),
         ])
+        table.setRowCount(len(rows_idx))
+        table.setShowGrid(True)
+        table.setAlternatingRowColors(True)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.horizontalHeader().setStretchLastSection(True)
+        table.verticalHeader().setVisible(False)
+        table.setStyleSheet(f"""
+            QTableView {{
+                outline: 0;
+            }}
+            QTableWidget {{
+                background-color: {tbl_bg};
+                alternate-background-color: {tbl_alt};
+                color: {tbl_text};
+                gridline-color: {tbl_grid};
+                border: none;
+                font-size: 12px;
+                selection-background-color: {sel_bg};
+                selection-color: {sel_fg};
+            }}
+            QTableWidget::item {{
+                padding: 5px 14px;
+                border: none;
+            }}
+            QTableWidget::item:selected {{
+                background-color: {sel_bg};
+                color: {sel_fg};
+                border: none;
+            }}
+            QTableWidget::item:focus {{
+                border: none;
+                outline: none;
+            }}
+            QHeaderView::section {{
+                background-color: {hdr_bg};
+                color: {hdr_fg};
+                font-weight: bold;
+                font-size: 12px;
+                padding: 8px 14px;
+                border: none;
+                border-bottom: 2px solid {hdr_bdr};
+                border-right: 1px solid {hdr_grid};
+            }}
+            QHeaderView::section:last {{
+                border-right: none;
+            }}
+            QScrollBar:vertical {{
+                background: {scroll_track};
+                width: 12px;
+                border-radius: 6px;
+                margin: 4px 2px 4px 2px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {scroll_handle};
+                border-radius: 5px;
+                min-height: 30px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {scroll_hover};
+            }}
+            QScrollBar::handle:vertical:pressed {{
+                background: {scroll_press};
+            }}
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {{
+                height: 0;
+                background: none;
+            }}
+            QScrollBar::add-page:vertical,
+            QScrollBar::sub-page:vertical {{
+                background: none;
+            }}
+        """)
 
-        f_hz = result.f_hz
-        eps = result.eps_selected
-        n = len(f_hz)
-        stride = max(1, n // _MAX_TABLE_ROWS)
-        rows = list(range(0, n, stride))
-        table.setRowCount(len(rows))
-
-        for r, i in enumerate(rows):
-            re = float(np.real(eps[i]))
-            loss = float(-np.imag(eps[i]))
-            tand = loss / re if re not in (0.0,) and np.isfinite(re) else float("nan")
-            for c, val in enumerate([f"{f_hz[i]/1e6:.3f} MHz", f"{re:.3f}", f"{loss:.3f}", f"{tand:.4f}"]):
-                table.setItem(r, c, QTableWidgetItem(val))
+        for r, i in enumerate(rows_idx):
+            re_val   = float(np.real(eps[i]))
+            loss_val = float(-np.imag(eps[i]))
+            if re_val != 0.0 and np.isfinite(re_val) and np.isfinite(loss_val):
+                tand_val = loss_val / re_val
+            else:
+                tand_val = float("nan")
+            for c, val in enumerate([
+                f"{f_hz[i]/1e6:.4f}",
+                _fmt(re_val,   4),
+                _fmt(loss_val, 4),
+                _fmt(tand_val, 5),
+            ]):
+                item = QTableWidgetItem(val)
+                item.setTextAlignment(Qt.AlignCenter)
+                table.setItem(r, c, item)
 
         table.resizeColumnsToContents()
-        layout.addWidget(table)
+
+        # Wrap table in a QFrame so border-radius is actually visible.
+        # The 3px margin keeps table content away from the corners,
+        # so Qt doesn't clip them with the table's rectangular viewport.
+        tbl_frame = QFrame()
+        tbl_frame.setObjectName("tbl_frame")
+        tbl_frame.setStyleSheet(
+            f"QFrame#tbl_frame {{"
+            f" border: 2px solid {outer_bdr};"
+            f" border-radius: 10px;"
+            f" background: {tbl_bg};"
+            f"}}"
+        )
+        tbl_frame_layout = QVBoxLayout(tbl_frame)
+        tbl_frame_layout.setContentsMargins(3, 3, 3, 3)
+        tbl_frame_layout.setSpacing(0)
+        tbl_frame_layout.addWidget(table)
+        layout.addWidget(tbl_frame)
+        layout.addSpacing(8)
+
+        # ── Footer ─────────────────────────────────────────────────────────
+        footer_row = QHBoxLayout()
+        footer_row.setContentsMargins(4, 4, 4, 0)
+
+        legend_lbl = QLabel("  — : No data (NaN)")
+        legend_lbl.setStyleSheet(
+            f"font-size: 10px; color: {legend_color}; border: none;"
+            " font-style: italic;"
+        )
+        footer_row.addWidget(legend_lbl)
+        footer_row.addStretch()
+
+        export_btn = QPushButton("  Export CSV  ")
+        export_btn.setDefault(False)
+        export_btn.setAutoDefault(False)
+        export_btn.setFixedHeight(28)
+        export_btn.setStyleSheet(
+            f"QPushButton {{ background-color: {btn_bg}; color: {btn_fg};"
+            f" border: 1px solid {btn_bdr}; border-radius: 6px;"
+            f" padding: 3px 12px; font-size: 11px; font-weight: bold; }}"
+            f" QPushButton:hover {{ background-color: {btn_hover};"
+            f"   border-color: {scroll_hover}; }}"
+            f" QPushButton:pressed {{ background-color: {btn_press}; }}"
+        )
+
+        def _do_export_csv():
+            path, _ = QFileDialog.getSaveFileName(
+                dlg, "Save CSV", "permittivity.csv", "CSV Files (*.csv)"
+            )
+            if not path:
+                return
+            try:
+                e_real = np.real(eps)
+                e_imag = -np.imag(eps)
+                with open(path, "w", newline="", encoding="utf-8") as fh:
+                    writer = csv.writer(fh)
+                    writer.writerow(["Frequency (Hz)", "Epsilon_real", "Epsilon_imag"])
+                    for freq, er, ei in zip(f_hz, e_real, e_imag):
+                        writer.writerow([f"{freq:.4f}", f"{er:.6f}", f"{ei:.6f}"])
+                QMessageBox.information(dlg, "Saved", f"CSV saved to:\n{path}")
+            except Exception as exc:
+                QMessageBox.critical(dlg, "Error", f"Failed to save CSV:\n{exc}")
+
+        export_btn.clicked.connect(_do_export_csv)
+        footer_row.addWidget(export_btn)
+
+        footer_w = QWidget()
+        footer_w.setLayout(footer_row)
+        footer_w.setStyleSheet("border: none;")
+        layout.addWidget(footer_w)
+
         dlg.show()
         self._table_dialog = dlg
 
