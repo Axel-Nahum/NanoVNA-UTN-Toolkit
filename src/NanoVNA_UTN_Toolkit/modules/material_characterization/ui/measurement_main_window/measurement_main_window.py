@@ -567,7 +567,15 @@ class MeasurementMainWindow(QMainWindow):
     # --------------------------------------------------------------------- #
 
     def _show_chart_context_menu(self, pos):
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.menu.plot_manager.plot_manager import (
+            open_plot_manager,
+        )
         menu = QMenu(self)
+
+        pm_action = QAction("Plot Manager", self)
+        pm_action.triggered.connect(lambda: open_plot_manager(self))
+        menu.addAction(pm_action)
+        menu.addSeparator()
 
         grid_label = "Hide Grid" if getattr(self, "_grid_enabled", True) else "Show Grid"
         grid_action = QAction(grid_label, self)
