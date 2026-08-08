@@ -150,6 +150,7 @@ class PermittivityExporter:
                     )
                 self._create_latex_document(
                     freqs=freqs,
+                    eps_selected=eps_selected,
                     image_files=image_files,
                     file_path=file_path,
                     sample_name=sample_name,
@@ -242,7 +243,7 @@ class PermittivityExporter:
     # ------------------------------------------------------------------ #
 
     def _create_latex_document(
-        self, freqs, image_files, file_path,
+        self, freqs, eps_selected, image_files, file_path,
         sample_name, wizard_window, compiler_path,
     ):
         try:
@@ -259,6 +260,9 @@ class PermittivityExporter:
         doc.preamble.append(Command("usepackage", "graphicx"))
         doc.preamble.append(Command("usepackage", "float"))
         doc.preamble.append(Command("usepackage", "textcomp"))
+        doc.preamble.append(Command("usepackage", "longtable"))
+        doc.preamble.append(Command("usepackage", "booktabs"))
+        doc.preamble.append(Command("usepackage", "array"))
 
         current_dt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._create_cover_page(doc, freqs, sample_name, wizard_window, current_dt)
@@ -286,6 +290,12 @@ class PermittivityExporter:
                             width=NoEscape(r"0.9\linewidth"),
                         )
 
+        # Data table page
+        if eps_selected is not None and freqs is not None:
+            doc.append(NewPage())
+            with doc.create(Section("Permittivity Data Table")):
+                self._build_data_table(doc, freqs, eps_selected)
+
         # Compile
         compiler_name = os.path.basename(compiler_path).replace(".exe", "")
         original_path = os.environ.get("PATH", "")
@@ -296,6 +306,64 @@ class PermittivityExporter:
             doc.generate_pdf(str(file_path), compiler=compiler_name, clean_tex=False)
         finally:
             os.environ["PATH"] = original_path
+
+    # ------------------------------------------------------------------ #
+
+    def _build_data_table(self, doc, freqs, eps_selected):
+        """Append a longtable with Frequency / ε′ / ε″ / tan δ columns."""
+        from pylatex.utils import NoEscape
+
+        f_hz = np.asarray(freqs, dtype=float)
+        eps  = np.asarray(eps_selected, dtype=complex)
+        n    = len(f_hz)
+        # At most 1000 rows in the PDF; stride to keep compile time reasonable
+        stride = max(1, n // 1000)
+
+        def _fv(v, decimals):
+            return r"\textemdash{}" if not np.isfinite(v) else f"{v:.{decimals}f}"
+
+        # Build the longtable as raw LaTeX for reliability
+        rows_latex = []
+        for i in range(0, n, stride):
+            re_v   = float(np.real(eps[i]))
+            loss_v = float(-np.imag(eps[i]))
+            if re_v != 0.0 and np.isfinite(re_v) and np.isfinite(loss_v):
+                tand_v = loss_v / re_v
+            else:
+                tand_v = float("nan")
+            rows_latex.append(
+                f"{f_hz[i]/1e6:.4f} & {_fv(re_v,4)} & {_fv(loss_v,4)} & {_fv(tand_v,5)} \\\\"
+            )
+
+        n_shown = len(rows_latex)
+        note = (
+            f"Showing {n_shown} of {n} points (every {stride} point)."
+            if stride > 1 else f"All {n_shown} measurement points."
+        )
+
+        table_body = "\n".join([
+            r"\begin{longtable}{>{\centering\arraybackslash}p{3.0cm}"
+            r">{\centering\arraybackslash}p{2.6cm}"
+            r">{\centering\arraybackslash}p{2.6cm}"
+            r">{\centering\arraybackslash}p{2.8cm}}",
+            r"\toprule",
+            r"\textbf{Frequency (MHz)} & \textbf{$\varepsilon'$} & \textbf{$\varepsilon''$} & \textbf{tan\,$\delta$} \\",
+            r"\midrule",
+            r"\endhead",
+            r"\midrule",
+            r"\multicolumn{4}{r}{\footnotesize\itshape (continued on next page)} \\",
+            r"\endfoot",
+            r"\bottomrule",
+            r"\endlastfoot",
+        ] + rows_latex + [
+            r"\end{longtable}",
+        ])
+
+        doc.append(NoEscape(
+            r"\noindent\footnotesize\textit{" + note.replace(".", r".\@") + r"}"
+            r"\normalsize\medskip"
+        ))
+        doc.append(NoEscape(table_body))
 
     # ------------------------------------------------------------------ #
 
