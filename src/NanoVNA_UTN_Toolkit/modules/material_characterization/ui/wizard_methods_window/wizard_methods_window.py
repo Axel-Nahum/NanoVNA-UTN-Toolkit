@@ -49,12 +49,15 @@ class CharacterizationWizard(QMainWindow):
             "NanoVNA Toolkit - Characterization Wizard"
         )
 
-        self.setGeometry(200, 200, 1200, 700)
-        self.setFixedSize(1200, 700)
-
         screen = QGuiApplication.primaryScreen().availableGeometry()
-        window_geometry = self.frameGeometry()
+        _W = min(1220, max(920, int(screen.width()  * 0.84)))
+        _H = min(720,  max(600, int(screen.height() * 0.84)))
+        self._wiz_w = _W
+        self._wiz_h = _H
+        self.setGeometry(200, 200, _W, _H)
+        self.setFixedSize(_W, _H)
 
+        window_geometry = self.frameGeometry()
         center_point = screen.center()
         window_geometry.moveCenter(center_point)
 

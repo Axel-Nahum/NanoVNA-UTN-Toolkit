@@ -38,7 +38,10 @@ import numpy as np
 from matplotlib.lines import Line2D
 from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtGui import QPixmap
-from PySide6.QtWidgets import QCheckBox, QHBoxLayout, QLabel, QPushButton, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QButtonGroup, QCheckBox, QComboBox, QFrame, QHBoxLayout,
+    QLabel, QPushButton, QRadioButton, QSizePolicy, QVBoxLayout, QWidget,
+)
 
 
 class _HalfWidthFilter(QObject):
@@ -50,7 +53,7 @@ class _HalfWidthFilter(QObject):
 
     def eventFilter(self, obj, event):
         if event.type() == QEvent.Type.Resize:
-            self._target.setFixedWidth(max(300, obj.width() // 2))
+            self._target.setFixedWidth(max(260, int(obj.width() * 0.38)))
         return False
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text, image_path
@@ -92,69 +95,167 @@ def build_standard_screen(wizard, descriptor, step_def):
     # Per-screen render state (mutated by the checkbox).
     state = {"show_indicative": True}
 
-    # Left half: sidebar + instructions (occupies exactly the left 50% of the window)
+    # Left half: sidebar + mid (occupies ~62% of the window, chart gets 38%)
     left_half_layout = QHBoxLayout()
     left_half_layout.setContentsMargins(0, 0, 0, 0)
     left_half_layout.setSpacing(8)
     left_half_layout.addWidget(build_step_sidebar(wizard, descriptor, texts), stretch=0)
 
-    # --- Middle: instructions + photo + control -------------------------- #
+    # --- Middle column ---------------------------------------------------- #
+    import os, sys
     mid = QVBoxLayout()
     mid.setSpacing(0)
-    mid.setContentsMargins(8, 8, 8, 8)
+    mid.setContentsMargins(10, 8, 10, 6)
 
+    # ── Pre-calibrate bar — solo en pasos de líquido de referencia ──────── #
+    if is_reference:
+        precal_row = QHBoxLayout()
+        precal_row.setContentsMargins(0, 0, 0, 0)
+        precal_row.setSpacing(8)
+        precal_hint = QLabel(std_texts.get("pre_calibrate_hint", "Optional — calibrate this reference before measuring"))
+        precal_hint.setStyleSheet("font-size: 11px; color: #606080; font-style: italic;")
+        precal_row.addWidget(precal_hint, stretch=1)
+        btn_precal = QPushButton(std_texts.get("pre_calibrate", "⚙  Pre-calibrate"))
+        btn_precal.setFixedHeight(24)
+        btn_precal.setStyleSheet(
+            "QPushButton { font-size: 11px; color: #888888; border: 1px solid #484858;"
+            " border-radius: 4px; padding: 0 10px; }"
+            " QPushButton:hover { color: #cccccc; border-color: #7070a0; }"
+        )
+        btn_precal.clicked.connect(lambda: _open_precal_dialog(wizard))
+        precal_row.addWidget(btn_precal)
+        mid.addLayout(precal_row)
+        mid.addSpacing(8)
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.HLine)
+        sep.setStyleSheet("border: none; background: #2e2e42; max-height: 1px;")
+        mid.addWidget(sep)
+        mid.addSpacing(10)
+
+    # ── Instruction text ─────────────────────────────────────────────────── #
     instr = QLabel(instruction_html)
     instr.setWordWrap(True)
-    instr.setStyleSheet("font-size: 14px;")
+    instr.setStyleSheet("font-size: 13px;")
     if is_rich:
         instr.setTextFormat(Qt.RichText)
     mid.addWidget(instr)
 
-    # Temperature reminder (reference liquids depend on it).
+    # Temperature reminder (reference liquids only)
     if is_reference:
-        mid.addSpacing(10)
+        mid.addSpacing(3)
         temp_reminder = QLabel(std_texts.get(
             "temperature_reminder", "Configured temperature: {temp:.1f} °C"
         ).format(temp=float(getattr(wizard, "temperature_c", 25.0))))
-        temp_reminder.setStyleSheet("font-size: 12px; color: #4da6ff; font-weight: bold;")
+        temp_reminder.setStyleSheet("font-size: 11px; color: #4da6ff; font-weight: bold;")
         mid.addWidget(temp_reminder)
 
-    # Helper photo.
+    # ── Helper photo centrada debajo de la instrucción ───────────────────── #
+    # En pasos sin pre-calibrate (Open, Short, DUT) la foto puede ser más grande
+    _has_photo = False
     img_file = _STEP_IMAGE.get(standard.key)
-
     if img_file:
-
-        import os
-        import sys
-
-        if getattr(sys, "frozen", False):
-            base = sys._MEIPASS
-        else:
-            base = os.path.abspath("src/NanoVNA_UTN_Toolkit")  # o tu raíz del proyecto si querés afinarlo
-
-        img_path = os.path.join(
-            base,
-            "modules",
-            "material_characterization",
-            "assets",
-            "images",
-            img_file
-        )
-
-        print(f"path de imagen: {img_path}")
-
-        pix = QPixmap(img_path)
-
-        if not pix.isNull():
+        base = sys._MEIPASS if getattr(sys, "frozen", False) else os.path.abspath("src/NanoVNA_UTN_Toolkit")
+        img_path = os.path.join(base, "modules", "material_characterization", "assets", "images", img_file)
+        _p = QPixmap(img_path)
+        if not _p.isNull():
             photo = QLabel()
-            photo.setAlignment(Qt.AlignCenter)
-            photo.setPixmap(pix.scaledToWidth(260, Qt.SmoothTransformation))
-            mid.addSpacing(26)
+            photo.setAlignment(Qt.AlignHCenter)
+            _pw, _ph = (245, 184) if is_reference else (330, 245)
+            _scaled = _p.scaled(_pw, _ph, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            photo.setPixmap(_scaled)
+            photo.setFixedHeight(_scaled.height())
+            mid.addSpacing(18 if not is_reference else 10)
             mid.addWidget(photo)
+            _has_photo = True
 
-    mid.addSpacing(20)
+    mid.addSpacing(20 if is_reference else 20)
 
     already = wizard.perm_calibration.is_standard_measured(standard.key)
+
+    # ── Source selector (reference liquids only) ──────────────────────── #
+    btn_grp = None
+    if is_reference:
+        src_frame = QFrame()
+        src_frame.setStyleSheet(
+            "QFrame { border: 1.5px solid #606070; border-radius: 6px; }"
+        )
+        src_frame.setMinimumHeight(178)
+        src_layout = QVBoxLayout(src_frame)
+        src_layout.setContentsMargins(14, 12, 14, 14)
+        src_layout.setSpacing(8)
+
+        src_title = QLabel(std_texts.get("source_title", "Data source"))
+        src_title.setStyleSheet("font-size: 11px; color: #888888; font-weight: bold; border: none;")
+        src_layout.addWidget(src_title)
+
+        btn_grp = QButtonGroup(src_frame)
+
+        rb_measure = QRadioButton(std_texts.get("source_measure", "Measure with VNA"))
+        rb_measure.setChecked(True)
+        btn_grp.addButton(rb_measure, 0)
+        src_layout.addWidget(rb_measure)
+
+        rb_import = QRadioButton(std_texts.get("source_import", "Import .s1p file"))
+        btn_grp.addButton(rb_import, 1)
+        src_layout.addWidget(rb_import)
+
+        # Fila: [rb_preset] [combo ─────────────]
+        rb_preset = QRadioButton(std_texts.get("source_preset", "Use saved preset"))
+        btn_grp.addButton(rb_preset, 2)
+
+        preset_combo = QComboBox()
+        preset_combo.setEnabled(False)
+        preset_combo.setMinimumHeight(26)
+        preset_combo.setPlaceholderText(std_texts.get("preset_empty", "No presets saved"))
+
+        btn_save_preset = QPushButton(std_texts.get("save_preset", "Save as preset…"))
+        btn_save_preset.setFixedHeight(24)
+        btn_save_preset.setEnabled(already)
+        btn_save_preset.setStyleSheet(
+            "QPushButton { color: #7ab3f5; border: 1px solid #7ab3f5;"
+            " border-radius: 4px; padding: 0 8px; font-size: 11px; }"
+            " QPushButton:hover { background: #0f1e30; }"
+            " QPushButton:disabled { color: #3a4a5a; border-color: #3a4a5a; }"
+        )
+
+        btn_delete_preset = QPushButton(std_texts.get("delete_preset", "Delete preset"))
+        btn_delete_preset.setFixedHeight(24)
+        btn_delete_preset.setEnabled(False)
+        btn_delete_preset.setStyleSheet(
+            "QPushButton { color: #ff6b6b; border: 1px solid #ff6b6b;"
+            " border-radius: 4px; padding: 0 8px; font-size: 11px; }"
+            " QPushButton:hover { background: #3a1a1a; }"
+            " QPushButton:disabled { color: #5a2a2a; border-color: #5a2a2a; }"
+        )
+
+        # [rb_preset] [combo ────────] — misma fila, Qt los alinea vertical automáticamente
+        preset_row = QHBoxLayout()
+        preset_row.setContentsMargins(0, 0, 0, 0)
+        preset_row.setSpacing(8)
+        preset_row.addWidget(rb_preset)
+        preset_row.addWidget(preset_combo, stretch=1)
+        src_layout.addLayout(preset_row)
+
+        src_layout.addSpacing(8)
+
+        # Botones centrados bajo el ancho del combo:
+        # spacer izquierdo = ancho del rb_preset + spacing de preset_row
+        _rb_offset = rb_preset.sizeHint().width() + 8
+        action_row = QHBoxLayout()
+        action_row.setSpacing(14)
+        action_row.setContentsMargins(_rb_offset, 0, 0, 0)
+        action_row.addStretch(1)
+        action_row.addWidget(btn_save_preset)
+        action_row.addWidget(btn_delete_preset)
+        action_row.addStretch(1)
+        src_layout.addLayout(action_row)
+
+        mid.addSpacing(14)
+        mid.addWidget(src_frame)
+        mid.addSpacing(34)
+    # ──────────────────────────────────────────────────────────────────── #
+
     measure_btn = QPushButton(
         std_texts.get("remeasure_button", "Measure again") if already
         else std_texts.get("measure_button", "Measure")
@@ -163,7 +264,7 @@ def build_standard_screen(wizard, descriptor, step_def):
     measure_btn.setFixedWidth(220)
     mid.addWidget(measure_btn, alignment=Qt.AlignHCenter)
 
-    mid.addSpacing(10)
+    mid.addSpacing(6)
 
     wizard.status_label = QLabel(
         _success_text(std_texts, name) if already
@@ -171,19 +272,45 @@ def build_standard_screen(wizard, descriptor, step_def):
     )
     wizard.status_label.setAlignment(Qt.AlignCenter)
     wizard.status_label.setWordWrap(True)
-    wizard.status_label.setFixedHeight(44)
     wizard.status_label.setStyleSheet(
         f"font-size: 12px; padding: 4px; color: {'lightgreen' if already else 'gray'};"
     )
     mid.addWidget(wizard.status_label)
 
-    # Indicative-curve show/hide (reference steps only).
-    indicative_chk = None
     if is_reference:
-        mid.addSpacing(12)
-        indicative_chk = QCheckBox(std_texts.get("show_indicative", "Show indicative reference"))
-        indicative_chk.setChecked(True)
-        mid.addWidget(indicative_chk, alignment=Qt.AlignHCenter)
+        _lbl_ready     = std_texts.get("status_ready",        "Ready to measure")
+        _lbl_import    = std_texts.get("status_import_ready", "No file imported yet")
+        _btn_measure   = std_texts.get("measure_button",      "Measure")
+        _btn_remeasure = std_texts.get("remeasure_button",    "Measure again")
+        _btn_import    = std_texts.get("import_button",       "Import Liquid")
+
+        def _on_source_changed(btn_id):
+            preset_combo.setEnabled(btn_id == 2)
+            btn_delete_preset.setEnabled(btn_id == 2)
+            if btn_id == 0:
+                measure_btn.setText(_btn_remeasure if already else _btn_measure)
+                btn_save_preset.setEnabled(already)
+                if not already:
+                    wizard.status_label.setText(_lbl_ready)
+                    wizard.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: gray;")
+            elif btn_id == 1:
+                measure_btn.setText(_btn_import)
+                btn_save_preset.setEnabled(False)
+                wizard.status_label.setText(_lbl_import)
+                wizard.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: gray;")
+            else:
+                measure_btn.setText(_btn_measure)
+                btn_save_preset.setEnabled(False)
+                if not already:
+                    wizard.status_label.setText(_lbl_ready)
+                    wizard.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: gray;")
+
+        btn_grp.idClicked.connect(_on_source_changed)
+
+        def _show_save_after_measure():
+            btn_save_preset.setEnabled(True)
+
+        wizard._on_ref_measured_hook = _show_save_after_measure
 
     mid.addStretch(1)
     mid_container = QWidget()
@@ -193,10 +320,10 @@ def build_standard_screen(wizard, descriptor, step_def):
     left_half = QWidget()
     left_half.setLayout(left_half_layout)
 
-    # Right half: Smith chart — starts exactly at the window midpoint.
-    # Equal margins (8 px each side) give symmetric padding around the canvas.
+    # Right half: Smith chart
     right = QVBoxLayout()
     right.setContentsMargins(8, 4, 8, 4)
+    right.setSpacing(4)
     from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import create_wizard_smith_chart
     fig, ax, canvas = create_wizard_smith_chart(
         start_freq=wizard.get_sweep_start_frequency(),
@@ -206,6 +333,29 @@ def build_standard_screen(wizard, descriptor, step_def):
         figsize=(6, 6),
     )
     wizard.current_fig, wizard.current_ax, wizard.current_canvas = fig, ax, canvas
+
+    # Checkbox dentro del canvas (fig.text) — en el espacio blanco inferior del figure
+    indicative_chk = None
+    if is_reference:
+        _chk_on  = '☑  ' + std_texts.get("show_indicative", "Show indicative reference")
+        _chk_off = '☐  ' + std_texts.get("show_indicative", "Show indicative reference")
+        _chk_text = fig.text(
+            0.5, 0.06, _chk_on,
+            ha='center', va='center',
+            fontsize=9, color='#888888',
+            picker=True,
+        )
+
+        def _on_pick(event):
+            if event.artist is not _chk_text:
+                return
+            state["show_indicative"] = not state["show_indicative"]
+            _chk_text.set_text(_chk_on if state["show_indicative"] else _chk_off)
+            stored_now = wizard.perm_calibration.get_measurement(standard.key)
+            _render(wizard, standard, name, color, std_texts, stored_now, state["show_indicative"])
+
+        fig.canvas.mpl_connect('pick_event', _on_pick)
+
     right_half = QWidget()
     right_half.setLayout(right)
 
@@ -221,7 +371,7 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     # Pin right_half to exactly half the container via setFixedWidth so that
     # canvas.draw() during measure cannot trigger a layout reflow.
-    right_half.setFixedWidth(max(300, (1200 - 40) // 2))
+    right_half.setFixedWidth(max(260, int((getattr(wizard, "_wiz_w", 1300) - 40) * 0.38)))
     _chart_filter = _HalfWidthFilter(right_half, container)
     container.installEventFilter(_chart_filter)
 
@@ -231,15 +381,12 @@ def build_standard_screen(wizard, descriptor, step_def):
     _render(wizard, standard, name, color, std_texts, stored, state["show_indicative"])
     wizard.next_button.setEnabled(already)
 
-    measure_btn.clicked.connect(
-        lambda: _on_measure(wizard, standard, name, color, measure_btn, std_texts, state)
-    )
-    if indicative_chk is not None:
-        def _toggle(checked):
-            state["show_indicative"] = bool(checked)
-            stored_now = wizard.perm_calibration.get_measurement(standard.key)
-            _render(wizard, standard, name, color, std_texts, stored_now, state["show_indicative"])
-        indicative_chk.toggled.connect(_toggle)
+    def _btn_clicked():
+        if btn_grp is not None and btn_grp.checkedId() != 0:
+            return  # import / preset mode — no action yet
+        _on_measure(wizard, standard, name, color, measure_btn, std_texts, state)
+
+    measure_btn.clicked.connect(_btn_clicked)
 
 
 def _success_text(std_texts, name):
@@ -259,6 +406,9 @@ def _on_measure(wizard, standard, name, color, button, std_texts, state):
     button.setText(std_texts.get("remeasure_button", "Measure again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11), state["show_indicative"])
     wizard.next_button.setEnabled(True)
+    hook = getattr(wizard, "_on_ref_measured_hook", None)
+    if callable(hook):
+        hook()
 
 
 def _short_legend_name(standard, name):
@@ -388,3 +538,34 @@ def _resolve_strings(wizard, std_texts, liquids, standard):
     name = block.get("name", standard.key.upper())
     instruction = block.get("instruction", f"Connect the {standard.key} standard and press Measure.")
     return name, instruction, False
+
+
+def _open_precal_dialog(wizard):
+    from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QDialogButtonBox
+    dlg = QDialog(wizard)
+    dlg.setWindowTitle("Pre-calibration")
+    dlg.setMinimumWidth(400)
+    layout = QVBoxLayout(dlg)
+    layout.setSpacing(12)
+    layout.setContentsMargins(20, 16, 20, 16)
+
+    title = QLabel("Pre-calibration")
+    title.setStyleSheet("font-size: 15px; font-weight: bold;")
+    layout.addWidget(title)
+
+    desc = QLabel(
+        "Pre-calibration compensates for cable and connector imperfections "
+        "before running the characterization procedure.\n\n"
+        "Connect the calibration standards (Open, Short, Load) to the port "
+        "and follow the on-screen instructions."
+    )
+    desc.setWordWrap(True)
+    desc.setStyleSheet("font-size: 12px; color: #cccccc;")
+    layout.addWidget(desc)
+
+    layout.addSpacing(4)
+    buttons = QDialogButtonBox(QDialogButtonBox.Ok)
+    buttons.accepted.connect(dlg.accept)
+    layout.addWidget(buttons)
+
+    dlg.exec()

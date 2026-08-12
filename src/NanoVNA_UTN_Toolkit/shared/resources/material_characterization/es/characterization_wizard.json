@@ -35,6 +35,7 @@
     "remeasure_button": "Medir de nuevo",
     "status_ready": "Listo para medir",
     "status_done": "medido",
+    "status_no_preset": "Ningún preset seleccionado",
     "status_success": "{name} medido correctamente",
     "temperature_reminder": "Temperatura configurada: {temp:.1f} °C",
     "show_indicative": "Mostrar referencia indicativa",
@@ -42,7 +43,7 @@
     "indicative_label": "indicativa (modelo nominal)",
     "open": {
       "name": "Open (sonda en aire)",
-      "instruction": "Conectá la sonda al NanoVNA y mantenela en aire (sin sumergir en ningún líquido). Luego presioná Medir. Esperado: un circuito abierto, Γ ≈ +1 (borde derecho de la carta de Smith)."
+      "instruction": "Conectá la sonda al puerto del NanoVNA y mantenela en el aire — que la cara de la sonda no toque ninguna superficie ni líquido. Asegurate de que el cable quede en posición natural, sin dobladuras forzadas. Esta medición establece la referencia de circuito abierto (Γ ≈ +1) utilizada para corregir las pérdidas del cable y los conectores en toda la banda de frecuencias. Luego presioná Medir."
     },
     "short": {
       "name": "Short (cortocircuito)",
@@ -50,7 +51,7 @@
     },
     "reference": {
       "name": "Líquido de referencia: {liquid}",
-      "instruction": "Sumergí la sonda en {liquid}, asegurándote de que no haya burbujas de aire en la cara de la sonda y de que el líquido esté a la temperatura configurada. Luego presioná Medir. La curva punteada (del mismo color) es una referencia indicativa de un modelo de sonda nominal; usá la casilla para mostrarla u ocultarla."
+      "instruction": "Sumergí la sonda en {liquid}. Sin burbujas en la cara de la sonda. Verificá la temperatura. Luego presioná Medir."
     },
     "dut": {
       "name": "Líquido incógnita",

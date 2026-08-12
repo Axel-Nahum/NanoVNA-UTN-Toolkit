@@ -35,6 +35,7 @@
     "remeasure_button": "Measure again",
     "status_ready": "Ready to measure",
     "status_done": "measured",
+    "status_no_preset": "No preset selected",
     "status_success": "{name} successfully measured",
     "temperature_reminder": "Configured temperature: {temp:.1f} °C",
     "show_indicative": "Show indicative reference",
@@ -42,7 +43,7 @@
     "indicative_label": "indicative (nominal model)",
     "open": {
       "name": "Open (probe in air)",
-      "instruction": "Connect the probe to the NanoVNA and keep it in air (not immersed in any liquid). Then press Measure. \nExpected: an open circuit, Γ ≈ +1 (right edge of the Smith chart)."
+      "instruction": "Connect the probe to the NanoVNA port and hold it in open air — do not let the probe face touch any surface or liquid. Make sure the cable lies naturally without excessive bending. This measurement establishes the open-circuit reference (Γ ≈ +1) used to correct cable and connector losses across the full frequency band. Then press Measure."
     },
     "short": {
       "name": "Short",
@@ -50,7 +51,7 @@
     },
     "reference": {
       "name": "Reference liquid: {liquid}",
-      "instruction": "Immerse the probe in {liquid}, making sure there are no air bubbles on the probe face and the liquid is at the configured temperature. Then press Measure. The dotted curve (same color) is an indicative reference from a nominal probe model; use the checkbox to show or hide it."
+      "instruction": "Immerse the probe in {liquid}. No air bubbles on the probe face. Check temperature. Then press Measure."
     },
     "dut": {
       "name": "Unknown liquid",

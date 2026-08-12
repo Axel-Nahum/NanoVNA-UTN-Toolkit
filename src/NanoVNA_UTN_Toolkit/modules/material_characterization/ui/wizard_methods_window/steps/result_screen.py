@@ -138,7 +138,7 @@ def build_result_screen(wizard, descriptor, step_def):
     container = QWidget()
     container.setLayout(columns)
 
-    right_half.setFixedWidth(max(300, (1200 - 40) // 2))
+    right_half.setFixedWidth(max(300, (getattr(wizard, "_wiz_w", 1300) - 40) // 2))
     _chart_filter = _HalfWidthFilter(right_half, container)
     container.installEventFilter(_chart_filter)
 
