@@ -50,6 +50,9 @@ from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import ge
 _PRESET_DEV_PATH = "modules/material_characterization/calibration/preset_liquids"
 _PRESET_EXE_PATH = "modules/material_characterization/calibration/preset_liquids"
 
+# Set to False to hide the dev import button on Open / Short / DUT screens.
+_DEV_IMPORT_VISIBLE = True
+
 
 def _get_preset_path() -> Path:
     path = get_calibration_path(_PRESET_EXE_PATH, _PRESET_DEV_PATH, Path(__file__).resolve())
@@ -474,6 +477,21 @@ def build_standard_screen(wizard, descriptor, step_def):
         wizard._on_ref_measured_hook = _show_save_after_measure
 
     mid.addStretch(1)
+
+    if not is_reference and _DEV_IMPORT_VISIBLE:
+        dev_import_btn = QPushButton("Import")
+        dev_import_btn.setFixedHeight(26)
+        dev_import_btn.setStyleSheet(
+            "QPushButton { font-size: 11px; color: #666677; border: 1px dashed #444455;"
+            " border-radius: 4px; padding: 0 12px; }"
+            " QPushButton:hover { color: #aaaacc; border-color: #6666aa; }"
+        )
+        mid.addWidget(dev_import_btn, alignment=Qt.AlignHCenter)
+        mid.addSpacing(4)
+        dev_import_btn.clicked.connect(
+            lambda: _on_import(wizard, standard, name, color, measure_btn, std_texts, state)
+        )
+
     mid_container = QWidget()
     mid_container.setLayout(mid)
     left_half_layout.addWidget(mid_container, stretch=1)
