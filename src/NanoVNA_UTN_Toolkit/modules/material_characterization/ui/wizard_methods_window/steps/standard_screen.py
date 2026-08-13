@@ -33,6 +33,7 @@ from __future__ import annotations
 import logging
 import sys
 import os
+from pathlib import Path
 
 import numpy as np
 from matplotlib.lines import Line2D
@@ -40,8 +41,34 @@ from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame, QHBoxLayout,
-    QLabel, QMessageBox, QPushButton, QRadioButton, QSizePolicy, QVBoxLayout, QWidget,
+    QInputDialog, QLabel, QMessageBox, QPushButton, QRadioButton,
+    QSizePolicy, QVBoxLayout, QWidget,
 )
+
+from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
+
+_PRESET_DEV_PATH = "modules/material_characterization/calibration/preset_liquids"
+_PRESET_EXE_PATH = "modules/material_characterization/calibration/preset_liquids"
+
+
+def _get_preset_path() -> Path:
+    path = get_calibration_path(_PRESET_EXE_PATH, _PRESET_DEV_PATH, Path(__file__).resolve())
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _refresh_preset_combo(combo: QComboBox) -> None:
+    current = combo.currentText()
+    combo.clear()
+    try:
+        names = sorted(p.stem for p in _get_preset_path().glob("*.s1p"))
+    except Exception:
+        names = []
+    for name in names:
+        combo.addItem(name)
+    idx = combo.findText(current)
+    if idx >= 0:
+        combo.setCurrentIndex(idx)
 
 
 class _HalfWidthFilter(QObject):
@@ -82,6 +109,10 @@ def build_standard_screen(wizard, descriptor, step_def):
     texts = load_text("characterization_wizard.json")
     std_texts = texts.get("standards", {})
     liquids = texts.get("liquids", {})
+
+    # Clear any hook left over from a previous reference-liquid screen so that
+    # non-reference steps (DUT) don't call into already-destroyed widgets.
+    wizard._on_ref_measured_hook = None
 
     standard = step_def.standard
     is_reference = standard.kind is StandardKind.REFERENCE_LIQUID
@@ -229,6 +260,9 @@ def build_standard_screen(wizard, descriptor, step_def):
             " QPushButton:disabled { color: #5a2a2a; border-color: #5a2a2a; }"
         )
 
+        # Poblar combo con presets existentes
+        _refresh_preset_combo(preset_combo)
+
         # [rb_preset] [combo ────────] — misma fila, Qt los alinea vertical automáticamente
         preset_row = QHBoxLayout()
         preset_row.setContentsMargins(0, 0, 0, 0)
@@ -239,8 +273,7 @@ def build_standard_screen(wizard, descriptor, step_def):
 
         src_layout.addSpacing(8)
 
-        # Botones centrados bajo el ancho del combo:
-        # spacer izquierdo = ancho del rb_preset + spacing de preset_row
+        # Botones centrados bajo el ancho del combo
         _rb_offset = rb_preset.sizeHint().width() + 8
         action_row = QHBoxLayout()
         action_row.setSpacing(14)
@@ -250,6 +283,61 @@ def build_standard_screen(wizard, descriptor, step_def):
         action_row.addWidget(btn_delete_preset)
         action_row.addStretch(1)
         src_layout.addLayout(action_row)
+
+        def _do_save_preset():
+            data = wizard.perm_calibration.get_measurement(standard.key)
+            if data is None:
+                QMessageBox.warning(wizard,
+                    std_texts.get("preset_save_error_title", "Save preset"),
+                    std_texts.get("preset_save_no_data", "No measurement to save. Measure or import first."))
+                return
+            name, ok = QInputDialog.getText(wizard,
+                std_texts.get("preset_save_title", "Save preset"),
+                std_texts.get("preset_save_prompt", "Preset name:"))
+            if not ok or not name.strip():
+                return
+            name = name.strip()
+            dest = _get_preset_path() / f"{name}.s1p"
+            if dest.exists():
+                ans = QMessageBox.question(wizard,
+                    std_texts.get("preset_overwrite_title", "Overwrite?"),
+                    std_texts.get("preset_overwrite_msg", '"{n}" already exists. Overwrite?').format(n=name),
+                    QMessageBox.Yes | QMessageBox.No)
+                if ans != QMessageBox.Yes:
+                    return
+            try:
+                import skrf as rf
+                freqs, s11 = data
+                net = rf.Network(frequency=freqs, s=s11.reshape(-1, 1, 1), z0=50)
+                net.write_touchstone(str(dest))
+                _refresh_preset_combo(preset_combo)
+                QMessageBox.information(wizard,
+                    std_texts.get("preset_saved_title", "Saved"),
+                    std_texts.get("preset_saved_msg", 'Preset "{n}" saved.').format(n=name))
+            except Exception as exc:
+                QMessageBox.critical(wizard,
+                    std_texts.get("preset_save_error_title", "Save preset"),
+                    str(exc))
+
+        def _do_delete_preset():
+            name = preset_combo.currentText()
+            if not name:
+                return
+            ans = QMessageBox.question(wizard,
+                std_texts.get("preset_delete_title", "Delete preset"),
+                std_texts.get("preset_delete_msg", 'Delete "{n}"?').format(n=name),
+                QMessageBox.Yes | QMessageBox.No)
+            if ans != QMessageBox.Yes:
+                return
+            try:
+                (_get_preset_path() / f"{name}.s1p").unlink(missing_ok=True)
+                _refresh_preset_combo(preset_combo)
+            except Exception as exc:
+                QMessageBox.critical(wizard,
+                    std_texts.get("preset_save_error_title", "Delete preset"), str(exc))
+
+        btn_save_preset.clicked.connect(_do_save_preset)
+        btn_delete_preset.clicked.connect(_do_delete_preset)
 
         mid.addSpacing(14)
         mid.addWidget(src_frame)
@@ -280,13 +368,18 @@ def build_standard_screen(wizard, descriptor, step_def):
     if is_reference:
         _lbl_ready     = std_texts.get("status_ready",        "Ready to measure")
         _lbl_import    = std_texts.get("status_import_ready", "No file imported yet")
+        _lbl_no_preset = std_texts.get("status_no_preset",    "No preset selected")
         _btn_measure   = std_texts.get("measure_button",      "Measure")
         _btn_remeasure = std_texts.get("remeasure_button",    "Measure again")
         _btn_import    = std_texts.get("import_button",       "Import Liquid")
 
+        # Trace color per source mode: 0=measure, 1=import, 2=preset
+        _trace_colors = {0: color, 1: "#ff9f43", 2: "#2ecc71"}
+
         def _on_source_changed(btn_id):
             preset_combo.setEnabled(btn_id == 2)
             btn_delete_preset.setEnabled(btn_id == 2)
+            measure_btn.setEnabled(btn_id != 2)
             if btn_id == 0:
                 measure_btn.setText(_btn_remeasure if already else _btn_measure)
                 btn_save_preset.setEnabled(already)
@@ -301,11 +394,37 @@ def build_standard_screen(wizard, descriptor, step_def):
             else:
                 measure_btn.setText(_btn_measure)
                 btn_save_preset.setEnabled(False)
-                if not already:
-                    wizard.status_label.setText(_lbl_ready)
+                current_preset = preset_combo.currentText()
+                if current_preset:
+                    _load_preset(current_preset)
+                else:
+                    wizard.status_label.setText(_lbl_no_preset)
                     wizard.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: gray;")
 
+        def _load_preset(preset_name):
+            if not preset_name or btn_grp.checkedId() != 2:
+                return
+            path = _get_preset_path() / f"{preset_name}.s1p"
+            try:
+                import skrf as rf
+                net = rf.Network(str(path))
+                freqs = np.asarray(net.f, dtype=float)
+                s11 = np.asarray(net.s[:, 0, 0], dtype=complex)
+            except Exception as exc:
+                QMessageBox.critical(
+                    wizard,
+                    std_texts.get("preset_save_error_title", "Preset error"),
+                    str(exc),
+                )
+                return
+            wizard.perm_calibration.set_measurement(standard.key, freqs, s11)
+            wizard.epsilon_result = None
+            set_status(wizard, _success_text(std_texts, name), "lightgreen")
+            _render(wizard, standard, name, _trace_colors[2], std_texts, (freqs, s11), state["show_indicative"])
+            wizard.next_button.setEnabled(True)
+
         btn_grp.idClicked.connect(_on_source_changed)
+        preset_combo.currentTextChanged.connect(_load_preset)
 
         def _show_save_after_measure():
             btn_save_preset.setEnabled(True)
@@ -383,11 +502,11 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     def _btn_clicked():
         mode = btn_grp.checkedId() if btn_grp is not None else 0
+        trace_color = _trace_colors.get(mode, color) if btn_grp is not None else color
         if mode == 0:
-            _on_measure(wizard, standard, name, color, measure_btn, std_texts, state)
+            _on_measure(wizard, standard, name, trace_color, measure_btn, std_texts, state)
         elif mode == 1:
-            _on_import(wizard, standard, name, color, measure_btn, std_texts, state)
-        # mode == 2 (preset) — no action yet
+            _on_import(wizard, standard, name, trace_color, measure_btn, std_texts, state)
 
     measure_btn.clicked.connect(_btn_clicked)
 
