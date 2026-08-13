@@ -40,8 +40,8 @@ from matplotlib.lines import Line2D
 from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame, QHBoxLayout,
-    QInputDialog, QLabel, QMessageBox, QPushButton, QRadioButton,
+    QButtonGroup, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame,
+    QHBoxLayout, QInputDialog, QLabel, QMessageBox, QPushButton, QRadioButton,
     QSizePolicy, QVBoxLayout, QWidget,
 )
 
@@ -143,18 +143,60 @@ def build_standard_screen(wizard, descriptor, step_def):
         precal_row = QHBoxLayout()
         precal_row.setContentsMargins(0, 0, 0, 0)
         precal_row.setSpacing(8)
-        precal_hint = QLabel(std_texts.get("pre_calibrate_hint", "Optional — calibrate this reference before measuring"))
+        precal_hint = QLabel(std_texts.get(
+            "pre_calibrate_hint",
+            "Normalización con OPEN — corrige cable y conectores"
+        ))
         precal_hint.setStyleSheet("font-size: 11px; color: #606080; font-style: italic;")
         precal_row.addWidget(precal_hint, stretch=1)
-        btn_precal = QPushButton(std_texts.get("pre_calibrate", "⚙  Pre-calibrate"))
+
+        btn_precal = QPushButton(std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)"))
         btn_precal.setFixedHeight(24)
         btn_precal.setStyleSheet(
             "QPushButton { font-size: 11px; color: #888888; border: 1px solid #484858;"
             " border-radius: 4px; padding: 0 10px; }"
             " QPushButton:hover { color: #cccccc; border-color: #7070a0; }"
         )
-        btn_precal.clicked.connect(lambda: _open_precal_dialog(wizard))
         precal_row.addWidget(btn_precal)
+
+        btn_delete_precal_top = QPushButton(std_texts.get("delete_precal", "✕ Quitar pre-cal"))
+        btn_delete_precal_top.setFixedHeight(24)
+        btn_delete_precal_top.setStyleSheet(
+            "QPushButton { font-size: 11px; color: #ff6b6b; border: 1px solid #ff6b6b;"
+            " border-radius: 4px; padding: 0 10px; }"
+            " QPushButton:hover { background: #3a1a1a; }"
+        )
+        _has_precal = standard.key in getattr(wizard, "_precal_originals", {})
+        btn_delete_precal_top.setVisible(_has_precal)
+        precal_row.addWidget(btn_delete_precal_top)
+
+        def _on_precal_clicked():
+            if not wizard.perm_calibration.is_standard_measured(standard.key):
+                QMessageBox.information(
+                    wizard,
+                    std_texts.get("precal_no_liquid_title", "Sin datos"),
+                    std_texts.get(
+                        "precal_no_liquid_msg",
+                        "Primero medí, importá o seleccioná un preset del líquido "
+                        "antes de aplicar la normalización con OPEN.",
+                    ),
+                )
+                return
+            _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_delete_precal_top)
+
+        btn_precal.clicked.connect(_on_precal_clicked)
+
+        def _delete_precal():
+            originals = getattr(wizard, "_precal_originals", {})
+            if standard.key not in originals:
+                return
+            freqs, s11_orig = originals.pop(standard.key)
+            wizard.perm_calibration.set_measurement(standard.key, freqs, s11_orig)
+            wizard.epsilon_result = None
+            _render(wizard, standard, name, color, std_texts, (freqs, s11_orig), state["show_indicative"])
+            btn_delete_precal_top.setVisible(False)
+
+        btn_delete_precal_top.clicked.connect(_delete_precal)
         mid.addLayout(precal_row)
         mid.addSpacing(8)
 
@@ -745,32 +787,146 @@ def _resolve_strings(wizard, std_texts, liquids, standard):
     return name, instruction, False
 
 
-def _open_precal_dialog(wizard):
-    from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QDialogButtonBox
+def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_delete_precal):
+    """Open-normalization pre-calibration dialog (vertical single-column layout).
+
+    Measures an OPEN (probe in air) and normalizes the stored liquid S11 by
+    dividing element-wise: s11_norm = s11_liquid / s11_open.
+    The original S11 is saved in wizard._precal_originals so it can be restored.
+    """
+    from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import create_wizard_smith_chart, SmithChartManager
+
     dlg = QDialog(wizard)
-    dlg.setWindowTitle("Pre-calibration")
-    dlg.setMinimumWidth(400)
+    dlg.setWindowTitle(std_texts.get("precal_dialog_title", "Pre-calibración — Normalización con OPEN"))
+    dlg.setMinimumSize(460, 620)
+    dlg.resize(500, 700)
+
     layout = QVBoxLayout(dlg)
-    layout.setSpacing(12)
-    layout.setContentsMargins(20, 16, 20, 16)
+    layout.setContentsMargins(16, 12, 16, 12)
+    layout.setSpacing(6)
 
-    title = QLabel("Pre-calibration")
-    title.setStyleSheet("font-size: 15px; font-weight: bold;")
-    layout.addWidget(title)
+    # Title
+    title_lbl = QLabel(std_texts.get("precal_title", "Normalización con OPEN"))
+    title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #4da6ff;")
+    layout.addWidget(title_lbl)
 
-    desc = QLabel(
-        "Pre-calibration compensates for cable and connector imperfections "
-        "before running the characterization procedure.\n\n"
-        "Connect the calibration standards (Open, Short, Load) to the port "
-        "and follow the on-screen instructions."
+    # Description
+    desc_lbl = QLabel(std_texts.get(
+        "precal_description",
+        "Colocá la sonda en el aire (OPEN) y medí. La normalización divide "
+        "el S₁₁ del líquido por el S₁₁ del OPEN, corrigiendo los efectos "
+        "del cable y los conectores.\n\ns₁₁_norm = s₁₁_líquido / s₁₁_OPEN"
+    ))
+    desc_lbl.setWordWrap(True)
+    desc_lbl.setStyleSheet("font-size: 11px; color: #aaaaaa;")
+    layout.addWidget(desc_lbl)
+
+    # Measure button
+    _measure_open_btn = QPushButton(std_texts.get("precal_measure_button", "Medir OPEN"))
+    _measure_open_btn.setFixedHeight(34)
+    _measure_open_btn.setFixedWidth(200)
+    layout.addWidget(_measure_open_btn, alignment=Qt.AlignHCenter)
+
+    # Status label
+    _status_lbl = QLabel(std_texts.get("precal_status_ready", "Sin medición del OPEN"))
+    _status_lbl.setAlignment(Qt.AlignCenter)
+    _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: gray;")
+    layout.addWidget(_status_lbl)
+
+    # Smith chart in a container widget that stretches to fill remaining space
+    chart_widget = QWidget()
+    chart_layout = QVBoxLayout(chart_widget)
+    chart_layout.setContentsMargins(0, 0, 0, 0)
+    chart_layout.setSpacing(0)
+    fig, ax, canvas = create_wizard_smith_chart(
+        start_freq=wizard.get_sweep_start_frequency(),
+        stop_freq=wizard.get_sweep_stop_frequency(),
+        num_points=wizard.get_sweep_steps(),
+        container_layout=chart_layout,
+        figsize=(4.4, 4.4),
     )
-    desc.setWordWrap(True)
-    desc.setStyleSheet("font-size: 12px; color: #cccccc;")
-    layout.addWidget(desc)
+    layout.addWidget(chart_widget, stretch=1)
 
-    layout.addSpacing(4)
-    buttons = QDialogButtonBox(QDialogButtonBox.Ok)
-    buttons.accepted.connect(dlg.accept)
-    layout.addWidget(buttons)
+    # Apply / Cancel
+    bottom_row = QHBoxLayout()
+    bottom_row.addStretch(1)
+    apply_btn = QPushButton(std_texts.get("precal_apply", "Aplicar"))
+    apply_btn.setFixedHeight(30)
+    apply_btn.setEnabled(False)
+    apply_btn.setStyleSheet(
+        "QPushButton { color: #4da6ff; border: 1px solid #4da6ff;"
+        " border-radius: 4px; padding: 0 20px; font-size: 12px; }"
+        " QPushButton:disabled { color: #2a4a6a; border-color: #2a4a6a; }"
+        " QPushButton:hover { background: #0a1828; }"
+    )
+    cancel_btn = QPushButton(std_texts.get("precal_cancel", "Cancelar"))
+    cancel_btn.setFixedHeight(30)
+    cancel_btn.setStyleSheet(
+        "QPushButton { color: #888888; border: 1px solid #484858;"
+        " border-radius: 4px; padding: 0 20px; font-size: 12px; }"
+        " QPushButton:hover { color: #cccccc; border-color: #707080; }"
+    )
+    bottom_row.addWidget(apply_btn)
+    bottom_row.addWidget(cancel_btn)
+    layout.addLayout(bottom_row)
+
+    _open_data = [None]  # [(freqs, s11_open)]
+
+    def _do_measure_open():
+        from PySide6.QtWidgets import QApplication
+        _status_lbl.setText(std_texts.get("precal_status_measuring", "Measuring…"))
+        _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: orange;")
+        QApplication.processEvents()
+        result = run_s11_sweep(wizard)
+        if result is None:
+            _status_lbl.setText(std_texts.get("precal_status_ready", "Sin medición del OPEN"))
+            _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: gray;")
+            return
+        freqs_open, s11_open = result
+        s11_arr = np.asarray(s11_open, dtype=complex)
+        _open_data[0] = (np.asarray(freqs_open, dtype=float), s11_arr)
+
+        manager = SmithChartManager()
+        builder = manager.builder
+        builder.ax = ax
+        ax.clear()
+        ax.get_figure().subplots_adjust(left=0.2, right=0.8, top=0.8, bottom=0.2)
+        start = wizard.get_sweep_start_frequency()
+        stop = wizard.get_sweep_stop_frequency()
+        points = wizard.get_sweep_steps()
+        base = builder.create_empty_network(start, stop, points)
+        base.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
+        builder._configure_smith_chart_appearance()
+        ax.set_title(r"$S_{11}$ — OPEN", fontsize=13, pad=20, color=builder.config.text_color)
+        ax.plot(np.real(s11_arr), np.imag(s11_arr), "o-", color="red",
+                linewidth=2, markersize=3, zorder=3)
+        builder.add_start_point_marker(s11_arr, color="red")
+        ax.legend(
+            [Line2D([0], [0], color="red")], [r"$S_{11}$ — OPEN"],
+            loc="upper left", bbox_to_anchor=(-0.22, 1.14),
+            bbox_transform=ax.transAxes, fontsize=8.5, framealpha=0.93,
+        )
+        canvas.draw()
+
+        _status_lbl.setText(std_texts.get("precal_status_done", "OPEN medido ✓"))
+        _status_lbl.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
+        apply_btn.setEnabled(True)
+
+    def _do_apply():
+        freqs_open, s11_open = _open_data[0]
+        freqs_liq, s11_liq = wizard.perm_calibration.get_measurement(standard.key)
+        if not hasattr(wizard, "_precal_originals"):
+            wizard._precal_originals = {}
+        wizard._precal_originals[standard.key] = (freqs_liq.copy(), np.asarray(s11_liq, dtype=complex).copy())
+        s11_norm = np.asarray(s11_liq, dtype=complex) / np.asarray(s11_open, dtype=complex)
+        wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm)
+        wizard.epsilon_result = None
+        _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm), state["show_indicative"])
+        btn_delete_precal.setVisible(True)
+        dlg.accept()
+
+    _measure_open_btn.clicked.connect(_do_measure_open)
+    apply_btn.clicked.connect(_do_apply)
+    cancel_btn.clicked.connect(dlg.reject)
 
     dlg.exec()
