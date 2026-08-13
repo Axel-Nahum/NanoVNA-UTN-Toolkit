@@ -89,6 +89,12 @@ def build_result_screen(wizard, descriptor, step_def):
         msg.setWordWrap(True)
         msg.setStyleSheet("color: #d62728; font-size: 14px;")
         mid.addWidget(msg)
+        last_err = getattr(wizard.perm_calibration, "last_error", None)
+        if last_err:
+            detail = QLabel(f"[debug] {last_err}")
+            detail.setWordWrap(True)
+            detail.setStyleSheet("color: #888888; font-size: 11px; padding-top: 4px;")
+            mid.addWidget(detail)
         mid.addStretch(1)
     else:
         _build_summary(wizard, mid, result, rtexts)

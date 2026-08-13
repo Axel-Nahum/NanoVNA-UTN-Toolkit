@@ -53,7 +53,7 @@ STANDARD_KEYS = ("open", "short", "ref1", "ref2")
 MUT_KEY = "dut"
 
 # Frequency-grid comparison tolerance, in Hz.
-_FREQ_ATOL_HZ = 1e-3
+_FREQ_ATOL_HZ = 1000.0
 
 
 class PermittivityProbeCalibration:
@@ -82,6 +82,7 @@ class PermittivityProbeCalibration:
         # Computed results.
         self.pattern_constants: Optional[PatternConstants] = None
         self.epsilon_result: Optional[EpsilonResult] = None
+        self.last_error: Optional[str] = None
 
         logger.info("[PermittivityProbeCalibration] Initialized at %s", self.results_path)
 
@@ -231,9 +232,11 @@ class PermittivityProbeCalibration:
                 ref1=get_reference_liquid(self.ref1_key),
                 ref2=get_reference_liquid(self.ref2_key),
             )
+            self.last_error = None
             logger.info("[PermittivityProbeCalibration] Calibration constants computed")
             return True
         except Exception as exc:  # noqa: BLE001
+            self.last_error = str(exc)
             logger.error("[PermittivityProbeCalibration] compute_calibration failed: %s", exc)
             return False
 

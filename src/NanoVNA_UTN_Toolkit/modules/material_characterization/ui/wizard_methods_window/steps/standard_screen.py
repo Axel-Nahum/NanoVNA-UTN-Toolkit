@@ -39,8 +39,8 @@ from matplotlib.lines import Line2D
 from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
-    QButtonGroup, QCheckBox, QComboBox, QFrame, QHBoxLayout,
-    QLabel, QPushButton, QRadioButton, QSizePolicy, QVBoxLayout, QWidget,
+    QButtonGroup, QCheckBox, QComboBox, QFileDialog, QFrame, QHBoxLayout,
+    QLabel, QMessageBox, QPushButton, QRadioButton, QSizePolicy, QVBoxLayout, QWidget,
 )
 
 
@@ -382,15 +382,101 @@ def build_standard_screen(wizard, descriptor, step_def):
     wizard.next_button.setEnabled(already)
 
     def _btn_clicked():
-        if btn_grp is not None and btn_grp.checkedId() != 0:
-            return  # import / preset mode — no action yet
-        _on_measure(wizard, standard, name, color, measure_btn, std_texts, state)
+        mode = btn_grp.checkedId() if btn_grp is not None else 0
+        if mode == 0:
+            _on_measure(wizard, standard, name, color, measure_btn, std_texts, state)
+        elif mode == 1:
+            _on_import(wizard, standard, name, color, measure_btn, std_texts, state)
+        # mode == 2 (preset) — no action yet
 
     measure_btn.clicked.connect(_btn_clicked)
 
 
 def _success_text(std_texts, name):
     return std_texts.get("status_success", "{name} successfully measured").format(name=name)
+
+
+def _on_import(wizard, standard, name, color, button, std_texts, state):
+    """Open a .s1p file, validate frequencies, store and render."""
+    import numpy as np
+    filepath, _ = QFileDialog.getOpenFileName(
+        wizard,
+        std_texts.get("import_dialog_title", "Import S11 (.s1p)"),
+        "",
+        "Touchstone 1-port (*.s1p);;All files (*)",
+    )
+    if not filepath:
+        return  # user cancelled
+
+    # Validate extension
+    if not filepath.lower().endswith(".s1p"):
+        QMessageBox.warning(
+            wizard,
+            std_texts.get("import_error_title", "Import Error"),
+            std_texts.get("import_error_not_s1p", "The selected file is not a .s1p Touchstone file."),
+        )
+        return
+
+    # Parse with skrf
+    try:
+        import skrf as rf
+        net = rf.Network(filepath)
+        freqs = np.asarray(net.f, dtype=float)
+        s11   = np.asarray(net.s[:, 0, 0], dtype=complex)
+    except Exception as exc:
+        QMessageBox.critical(
+            wizard,
+            std_texts.get("import_error_title", "Import Error"),
+            std_texts.get("import_error_parse", "Could not read the file:\n{err}").format(err=exc),
+        )
+        return
+
+    # Validate frequency grid against configured sweep
+    sw_n     = wizard.get_sweep_steps()
+    sw_start = float(wizard.get_sweep_start_frequency())
+    sw_stop  = float(wizard.get_sweep_stop_frequency())
+    f_tol    = 1e-3  # Hz
+
+    if len(freqs) != sw_n or abs(freqs[0] - sw_start) > f_tol or abs(freqs[-1] - sw_stop) > f_tol:
+        QMessageBox.warning(
+            wizard,
+            std_texts.get("import_error_title", "Import Error"),
+            std_texts.get(
+                "import_error_freq_mismatch",
+                "Frequency mismatch.\n\n"
+                "File:  {fn} pts  {fs} – {fe}\n"
+                "Sweep: {sn} pts  {ss} – {se}\n\n"
+                "The file must match the configured sweep exactly.\n"
+                "Import a matching file or change the sweep in Configuration."
+            ).format(
+                fn=len(freqs),
+                fs=_fmt_freq(freqs[0]),
+                fe=_fmt_freq(freqs[-1]),
+                sn=sw_n,
+                ss=_fmt_freq(sw_start),
+                se=_fmt_freq(sw_stop),
+            ),
+        )
+        return
+
+    wizard.perm_calibration.set_measurement(standard.key, freqs, s11)
+    wizard.epsilon_result = None
+    set_status(wizard, _success_text(std_texts, name), "lightgreen")
+    button.setText(std_texts.get("reimport_button", "Import again"))
+    _render(wizard, standard, name, color, std_texts, (freqs, s11), state["show_indicative"])
+    wizard.next_button.setEnabled(True)
+    hook = getattr(wizard, "_on_ref_measured_hook", None)
+    if callable(hook):
+        hook()
+
+
+def _fmt_freq(hz: float) -> str:
+    """Format Hz as kHz / MHz / GHz string."""
+    if hz >= 1e9:
+        return f"{hz/1e9:.4g} GHz"
+    if hz >= 1e6:
+        return f"{hz/1e6:.4g} MHz"
+    return f"{hz/1e3:.4g} kHz"
 
 
 def _on_measure(wizard, standard, name, color, button, std_texts, state):
