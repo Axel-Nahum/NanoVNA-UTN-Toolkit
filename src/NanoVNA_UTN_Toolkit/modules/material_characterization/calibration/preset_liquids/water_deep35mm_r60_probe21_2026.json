@@ -1,0 +1,19 @@
+{
+  "name": "water_deep35mm_r60_probe21_2026",
+  "display_name": "Agua a 35 mm de profundidad, base plastica ancha - R60 21 mm (2026-08-06)",
+  "liquid_key": "water",
+  "role": "reference",
+  "source": "measured",
+  "instrument": "Copper Mountain R60 (S/N 23103002)",
+  "probe": "open-ended coax 21 mm",
+  "temperature_c": null,
+  "acquired": "2026-08-06T17:08:00",
+  "saved": "2026-08-19T01:17:03",
+  "technique": "open_coax_liquids",
+  "points": 2000,
+  "f_start_hz": 1000000.0,
+  "f_stop_hz": 2000000000.0,
+  "precal_open_applied": false,
+  "origin_note": "Agua a 35 mm de profundidad, base plastica ancha. Antecedentes de la sonda (Drive UTN). Archivo original: sonda 21-agua 35mm prof base plastico ancha 06-08.s1p",
+  "schema_version": 1
+}

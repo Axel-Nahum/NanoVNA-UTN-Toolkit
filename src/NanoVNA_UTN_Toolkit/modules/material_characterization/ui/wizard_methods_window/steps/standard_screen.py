@@ -45,29 +45,24 @@ from PySide6.QtWidgets import (
     QSizePolicy, QVBoxLayout, QWidget,
 )
 
-from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
 from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_enabled
 
-_PRESET_DEV_PATH = "modules/material_characterization/calibration/preset_liquids"
-_PRESET_EXE_PATH = "modules/material_characterization/calibration/preset_liquids"
+def _refresh_preset_combo(combo: QComboBox, liquid_key=None) -> None:
+    """Fill ``combo`` with the presets of ``liquid_key`` (all of them if None).
 
-
-def _get_preset_path() -> Path:
-    path = get_calibration_path(_PRESET_EXE_PATH, _PRESET_DEV_PATH, Path(__file__).resolve())
-    path.mkdir(parents=True, exist_ok=True)
-    return path
-
-
-def _refresh_preset_combo(combo: QComboBox) -> None:
-    current = combo.currentText()
+    The preset NAME travels as userData, because the visible label is the
+    human-readable ``display_name`` from the sidecar, not the file stem.
+    """
+    current = combo.currentData()
     combo.clear()
     try:
-        names = sorted(p.stem for p in _get_preset_path().glob("*.s1p"))
+        metas = preset_store.list_presets(liquid_key=liquid_key)
     except Exception:
-        names = []
-    for name in names:
-        combo.addItem(name)
-    idx = combo.findText(current)
+        logger.exception("[standard_screen] could not list presets")
+        metas = []
+    for meta in metas:
+        combo.addItem(meta.label(), meta.name)
+    idx = combo.findData(current)
     if idx >= 0:
         combo.setCurrentIndex(idx)
 
@@ -88,6 +83,10 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader i
 from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques.base import StandardKind
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
     get_reference_liquid, indicative_s11,
+)
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import preset_store
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
+    preset_preload, selected_liquid_key, set_preset_preload,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.step_sidebar import (
     build_step_sidebar,
@@ -113,7 +112,7 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     # Clear any hook left over from a previous reference-liquid screen so that
     # non-reference steps (DUT) don't call into already-destroyed widgets.
-    wizard._on_ref_measured_hook = None
+    wizard._on_measurement_stored_hook = None
 
     standard = step_def.standard
     is_reference = standard.kind is StandardKind.REFERENCE_LIQUID
@@ -259,8 +258,9 @@ def build_standard_screen(wizard, descriptor, step_def):
         src_frame.setStyleSheet(
             "QFrame { border: 1.5px solid #606070; border-radius: 6px; }"
         )
-        # One row shorter when the import option is hidden (Debug Mode off).
-        src_frame.setMinimumHeight(178 if debug_mode else 152)
+        # Without the Save/Delete action row the box is two rows shorter; one
+        # more when the import option is hidden (Debug Mode off).
+        src_frame.setMinimumHeight(126 if debug_mode else 100)
         src_layout = QVBoxLayout(src_frame)
         src_layout.setContentsMargins(14, 12, 14, 14)
         src_layout.setSpacing(8)
@@ -290,28 +290,9 @@ def build_standard_screen(wizard, descriptor, step_def):
         preset_combo.setMinimumHeight(26)
         preset_combo.setPlaceholderText(std_texts.get("preset_empty", "No presets saved"))
 
-        btn_save_preset = QPushButton(std_texts.get("save_preset", "Save as preset…"))
-        btn_save_preset.setFixedHeight(24)
-        btn_save_preset.setEnabled(already)
-        btn_save_preset.setStyleSheet(
-            "QPushButton { color: #7ab3f5; border: 1px solid #7ab3f5;"
-            " border-radius: 4px; padding: 0 8px; font-size: 11px; }"
-            " QPushButton:hover { background: #0f1e30; }"
-            " QPushButton:disabled { color: #3a4a5a; border-color: #3a4a5a; }"
-        )
-
-        btn_delete_preset = QPushButton(std_texts.get("delete_preset", "Delete preset"))
-        btn_delete_preset.setFixedHeight(24)
-        btn_delete_preset.setEnabled(False)
-        btn_delete_preset.setStyleSheet(
-            "QPushButton { color: #ff6b6b; border: 1px solid #ff6b6b;"
-            " border-radius: 4px; padding: 0 8px; font-size: 11px; }"
-            " QPushButton:hover { background: #3a1a1a; }"
-            " QPushButton:disabled { color: #5a2a2a; border-color: #5a2a2a; }"
-        )
-
-        # Poblar combo con presets existentes
-        _refresh_preset_combo(preset_combo)
+        # Preset deletion now lives in Step 1, next to the liquid selection:
+        # this screen only consumes presets, it no longer manages the library.
+        _refresh_preset_combo(preset_combo, selected_liquid_key(wizard, standard))
 
         # [rb_preset] [combo ────────] — misma fila, Qt los alinea vertical automáticamente
         preset_row = QHBoxLayout()
@@ -320,75 +301,6 @@ def build_standard_screen(wizard, descriptor, step_def):
         preset_row.addWidget(rb_preset)
         preset_row.addWidget(preset_combo, stretch=1)
         src_layout.addLayout(preset_row)
-
-        src_layout.addSpacing(8)
-
-        # Botones centrados bajo el ancho del combo
-        _rb_offset = rb_preset.sizeHint().width() + 8
-        action_row = QHBoxLayout()
-        action_row.setSpacing(14)
-        action_row.setContentsMargins(_rb_offset, 0, 0, 0)
-        action_row.addStretch(1)
-        action_row.addWidget(btn_save_preset)
-        action_row.addWidget(btn_delete_preset)
-        action_row.addStretch(1)
-        src_layout.addLayout(action_row)
-
-        def _do_save_preset():
-            data = wizard.perm_calibration.get_measurement(standard.key)
-            if data is None:
-                QMessageBox.warning(wizard,
-                    std_texts.get("preset_save_error_title", "Save preset"),
-                    std_texts.get("preset_save_no_data", "No measurement to save. Measure or import first."))
-                return
-            name, ok = QInputDialog.getText(wizard,
-                std_texts.get("preset_save_title", "Save preset"),
-                std_texts.get("preset_save_prompt", "Preset name:"),
-                text=_suggested_preset_name(wizard, descriptor, standard))
-            if not ok or not name.strip():
-                return
-            name = name.strip()
-            dest = _get_preset_path() / f"{name}.s1p"
-            if dest.exists():
-                ans = QMessageBox.question(wizard,
-                    std_texts.get("preset_overwrite_title", "Overwrite?"),
-                    std_texts.get("preset_overwrite_msg", '"{n}" already exists. Overwrite?').format(n=name),
-                    QMessageBox.Yes | QMessageBox.No)
-                if ans != QMessageBox.Yes:
-                    return
-            try:
-                import skrf as rf
-                freqs, s11 = data
-                net = rf.Network(frequency=freqs, s=s11.reshape(-1, 1, 1), z0=50)
-                net.write_touchstone(str(dest))
-                _refresh_preset_combo(preset_combo)
-                QMessageBox.information(wizard,
-                    std_texts.get("preset_saved_title", "Saved"),
-                    std_texts.get("preset_saved_msg", 'Preset "{n}" saved.').format(n=name))
-            except Exception as exc:
-                QMessageBox.critical(wizard,
-                    std_texts.get("preset_save_error_title", "Save preset"),
-                    str(exc))
-
-        def _do_delete_preset():
-            name = preset_combo.currentText()
-            if not name:
-                return
-            ans = QMessageBox.question(wizard,
-                std_texts.get("preset_delete_title", "Delete preset"),
-                std_texts.get("preset_delete_msg", 'Delete "{n}"?').format(n=name),
-                QMessageBox.Yes | QMessageBox.No)
-            if ans != QMessageBox.Yes:
-                return
-            try:
-                (_get_preset_path() / f"{name}.s1p").unlink(missing_ok=True)
-                _refresh_preset_combo(preset_combo)
-            except Exception as exc:
-                QMessageBox.critical(wizard,
-                    std_texts.get("preset_save_error_title", "Delete preset"), str(exc))
-
-        btn_save_preset.clicked.connect(_do_save_preset)
-        btn_delete_preset.clicked.connect(_do_delete_preset)
 
         mid.addSpacing(14)
         mid.addWidget(src_frame)
@@ -401,7 +313,31 @@ def build_standard_screen(wizard, descriptor, step_def):
     )
     measure_btn.setFixedHeight(38)
     measure_btn.setFixedWidth(220)
-    mid.addWidget(measure_btn, alignment=Qt.AlignHCenter)
+
+    # Saving belongs next to Measure: what it stores is exactly what this step
+    # just captured. Available on every step, not only the reference liquids.
+    btn_save_preset = QPushButton(std_texts.get("save_preset", "Save as preset…"))
+    btn_save_preset.setFixedHeight(38)
+    btn_save_preset.setEnabled(already)
+    btn_save_preset.setStyleSheet(
+        "QPushButton { color: #7ab3f5; border: 1px solid #7ab3f5;"
+        " border-radius: 4px; padding: 0 12px; font-size: 11px; }"
+        " QPushButton:hover { background: #0f1e30; }"
+        " QPushButton:disabled { color: #3a4a5a; border-color: #3a4a5a; }"
+    )
+    btn_save_preset.clicked.connect(
+        lambda: _do_save_measurement(wizard, descriptor, standard, std_texts))
+
+    measure_row = QHBoxLayout()
+    measure_row.setSpacing(10)
+    measure_row.addStretch(1)
+    measure_row.addWidget(measure_btn)
+    measure_row.addWidget(btn_save_preset)
+    measure_row.addStretch(1)
+    mid.addLayout(measure_row)
+
+    # Every path that stores a measurement re-enables saving.
+    wizard._on_measurement_stored_hook = lambda: btn_save_preset.setEnabled(True)
 
     mid.addSpacing(6)
 
@@ -429,23 +365,19 @@ def build_standard_screen(wizard, descriptor, step_def):
 
         def _on_source_changed(btn_id):
             preset_combo.setEnabled(btn_id == 2)
-            btn_delete_preset.setEnabled(btn_id == 2)
             measure_btn.setEnabled(btn_id != 2)
             if btn_id == 0:
                 measure_btn.setText(_btn_remeasure if already else _btn_measure)
-                btn_save_preset.setEnabled(already)
                 if not already:
                     wizard.status_label.setText(_lbl_ready)
                     wizard.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: gray;")
             elif btn_id == 1:
                 measure_btn.setText(_btn_import)
-                btn_save_preset.setEnabled(False)
                 wizard.status_label.setText(_lbl_import)
                 wizard.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: gray;")
             else:
                 measure_btn.setText(_btn_measure)
-                btn_save_preset.setEnabled(False)
-                current_preset = preset_combo.currentText()
+                current_preset = preset_combo.currentData()
                 if current_preset:
                     _load_preset(current_preset)
                 else:
@@ -455,32 +387,16 @@ def build_standard_screen(wizard, descriptor, step_def):
         def _load_preset(preset_name):
             if not preset_name or btn_grp.checkedId() != 2:
                 return
-            path = _get_preset_path() / f"{preset_name}.s1p"
-            try:
-                import skrf as rf
-                net = rf.Network(str(path))
-                freqs = np.asarray(net.f, dtype=float)
-                s11 = np.asarray(net.s[:, 0, 0], dtype=complex)
-            except Exception as exc:
-                QMessageBox.critical(
-                    wizard,
-                    std_texts.get("preset_save_error_title", "Preset error"),
-                    str(exc),
-                )
+            loaded = _load_preset_into_step(wizard, standard, name, std_texts, preset_name)
+            if loaded is None:
                 return
-            wizard.perm_calibration.set_measurement(standard.key, freqs, s11)
-            wizard.epsilon_result = None
-            set_status(wizard, _success_text(std_texts, name), "lightgreen")
-            _render(wizard, standard, name, _trace_colors[2], std_texts, (freqs, s11), state["show_indicative"])
-            wizard.next_button.setEnabled(True)
+            freqs, s11 = loaded
+            _render(wizard, standard, name, _trace_colors[2], std_texts,
+                    (freqs, s11), state["show_indicative"])
 
         btn_grp.idClicked.connect(_on_source_changed)
-        preset_combo.currentTextChanged.connect(_load_preset)
-
-        def _show_save_after_measure():
-            btn_save_preset.setEnabled(True)
-
-        wizard._on_ref_measured_hook = _show_save_after_measure
+        preset_combo.currentIndexChanged.connect(
+            lambda *_: _load_preset(preset_combo.currentData()))
 
     mid.addStretch(1)
 
@@ -562,8 +478,35 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     wizard.content_layout.addWidget(container, stretch=1)
 
+    # A preset picked in Step 1 pre-loads this step the first time it is shown;
+    # the user can still measure over it.
+    pending_preset = preset_preload(wizard).get(standard.key)
+    if pending_preset and not already:
+        loaded = _load_preset_into_step(wizard, standard, name, std_texts, pending_preset)
+        if loaded is not None:
+            already = True
+            if btn_grp is not None:
+                # Reflect the preset source WITHOUT re-triggering a load: the
+                # data is already in, and going through _on_source_changed here
+                # would reload whatever the combo happens to be showing.
+                rb_preset.setChecked(True)
+                preset_combo.blockSignals(True)
+                idx = preset_combo.findData(pending_preset)
+                if idx >= 0:
+                    preset_combo.setCurrentIndex(idx)
+                preset_combo.blockSignals(False)
+                preset_combo.setEnabled(True)
+                measure_btn.setEnabled(False)
+            btn_save_preset.setEnabled(True)
+        else:
+            # It could not be applied (bad grid, missing file): forget it so the
+            # step does not retry on every visit.
+            set_preset_preload(wizard, standard.key, None)
+
     stored = wizard.perm_calibration.get_measurement(standard.key) if already else None
-    _render(wizard, standard, name, color, std_texts, stored, state["show_indicative"])
+    _render(wizard, standard, name,
+            _trace_colors[2] if (btn_grp is not None and pending_preset) else color,
+            std_texts, stored, state["show_indicative"])
     wizard.next_button.setEnabled(already)
 
     def _btn_clicked():
@@ -627,28 +570,78 @@ def _ask_s1p_matching_sweep(wizard, std_texts, dialog_title=None):
     f_tol    = 1e-3  # Hz
 
     if len(freqs) != sw_n or abs(freqs[0] - sw_start) > f_tol or abs(freqs[-1] - sw_stop) > f_tol:
-        QMessageBox.warning(
-            wizard,
-            std_texts.get("import_error_title", "Import Error"),
-            std_texts.get(
-                "import_error_freq_mismatch",
-                "Frequency mismatch.\n\n"
-                "File:  {fn} pts  {fs} – {fe}\n"
-                "Sweep: {sn} pts  {ss} – {se}\n\n"
-                "The file must match the configured sweep exactly.\n"
-                "Import a matching file or change the sweep in Configuration."
-            ).format(
-                fn=len(freqs),
-                fs=_fmt_freq(freqs[0]),
-                fe=_fmt_freq(freqs[-1]),
-                sn=sw_n,
-                ss=_fmt_freq(sw_start),
-                se=_fmt_freq(sw_stop),
-            ),
+        message = std_texts.get(
+            "import_error_freq_mismatch",
+            "Frequency mismatch.\n\n"
+            "File:  {fn} pts  {fs} – {fe}\n"
+            "Sweep: {sn} pts  {ss} – {se}\n\n"
+            "The file must match the configured sweep exactly.\n"
+            "Import a matching file or change the sweep in Configuration."
+        ).format(
+            fn=len(freqs),
+            fs=_fmt_freq(freqs[0]),
+            fe=_fmt_freq(freqs[-1]),
+            sn=sw_n,
+            ss=_fmt_freq(sw_start),
+            se=_fmt_freq(sw_stop),
         )
-        return None
+
+        box = QMessageBox(wizard)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle(std_texts.get("import_error_title", "Import Error"))
+        box.setText(message)
+        # Debug Mode can adopt the file's own sweep instead of forcing the user
+        # to retype it in Configuration (and mistype one of the endpoints).
+        adopt_btn = None
+        if is_debug_enabled():
+            adopt_btn = box.addButton(
+                std_texts.get("import_adopt_sweep", "Use the file's sweep"),
+                QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Cancel)
+        box.exec()
+
+        if adopt_btn is None or box.clickedButton() is not adopt_btn:
+            return None
+        if not _adopt_sweep_from_file(wizard, freqs, std_texts):
+            return None
 
     return freqs, s11
+
+
+def _adopt_sweep_from_file(wizard, freqs, std_texts) -> bool:
+    """Point the session sweep at ``freqs``. Returns False if the user backs out.
+
+    Every standard must end up on the SAME grid: ``compute_calibration`` does
+    not interpolate. So if something was already measured on the old sweep,
+    changing it means dropping those measurements -- ask first.
+    """
+    already = [k for k, done in wizard.perm_calibration.get_completion_status().items()
+               if done and k != "calibration_complete"]
+    if already:
+        answer = QMessageBox.question(
+            wizard,
+            std_texts.get("adopt_sweep_title", "Change the configured sweep?"),
+            std_texts.get(
+                "adopt_sweep_msg",
+                "The sweep will change to {n} points, {fs} – {fe}.\n\n"
+                "These steps were already measured on the previous sweep and will be "
+                "discarded, because every standard must share one frequency grid:\n  {steps}\n\n"
+                "Continue?"
+            ).format(n=len(freqs), fs=_fmt_freq(freqs[0]), fe=_fmt_freq(freqs[-1]),
+                     steps=", ".join(sorted(already))),
+            QMessageBox.Yes | QMessageBox.No)
+        if answer != QMessageBox.Yes:
+            return False
+        wizard.perm_calibration.clear_all_measurements()
+        wizard._precal_originals = {}
+
+    wizard.sweep_start_freq = int(round(float(freqs[0])))
+    wizard.sweep_stop_freq = int(round(float(freqs[-1])))
+    wizard.sweep_steps = int(len(freqs))
+    wizard.epsilon_result = None
+    logger.info("[standard_screen] sweep adopted from file: %d pts, %s - %s",
+                len(freqs), _fmt_freq(freqs[0]), _fmt_freq(freqs[-1]))
+    return True
 
 
 def _on_import(wizard, standard, name, color, button, std_texts, state):
@@ -664,7 +657,7 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
     button.setText(std_texts.get("reimport_button", "Import again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11), state["show_indicative"])
     wizard.next_button.setEnabled(True)
-    hook = getattr(wizard, "_on_ref_measured_hook", None)
+    hook = getattr(wizard, "_on_measurement_stored_hook", None)
     if callable(hook):
         hook()
 
@@ -678,6 +671,178 @@ def _fmt_freq(hz: float) -> str:
     return f"{hz/1e3:.4g} kHz"
 
 
+def _resample_to_grid(freqs_src, s11_src, grid):
+    """Linear interpolation of Re/Im onto ``grid``.
+
+    Real and imaginary parts are interpolated SEPARATELY (interpolating
+    magnitude/phase would wrap); same approach as Touchstone.resamplear in the
+    Sonda_2026_py reference (https://github.com/pguzmanUTN/Sonda_2026_py).
+    """
+    grid = np.asarray(grid, dtype=float)
+    freqs_src = np.asarray(freqs_src, dtype=float)
+    s11_src = np.asarray(s11_src, dtype=complex)
+    re = np.interp(grid, freqs_src, s11_src.real)
+    im = np.interp(grid, freqs_src, s11_src.imag)
+    return grid, re + 1j * im
+
+
+def _load_preset_into_step(wizard, standard, name, std_texts, preset_name):
+    """Load a stored preset into ``standard``, validating the frequency grid.
+
+    Returns ``(freqs, s11)`` on success, ``None`` if it could not be applied.
+    Unlike the previous version, a preset recorded on a different sweep no
+    longer slips in silently to blow up later in ``_common_frequency_grid``:
+    the user is offered a resample (or adopting the preset's own sweep).
+    """
+    try:
+        freqs, s11, meta = preset_store.load_preset(preset_name)
+    except Exception as exc:  # noqa: BLE001
+        QMessageBox.critical(
+            wizard,
+            std_texts.get("preset_save_error_title", "Preset error"),
+            str(exc))
+        return None
+
+    sw_n = wizard.get_sweep_steps()
+    sw_start = float(wizard.get_sweep_start_frequency())
+    sw_stop = float(wizard.get_sweep_stop_frequency())
+    f_tol = 1e-3
+
+    mismatch = (len(freqs) != sw_n
+                or abs(freqs[0] - sw_start) > f_tol
+                or abs(freqs[-1] - sw_stop) > f_tol)
+
+    if mismatch:
+        covers = freqs[0] <= sw_start + f_tol and freqs[-1] >= sw_stop - f_tol
+        box = QMessageBox(wizard)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle(std_texts.get("preset_grid_title", "Preset sweep mismatch"))
+        box.setText(std_texts.get(
+            "preset_grid_msg",
+            "\"{name}\" was recorded on a different sweep.\n\n"
+            "Preset: {pn} pts  {ps} – {pe}\n"
+            "Sweep:  {sn} pts  {ss} – {se}"
+        ).format(name=meta.display_name or preset_name,
+                 pn=len(freqs), ps=_fmt_freq(freqs[0]), pe=_fmt_freq(freqs[-1]),
+                 sn=sw_n, ss=_fmt_freq(sw_start), se=_fmt_freq(sw_stop)))
+
+        resample_btn = None
+        adopt_btn = None
+        if covers:
+            resample_btn = box.addButton(
+                std_texts.get("preset_grid_resample", "Resample onto the configured sweep"),
+                QMessageBox.AcceptRole)
+        else:
+            box.setInformativeText(std_texts.get(
+                "preset_grid_no_cover",
+                "It cannot be resampled: the preset does not span the whole configured range."))
+        if is_debug_enabled():
+            adopt_btn = box.addButton(
+                std_texts.get("import_adopt_sweep", "Use the file's sweep"),
+                QMessageBox.AcceptRole)
+        box.addButton(QMessageBox.Cancel)
+        box.exec()
+
+        clicked = box.clickedButton()
+        if resample_btn is not None and clicked is resample_btn:
+            grid = np.linspace(sw_start, sw_stop, sw_n)
+            freqs, s11 = _resample_to_grid(freqs, s11, grid)
+            logger.info("[standard_screen] preset '%s' resampled to %d pts", preset_name, sw_n)
+        elif adopt_btn is not None and clicked is adopt_btn:
+            if not _adopt_sweep_from_file(wizard, freqs, std_texts):
+                return None
+        else:
+            return None
+
+    wizard.perm_calibration.set_measurement(standard.key, freqs, s11)
+    wizard.epsilon_result = None
+    set_status(wizard, _success_text(std_texts, name), "lightgreen")
+    wizard.next_button.setEnabled(True)
+    hook = getattr(wizard, "_on_measurement_stored_hook", None)
+    if callable(hook):
+        hook()
+    return freqs, s11
+
+
+def _do_save_measurement(wizard, descriptor, standard, std_texts):
+    """Store what this step currently holds as a preset (.s1p + JSON sidecar)."""
+    data = wizard.perm_calibration.get_measurement(standard.key)
+    if data is None:
+        QMessageBox.warning(
+            wizard,
+            std_texts.get("preset_save_error_title", "Save preset"),
+            std_texts.get("preset_save_no_data",
+                          "No measurement to save. Measure or import first."))
+        return
+
+    preset_name, ok = QInputDialog.getText(
+        wizard,
+        std_texts.get("preset_save_title", "Save preset"),
+        std_texts.get("preset_save_prompt", "Preset name:"),
+        text=_suggested_preset_name(wizard, descriptor, standard))
+    if not ok or not preset_name.strip():
+        return
+    preset_name = preset_name.strip()
+
+    if preset_store.preset_exists(preset_name):
+        answer = QMessageBox.question(
+            wizard,
+            std_texts.get("preset_overwrite_title", "Overwrite?"),
+            std_texts.get("preset_overwrite_msg",
+                          '"{n}" already exists. Overwrite?').format(n=preset_name),
+            QMessageBox.Yes | QMessageBox.No)
+        if answer != QMessageBox.Yes:
+            return
+
+    freqs, s11 = data
+    meta = preset_store.PresetMeta(
+        name=preset_name,
+        display_name=preset_name,
+        liquid_key=_preset_liquid_key(wizard, standard),
+        role=_preset_role(standard),
+        source=preset_store.SOURCE_MEASURED,
+        instrument=getattr(getattr(wizard, "vna_device", None), "name", "") or "",
+        temperature_c=float(getattr(wizard, "temperature_c", 25.0)),
+        technique=getattr(descriptor, "id", ""),
+        precal_open_applied=standard.key in getattr(wizard, "_precal_originals", {}),
+        origin_note=std_texts.get("preset_saved_from_wizard",
+                                  "Guardado desde el asistente de caracterizacion."),
+    )
+    try:
+        preset_store.save_preset(preset_name, freqs, s11, meta)
+    except Exception as exc:  # noqa: BLE001
+        QMessageBox.critical(
+            wizard, std_texts.get("preset_save_error_title", "Save preset"), str(exc))
+        return
+
+    QMessageBox.information(
+        wizard,
+        std_texts.get("preset_saved_title", "Saved"),
+        std_texts.get("preset_saved_msg", 'Preset "{n}" saved.').format(n=preset_name))
+
+
+def _preset_role(standard) -> str:
+    if standard.kind is StandardKind.REFERENCE_LIQUID:
+        return preset_store.ROLE_REFERENCE
+    if standard.kind is StandardKind.DUT:
+        return preset_store.ROLE_DUT
+    return standard.key if standard.key in (preset_store.ROLE_OPEN, preset_store.ROLE_SHORT) \
+        else preset_store.ROLE_REFERENCE
+
+
+def _preset_liquid_key(wizard, standard) -> str:
+    """Liquid a saved sweep belongs to (Open/Short are standards, not liquids)."""
+    if standard.kind is StandardKind.REFERENCE_LIQUID:
+        return selected_liquid_key(wizard, standard) or standard.key
+    if standard.key == "open":
+        return "air"
+    if standard.key == "short":
+        return "short"
+    # The unknown liquid has no known key: use its user-given name, slugged.
+    unknown = (getattr(wizard, "unknown_liquid_name", "") or "").strip().lower()
+    return unknown.replace(" ", "_") or "unknown"
+
+
 def _suggested_preset_name(wizard, descriptor, standard) -> str:
     """Build the pre-filled name offered by the "Save as preset…" dialog.
 
@@ -688,7 +853,7 @@ def _suggested_preset_name(wizard, descriptor, standard) -> str:
     """
     from datetime import datetime
 
-    parts = [standard.default_liquid_key or standard.key]
+    parts = [selected_liquid_key(wizard, standard) or standard.key]
 
     technique_id = getattr(descriptor, "id", "")
     if technique_id:
@@ -731,7 +896,7 @@ def _on_measure(wizard, standard, name, color, button, std_texts, state):
     button.setText(std_texts.get("remeasure_button", "Measure again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11), state["show_indicative"])
     wizard.next_button.setEnabled(True)
-    hook = getattr(wizard, "_on_ref_measured_hook", None)
+    hook = getattr(wizard, "_on_measurement_stored_hook", None)
     if callable(hook):
         hook()
 
@@ -790,9 +955,10 @@ def _render(wizard, standard, name, color, std_texts, measured, show_indicative)
         handles.append(Line2D([0], [0], marker="o", markerfacecolor="none",
                               markeredgecolor="gray", linestyle="None"))
         labels.append(r"$\Gamma = -1$")
-    elif standard.kind is StandardKind.REFERENCE_LIQUID and standard.default_liquid_key and show_indicative:
+    elif standard.kind is StandardKind.REFERENCE_LIQUID and show_indicative and \
+            selected_liquid_key(wizard, standard):
         try:
-            liquid = get_reference_liquid(standard.default_liquid_key)
+            liquid = get_reference_liquid(selected_liquid_key(wizard, standard))
             f = np.linspace(start, stop, points)
             s_ind = indicative_s11(liquid, f, getattr(wizard, "temperature_c", 25.0))
             ax.plot(np.real(s_ind), np.imag(s_ind), linestyle=":", color=color,
@@ -833,7 +999,7 @@ def _render(wizard, standard, name, color, std_texts, measured, show_indicative)
 def _resolve_strings(wizard, std_texts, liquids, standard):
     """Return ``(name, instruction, is_rich)`` for the given standard."""
     if standard.kind is StandardKind.REFERENCE_LIQUID:
-        key = standard.default_liquid_key
+        key = selected_liquid_key(wizard, standard)
         liquid_name = liquids.get(key, get_reference_liquid(key).display_name) if key else "?"
         block = std_texts.get("reference", {})
         name = block.get("name", "Reference liquid: {liquid}").format(liquid=liquid_name)

@@ -1,0 +1,19 @@
+{
+  "name": "ethanol_r60_probe21_2026",
+  "display_name": "Alcohol etilico - R60 21 mm (2026-06-25)",
+  "liquid_key": "ethanol",
+  "role": "reference",
+  "source": "measured",
+  "instrument": "Copper Mountain R60 (S/N 23103002)",
+  "probe": "open-ended coax 21 mm",
+  "temperature_c": null,
+  "acquired": "2026-06-25T15:06:00",
+  "saved": "2026-08-19T01:17:03",
+  "technique": "open_coax_liquids",
+  "points": 2000,
+  "f_start_hz": 1000000.0,
+  "f_stop_hz": 2000000000.0,
+  "precal_open_applied": false,
+  "origin_note": "Alcohol etilico. Antecedentes de la sonda (Drive UTN). Archivo original: sonda21-alc-etilico25-06.s1p",
+  "schema_version": 1
+}

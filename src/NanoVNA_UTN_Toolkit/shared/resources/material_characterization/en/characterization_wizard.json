@@ -23,11 +23,21 @@
     "references_title": "Reference Liquids",
     "reference_1": "Reference 1:",
     "reference_2": "Reference 2:",
-    "fixed_note": "In this version the reference liquids are fixed (configurable selection and external import arrive in a future version)."
+    "references_note": "Pick the liquid used as each standard. Optionally load a stored measurement instead of measuring it in its step.",
+    "preset_none": "None (measure in its step)",
+    "preset_tooltip": "Optional: load a stored measurement of this liquid instead of measuring it.",
+    "preset_delete_tooltip": "Delete the selected stored measurement",
+    "preset_delete_title": "Delete stored measurement",
+    "preset_delete_msg": "Delete \"{n}\" permanently?",
+    "references_duplicated": "The two reference liquids must be different: two identical standards carry no extra information and the calibration cannot be solved.",
+    "temperature_out_of_range": "{liquid}: {temp:.1f} °C is outside its tabulated range [{tmin:.0f}, {tmax:.0f}] °C; its permittivity is extrapolated.",
+    "debug_sweep_warning": "⚠ Debug Mode: this sweep is outside the connected device's capabilities ({caps}). It is valid for IMPORTING .s1p files, but the instrument cannot measure it."
   },
   "liquids": {
     "water": "Distilled Water",
-    "ipa": "Isopropyl Alcohol (IPA)"
+    "ipa": "Isopropyl Alcohol (IPA)",
+    "ethanol": "Ethanol",
+    "methanol": "Methanol"
   },
   "standards": {
     "title_template": "Step {index}/{total}: {name}",
@@ -98,7 +108,15 @@
     "dut": {
       "name": "Unknown liquid",
       "instruction": "Immerse the probe in the unknown liquid, avoid air bubbles on the probe face, and keep the same temperature as the references. Then press Measure."
-    }
+    },
+    "import_adopt_sweep": "Use the file's sweep",
+    "adopt_sweep_title": "Change the configured sweep?",
+    "adopt_sweep_msg": "The sweep will change to {n} points, {fs} – {fe}.\n\nThese steps were already measured on the previous sweep and will be discarded, because every standard must share one frequency grid:\n  {steps}\n\nContinue?",
+    "preset_grid_title": "Preset sweep mismatch",
+    "preset_grid_msg": "\"{name}\" was recorded on a different sweep.\n\nPreset: {pn} pts  {ps} – {pe}\nSweep:  {sn} pts  {ss} – {se}",
+    "preset_grid_resample": "Resample onto the configured sweep",
+    "preset_grid_no_cover": "It cannot be resampled: the preset does not span the whole configured range.",
+    "preset_saved_from_wizard": "Saved from the characterization wizard."
   },
   "result": {
     "title": "Permittivity Result",

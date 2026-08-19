@@ -1,0 +1,19 @@
+{
+  "name": "sim_cst2020_short",
+  "display_name": "Patron SHORT simulado - simulacion CST 2020",
+  "liquid_key": "short",
+  "role": "short",
+  "source": "simulated",
+  "instrument": "CST Studio Suite (simulacion)",
+  "probe": "open-ended coax (modelo CST)",
+  "temperature_c": null,
+  "acquired": "2020-01-01T00:00:00",
+  "saved": "2026-08-19T01:17:03",
+  "technique": "open_coax_liquids",
+  "points": 100,
+  "f_start_hz": 100000000.0,
+  "f_stop_hz": 10000000000.0,
+  "precal_open_applied": false,
+  "origin_note": "Patron SHORT simulado. Reconstruido de modS11short / phaseS11short en ws_patrones_2020.mat (magnitud lineal + fase en grados, igual que pol2complex.m). El |S11| de origen supera levemente 1 en algunos puntos: es un artefacto del post-proceso de CST, no un error de conversion. Antecedentes de la sonda (Drive UTN). NO es una medicion.",
+  "schema_version": 1
+}

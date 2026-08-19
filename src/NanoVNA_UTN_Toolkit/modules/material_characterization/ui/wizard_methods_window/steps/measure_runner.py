@@ -33,6 +33,16 @@ SMITH_COLOR_MAP = {
 }
 
 
+def _fmt_hz(hz):
+    """Format Hz as kHz / MHz / GHz for user-facing messages."""
+    hz = float(hz)
+    if hz >= 1e9:
+        return f"{hz/1e9:.4g} GHz"
+    if hz >= 1e6:
+        return f"{hz/1e6:.4g} MHz"
+    return f"{hz/1e3:.4g} kHz"
+
+
 def set_status(wizard, text, color):
     """Update the wizard's status label, if present."""
     if getattr(wizard, "status_label", None) is not None:
@@ -79,15 +89,38 @@ def run_s11_sweep(wizard):
         stop_freq = wizard.get_sweep_stop_frequency()
         num_points = wizard.get_sweep_steps()
 
-        if hasattr(device, "sweep_max_freq_hz") and device.sweep_max_freq_hz and stop_freq > device.sweep_max_freq_hz:
-            stop_freq = int(device.sweep_max_freq_hz)
-        device_max_points = None
-        if getattr(device, "valid_datapoints", None):
-            device_max_points = max(device.valid_datapoints)
-        elif hasattr(device, "sweep_points_max"):
-            device_max_points = device.sweep_points_max
-        if device_max_points and num_points > device_max_points:
-            num_points = device_max_points
+        # Debug Mode lets Step 1 configure a sweep beyond the instrument so that
+        # foreign .s1p files can be imported. Measuring such a sweep is a
+        # different matter: silently clamping it would return a grid that does
+        # not match the other standards and break compute_calibration far from
+        # the cause, so refuse here with an explicit message.
+        problems = []
+        dev_min = getattr(device, "sweep_min_freq_hz", None)
+        dev_max = getattr(device, "sweep_max_freq_hz", None)
+        if dev_min and start_freq < dev_min:
+            problems.append(f"start {_fmt_hz(start_freq)} < {_fmt_hz(dev_min)}")
+        if dev_max and stop_freq > dev_max:
+            problems.append(f"stop {_fmt_hz(stop_freq)} > {_fmt_hz(dev_max)}")
+
+        valid_points = getattr(device, "valid_datapoints", None)
+        if valid_points and num_points not in valid_points:
+            problems.append(
+                f"{num_points} points is not one of "
+                f"{', '.join(str(p) for p in sorted(valid_points))}")
+
+        if problems:
+            device_name = getattr(device, "name", type(device).__name__)
+            logger.error("[CharacterizationWizard] sweep not measurable: %s", "; ".join(problems))
+            set_status(wizard, "Sweep not supported by the device!", "red")
+            QMessageBox.critical(
+                wizard,
+                "Sweep Not Supported",
+                f"The configured sweep cannot be measured with {device_name}:\n\n"
+                + "\n".join("  - " + p for p in problems)
+                + "\n\nThis sweep is only usable for IMPORTING .s1p files.\n"
+                  "Change it in Configuration to measure with the instrument.",
+            )
+            return None
 
         device.datapoints = num_points
         device.setSweep(start_freq, stop_freq)

@@ -1,0 +1,19 @@
+{
+  "name": "ipa_r60_probe21_2026",
+  "display_name": "Alcohol isopropilico - R60 21 mm (2026-06-25)",
+  "liquid_key": "ipa",
+  "role": "reference",
+  "source": "measured",
+  "instrument": "Copper Mountain R60 (S/N 23103002)",
+  "probe": "open-ended coax 21 mm",
+  "temperature_c": null,
+  "acquired": "2026-06-25T14:38:00",
+  "saved": "2026-08-19T01:17:03",
+  "technique": "open_coax_liquids",
+  "points": 2000,
+  "f_start_hz": 1000000.0,
+  "f_stop_hz": 2000000000.0,
+  "precal_open_applied": false,
+  "origin_note": "Alcohol isopropilico (propan-2-ol). Antecedentes de la sonda (Drive UTN). Archivo original: sonda21-alcisoprop25-06.s1p",
+  "schema_version": 1
+}

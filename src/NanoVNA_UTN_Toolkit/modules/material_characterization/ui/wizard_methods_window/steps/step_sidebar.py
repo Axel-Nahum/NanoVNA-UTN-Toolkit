@@ -43,7 +43,11 @@ def _step_name(wizard, step_def, texts, liquids):
 
     standard = step_def.standard
     if standard is not None and standard.kind is StandardKind.REFERENCE_LIQUID:
-        key = standard.default_liquid_key
+        # Step 1 can change the liquid, so the descriptor default is not the answer.
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
+            selected_liquid_key,
+        )
+        key = selected_liquid_key(wizard, standard)
         return liquids.get(key, get_reference_liquid(key).display_name) if key else "Reference"
     if standard is not None:
         return std_texts.get(standard.key, {}).get("name", standard.key.upper())

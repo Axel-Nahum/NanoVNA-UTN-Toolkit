@@ -50,6 +50,7 @@ class DebyeModelType(str, Enum):
 
     SINGLE_DEBYE = "single_debye"
     DOUBLE_DEBYE = "double_debye"
+    DEBYE_GAMMA = "debye_gamma"
 
 
 @dataclass(frozen=True)
@@ -72,6 +73,8 @@ class ReferenceLiquid:
         Single-Debye expects: ``eps_s``, ``eps_inf``, ``tau_r`` (seconds).
         Double-Debye expects: ``eps_s``, ``eps_h``, ``eps_inf``,
         ``f_r1`` (Hz), ``f_r2`` (Hz).
+        Debye-Gamma expects: ``eps_s``, ``eps_h``, ``f_r`` (Hz), ``gamma``
+        (dimensionless, multiplies frequency expressed in GHz).
     validated : bool
         ``True`` when the coefficients were validated against the reference
         MATLAB implementation; ``False`` for literature-sourced entries.
@@ -157,6 +160,22 @@ def evaluate_epsilon_r(
             + (eps_s - eps_h) / (1.0 + 1j * f_hz / f_r1)
             + (eps_h - eps_inf) / (1.0 + 1j * f_hz / f_r2)
         )
+    elif liquid.model_type is DebyeModelType.DEBYE_GAMMA:
+        eps_s = _interp_column(liquid, "eps_s", temp_c)
+        eps_h = _interp_column(liquid, "eps_h", temp_c)
+        f_r = _interp_column(liquid, "f_r", temp_c)
+        gamma = _interp_column(liquid, "gamma", temp_c)
+        # NPL MAT 23 eq. 3: single relaxation plus a linear "tail" standing in
+        # for a second relaxation that sits above the tabulated band. The tail
+        # is defined with the frequency expressed in GHz, hence the 1e9 scale.
+        # It is subtracted as -1j*gamma*f_GHz, i.e. it ADDS loss under the
+        # eps' - j*eps'' convention pinned in the module docstring.
+        epsilon = (
+            eps_h
+            + (eps_s - eps_h) / (1.0 + 1j * f_hz / f_r)
+            - 1j * gamma * (f_hz / 1e9)
+        )
+
     else:  # pragma: no cover - guarded by the enum
         raise ValueError(f"Unsupported Debye model: {liquid.model_type}")
 
@@ -204,9 +223,67 @@ _IPA = ReferenceLiquid(
 )
 
 
+# --------------------------------------------------------------------------- #
+# Additional liquids from the NPL tables (not covered by the MATLAB reference)
+# --------------------------------------------------------------------------- #
+#
+# Ethanol and methanol are the other two liquids the group has actually used
+# across the years (ethanol is the unknown of the 2026 probe-21mm campaign), so
+# they are the natural additions to the reference dropdowns. Their coefficients
+# come from NPL Report MAT 23 (Gregory & Clarke, 2012), the same source behind
+# the water and IPA tables above -- but unlike those two they were NOT validated
+# against the MATLAB implementation (it only ships water and IPA), hence
+# ``validated=False``.
+#
+# Both keep the polynomial-in-temperature interpolation used by the other
+# liquids: within 10-50 C neither switches equation, so interpolating between
+# tabulated rows is well defined for them. (Several other NPL liquids DO change
+# equation with temperature -- if any of those is ever added, it must use
+# nearest-row selection instead of interpolation.)
+
+_ETHANOL = ReferenceLiquid(
+    key="ethanol",
+    display_name="Ethanol",
+    model_type=DebyeModelType.DEBYE_GAMMA,
+    temp_axis_c=(10, 15, 20, 25, 30, 35, 40, 45, 50),
+    columns={
+        "eps_s": (26.79, 25.95, 25.16, 24.43, 23.65, 22.88, 22.16, 21.45, 20.78),
+        "eps_h": (4.624, 4.590, 4.531, 4.505, 4.471, 4.439, 4.410, 4.394, 4.378),
+        "f_r": tuple(v * 1e9 for v in
+                     (0.596, 0.700, 0.829, 0.964, 1.124, 1.303, 1.511, 1.745, 2.010)),
+        "gamma": (0.075, 0.071, 0.059, 0.056, 0.054, 0.053, 0.050, 0.049, 0.044),
+    },
+    validated=False,
+    source=("NPL Report MAT 23 (Gregory & Clarke 2012), eq. 3 Debye-Gamma table. "
+            "Transcribed via Sonda_2026_py/Patrones.py "
+            "(https://github.com/pguzmanUTN/Sonda_2026_py)."),
+)
+
+_METHANOL = ReferenceLiquid(
+    key="methanol",
+    display_name="Methanol",
+    model_type=DebyeModelType.SINGLE_DEBYE,
+    temp_axis_c=(10, 15, 20, 25, 30, 35, 40, 45, 50),
+    columns={
+        "eps_s": (35.74, 34.68, 33.64, 32.66, 31.69, 30.78, 29.85, 28.95, 28.19),
+        "eps_inf": (5.818, 5.698, 5.654, 5.563, 5.450, 5.388, 5.251, 5.107, 5.224),
+        # NPL tabulates the relaxation FREQUENCY in GHz; this library stores the
+        # relaxation TIME in seconds for single-Debye liquids (see water above).
+        "tau_r": tuple(1.0 / (2.0 * np.pi * v * 1e9) for v in
+                       (2.262, 2.532, 2.822, 3.141, 3.490, 3.862, 4.283, 4.738, 5.175)),
+    },
+    validated=False,
+    source=("NPL Report MAT 23 (Gregory & Clarke 2012), eq. 1 single-Debye table. "
+            "Transcribed via Sonda_2026_py/Patrones.py "
+            "(https://github.com/pguzmanUTN/Sonda_2026_py)."),
+)
+
+
 REFERENCE_LIQUIDS: Dict[str, ReferenceLiquid] = {
     _WATER.key: _WATER,
     _IPA.key: _IPA,
+    _ETHANOL.key: _ETHANOL,
+    _METHANOL.key: _METHANOL,
 }
 
 

@@ -23,11 +23,21 @@
     "references_title": "Líquidos de Referencia",
     "reference_1": "Referencia 1:",
     "reference_2": "Referencia 2:",
-    "fixed_note": "En esta versión los líquidos de referencia son fijos (la selección configurable y la importación externa llegan en una versión futura)."
+    "references_note": "Elegí el líquido usado como cada patrón. Opcionalmente cargá una medición guardada en lugar de medirlo en su paso.",
+    "preset_none": "Ninguna (medir en su paso)",
+    "preset_tooltip": "Opcional: cargar una medición guardada de este líquido en vez de medirlo.",
+    "preset_delete_tooltip": "Eliminar la medición guardada seleccionada",
+    "preset_delete_title": "Eliminar medición guardada",
+    "preset_delete_msg": "¿Eliminar \"{n}\" definitivamente?",
+    "references_duplicated": "Los dos líquidos de referencia deben ser distintos: dos patrones iguales no aportan información nueva y la calibración no se puede resolver.",
+    "temperature_out_of_range": "{liquid}: {temp:.1f} °C está fuera de su rango tabulado [{tmin:.0f}, {tmax:.0f}] °C; su permitividad se extrapola.",
+    "debug_sweep_warning": "⚠ Modo Debug: este barrido excede las capacidades del equipo conectado ({caps}). Sirve para IMPORTAR archivos .s1p, pero el instrumento no puede medirlo."
   },
   "liquids": {
     "water": "Agua destilada",
-    "ipa": "Alcohol Isopropílico (IPA)"
+    "ipa": "Alcohol Isopropílico (IPA)",
+    "ethanol": "Etanol",
+    "methanol": "Metanol"
   },
   "standards": {
     "title_template": "Paso {index}/{total}: {name}",
@@ -98,7 +108,15 @@
     "dut": {
       "name": "Líquido incógnita",
       "instruction": "Sumergí la sonda en el líquido incógnita, evitá burbujas de aire en la cara de la sonda y mantené la misma temperatura que las referencias. Luego presioná Medir."
-    }
+    },
+    "import_adopt_sweep": "Usar el barrido del archivo",
+    "adopt_sweep_title": "¿Cambiar el barrido configurado?",
+    "adopt_sweep_msg": "El barrido pasará a {n} puntos, {fs} – {fe}.\n\nEstos pasos ya se midieron con el barrido anterior y se van a descartar, porque todos los patrones deben compartir una única grilla de frecuencias:\n  {steps}\n\n¿Continuar?",
+    "preset_grid_title": "El preset tiene otro barrido",
+    "preset_grid_msg": "\"{name}\" se registró con un barrido distinto.\n\nPreset: {pn} pts  {ps} – {pe}\nBarrido: {sn} pts  {ss} – {se}",
+    "preset_grid_resample": "Remuestrear al barrido configurado",
+    "preset_grid_no_cover": "No se puede remuestrear: el preset no cubre todo el rango configurado.",
+    "preset_saved_from_wizard": "Guardado desde el asistente de caracterizacion."
   },
   "result": {
     "title": "Resultado de Permitividad",
