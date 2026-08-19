@@ -1111,33 +1111,79 @@ class GraphPreviewExportDialog(QDialog):
 
     # --- PDF Export ---
     def _generate_pdf(self):
-        try:
-            self._save_current_graph()
+        """Rasterize the previews here, then compile LaTeX on a worker thread.
 
-            from NanoVNA_UTN_Toolkit.modules.dut_measurement.exporters.latex_exporter import LatexExporter
-            exporter = LatexExporter(figures=self.saved_figures)
-            if not self.output_path:
-                QMessageBox.warning(self, "Missing Path", "No output path specified.")
-                return
-            success = exporter.export_to_pdf(
-                freqs=self.freqs,
-                s11_data=self.s11_data,
-                s21_data=self.s21_data,
-                measurement_name=self.measurement_name,
-                output_path=self.output_path,
-                magnitude_unit=self._selected_unit()
+        LaTeX takes several seconds; running it inline froze the dialog with no
+        sign the click had registered. The split keeps matplotlib on the UI
+        thread (it is not thread-safe) and only hands off the compilation.
+        """
+        from NanoVNA_UTN_Toolkit.modules.dut_measurement.exporters.latex_exporter import LatexExporter
+        from NanoVNA_UTN_Toolkit.shared.utils.export.pdf_generation_task import (
+            GeneratingButton, PdfCompileTask,
+        )
+        import shutil
+        import tempfile
+
+        if not self.output_path:
+            QMessageBox.warning(self, "Missing Path", "No output path specified.")
+            return
+
+        self._save_current_graph()
+        exporter = LatexExporter(parent_widget=self, figures=self.saved_figures)
+
+        is_available, compiler_info, error_msg = exporter.check_latex_installation()
+        if not is_available:
+            QMessageBox.critical(self, "LaTeX Installation Error", error_msg)
+            return
+
+        output_path = self.output_path
+        magnitude_unit = self._selected_unit()
+
+        busy = GeneratingButton(
+            self.export_button,
+            getattr(self, "pdf_preview_generating_report", None) or "Generating report…",
+        )
+        busy.begin()
+
+        tmp_dir = tempfile.mkdtemp(prefix="nanovna_report_")
+        try:
+            image_files = exporter.render_images(
+                self.freqs, self.s11_data, self.s21_data, tmp_dir
             )
+        except Exception as exc:
+            logger.exception("PDF export failed while rendering the plots")
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            busy.end()
+            QMessageBox.critical(self, "Export Failed", f"Could not render the plots:\n{exc}")
+            return
+
+        def _compile():
+            exporter.compile_document(
+                freqs=self.freqs,
+                image_files=image_files,
+                output_path=output_path,
+                tmpdirname=tmp_dir,
+                measurement_name=self.measurement_name,
+                compiler_path=compiler_info[1],
+                magnitude_unit=magnitude_unit,
+            )
+
+        def _on_done(success, error_message):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            busy.end()
+            self._pdf_task = None
             if success:
                 QMessageBox.information(self, "Export Complete",
-                                        f"PDF successfully created at:\n{self.output_path}")
+                                        f"PDF successfully created at:\n{output_path}")
                 self.accept()
             else:
-                QMessageBox.warning(self, "Export Failed",
-                                    "PDF export failed. Please check the logs for details.")
-        except Exception as e:
-            logger.exception("PDF export failed")
-            QMessageBox.critical(self, "Export Failed",
-                                 f"Error creating PDF:\n{str(e)}")
+                QMessageBox.critical(self, "Export Failed",
+                                     f"Error creating PDF:\n{error_message}")
+
+        # Held on the dialog so the thread is not garbage-collected mid-run.
+        self._pdf_task = PdfCompileTask(_compile, parent=self)
+        self._pdf_task.completed.connect(_on_done)
+        self._pdf_task.start()
 
     def _get_ylim_for_export(self, s_param, graph_type):
         """Return (ymin, ymax) if a fixed Y range is configured for this graph, else None."""

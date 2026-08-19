@@ -213,3 +213,7 @@ src/NanoVNA_UTN_Toolkit/modules/material_characterization/calibration/probe_resu
 medicion_fluidos/
 Plan*.md
 *Trello.md
+Tareas_Trello*.md
+
+# personal test measurement sets for exercising the characterization wizard offline
+test_data/

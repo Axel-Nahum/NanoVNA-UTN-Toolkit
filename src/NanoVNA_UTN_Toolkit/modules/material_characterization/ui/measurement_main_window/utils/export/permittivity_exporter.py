@@ -134,27 +134,53 @@ class PermittivityExporter:
 
     # ------------------------------------------------------------------ #
 
+    def render_images(self, freqs, s11_data, eps_selected, output_dir):
+        """Rasterize every figure into ``output_dir``.  Uses self.figures if available.
+
+        Must run on the UI thread: matplotlib is not thread-safe.
+        """
+        if self.figures:
+            return self._generate_plots_from_figures(self.figures, output_dir)
+        return self._generate_plots(freqs, s11_data, eps_selected, output_dir)
+
+    def compile_pdf(
+        self, freqs, eps_selected, image_files, sample_name,
+        wizard_window, output_path, compiler_path,
+    ):
+        """Build the .tex from already-rendered images and run LaTeX.
+
+        Blocking and Qt-free, so it can be handed to a worker thread. Raises on
+        failure instead of showing a dialog.
+        """
+        self._create_latex_document(
+            freqs=freqs,
+            eps_selected=eps_selected,
+            image_files=image_files,
+            file_path=Path(output_path).with_suffix(""),
+            sample_name=sample_name,
+            wizard_window=wizard_window,
+            compiler_path=compiler_path,
+        )
+
     def export_to_pdf(
         self, freqs, s11_data, eps_selected, sample_name,
         wizard_window, output_path, compiler_path,
     ):
-        """Generate the PDF.  Uses self.figures if available, else renders from data."""
+        """Render and compile in one blocking call (freezes the UI while it runs).
+
+        Kept for callers that do not drive the two steps themselves; the preview
+        dialog splits them so the compilation can run off the UI thread.
+        """
         try:
-            file_path = Path(output_path).with_suffix("")
             with tempfile.TemporaryDirectory() as tmp:
-                if self.figures:
-                    image_files = self._generate_plots_from_figures(self.figures, tmp)
-                else:
-                    image_files = self._generate_plots(
-                        freqs, s11_data, eps_selected, tmp
-                    )
-                self._create_latex_document(
+                image_files = self.render_images(freqs, s11_data, eps_selected, tmp)
+                self.compile_pdf(
                     freqs=freqs,
                     eps_selected=eps_selected,
                     image_files=image_files,
-                    file_path=file_path,
                     sample_name=sample_name,
                     wizard_window=wizard_window,
+                    output_path=output_path,
                     compiler_path=compiler_path,
                 )
             return True

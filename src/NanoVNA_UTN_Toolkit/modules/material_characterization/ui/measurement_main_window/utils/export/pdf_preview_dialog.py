@@ -11,9 +11,15 @@ Graph 1 (Permittivity): 2 markers — Marker 1 tracks ε', Marker 2 tracks ε''.
 from NanoVNA_UTN_Toolkit.utils import safe_import
 import copy
 import logging
+import shutil
+import tempfile
 
 import numpy as np
 from pathlib import Path
+
+from NanoVNA_UTN_Toolkit.shared.utils.export.pdf_generation_task import (
+    GeneratingButton, PdfCompileTask,
+)
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -865,6 +871,12 @@ class PermittivityPdfPreviewDialog(QDialog):
             self.saved_figures[self.current_figure] = fig_copy
 
     def _generate_pdf(self):
+        """Rasterize the previews here, then compile LaTeX on a worker thread.
+
+        LaTeX takes several seconds; running it inline froze the dialog with no
+        sign the click had registered. The split keeps matplotlib on the UI
+        thread (it is not thread-safe) and only hands off the compilation.
+        """
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.permittivity_exporter import (
             PermittivityExporter,
         )
@@ -888,19 +900,49 @@ class PermittivityPdfPreviewDialog(QDialog):
             if not output_path:
                 return
 
-        success = exporter.export_to_pdf(
-            freqs=self.freqs,
-            s11_data=self.s11_data,
-            eps_selected=self.eps_selected,
-            sample_name=self.sample_name,
-            wizard_window=self.wizard_window,
-            output_path=output_path,
-            compiler_path=compiler_info[1],
-        )
+        busy = GeneratingButton(self.export_button, "Generating report…")
+        busy.begin()
 
-        if success:
-            QMessageBox.information(
-                self, "Export Complete",
-                f"PDF successfully created at:\n{output_path}",
+        tmp_dir = tempfile.mkdtemp(prefix="nanovna_report_")
+        try:
+            image_files = exporter.render_images(
+                self.freqs, self.s11_data, self.eps_selected, tmp_dir
             )
-            self.accept()
+        except Exception as exc:
+            logger.exception("[PermittivityPdfPreviewDialog] figure rendering failed")
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            busy.end()
+            QMessageBox.critical(self, "Export Failed", f"Could not render the plots:\n{exc}")
+            return
+
+        def _compile():
+            exporter.compile_pdf(
+                freqs=self.freqs,
+                eps_selected=self.eps_selected,
+                image_files=image_files,
+                sample_name=self.sample_name,
+                wizard_window=self.wizard_window,
+                output_path=output_path,
+                compiler_path=compiler_info[1],
+            )
+
+        def _on_done(success, error_message):
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            busy.end()
+            self._pdf_task = None
+            if success:
+                QMessageBox.information(
+                    self, "Export Complete",
+                    f"PDF successfully created at:\n{output_path}",
+                )
+                self.accept()
+            else:
+                QMessageBox.critical(
+                    self, "Export Failed",
+                    f"Failed to generate PDF:\n{error_message}",
+                )
+
+        # Held on the dialog so the thread is not garbage-collected mid-run.
+        self._pdf_task = PdfCompileTask(_compile, parent=self)
+        self._pdf_task.completed.connect(_on_done)
+        self._pdf_task.start()

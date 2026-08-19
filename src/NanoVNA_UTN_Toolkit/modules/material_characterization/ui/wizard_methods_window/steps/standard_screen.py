@@ -46,12 +46,10 @@ from PySide6.QtWidgets import (
 )
 
 from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
+from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_enabled
 
 _PRESET_DEV_PATH = "modules/material_characterization/calibration/preset_liquids"
 _PRESET_EXE_PATH = "modules/material_characterization/calibration/preset_liquids"
-
-# Set to False to hide the dev import button on Open / Short / DUT screens.
-_DEV_IMPORT_VISIBLE = True
 
 
 def _get_preset_path() -> Path:
@@ -122,6 +120,11 @@ def build_standard_screen(wizard, descriptor, step_def):
     total = len(descriptor.steps)
     name, instruction_html, is_rich = _resolve_strings(wizard, std_texts, liquids, standard)
     color = SMITH_COLOR_MAP.get(standard.key, "blue")
+
+    # Offline .s1p import is a Debug Mode feature: it lets the whole assistant be
+    # exercised without a probe. Read once per screen build; screens are rebuilt
+    # on every navigation, so toggling the preference takes effect immediately.
+    debug_mode = is_debug_enabled()
 
     title_tmpl = std_texts.get("title_template", "Step {index}/{total}: {name}")
     wizard.title_label.setText(title_tmpl.format(index=wizard.current_step, total=total, name=name))
@@ -256,7 +259,8 @@ def build_standard_screen(wizard, descriptor, step_def):
         src_frame.setStyleSheet(
             "QFrame { border: 1.5px solid #606070; border-radius: 6px; }"
         )
-        src_frame.setMinimumHeight(178)
+        # One row shorter when the import option is hidden (Debug Mode off).
+        src_frame.setMinimumHeight(178 if debug_mode else 152)
         src_layout = QVBoxLayout(src_frame)
         src_layout.setContentsMargins(14, 12, 14, 14)
         src_layout.setSpacing(8)
@@ -272,9 +276,10 @@ def build_standard_screen(wizard, descriptor, step_def):
         btn_grp.addButton(rb_measure, 0)
         src_layout.addWidget(rb_measure)
 
-        rb_import = QRadioButton(std_texts.get("source_import", "Import .s1p file"))
-        btn_grp.addButton(rb_import, 1)
-        src_layout.addWidget(rb_import)
+        if debug_mode:
+            rb_import = QRadioButton(std_texts.get("source_import", "Import .s1p file"))
+            btn_grp.addButton(rb_import, 1)
+            src_layout.addWidget(rb_import)
 
         # Fila: [rb_preset] [combo ─────────────]
         rb_preset = QRadioButton(std_texts.get("source_preset", "Use saved preset"))
@@ -338,7 +343,8 @@ def build_standard_screen(wizard, descriptor, step_def):
                 return
             name, ok = QInputDialog.getText(wizard,
                 std_texts.get("preset_save_title", "Save preset"),
-                std_texts.get("preset_save_prompt", "Preset name:"))
+                std_texts.get("preset_save_prompt", "Preset name:"),
+                text=_suggested_preset_name(wizard, descriptor, standard))
             if not ok or not name.strip():
                 return
             name = name.strip()
@@ -478,8 +484,8 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     mid.addStretch(1)
 
-    if not is_reference and _DEV_IMPORT_VISIBLE:
-        dev_import_btn = QPushButton("Import")
+    if not is_reference and debug_mode:
+        dev_import_btn = QPushButton(std_texts.get("import_file_button", "Import .s1p file"))
         dev_import_btn.setFixedHeight(26)
         dev_import_btn.setStyleSheet(
             "QPushButton { font-size: 11px; color: #666677; border: 1px dashed #444455;"
@@ -575,17 +581,21 @@ def _success_text(std_texts, name):
     return std_texts.get("status_success", "{name} successfully measured").format(name=name)
 
 
-def _on_import(wizard, standard, name, color, button, std_texts, state):
-    """Open a .s1p file, validate frequencies, store and render."""
-    import numpy as np
+def _ask_s1p_matching_sweep(wizard, std_texts, dialog_title=None):
+    """Prompt for a .s1p file and return (freqs, s11) validated against the sweep.
+
+    Returns None when the user cancels or the file is rejected (the corresponding
+    message box has already been shown). Shared by every import action of the
+    wizard so that they all enforce the same frequency-grid contract.
+    """
     filepath, _ = QFileDialog.getOpenFileName(
         wizard,
-        std_texts.get("import_dialog_title", "Import S11 (.s1p)"),
+        dialog_title or std_texts.get("import_dialog_title", "Import S11 (.s1p)"),
         "",
         "Touchstone 1-port (*.s1p);;All files (*)",
     )
     if not filepath:
-        return  # user cancelled
+        return None  # user cancelled
 
     # Validate extension
     if not filepath.lower().endswith(".s1p"):
@@ -594,7 +604,7 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
             std_texts.get("import_error_title", "Import Error"),
             std_texts.get("import_error_not_s1p", "The selected file is not a .s1p Touchstone file."),
         )
-        return
+        return None
 
     # Parse with skrf
     try:
@@ -608,7 +618,7 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
             std_texts.get("import_error_title", "Import Error"),
             std_texts.get("import_error_parse", "Could not read the file:\n{err}").format(err=exc),
         )
-        return
+        return None
 
     # Validate frequency grid against configured sweep
     sw_n     = wizard.get_sweep_steps()
@@ -636,7 +646,17 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
                 se=_fmt_freq(sw_stop),
             ),
         )
+        return None
+
+    return freqs, s11
+
+
+def _on_import(wizard, standard, name, color, button, std_texts, state):
+    """Open a .s1p file, validate frequencies, store and render."""
+    imported = _ask_s1p_matching_sweep(wizard, std_texts)
+    if imported is None:
         return
+    freqs, s11 = imported
 
     wizard.perm_calibration.set_measurement(standard.key, freqs, s11)
     wizard.epsilon_result = None
@@ -656,6 +676,46 @@ def _fmt_freq(hz: float) -> str:
     if hz >= 1e6:
         return f"{hz/1e6:.4g} MHz"
     return f"{hz/1e3:.4g} kHz"
+
+
+def _suggested_preset_name(wizard, descriptor, standard) -> str:
+    """Build the pre-filled name offered by the "Save as preset…" dialog.
+
+    Packs everything needed to tell two presets apart later: liquid, technique,
+    temperature, sweep, point count, whether OPEN normalization was applied and
+    when it was captured. Long on purpose — the file name is the only metadata a
+    .s1p carries today.
+    """
+    from datetime import datetime
+
+    parts = [standard.default_liquid_key or standard.key]
+
+    technique_id = getattr(descriptor, "id", "")
+    if technique_id:
+        parts.append(technique_id)
+
+    try:
+        parts.append(f"{float(getattr(wizard, 'temperature_c', 25.0)):.1f}C")
+    except (TypeError, ValueError):
+        pass
+
+    try:
+        start = _fmt_freq(float(wizard.get_sweep_start_frequency())).replace(" ", "")
+        stop = _fmt_freq(float(wizard.get_sweep_stop_frequency())).replace(" ", "")
+        parts.append(f"{start}-{stop}")
+        parts.append(f"{int(wizard.get_sweep_steps())}pts")
+    except Exception:
+        logger.debug("[standard_screen] sweep unavailable for the suggested preset name")
+
+    if standard.key in getattr(wizard, "_precal_originals", {}):
+        parts.append("precal")
+
+    parts.append(datetime.now().strftime("%Y%m%d-%H%M%S"))
+
+    name = "_".join(str(p) for p in parts if p)
+    for bad in '<>:"/\\|?*':
+        name = name.replace(bad, "-")
+    return name
 
 
 def _on_measure(wizard, standard, name, color, button, std_texts, state):
@@ -845,6 +905,21 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
     _measure_open_btn.setFixedWidth(200)
     layout.addWidget(_measure_open_btn, alignment=Qt.AlignHCenter)
 
+    # Import the OPEN from a file (Debug Mode): without it the pre-calibration
+    # cannot be exercised at all when there is no probe available.
+    _import_open_btn = None
+    if is_debug_enabled():
+        _import_open_btn = QPushButton(std_texts.get("precal_import_button", "Import OPEN .s1p"))
+        _import_open_btn.setFixedHeight(26)
+        _import_open_btn.setFixedWidth(200)
+        _import_open_btn.setStyleSheet(
+            "QPushButton { font-size: 11px; color: #666677; border: 1px dashed #444455;"
+            " border-radius: 4px; padding: 0 12px; }"
+            " QPushButton:hover { color: #aaaacc; border-color: #6666aa; }"
+        )
+        layout.addSpacing(4)
+        layout.addWidget(_import_open_btn, alignment=Qt.AlignHCenter)
+
     # Status label
     _status_lbl = QLabel(std_texts.get("precal_status_ready", "Sin medición del OPEN"))
     _status_lbl.setAlignment(Qt.AlignCenter)
@@ -890,17 +965,8 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
 
     _open_data = [None]  # [(freqs, s11_open)]
 
-    def _do_measure_open():
-        from PySide6.QtWidgets import QApplication
-        _status_lbl.setText(std_texts.get("precal_status_measuring", "Measuring…"))
-        _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: orange;")
-        QApplication.processEvents()
-        result = run_s11_sweep(wizard)
-        if result is None:
-            _status_lbl.setText(std_texts.get("precal_status_ready", "Sin medición del OPEN"))
-            _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: gray;")
-            return
-        freqs_open, s11_open = result
+    def _accept_open(freqs_open, s11_open, trace_color="red"):
+        """Store the OPEN sweep, plot it and enable Apply."""
         s11_arr = np.asarray(s11_open, dtype=complex)
         _open_data[0] = (np.asarray(freqs_open, dtype=float), s11_arr)
 
@@ -916,11 +982,11 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         base.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
         builder._configure_smith_chart_appearance()
         ax.set_title(r"$S_{11}$ — OPEN", fontsize=13, pad=20, color=builder.config.text_color)
-        ax.plot(np.real(s11_arr), np.imag(s11_arr), "o-", color="red",
+        ax.plot(np.real(s11_arr), np.imag(s11_arr), "o-", color=trace_color,
                 linewidth=2, markersize=3, zorder=3)
-        builder.add_start_point_marker(s11_arr, color="red")
+        builder.add_start_point_marker(s11_arr, color=trace_color)
         ax.legend(
-            [Line2D([0], [0], color="red")], [r"$S_{11}$ — OPEN"],
+            [Line2D([0], [0], color=trace_color)], [r"$S_{11}$ — OPEN"],
             loc="upper left", bbox_to_anchor=(-0.22, 1.14),
             bbox_transform=ax.transAxes, fontsize=8.5, framealpha=0.93,
         )
@@ -929,6 +995,27 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         _status_lbl.setText(std_texts.get("precal_status_done", "OPEN medido ✓"))
         _status_lbl.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
         apply_btn.setEnabled(True)
+
+    def _do_measure_open():
+        from PySide6.QtWidgets import QApplication
+        _status_lbl.setText(std_texts.get("precal_status_measuring", "Measuring…"))
+        _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: orange;")
+        QApplication.processEvents()
+        result = run_s11_sweep(wizard)
+        if result is None:
+            _status_lbl.setText(std_texts.get("precal_status_ready", "Sin medición del OPEN"))
+            _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: gray;")
+            return
+        _accept_open(result[0], result[1], trace_color="red")
+
+    def _do_import_open():
+        imported = _ask_s1p_matching_sweep(
+            wizard, std_texts,
+            std_texts.get("precal_import_dialog_title", "Import OPEN S11 (.s1p)"),
+        )
+        if imported is None:
+            return
+        _accept_open(imported[0], imported[1], trace_color="#ff9f43")
 
     def _do_apply():
         freqs_open, s11_open = _open_data[0]
@@ -944,6 +1031,8 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         dlg.accept()
 
     _measure_open_btn.clicked.connect(_do_measure_open)
+    if _import_open_btn is not None:
+        _import_open_btn.clicked.connect(_do_import_open)
     apply_btn.clicked.connect(_do_apply)
     cancel_btn.clicked.connect(dlg.reject)
 

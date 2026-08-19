@@ -47,7 +47,8 @@
       },
 
       "buttons": {
-        "generate_report": "Generate PDF Report"
+        "generate_report": "Generate PDF Report",
+        "generating_report": "Generating report…"
       },
 
       "plots": {

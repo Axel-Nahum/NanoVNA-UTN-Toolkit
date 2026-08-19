@@ -398,10 +398,24 @@ class MeasurementMainWindow(QMainWindow):
 
         fig.canvas.mpl_connect("resize_event", _adjust_layout)
 
-        # Restore last saved marker positions (clamped to valid range)
+        # Restore last saved marker positions (clamped to valid range). With no
+        # saved positions the two cursors start apart: born on the same index
+        # they overlap exactly and read as a single cursor.
         _ini_mk = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
-        _init_idx1 = 0
-        _init_idx2 = 0
+
+        def _saved_index(key, fallback):
+            try:
+                return min(max(int(_ini_mk.value(key)), 0), n - 1)
+            except (TypeError, ValueError):
+                return min(max(fallback, 0), n - 1)
+
+        # Independent by default: linking is an explicit opt-in from the chart
+        # context menu, not the out-of-the-box behaviour. Read before the sliders
+        # are built so their initial handles agree with the cursors.
+        self._cursors_linked = str(_ini_mk.value("markers/linked", "false")).lower() == "true"
+
+        _init_idx1 = _saved_index("markers/index_1", n // 3)
+        _init_idx2 = _init_idx1 if self._cursors_linked else _saved_index("markers/index_2", (2 * n) // 3)
 
         try:
             slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=_init_idx1, valstep=1,
@@ -488,10 +502,7 @@ class MeasurementMainWindow(QMainWindow):
         slider1.on_changed(lambda val: _upd1(int(val)))
         slider2.on_changed(lambda val: _upd2(int(val)))
 
-        # Persist link state
-        _link_ini = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
-        self._cursors_linked = str(_link_ini.value("markers/linked", "true")).lower() != "false"
-
+        # Persist link state (read above, before the sliders were built)
         def _toggle_link():
             self._cursors_linked = not self._cursors_linked
             get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(

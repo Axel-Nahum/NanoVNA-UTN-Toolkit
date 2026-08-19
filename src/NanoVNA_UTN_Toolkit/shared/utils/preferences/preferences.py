@@ -9,13 +9,16 @@ import sys
 from pathlib import Path
 
 from PySide6.QtWidgets import (
-    QDialog, QPushButton, QLabel, QVBoxLayout,
+    QCheckBox, QDialog, QPushButton, QLabel, QVBoxLayout,
     QHBoxLayout, QComboBox, QFrame, QSizePolicy
 )
 
 toggle_menu_dark_mode = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode", "toggle_menu_dark_mode")
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
+
+is_debug_enabled = safe_import("NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode", "is_debug_enabled")
+set_debug_enabled = safe_import("NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode", "set_debug_enabled")
 
 MenuResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.menu_resource_loader", "MenuResourceLoader")
 
@@ -29,7 +32,7 @@ def open_preferences_dialog(self):
 
     dialog.setWindowTitle("Preferences")
 
-    dialog.setFixedSize(340, 260)
+    dialog.setFixedSize(340, 330)
 
     dialog.setStyleSheet(self.styleSheet())
 
@@ -153,12 +156,48 @@ def open_preferences_dialog(self):
     language_layout.addWidget(self.language_combo)
 
 # ------------------------------------------------------------------------------------------------------------------- #
+# Debug Mode
+# ------------------------------------------------------------------------------------------------------------------- #
+
+    debug_layout = QHBoxLayout()
+
+    debug_label = QLabel("Debug Mode:")
+
+    debug_label.setStyleSheet("""
+        font-size: 15px;
+        border: none;
+    """)
+
+    self.debug_mode_checkbox = QCheckBox("Enable")
+
+    self.debug_mode_checkbox.setStyleSheet("border: none;")
+
+    self.debug_mode_checkbox.setChecked(is_debug_enabled())
+
+    # Debug Mode reveals the offline .s1p import actions of the characterization
+    # wizard, so the whole assistant can be exercised without a probe.
+    self.debug_mode_checkbox.setToolTip(
+        "Shows the .s1p import actions in every step of the characterization wizard,\n"
+        "so the assistant can be used without a probe or measurement setup."
+    )
+
+    self.debug_mode_checkbox.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+    debug_layout.addWidget(debug_label)
+
+    debug_layout.addStretch()
+
+    debug_layout.addWidget(self.debug_mode_checkbox)
+
+# ------------------------------------------------------------------------------------------------------------------- #
 # Add Settings Layouts
 # ------------------------------------------------------------------------------------------------------------------- #
 
     preferences_layout.addLayout(theme_layout)
 
     preferences_layout.addLayout(language_layout)
+
+    preferences_layout.addLayout(debug_layout)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Buttons
@@ -206,8 +245,20 @@ def open_preferences_dialog(self):
 
 def apply_preferences(self, dialog):
 
+    change_debug_mode(self, self.debug_mode_checkbox.isChecked())
+
     change_theme(self, self.theme_combo.currentText(), dialog)
     change_language(self, self.language_combo.currentText(), dialog)
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Change Debug Mode
+# ------------------------------------------------------------------------------------------------------------------- #
+
+def change_debug_mode(self, enabled):
+
+    set_debug_enabled(bool(enabled))
+
+    logging.info("[preferences.change_debug_mode] Debug Mode set to %s", bool(enabled))
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Change Theme

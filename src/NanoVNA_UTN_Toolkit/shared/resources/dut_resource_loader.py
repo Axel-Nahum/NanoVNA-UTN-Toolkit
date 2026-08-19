@@ -524,6 +524,7 @@ class DutResourceLoader:
         # ---------------------------------------------------------------- #
 
         self.window.pdf_preview_generate_report = preview_buttons.get("generate_report", "")
+        self.window.pdf_preview_generating_report = preview_buttons.get("generating_report", "Generating report…")
 
         # ---------------------------------------------------------------- #
         # S11 Smith

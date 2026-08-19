@@ -227,6 +227,33 @@ class LatexExporter:
                 self._show_error("Error generating LaTeX PDF", str(e))
                 return False
     
+    def render_images(self, freqs, s11_data, s21_data, output_dir):
+        """Rasterize every figure into ``output_dir``. Uses self.figures if available.
+
+        Must run on the UI thread: matplotlib is not thread-safe.
+        """
+        if self.figures and len(self.figures) > 0:
+            return self._generate_plots_from_figures(self.figures, output_dir)
+        return self._generate_plots(freqs, s11_data, s21_data, output_dir)
+
+    def compile_document(self, freqs, image_files, output_path, tmpdirname,
+                         measurement_name, compiler_path, magnitude_unit="dB"):
+        """Build the .tex from already-rendered images and run LaTeX.
+
+        Blocking and Qt-free, so it can be handed to a worker thread. Raises on
+        failure instead of showing a dialog.
+        """
+        self._create_latex_document_with_compiler(
+            freqs=freqs,
+            image_files=image_files,
+            file_path=Path(output_path).with_suffix(''),
+            tmpdirname=tmpdirname,
+            measurement_name=measurement_name,
+            vna_name="NanoVNA",
+            specific_compiler_path=compiler_path,
+            magnitude_unit=magnitude_unit,
+        )
+
     def export_to_pdf_with_dialog(self, freqs, s11_data, s21_data, measurement_name=None):
         """
         Export S-parameter data to PDF using LaTeX with pre-export dialog.
