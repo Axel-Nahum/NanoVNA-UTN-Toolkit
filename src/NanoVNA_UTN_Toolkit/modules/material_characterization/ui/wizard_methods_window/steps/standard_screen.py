@@ -196,12 +196,19 @@ def build_standard_screen(wizard, descriptor, step_def):
             if standard.key not in originals:
                 return
             freqs, s11_orig = originals.pop(standard.key)
+            getattr(wizard, "_precal_open", {}).pop(standard.key, None)
             wizard.perm_calibration.set_measurement(standard.key, freqs, s11_orig)
             wizard.epsilon_result = None
             _render(wizard, standard, name, color, std_texts, (freqs, s11_orig), state["show_indicative"])
             btn_delete_precal_top.setVisible(False)
 
         btn_delete_precal_top.clicked.connect(_delete_precal)
+
+        # Register a hook so _store_measurement can hide this button if a new
+        # measurement arrives with a grid that no longer matches the stored OPEN.
+        if not hasattr(wizard, "_precal_discard_hooks"):
+            wizard._precal_discard_hooks = {}
+        wizard._precal_discard_hooks[standard.key] = btn_delete_precal_top.hide
         mid.addLayout(precal_row)
         mid.addSpacing(8)
 
@@ -634,6 +641,7 @@ def _adopt_sweep_from_file(wizard, freqs, std_texts) -> bool:
             return False
         wizard.perm_calibration.clear_all_measurements()
         wizard._precal_originals = {}
+        wizard._precal_open = {}
 
     wizard.sweep_start_freq = int(round(float(freqs[0])))
     wizard.sweep_stop_freq = int(round(float(freqs[-1])))
@@ -649,10 +657,7 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
     imported = _ask_s1p_matching_sweep(wizard, std_texts)
     if imported is None:
         return
-    freqs, s11 = imported
-
-    wizard.perm_calibration.set_measurement(standard.key, freqs, s11)
-    wizard.epsilon_result = None
+    freqs, s11 = _store_measurement(wizard, standard.key, imported[0], imported[1])
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     button.setText(std_texts.get("reimport_button", "Import again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11), state["show_indicative"])
@@ -754,8 +759,7 @@ def _load_preset_into_step(wizard, standard, name, std_texts, preset_name):
         else:
             return None
 
-    wizard.perm_calibration.set_measurement(standard.key, freqs, s11)
-    wizard.epsilon_result = None
+    freqs, s11 = _store_measurement(wizard, standard.key, freqs, s11)
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
@@ -883,15 +887,60 @@ def _suggested_preset_name(wizard, descriptor, standard) -> str:
     return name
 
 
+def _store_measurement(wizard, std_key, freqs_raw, s11_raw):
+    """Store a raw S11, applying pre-cal normalization if active for this step.
+
+    If wizard._precal_open[std_key] exists and the OPEN grid matches, the raw
+    value is saved to _precal_originals and the normalized one is written to
+    perm_calibration. On a grid mismatch the pre-cal is discarded (logged) and
+    any registered _precal_discard_hooks[std_key] is called so the UI can hide
+    the "Quitar pre-cal" button.
+
+    Returns (freqs, s11_stored) — whatever was actually written.
+    """
+    freqs_raw = np.asarray(freqs_raw, dtype=float)
+    s11_raw = np.asarray(s11_raw, dtype=complex)
+
+    if not hasattr(wizard, "_precal_open"):
+        wizard._precal_open = {}
+    if not hasattr(wizard, "_precal_originals"):
+        wizard._precal_originals = {}
+
+    s11_to_store = s11_raw
+    if std_key in wizard._precal_open:
+        freqs_open, s11_open = wizard._precal_open[std_key]
+        f_tol = 1e-3
+        grid_ok = (
+            len(freqs_open) == len(freqs_raw)
+            and abs(float(freqs_open[0]) - float(freqs_raw[0])) < f_tol
+            and abs(float(freqs_open[-1]) - float(freqs_raw[-1])) < f_tol
+        )
+        if grid_ok:
+            wizard._precal_originals[std_key] = (freqs_raw.copy(), s11_raw.copy())
+            s11_to_store = s11_raw / np.asarray(s11_open, dtype=complex)
+        else:
+            logger.warning(
+                "[standard_screen] pre-cal OPEN grid mismatch for %s — discarding", std_key
+            )
+            wizard._precal_open.pop(std_key)
+            wizard._precal_originals.pop(std_key, None)
+            hook = getattr(wizard, "_precal_discard_hooks", {}).get(std_key)
+            if callable(hook):
+                try:
+                    hook()
+                except Exception:
+                    pass
+
+    wizard.perm_calibration.set_measurement(std_key, freqs_raw, s11_to_store)
+    wizard.epsilon_result = None
+    return freqs_raw, s11_to_store
+
+
 def _on_measure(wizard, standard, name, color, button, std_texts, state):
     result = run_s11_sweep(wizard)
     if result is None:
         return
-    freqs, s11 = result
-    wizard.perm_calibration.set_measurement(standard.key, freqs, s11)
-    # A new measurement invalidates the cached epsilon result so that step 7
-    # recomputes on the next visit instead of showing stale data.
-    wizard.epsilon_result = None
+    freqs, s11 = _store_measurement(wizard, standard.key, result[0], result[1])
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     button.setText(std_texts.get("remeasure_button", "Measure again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11), state["show_indicative"])
@@ -1186,9 +1235,19 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
     def _do_apply():
         freqs_open, s11_open = _open_data[0]
         freqs_liq, s11_liq = wizard.perm_calibration.get_measurement(standard.key)
+        if not hasattr(wizard, "_precal_open"):
+            wizard._precal_open = {}
         if not hasattr(wizard, "_precal_originals"):
             wizard._precal_originals = {}
-        wizard._precal_originals[standard.key] = (freqs_liq.copy(), np.asarray(s11_liq, dtype=complex).copy())
+        # Persist the OPEN so future measure/import/preset re-applies normalization.
+        wizard._precal_open[standard.key] = (
+            np.asarray(freqs_open, dtype=float).copy(),
+            np.asarray(s11_open, dtype=complex).copy(),
+        )
+        wizard._precal_originals[standard.key] = (
+            np.asarray(freqs_liq, dtype=float).copy(),
+            np.asarray(s11_liq, dtype=complex).copy(),
+        )
         s11_norm = np.asarray(s11_liq, dtype=complex) / np.asarray(s11_open, dtype=complex)
         wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm)
         wizard.epsilon_result = None
