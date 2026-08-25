@@ -160,6 +160,7 @@ def solve_epsilon_r(
     re_max: float | None = None,
     track_window: int = 5,
     track_order: int = 2,
+    cond_floor: float = 1e-2,
 ) -> EpsilonResult:
     """
     Solve for epsilon_r over the whole frequency grid and track a branch.
@@ -170,11 +171,29 @@ def solve_epsilon_r(
         polynomial prediction (nearest-neighbour matching). Exposes every
         candidate so the UI can override the auto selection.
 
+        Traversal runs from the HIGHEST frequency down to the lowest. At high
+        frequencies Gn is small, the inversion is well-conditioned and the seed
+        is reliable. At very low frequencies the two reference liquids become
+        nearly indistinguishable (|S11_ref1 - S11_ref2| < cond_floor); those
+        points are marked as gaps instead of returning a spurious root.
+
     ES: Arma el polinomio de grado 5 por frecuencia, calcula todas las raices,
         filtra las fisicamente admisibles (Re>re_min, Im<=im_tol) y sigue una
         rama continua en frecuencia mediante prediccion polinomica de ventana
         corta (vecino mas cercano). Expone todas las candidatas para que la UI
         pueda sobre-escribir la seleccion automatica.
+
+        El recorrido va de la frecuencia MAS ALTA hacia abajo. A alta frecuencia
+        Gn es chico, la inversion esta bien condicionada y la semilla es
+        confiable. A muy baja frecuencia los dos liquidos de referencia son casi
+        indistinguibles (|S11_ref1 - S11_ref2| < cond_floor); esos puntos se
+        marcan como gap en vez de devolver una raiz espuria.
+
+    Parameters
+    ----------
+    cond_floor : float
+        Threshold for |S11_ref1 - S11_ref2| below which a frequency point is
+        considered ill-conditioned and excluded from the branch (default 1e-2).
     """
     s11_m = np.asarray(s11_m, dtype=complex)
     n = s11_m.shape[0]
@@ -188,6 +207,10 @@ def solve_epsilon_r(
 
     physical_mask = _physical_mask(eps_candidates, re_min, im_tol, re_max)
 
+    # Ill-conditioned points: reference liquids nearly indistinguishable.
+    ref_sep = np.abs(np.asarray(pc.s11_ref2, dtype=complex) - np.asarray(pc.s11_ref1, dtype=complex))
+    ill_conditioned = ref_sep < cond_floor
+
     eps_selected = np.full(n, np.nan + 0j, dtype=complex)
     selected_index = np.full(n, -1, dtype=int)
     gap_mask = np.zeros(n, dtype=bool)
@@ -195,7 +218,14 @@ def solve_epsilon_r(
     last_freqs: List[float] = []
     last_eps: List[complex] = []
 
-    for i in range(n):
+    # Traverse HIGH → LOW frequency. At high frequencies Gn = G0/(jωC0) is
+    # small and the system is well-conditioned; the seed placed there is
+    # reliable and the tracker follows a physically correct branch downward.
+    for i in range(n - 1, -1, -1):
+        if ill_conditioned[i]:
+            gap_mask[i] = True
+            continue
+
         admissible = np.where(physical_mask[i])[0]
         if admissible.size == 0:
             gap_mask[i] = True
@@ -204,7 +234,8 @@ def solve_epsilon_r(
         cands = eps_candidates[i, admissible]
 
         if not last_eps:
-            # Seed: smallest loss (closest to lossless / passive limit).
+            # Seed at the highest valid frequency: smallest imaginary part
+            # (closest to lossless / passive limit).
             choice = int(np.argmin(np.abs(np.imag(cands))))
         else:
             # Predict next epsilon by short-window polynomial extrapolation.
@@ -227,14 +258,44 @@ def solve_epsilon_r(
         last_freqs.append(float(pc.f_hz[i]))
         last_eps.append(eps_selected[i])
 
-    if np.any(gap_mask):
-        n_gap = int(np.count_nonzero(gap_mask))
+    # --- Warnings ----------------------------------------------------------- #
+
+    n_ill = int(np.count_nonzero(ill_conditioned))
+    if n_ill > 0:
         msg = (
-            f"No physically admissible root at {n_gap} frequency point(s); "
+            f"{n_ill} frequency point(s) excluded: reference liquids nearly "
+            f"indistinguishable (|S11_ref1−S11_ref2| < {cond_floor:.0e}). "
+            f"Consider starting the sweep above the affected range."
+        )
+        warnings.append(msg)
+        logger.warning("[permittivity_solver] %s", msg)
+
+    n_gap_only = int(np.count_nonzero(gap_mask & ~ill_conditioned))
+    if n_gap_only > 0:
+        msg = (
+            f"No physically admissible root at {n_gap_only} frequency point(s); "
             f"those are left as gaps (NaN) in the selected branch."
         )
         warnings.append(msg)
         logger.warning("[permittivity_solver] %s", msg)
+
+    # Warn about large jumps in ε′ (>50 % between consecutive valid points).
+    valid_idx = np.where(~np.isnan(eps_selected))[0]
+    if len(valid_idx) > 1:
+        consecutive_pairs = np.where(np.diff(valid_idx) == 1)[0]
+        jump_count = 0
+        for j in consecutive_pairs:
+            a, b = valid_idx[j], valid_idx[j + 1]
+            denom = max(abs(np.real(eps_selected[a])), 1e-6)
+            if abs(np.real(eps_selected[b]) - np.real(eps_selected[a])) / denom > 0.5:
+                jump_count += 1
+        if jump_count > 0:
+            msg = (
+                f"Large jump (>50 %) in ε′ at {jump_count} consecutive point pair(s) — "
+                f"possible branch instability."
+            )
+            warnings.append(msg)
+            logger.warning("[permittivity_solver] %s", msg)
 
     warnings.extend(pc.warnings)
 
