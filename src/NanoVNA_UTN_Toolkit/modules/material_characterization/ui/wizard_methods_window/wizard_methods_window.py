@@ -154,13 +154,8 @@ class CharacterizationWizard(QMainWindow):
 
         self.bottom_layout = QHBoxLayout()
         self.back_button = QPushButton("◀◀")
-        self.back_button.setFixedSize(120, 35)
-        self.back_button.setStyleSheet("""
-            QPushButton {
-                font-size: 14px;
-                font-weight: bold;
-            }
-        """)
+        self.back_button.setFixedSize(100, 30)
+        self.back_button.setStyleSheet("font-size: 14px;")
 
         self.back_button.clicked.connect(
             self.go_to_previous_step
@@ -168,13 +163,8 @@ class CharacterizationWizard(QMainWindow):
 
         self.next_button = QPushButton("▶▶")
         self.next_button.setEnabled(False)
-        self.next_button.setFixedSize(120, 35)
-        self.next_button.setStyleSheet("""
-            QPushButton {
-                font-size: 14px;
-                font-weight: bold;
-            }
-        """)
+        self.next_button.setFixedSize(100, 30)
+        self.next_button.setStyleSheet("font-size: 14px;")
 
         self.next_button.clicked.connect(
             self.go_to_next_step

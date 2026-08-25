@@ -316,6 +316,22 @@ class PermittivityExporter:
                             width=NoEscape(r"0.9\linewidth"),
                         )
 
+            # Branch selection criterion
+            with doc.create(Subsection("Branch Selection Criterion")):
+                doc.append(NoEscape(
+                    r"\begin{itemize}"
+                    r"\item \textbf{Physical filter:} $\mathrm{Re}(\varepsilon) > 0$,"
+                    r" $\mathrm{Im}(\varepsilon) \leq 1\times10^{-6}$"
+                    r"\item \textbf{Traversal:} high $\rightarrow$ low frequency"
+                    r"\item \textbf{Seed:} root with smallest $|\mathrm{Im}(\varepsilon)|$"
+                    r" at the highest valid frequency"
+                    r"\item \textbf{Tracking:} polynomial extrapolation (window\,5, order\,$\leq$2)"
+                    r" + nearest-neighbour match"
+                    r"\item \textbf{Ill-conditioned points} ($|S_{11}^{r_1} - S_{11}^{r_2}| < 0.01$)"
+                    r" excluded as gaps (NaN)"
+                    r"\end{itemize}"
+                ))
+
         # Data table page
         if eps_selected is not None and freqs is not None:
             doc.append(NewPage())

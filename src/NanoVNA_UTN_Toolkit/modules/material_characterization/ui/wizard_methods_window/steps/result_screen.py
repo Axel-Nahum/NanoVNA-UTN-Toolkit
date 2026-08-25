@@ -29,7 +29,8 @@ import logging
 import numpy as np
 from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QHBoxLayout, QLabel, QPlainTextEdit, QVBoxLayout, QWidget,
+    QCheckBox, QComboBox, QDialog, QHBoxLayout, QLabel, QPlainTextEdit,
+    QPushButton, QVBoxLayout, QWidget,
 )
 
 
@@ -180,15 +181,39 @@ def _build_warnings(wizard, layout, result, rtexts):
     warns = list(result.warnings) + list(getattr(wizard, "temperature_warnings", []) or [])
     if not warns:
         return
-    layout.addSpacing(8)
-    title = QLabel(rtexts.get("warnings_title", "Warnings:"))
-    title.setStyleSheet("font-weight: bold; color: #b8860b;")
-    layout.addWidget(title)
-    for w in warns[:8]:
-        item = QLabel(f"• {w}")
-        item.setWordWrap(True)
-        item.setStyleSheet("color: #b8860b; font-size: 12px;")
-        layout.addWidget(item)
+
+    def _show_popup():
+        dlg = QDialog(None, Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        dlg.setStyleSheet(
+            "QDialog { background: #fffbf0; border: 1px solid #e8c84a; border-radius: 6px; }"
+        )
+        v = QVBoxLayout(dlg)
+        v.setContentsMargins(12, 10, 12, 10)
+        v.setSpacing(4)
+        hdr = QLabel(rtexts.get("warnings_title", "Warnings:"))
+        hdr.setStyleSheet("font-weight: bold; color: #b8860b; font-size: 12px;")
+        v.addWidget(hdr)
+        for w in warns[:8]:
+            item = QLabel(f"• {w}")
+            item.setWordWrap(True)
+            item.setStyleSheet("color: #7a5800; font-size: 11px;")
+            item.setMaximumWidth(420)
+            v.addWidget(item)
+        dlg.adjustSize()
+        dlg.move(btn.mapToGlobal(btn.rect().bottomLeft()))
+        dlg.exec()
+
+    n = len(warns)
+    btn = QPushButton(f"⚠  {n} warning{'s' if n > 1 else ''}")
+    btn.setStyleSheet(
+        "QPushButton { background: transparent; color: #b8860b; border: none;"
+        " font-size: 12px; padding: 2px 0px; text-align: left; }"
+        "QPushButton:hover { color: #7a5800; text-decoration: underline; }"
+    )
+    btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    btn.clicked.connect(_show_popup)
+    layout.addSpacing(4)
+    layout.addWidget(btn)
 
 
 def _greedy_assign(prev_vals: np.ndarray, candidates: np.ndarray) -> np.ndarray:
@@ -262,6 +287,19 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
     title = QLabel(rtexts.get("intermediate_title", "Intermediate data (5th-order equation)"))
     title.setStyleSheet("font-weight: bold; font-size: 13px;")
     layout.addWidget(title)
+
+    crit_title = rtexts.get("criterion_title", "Branch selection criterion")
+    crit_text  = rtexts.get(
+        "criterion_text",
+        "Physical filter: Re(ε) > 0, Im(ε) ≤ 1×10⁻⁶  ·  Traversal: high → low frequency"
+        "  ·  Seed: root with smallest |Im(ε)| at highest valid frequency"
+        "  ·  Tracking: polynomial extrapolation (window 5, order ≤2) + nearest-neighbour"
+        "  ·  Ill-conditioned points (|S₁₁ʳ¹ − S₁₁ʳ²| < 0.01) excluded as gaps",
+    )
+    crit_lbl = QLabel(f"<b>{crit_title}:</b> {crit_text}")
+    crit_lbl.setWordWrap(True)
+    crit_lbl.setStyleSheet("font-size: 11px; color: #555555; padding: 4px 0px 6px 0px;")
+    layout.addWidget(crit_lbl)
 
     # Frequency selector (decimated).
     n = len(result.f_hz)
