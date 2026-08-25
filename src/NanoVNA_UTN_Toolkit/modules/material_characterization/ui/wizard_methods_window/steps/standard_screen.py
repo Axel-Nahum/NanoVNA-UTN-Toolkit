@@ -113,6 +113,7 @@ def build_standard_screen(wizard, descriptor, step_def):
     # Clear any hook left over from a previous reference-liquid screen so that
     # non-reference steps (DUT) don't call into already-destroyed widgets.
     wizard._on_measurement_stored_hook = None
+    wizard._on_precal_applied_hook = None
 
     standard = step_def.standard
     is_reference = standard.kind is StandardKind.REFERENCE_LIQUID
@@ -128,8 +129,8 @@ def build_standard_screen(wizard, descriptor, step_def):
     title_tmpl = std_texts.get("title_template", "Step {index}/{total}: {name}")
     wizard.title_label.setText(title_tmpl.format(index=wizard.current_step, total=total, name=name))
 
-    # Per-screen render state (mutated by the checkbox).
-    state = {"show_indicative": True}
+    # Per-screen render state (mutated by the checkboxes).
+    state = {"show_indicative": True, "show_raw": False}
 
     # Left half: sidebar + mid (occupies ~62% of the window, chart gets 38%)
     left_half_layout = QHBoxLayout()
@@ -199,7 +200,13 @@ def build_standard_screen(wizard, descriptor, step_def):
             getattr(wizard, "_precal_open", {}).pop(standard.key, None)
             wizard.perm_calibration.set_measurement(standard.key, freqs, s11_orig)
             wizard.epsilon_result = None
-            _render(wizard, standard, name, color, std_texts, (freqs, s11_orig), state["show_indicative"])
+            state["show_raw"] = False
+            if state.get("raw_chk_artist") is not None:
+                state["raw_chk_artist"].set_text(state.get("raw_chk_off", "☐  Show without pre-cal"))
+                state["raw_chk_artist"].set_visible(False)
+                if wizard.current_canvas:
+                    wizard.current_canvas.draw()
+            _render(wizard, standard, name, color, std_texts, (freqs, s11_orig), state["show_indicative"], False)
             btn_delete_precal_top.setVisible(False)
 
         btn_delete_precal_top.clicked.connect(_delete_precal)
@@ -399,7 +406,7 @@ def build_standard_screen(wizard, descriptor, step_def):
                 return
             freqs, s11 = loaded
             _render(wizard, standard, name, _trace_colors[2], std_texts,
-                    (freqs, s11), state["show_indicative"])
+                    (freqs, s11), state["show_indicative"], state.get("show_raw", False))
 
         btn_grp.idClicked.connect(_on_source_changed)
         preset_combo.currentIndexChanged.connect(
@@ -442,27 +449,70 @@ def build_standard_screen(wizard, descriptor, step_def):
     )
     wizard.current_fig, wizard.current_ax, wizard.current_canvas = fig, ax, canvas
 
-    # Checkbox dentro del canvas (fig.text) — en el espacio blanco inferior del figure
-    indicative_chk = None
+    # Checkboxes dentro del canvas (fig.text) — en el espacio blanco inferior del figure
     if is_reference:
         _chk_on  = '☑  ' + std_texts.get("show_indicative", "Show indicative reference")
         _chk_off = '☐  ' + std_texts.get("show_indicative", "Show indicative reference")
         _chk_text = fig.text(
-            0.5, 0.06, _chk_on,
+            0.5, 0.08, _chk_on,
             ha='center', va='center',
             fontsize=9, color='#888888',
             picker=True,
         )
 
+        _raw_on  = '☑  ' + std_texts.get("show_raw", "Show without pre-cal")
+        _raw_off = '☐  ' + std_texts.get("show_raw", "Show without pre-cal")
+        _chk_raw = fig.text(
+            0.5, 0.02, _raw_off,
+            ha='center', va='center',
+            fontsize=9, color='#888888',
+            picker=True,
+            visible=False,  # shown only when pre-cal is active
+        )
+        state["raw_chk_artist"] = _chk_raw
+        state["raw_chk_on"]  = _raw_on
+        state["raw_chk_off"] = _raw_off
+
+        # Make raw checkbox visible immediately if pre-cal already active (screen revisit).
+        if standard.key in getattr(wizard, "_precal_originals", {}):
+            _chk_raw.set_visible(True)
+
         def _on_pick(event):
-            if event.artist is not _chk_text:
-                return
-            state["show_indicative"] = not state["show_indicative"]
-            _chk_text.set_text(_chk_on if state["show_indicative"] else _chk_off)
             stored_now = wizard.perm_calibration.get_measurement(standard.key)
-            _render(wizard, standard, name, color, std_texts, stored_now, state["show_indicative"])
+            if event.artist is _chk_text:
+                state["show_indicative"] = not state["show_indicative"]
+                _chk_text.set_text(_chk_on if state["show_indicative"] else _chk_off)
+                _render(wizard, standard, name, color, std_texts, stored_now,
+                        state["show_indicative"], state.get("show_raw", False))
+            elif event.artist is _chk_raw:
+                if standard.key not in getattr(wizard, "_precal_originals", {}):
+                    return
+                state["show_raw"] = not state["show_raw"]
+                _chk_raw.set_text(_raw_on if state["show_raw"] else _raw_off)
+                _render(wizard, standard, name, color, std_texts, stored_now,
+                        state["show_indicative"], state["show_raw"])
 
         fig.canvas.mpl_connect('pick_event', _on_pick)
+
+        # Hook called by _open_precal_dialog after Apply to make the raw checkbox visible.
+        def _on_precal_applied():
+            _chk_raw.set_visible(True)
+            if wizard.current_canvas:
+                wizard.current_canvas.draw()
+
+        wizard._on_precal_applied_hook = _on_precal_applied
+
+        # Register hook so _precal_discard_hooks can also hide the raw checkbox.
+        _orig_discard = wizard._precal_discard_hooks.get(standard.key)
+        def _on_precal_discard_full():
+            if callable(_orig_discard):
+                _orig_discard()
+            state["show_raw"] = False
+            _chk_raw.set_text(_raw_off)
+            _chk_raw.set_visible(False)
+            if wizard.current_canvas:
+                wizard.current_canvas.draw()
+        wizard._precal_discard_hooks[standard.key] = _on_precal_discard_full
 
     right_half = QWidget()
     right_half.setLayout(right)
@@ -513,7 +563,7 @@ def build_standard_screen(wizard, descriptor, step_def):
     stored = wizard.perm_calibration.get_measurement(standard.key) if already else None
     _render(wizard, standard, name,
             _trace_colors[2] if (btn_grp is not None and pending_preset) else color,
-            std_texts, stored, state["show_indicative"])
+            std_texts, stored, state["show_indicative"], state.get("show_raw", False))
     wizard.next_button.setEnabled(already)
 
     def _btn_clicked():
@@ -660,7 +710,8 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
     freqs, s11 = _store_measurement(wizard, standard.key, imported[0], imported[1])
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     button.setText(std_texts.get("reimport_button", "Import again"))
-    _render(wizard, standard, name, color, std_texts, (freqs, s11), state["show_indicative"])
+    _render(wizard, standard, name, color, std_texts, (freqs, s11),
+            state["show_indicative"], state.get("show_raw", False))
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
     if callable(hook):
@@ -943,7 +994,8 @@ def _on_measure(wizard, standard, name, color, button, std_texts, state):
     freqs, s11 = _store_measurement(wizard, standard.key, result[0], result[1])
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     button.setText(std_texts.get("remeasure_button", "Measure again"))
-    _render(wizard, standard, name, color, std_texts, (freqs, s11), state["show_indicative"])
+    _render(wizard, standard, name, color, std_texts, (freqs, s11),
+            state["show_indicative"], state.get("show_raw", False))
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
     if callable(hook):
@@ -969,7 +1021,7 @@ def _short_legend_name(standard, name):
     return short
 
 
-def _render(wizard, standard, name, color, std_texts, measured, show_indicative):
+def _render(wizard, standard, name, color, std_texts, measured, show_indicative, show_raw=False):
     """Draw base Smith chart + expected reference + (optional) measured trace."""
     from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import SmithChartManager
     ax = wizard.current_ax
@@ -1025,6 +1077,16 @@ def _render(wizard, standard, name, color, std_texts, measured, show_indicative)
         builder.add_start_point_marker(s11, color=color)
         handles.append(Line2D([0], [0], color=color))
         labels.append(rf"$S_{{11}}$ — {_short_legend_name(standard, name)}")
+
+    if show_raw and standard.kind is StandardKind.REFERENCE_LIQUID:
+        raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
+        if raw_data is not None:
+            _, s11_raw = raw_data
+            s11_raw = np.asarray(s11_raw, dtype=complex)
+            ax.plot(np.real(s11_raw), np.imag(s11_raw), "--", color="#999999",
+                    linewidth=1.3, zorder=2, alpha=0.75)
+            handles.append(Line2D([0], [0], color="#999999", linestyle="--", alpha=0.75))
+            labels.append(r"$S_{11}$ — raw")
 
     if handles:
         # Upper-left corner of the axes is diagonally outside the Smith unit circle.
@@ -1251,8 +1313,12 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         s11_norm = np.asarray(s11_liq, dtype=complex) / np.asarray(s11_open, dtype=complex)
         wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm)
         wizard.epsilon_result = None
-        _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm), state["show_indicative"])
+        state["show_raw"] = False
+        _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm), state["show_indicative"], False)
         btn_delete_precal.setVisible(True)
+        hook = getattr(wizard, "_on_precal_applied_hook", None)
+        if callable(hook):
+            hook()
         dlg.accept()
 
     _measure_open_btn.clicked.connect(_do_measure_open)

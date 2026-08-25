@@ -91,6 +91,7 @@
     "precal_cancel": "Cancel",
     "temperature_reminder": "Configured temperature: {temp:.1f} °C",
     "show_indicative": "Show indicative reference",
+    "show_raw": "Show without pre-cal",
     "expected_label": "expected",
     "indicative_label": "indicative (nominal model)",
     "open": {
