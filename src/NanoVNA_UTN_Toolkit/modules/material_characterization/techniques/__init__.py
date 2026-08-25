@@ -29,9 +29,11 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques.registry i
     all_descriptors,
 )
 
-# Importing the descriptor module registers the built-in technique(s).
+# Importing the descriptor modules registers the built-in techniques.
+# Order matters: it is the order shown in the technique dropdown.
 from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import (  # noqa: F401
     open_coax_liquids,
+    open_coax_liquids_simplified,
 )
 
 __all__ = [

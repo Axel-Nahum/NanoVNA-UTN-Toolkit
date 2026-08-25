@@ -137,11 +137,11 @@ class MeasurementMainWindow(QMainWindow):
         steps = getattr(wiz, "sweep_steps", None)
 
         refs_text = "—"
-        if cal is not None and cal.ref1_key and cal.ref2_key:
-            refs_text = (
-                f"{get_reference_liquid(cal.ref1_key).display_name} / "
-                f"{get_reference_liquid(cal.ref2_key).display_name}"
-            )
+        if cal is not None and cal.ref1_key:
+            refs_text = get_reference_liquid(cal.ref1_key).display_name
+            # The simplified technique uses a single reference (ref2 is None).
+            if cal.ref2_key:
+                refs_text += f" / {get_reference_liquid(cal.ref2_key).display_name}"
 
         items = [
             (info.get("technique",    "Technique"),   technique),

@@ -144,6 +144,9 @@
     "source_imported": "importado",
     "source_preset_prefix": "preset:",
     "criterion_title": "Criterio de selección de rama",
-    "criterion_text": "Filtro físico: Re(ε) > 0, Im(ε) ≤ 1×10⁻⁶  ·  Recorrido: frecuencia alta → baja  ·  Semilla: raíz de menor |Im(ε)| en la frecuencia válida más alta  ·  Seguimiento: extrapolación polinómica (ventana 5, orden ≤2) + vecino más cercano  ·  Puntos mal condicionados (|S₁₁ʳ¹ − S₁₁ʳ²| < 0.01) excluidos como gaps"
+    "criterion_text": "Filtro físico: Re(ε) > 0, Im(ε) ≤ 1×10⁻⁶  ·  Recorrido: frecuencia alta → baja  ·  Semilla: raíz de menor |Im(ε)| en la frecuencia válida más alta  ·  Seguimiento: extrapolación polinómica (ventana 5, orden ≤2) + vecino más cercano  ·  Puntos mal condicionados (|S₁₁ʳ¹ − S₁₁ʳ²| < 0.01) excluidos como gaps",
+    "simplified_title": "Método simplificado (una referencia)",
+    "simplified_note": "ε_r sale de la fórmula cerrada de razón cruzada (Higa 2016, ec. 18) usando Short, Open (aire, ε=1.0006) y un líquido de referencia — no hay raíces candidatas ni nada que sobrescribir. Se desprecia el término de radiación de la sonda, así que la exactitud degrada hacia alta frecuencia; para máxima exactitud usar el método completo de dos líquidos.",
+    "simplified_reference": "Líquido de referencia: {ref}  ·  T = {temp:.1f} °C"
   }
 }

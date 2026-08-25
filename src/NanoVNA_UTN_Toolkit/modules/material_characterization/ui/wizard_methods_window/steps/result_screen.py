@@ -44,6 +44,9 @@ class _HalfWidthFilter(QObject):
             self._target.setFixedWidth(max(300, obj.width() // 2))
         return False
 
+from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.simplified_solver import (
+    SimplifiedEpsilonResult,
+)
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.charts.epsilon_chart import (
     EpsilonChartManager,
@@ -124,7 +127,13 @@ def build_result_screen(wizard, descriptor, step_def):
         fixed_ylim = ax.get_ylim()
         wizard.result_epsilon_manager = manager
 
-        _build_intermediate(mid, result, rtexts, manager, ax, canvas, fixed_ylim)
+        # The intermediate block (degree-5 equation, roots, branch override)
+        # only makes sense for the full technique: the simplified one is a
+        # closed formula with a single curve and nothing to override.
+        if isinstance(result, SimplifiedEpsilonResult):
+            _build_simplified_note(mid, result, rtexts)
+        else:
+            _build_intermediate(mid, result, rtexts, manager, ax, canvas, fixed_ylim)
         mid.addStretch(1)
 
     right_half = QWidget()
@@ -348,6 +357,32 @@ def _track_all_branches(result) -> np.ndarray:
             tracked[i, 1:] = _greedy_assign(prev, remaining)
 
     return tracked
+
+
+def _build_simplified_note(layout, result, rtexts):
+    """Method note shown instead of the quintic block for the simplified technique."""
+    layout.addSpacing(10)
+    title = QLabel(rtexts.get("simplified_title", "Simplified method (single reference)"))
+    title.setStyleSheet("font-weight: bold; font-size: 13px;")
+    layout.addWidget(title)
+
+    note = QLabel(rtexts.get(
+        "simplified_note",
+        "ε_r comes from the closed-form cross-ratio formula (Higa 2016, eq. 18) using "
+        "Short, Open (air, ε=1.0006) and one reference liquid — there are no candidate "
+        "roots and nothing to override. The probe's radiation term is neglected, so "
+        "accuracy degrades toward high frequency; for best accuracy use the full "
+        "two-liquid method.",
+    ))
+    note.setWordWrap(True)
+    note.setStyleSheet("font-size: 11px; color: #555555; padding: 4px 0px 6px 0px;")
+    layout.addWidget(note)
+
+    ref_line = QLabel(rtexts.get(
+        "simplified_reference", "Reference liquid: {ref}  ·  T = {temp:.1f} °C"
+    ).format(ref=result.ref_liquid_key, temp=result.temperature_c))
+    ref_line.setStyleSheet("font-size: 11px; color: #555555;")
+    layout.addWidget(ref_line)
 
 
 def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=None, fixed_ylim=None):

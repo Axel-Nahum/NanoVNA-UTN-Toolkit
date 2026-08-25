@@ -113,6 +113,13 @@ class SimplifiedEpsilonResult:
     temperature_c: float
     warnings: List[str]
 
+    @property
+    def eps_selected(self) -> np.ndarray:
+        """Alias so downstream consumers of ``EpsilonResult`` (results window,
+        PDF exporters, epsilon chart) work unchanged. Here nothing is
+        "selected" -- the closed formula yields a single curve."""
+        return self.eps
+
 
 def solve_epsilon_simplified(
     f_hz: np.ndarray,

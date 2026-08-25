@@ -8,6 +8,10 @@
     "open_coax_liquids": {
       "title": "Open-ended coaxial probe (liquids)",
       "description": "Measures the complex relative permittivity (epsilon_r) of a liquid using an open-ended coaxial probe on a NanoVNA.\n\nThe wizard guides you through a four-standard calibration (Open in air, Short, and two reference liquids of known permittivity) at a chosen temperature, then measures the unknown liquid and computes epsilon_r as a function of frequency.\n\nReference liquids in this version: distilled Water and Isopropyl Alcohol (IPA)."
+    },
+    "open_coax_liquids_simplified": {
+      "title": "Open-ended coaxial probe (liquids) — simplified, 1 reference",
+      "description": "Measures the complex relative permittivity of a liquid using only three standards — Short, Open (air) and ONE known reference liquid (water by default) — plus the unknown. A closed-form formula with no root ambiguity: faster to run (one liquid less to prepare and clean), at the cost of neglecting the probe's radiation, so accuracy degrades toward high frequency. For best accuracy use the full two-liquid method."
     }
   }
 }

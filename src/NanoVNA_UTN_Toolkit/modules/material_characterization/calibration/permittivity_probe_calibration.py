@@ -39,6 +39,10 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.permittivi
     EpsilonResult,
     solve_epsilon_r,
 )
+from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.simplified_solver import (
+    SimplifiedEpsilonResult,
+    solve_epsilon_simplified,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -90,20 +94,43 @@ class PermittivityProbeCalibration:
     # Configuration
     # --------------------------------------------------------------------- #
 
-    def set_reference_liquids(self, ref1_key: str, ref2_key: str) -> bool:
-        """Select the two reference liquids (validated against the library)."""
-        if ref1_key == ref2_key:
+    def set_reference_liquids(self, ref1_key: str, ref2_key: Optional[str] = None) -> bool:
+        """
+        Select the reference liquid(s), validated against the library.
+
+        EN: ``ref2_key=None`` selects the SIMPLIFIED single-reference technique:
+            the permittivity comes from the closed-form barycentric formula
+            (``simplified_solver``) instead of the degree-5 solver, and ``ref2``
+            stops being a required standard.
+
+        ES: ``ref2_key=None`` selecciona la tecnica SIMPLIFICADA de una sola
+            referencia: la permitividad sale de la formula baricentrica cerrada
+            (``simplified_solver``) en vez del solver de grado 5, y ``ref2``
+            deja de ser un patron requerido.
+        """
+        if ref2_key is not None and ref1_key == ref2_key:
             logger.error("[PermittivityProbeCalibration] Reference liquids must differ")
             return False
         try:
             get_reference_liquid(ref1_key)
-            get_reference_liquid(ref2_key)
+            if ref2_key is not None:
+                get_reference_liquid(ref2_key)
         except KeyError as exc:
             logger.error("[PermittivityProbeCalibration] %s", exc)
             return False
         self.ref1_key = ref1_key
         self.ref2_key = ref2_key
         return True
+
+    @property
+    def is_simplified(self) -> bool:
+        """True when running the single-reference (closed-form) technique."""
+        return self.ref2_key is None
+
+    @property
+    def required_standards(self) -> Tuple[str, ...]:
+        """Calibration standards this technique actually needs."""
+        return ("open", "short", "ref1") if self.is_simplified else STANDARD_KEYS
 
     def set_temperature(self, temp_c: float) -> List[str]:
         """
@@ -190,10 +217,14 @@ class PermittivityProbeCalibration:
         return bool(data and data["measured"])
 
     def get_completion_status(self) -> Dict[str, bool]:
-        """Return per-standard completion flags plus a ``calibration_complete``."""
+        """Return per-standard completion flags plus a ``calibration_complete``.
+
+        ``calibration_complete`` only counts the standards the ACTIVE technique
+        requires (the simplified one has no ``ref2``).
+        """
         status = {key: self.measurements[key]["measured"] for key in self.measurements}
         status["calibration_complete"] = all(
-            self.measurements[key]["measured"] for key in STANDARD_KEYS
+            self.measurements[key]["measured"] for key in self.required_standards
         )
         return status
 
@@ -219,13 +250,32 @@ class PermittivityProbeCalibration:
         return ref
 
     def compute_calibration(self) -> bool:
-        """Compute the pattern constants (Gn, reference admittances)."""
-        if self.ref1_key is None or self.ref2_key is None:
-            logger.error("[PermittivityProbeCalibration] Reference liquids not set")
+        """Compute the pattern constants (Gn, reference admittances).
+
+        The simplified technique has no pattern constants (its closed formula
+        needs none): there it only validates the shared frequency grid.
+        """
+        if self.ref1_key is None:
+            logger.error("[PermittivityProbeCalibration] Reference liquid not set")
             return False
         if self.temperature_c is None:
             logger.error("[PermittivityProbeCalibration] Temperature not set")
             return False
+
+        if self.is_simplified:
+            try:
+                self._common_frequency_grid(self.required_standards)
+                self.last_error = None
+                logger.info(
+                    "[PermittivityProbeCalibration] Simplified technique: grid "
+                    "validated; no pattern constants required"
+                )
+                return True
+            except Exception as exc:  # noqa: BLE001
+                self.last_error = str(exc)
+                logger.error("[PermittivityProbeCalibration] compute_calibration failed: %s", exc)
+                return False
+
         try:
             f_hz = self._common_frequency_grid(STANDARD_KEYS)
             self.pattern_constants = compute_pattern_constants(
@@ -246,14 +296,16 @@ class PermittivityProbeCalibration:
             logger.error("[PermittivityProbeCalibration] compute_calibration failed: %s", exc)
             return False
 
-    def compute_epsilon(self, freqs=None, s11=None) -> Optional[EpsilonResult]:
+    def compute_epsilon(self, freqs=None, s11=None):
         """
         Compute the MUT permittivity. Uses the stored DUT measurement unless
-        ``(freqs, s11)`` are provided. Requires a prior ``compute_calibration``.
-        """
-        if self.pattern_constants is None and not self.compute_calibration():
-            return None
+        ``(freqs, s11)`` are provided.
 
+        Returns an ``EpsilonResult`` (full two-liquid technique, degree-5
+        solver) or a ``SimplifiedEpsilonResult`` (single-reference technique,
+        closed formula). Both expose ``f_hz`` / ``eps_selected`` / ``warnings``,
+        which is all the downstream UI consumes.
+        """
         if s11 is None:
             dut = self.get_measurement(MUT_KEY)
             if dut is None:
@@ -263,12 +315,45 @@ class PermittivityProbeCalibration:
         freqs = np.asarray(freqs, dtype=float)
         s11 = np.asarray(s11, dtype=complex)
 
+        if self.is_simplified:
+            return self._compute_epsilon_simplified(freqs, s11)
+
+        if self.pattern_constants is None and not self.compute_calibration():
+            return None
+
         cal_f = self.pattern_constants.f_hz
         if freqs.shape != cal_f.shape or not np.allclose(freqs, cal_f, rtol=0, atol=_FREQ_ATOL_HZ):
             logger.error("[PermittivityProbeCalibration] DUT grid != calibration grid")
             return None
 
         self.epsilon_result = solve_epsilon_r(s11, self.pattern_constants)
+        return self.epsilon_result
+
+    def _compute_epsilon_simplified(self, freqs, s11) -> Optional[SimplifiedEpsilonResult]:
+        """Closed-form path: Short + Open(air) + one reference liquid."""
+        if self.temperature_c is None:
+            logger.error("[PermittivityProbeCalibration] Temperature not set")
+            return None
+        try:
+            cal_f = self._common_frequency_grid(self.required_standards)
+        except Exception as exc:  # noqa: BLE001
+            self.last_error = str(exc)
+            logger.error("[PermittivityProbeCalibration] %s", exc)
+            return None
+
+        if freqs.shape != cal_f.shape or not np.allclose(freqs, cal_f, rtol=0, atol=_FREQ_ATOL_HZ):
+            logger.error("[PermittivityProbeCalibration] DUT grid != calibration grid")
+            return None
+
+        self.epsilon_result = solve_epsilon_simplified(
+            cal_f,
+            s11,
+            self.measurements["open"]["s11"],
+            self.measurements["short"]["s11"],
+            self.measurements["ref1"]["s11"],
+            get_reference_liquid(self.ref1_key),
+            self.temperature_c,
+        )
         return self.epsilon_result
 
     def clear_all_measurements(self) -> None:
