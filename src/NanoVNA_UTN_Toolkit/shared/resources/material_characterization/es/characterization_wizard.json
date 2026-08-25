@@ -92,6 +92,8 @@
     "temperature_reminder": "Temperatura configurada: {temp:.1f} °C",
     "show_indicative": "Mostrar referencia indicativa",
     "show_raw": "Ver sin pre-cal",
+    "chart_title_magnitude": "Magnitud",
+    "chart_title_phase": "Fase",
     "expected_label": "esperado",
     "indicative_label": "indicativa (modelo nominal)",
     "open": {

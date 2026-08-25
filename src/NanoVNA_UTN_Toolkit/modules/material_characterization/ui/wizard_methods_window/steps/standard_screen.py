@@ -30,6 +30,7 @@ ES: Pantalla de medicion generica de tres columnas, reutilizada para cada
 
 from __future__ import annotations
 
+import configparser
 import logging
 import sys
 import os
@@ -46,6 +47,179 @@ from PySide6.QtWidgets import (
 )
 
 from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_enabled
+
+# ---------------------------------------------------------------------------
+# Chart-mode persistence
+# ---------------------------------------------------------------------------
+_CHART_PREFS_PATH = Path.home() / ".nanovna_utn_toolkit" / "chart_prefs.ini"
+_CHART_SECTION    = "wizard_chart"
+_CHART_MODE_KEY   = "mode"
+_CHART_MODES      = ("smith", "db", "phase")
+_TAB_ACTIVE_COLOR   = "#4da6ff"
+_TAB_INACTIVE_COLOR = "#404055"
+
+
+def _load_chart_mode() -> str:
+    cfg = configparser.ConfigParser()
+    cfg.read(_CHART_PREFS_PATH)
+    mode = cfg.get(_CHART_SECTION, _CHART_MODE_KEY, fallback="smith")
+    return mode if mode in _CHART_MODES else "smith"
+
+
+def _save_chart_mode(mode: str) -> None:
+    cfg = configparser.ConfigParser()
+    cfg[_CHART_SECTION] = {_CHART_MODE_KEY: mode}
+    try:
+        _CHART_PREFS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(_CHART_PREFS_PATH, "w") as f:
+            cfg.write(f)
+    except OSError:
+        pass
+
+
+def _apply_light_axes(ax) -> None:
+    """Apply a clean light theme to magnitude / phase axes (matches Smith canvas).
+
+    Intentionally does NOT touch fig.patch to avoid triggering a Qt layout event.
+    """
+    ax.set_facecolor("white")
+    ax.tick_params(colors="#333333", labelsize=8)
+    for spine in ax.spines.values():
+        spine.set_color("#bbbbbb")
+    ax.xaxis.label.set_color("#333333")
+    ax.yaxis.label.set_color("#333333")
+    ax.grid(True, color="#e0e0e0", linewidth=0.7, linestyle="--")
+
+
+def _render_magnitude(ax, wizard, standard, name, color, std_texts,
+                      measured, show_indicative, show_raw) -> None:
+    """Render |S11| in dB vs frequency."""
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
+        get_reference_liquid, indicative_s11,
+    )
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
+        selected_liquid_key,
+    )
+    fig = ax.get_figure()
+    ax.clear()
+    ax.set_aspect('auto')       # skrf's plot_s_smith sets aspect='equal'; reset it
+    fig.subplots_adjust(left=0.14, right=0.96, top=0.82, bottom=0.18)
+    _apply_light_axes(ax)
+
+    start  = wizard.get_sweep_start_frequency()
+    stop   = wizard.get_sweep_stop_frequency()
+    points = wizard.get_sweep_steps()
+    f_ghz  = np.linspace(start, stop, points) / 1e9
+
+    handles, labels = [], []
+
+    if show_indicative and standard.kind is StandardKind.REFERENCE_LIQUID:
+        liq_key = selected_liquid_key(wizard, standard)
+        if liq_key:
+            try:
+                liquid = get_reference_liquid(liq_key)
+                f_hz = np.linspace(start, stop, points)
+                s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
+                ax.plot(f_ghz, 20 * np.log10(np.abs(s_ind) + 1e-15),
+                        linestyle=":", color=color, linewidth=1.4, zorder=1)
+                handles.append(Line2D([0], [0], linestyle=":", color=color))
+                labels.append("indicative")
+            except Exception:
+                pass
+
+    if measured is not None:
+        _, s11 = measured
+        s11 = np.asarray(s11, dtype=complex)
+        f_plot = np.linspace(start, stop, len(s11)) / 1e9
+        ax.plot(f_plot, 20 * np.log10(np.abs(s11) + 1e-15),
+                "-", color=color, linewidth=2, zorder=3)
+        handles.append(Line2D([0], [0], color=color))
+        labels.append(_short_legend_name(standard, name))
+
+    if show_raw and standard.kind is StandardKind.REFERENCE_LIQUID:
+        raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
+        if raw_data is not None:
+            _, s11_raw = raw_data
+            s11_raw = np.asarray(s11_raw, dtype=complex)
+            f_plot = np.linspace(start, stop, len(s11_raw)) / 1e9
+            ax.plot(f_plot, 20 * np.log10(np.abs(s11_raw) + 1e-15),
+                    "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
+            handles.append(Line2D([0], [0], color="#999999", linestyle="--", alpha=0.75))
+            labels.append("raw")
+
+    ax.set_xlabel("Frequency (GHz)", fontsize=9, color="#333333")
+    ax.set_ylabel(r"$|S_{11}|$ (dB)", fontsize=9, color="#333333")
+    ax.set_title(std_texts.get("chart_title_magnitude", "Magnitude"),
+                 fontsize=13, pad=24, color="#222222")
+    if handles:
+        ax.legend(handles, labels, fontsize=8, framealpha=0.9, loc="best")
+
+
+def _render_phase(ax, wizard, standard, name, color, std_texts,
+                  measured, show_indicative, show_raw) -> None:
+    """Render unwrapped arg(S11) in degrees vs frequency."""
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
+        get_reference_liquid, indicative_s11,
+    )
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
+        selected_liquid_key,
+    )
+    fig = ax.get_figure()
+    ax.clear()
+    ax.set_aspect('auto')       # skrf's plot_s_smith sets aspect='equal'; reset it
+    fig.subplots_adjust(left=0.14, right=0.96, top=0.82, bottom=0.18)
+    _apply_light_axes(ax)
+
+    start  = wizard.get_sweep_start_frequency()
+    stop   = wizard.get_sweep_stop_frequency()
+    points = wizard.get_sweep_steps()
+    f_ghz  = np.linspace(start, stop, points) / 1e9
+
+    handles, labels = [], []
+
+    if show_indicative and standard.kind is StandardKind.REFERENCE_LIQUID:
+        liq_key = selected_liquid_key(wizard, standard)
+        if liq_key:
+            try:
+                liquid = get_reference_liquid(liq_key)
+                f_hz = np.linspace(start, stop, points)
+                s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
+                phase_ind = np.unwrap(np.angle(s_ind)) * 180.0 / np.pi
+                ax.plot(f_ghz, phase_ind,
+                        linestyle=":", color=color, linewidth=1.4, zorder=1)
+                handles.append(Line2D([0], [0], linestyle=":", color=color))
+                labels.append("indicative")
+            except Exception:
+                pass
+
+    if measured is not None:
+        _, s11 = measured
+        s11 = np.asarray(s11, dtype=complex)
+        f_plot = np.linspace(start, stop, len(s11)) / 1e9
+        phase = np.unwrap(np.angle(s11)) * 180.0 / np.pi
+        ax.plot(f_plot, phase, "-", color=color, linewidth=2, zorder=3)
+        handles.append(Line2D([0], [0], color=color))
+        labels.append(_short_legend_name(standard, name))
+
+    if show_raw and standard.kind is StandardKind.REFERENCE_LIQUID:
+        raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
+        if raw_data is not None:
+            _, s11_raw = raw_data
+            s11_raw = np.asarray(s11_raw, dtype=complex)
+            f_plot = np.linspace(start, stop, len(s11_raw)) / 1e9
+            phase_raw = np.unwrap(np.angle(s11_raw)) * 180.0 / np.pi
+            ax.plot(f_plot, phase_raw,
+                    "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
+            handles.append(Line2D([0], [0], color="#999999", linestyle="--", alpha=0.75))
+            labels.append("raw")
+
+    ax.set_xlabel("Frequency (GHz)", fontsize=9, color="#333333")
+    ax.set_ylabel(r"$\angle S_{11}$ (°)", fontsize=9, color="#333333")
+    ax.set_title(std_texts.get("chart_title_phase", "Phase"),
+                 fontsize=13, pad=24, color="#222222")
+    if handles:
+        ax.legend(handles, labels, fontsize=8, framealpha=0.9, loc="best")
+
 
 def _refresh_preset_combo(combo: QComboBox, liquid_key=None) -> None:
     """Fill ``combo`` with the presets of ``liquid_key`` (all of them if None).
@@ -206,7 +380,8 @@ def build_standard_screen(wizard, descriptor, step_def):
                 state["raw_chk_artist"].set_visible(False)
                 if wizard.current_canvas:
                     wizard.current_canvas.draw()
-            _render(wizard, standard, name, color, std_texts, (freqs, s11_orig), state["show_indicative"], False)
+            _render(wizard, standard, name, color, std_texts, (freqs, s11_orig),
+                    state["show_indicative"], False, state.get("chart_mode", "smith"))
             btn_delete_precal_top.setVisible(False)
 
         btn_delete_precal_top.clicked.connect(_delete_precal)
@@ -406,7 +581,8 @@ def build_standard_screen(wizard, descriptor, step_def):
                 return
             freqs, s11 = loaded
             _render(wizard, standard, name, _trace_colors[2], std_texts,
-                    (freqs, s11), state["show_indicative"], state.get("show_raw", False))
+                    (freqs, s11), state["show_indicative"], state.get("show_raw", False),
+                    state.get("chart_mode", "smith"))
 
         btn_grp.idClicked.connect(_on_source_changed)
         preset_combo.currentIndexChanged.connect(
@@ -424,9 +600,10 @@ def build_standard_screen(wizard, descriptor, step_def):
         )
         mid.addWidget(dev_import_btn, alignment=Qt.AlignHCenter)
         mid.addSpacing(4)
-        dev_import_btn.clicked.connect(
-            lambda: _on_import(wizard, standard, name, color, measure_btn, std_texts, state)
-        )
+        def _dev_import_clicked():
+            _lock_chart_size()
+            _on_import(wizard, standard, name, color, measure_btn, std_texts, state)
+        dev_import_btn.clicked.connect(_dev_import_clicked)
 
     mid_container = QWidget()
     mid_container.setLayout(mid)
@@ -435,10 +612,64 @@ def build_standard_screen(wizard, descriptor, step_def):
     left_half = QWidget()
     left_half.setLayout(left_half_layout)
 
-    # Right half: Smith chart
+    # Right half: tab row (Qt buttons) + Smith chart canvas
     right = QVBoxLayout()
     right.setContentsMargins(8, 4, 8, 4)
-    right.setSpacing(4)
+    right.setSpacing(2)
+
+    # ── Chart-mode tabs: Qt QPushButton widgets above the canvas ──────── #
+    _initial_mode = "smith"
+    state["chart_mode"] = _initial_mode
+
+    _BTN_ACTIVE = (
+        "QPushButton {"
+        "  background-color: #eef3ff;"
+        "  color: #4da6ff;"
+        "  border: 2px solid #4da6ff;"
+        "  border-radius: 3px;"
+        "  font-size: 12px;"
+        "  padding: 0px;"
+        "}"
+    )
+    _BTN_INACTIVE = (
+        "QPushButton {"
+        "  background-color: #f5f5f5;"
+        "  color: #888888;"
+        "  border: 1px solid #cccccc;"
+        "  border-radius: 3px;"
+        "  font-size: 12px;"
+        "  padding: 0px;"
+        "}"
+        "QPushButton:hover {"
+        "  background-color: #e8edf5;"
+        "  border-color: #9ab8e0;"
+        "  color: #5588bb;"
+        "}"
+    )
+
+    _btn_smith = QPushButton("◎")
+    _btn_db    = QPushButton("dB")
+    _btn_phase = QPushButton("∠")
+    for _btn in (_btn_smith, _btn_db, _btn_phase):
+        _btn.setFixedSize(38, 28)
+
+    _TAB_BTNS = {"smith": _btn_smith, "db": _btn_db, "phase": _btn_phase}
+
+    def _update_tabs(active_mode: str) -> None:
+        for m, btn in _TAB_BTNS.items():
+            btn.setStyleSheet(_BTN_ACTIVE if m == active_mode else _BTN_INACTIVE)
+
+    _update_tabs(_initial_mode)
+
+    tab_row = QHBoxLayout()
+    tab_row.setContentsMargins(0, 2, 0, 4)
+    tab_row.setSpacing(6)
+    tab_row.addStretch(1)
+    tab_row.addWidget(_btn_smith)
+    tab_row.addWidget(_btn_db)
+    tab_row.addWidget(_btn_phase)
+    right.addLayout(tab_row)
+
     from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import create_wizard_smith_chart
     fig, ax, canvas = create_wizard_smith_chart(
         start_freq=wizard.get_sweep_start_frequency(),
@@ -449,60 +680,33 @@ def build_standard_screen(wizard, descriptor, step_def):
     )
     wizard.current_fig, wizard.current_ax, wizard.current_canvas = fig, ax, canvas
 
-    # Checkboxes dentro del canvas (fig.text) — en el espacio blanco inferior del figure
+    # ── Checkboxes (reference liquid steps only) ────────────────────────── #
+    _chk_text = None
+    _chk_raw  = None
+    _chk_on = _chk_off = _raw_on = _raw_off = ""
     if is_reference:
         _chk_on  = '☑  ' + std_texts.get("show_indicative", "Show indicative reference")
         _chk_off = '☐  ' + std_texts.get("show_indicative", "Show indicative reference")
-        _chk_text = fig.text(
-            0.5, 0.08, _chk_on,
-            ha='center', va='center',
-            fontsize=9, color='#888888',
-            picker=True,
-        )
+        _chk_text = fig.text(0.5, 0.065, _chk_on, ha='center', va='center',
+                              fontsize=9, color='#888888', picker=True)
 
         _raw_on  = '☑  ' + std_texts.get("show_raw", "Show without pre-cal")
         _raw_off = '☐  ' + std_texts.get("show_raw", "Show without pre-cal")
-        _chk_raw = fig.text(
-            0.5, 0.02, _raw_off,
-            ha='center', va='center',
-            fontsize=9, color='#888888',
-            picker=True,
-            visible=False,  # shown only when pre-cal is active
-        )
+        _chk_raw = fig.text(0.5, 0.020, _raw_off, ha='center', va='center',
+                             fontsize=9, color='#888888', picker=True, visible=False)
         state["raw_chk_artist"] = _chk_raw
-        state["raw_chk_on"]  = _raw_on
-        state["raw_chk_off"] = _raw_off
+        state["raw_chk_on"]     = _raw_on
+        state["raw_chk_off"]    = _raw_off
 
-        # Make raw checkbox visible immediately if pre-cal already active (screen revisit).
         if standard.key in getattr(wizard, "_precal_originals", {}):
             _chk_raw.set_visible(True)
 
-        def _on_pick(event):
-            stored_now = wizard.perm_calibration.get_measurement(standard.key)
-            if event.artist is _chk_text:
-                state["show_indicative"] = not state["show_indicative"]
-                _chk_text.set_text(_chk_on if state["show_indicative"] else _chk_off)
-                _render(wizard, standard, name, color, std_texts, stored_now,
-                        state["show_indicative"], state.get("show_raw", False))
-            elif event.artist is _chk_raw:
-                if standard.key not in getattr(wizard, "_precal_originals", {}):
-                    return
-                state["show_raw"] = not state["show_raw"]
-                _chk_raw.set_text(_raw_on if state["show_raw"] else _raw_off)
-                _render(wizard, standard, name, color, std_texts, stored_now,
-                        state["show_indicative"], state["show_raw"])
-
-        fig.canvas.mpl_connect('pick_event', _on_pick)
-
-        # Hook called by _open_precal_dialog after Apply to make the raw checkbox visible.
         def _on_precal_applied():
             _chk_raw.set_visible(True)
             if wizard.current_canvas:
                 wizard.current_canvas.draw()
-
         wizard._on_precal_applied_hook = _on_precal_applied
 
-        # Register hook so _precal_discard_hooks can also hide the raw checkbox.
         _orig_discard = wizard._precal_discard_hooks.get(standard.key)
         def _on_precal_discard_full():
             if callable(_orig_discard):
@@ -513,6 +717,39 @@ def build_standard_screen(wizard, descriptor, step_def):
             if wizard.current_canvas:
                 wizard.current_canvas.draw()
         wizard._precal_discard_hooks[standard.key] = _on_precal_discard_full
+
+    # ── Tab button click handlers ────────────────────────────────────────── #
+    def _on_tab_click(new_mode: str) -> None:
+        if new_mode == state["chart_mode"]:
+            return
+        state["chart_mode"] = new_mode
+        _update_tabs(new_mode)
+        _save_chart_mode(new_mode)
+        stored_now = wizard.perm_calibration.get_measurement(standard.key)
+        _render(wizard, standard, name, color, std_texts, stored_now,
+                state["show_indicative"], state.get("show_raw", False), new_mode)
+
+    _btn_smith.clicked.connect(lambda: _on_tab_click("smith"))
+    _btn_db.clicked.connect(lambda: _on_tab_click("db"))
+    _btn_phase.clicked.connect(lambda: _on_tab_click("phase"))
+
+    # ── Pick handler for in-canvas checkboxes only ────────────────────── #
+    def _on_pick(event):
+        stored_now = wizard.perm_calibration.get_measurement(standard.key)
+        if _chk_text is not None and event.artist is _chk_text:
+            state["show_indicative"] = not state["show_indicative"]
+            _chk_text.set_text(_chk_on if state["show_indicative"] else _chk_off)
+            _render(wizard, standard, name, color, std_texts, stored_now,
+                    state["show_indicative"], state.get("show_raw", False), state["chart_mode"])
+        elif _chk_raw is not None and event.artist is _chk_raw:
+            if standard.key not in getattr(wizard, "_precal_originals", {}):
+                return
+            state["show_raw"] = not state["show_raw"]
+            _chk_raw.set_text(_raw_on if state["show_raw"] else _raw_off)
+            _render(wizard, standard, name, color, std_texts, stored_now,
+                    state["show_indicative"], state["show_raw"], state["chart_mode"])
+
+    fig.canvas.mpl_connect('pick_event', _on_pick)
 
     right_half = QWidget()
     right_half.setLayout(right)
@@ -527,9 +764,24 @@ def build_standard_screen(wizard, descriptor, step_def):
     container = QWidget()
     container.setLayout(columns)
 
-    # Pin right_half to exactly half the container via setFixedWidth so that
-    # canvas.draw() during measure cannot trigger a layout reflow.
+    # Pin right_half width immediately so layout reflow cannot change it.
     right_half.setFixedWidth(max(260, int((getattr(wizard, "_wiz_w", 1300) - 40) * 0.38)))
+    right_half.setMinimumHeight(260)
+
+    # Once the widget is actually painted (real pixel sizes available), lock
+    # both the canvas AND right_half to their actual sizes so that status-label
+    # text changes in the left column cannot compress the chart during a sweep.
+    from PySide6.QtCore import QTimer
+
+    def _lock_chart_size() -> None:
+        cw, ch = canvas.width(), canvas.height()
+        if cw > 0 and ch > 0:
+            canvas.setFixedSize(cw, ch)
+        rh = right_half.height()
+        if rh > 0:
+            right_half.setFixedHeight(rh)
+
+    QTimer.singleShot(350, _lock_chart_size)
     _chart_filter = _HalfWidthFilter(right_half, container)
     container.installEventFilter(_chart_filter)
 
@@ -563,10 +815,14 @@ def build_standard_screen(wizard, descriptor, step_def):
     stored = wizard.perm_calibration.get_measurement(standard.key) if already else None
     _render(wizard, standard, name,
             _trace_colors[2] if (btn_grp is not None and pending_preset) else color,
-            std_texts, stored, state["show_indicative"], state.get("show_raw", False))
+            std_texts, stored, state["show_indicative"], state.get("show_raw", False),
+            state.get("chart_mode", "smith"))
     wizard.next_button.setEnabled(already)
 
     def _btn_clicked():
+        # Lock canvas + right_half sizes before any sweep so the Next-button
+        # appearing (or status-label changes) cannot reflow and compress the chart.
+        _lock_chart_size()
         mode = btn_grp.checkedId() if btn_grp is not None else 0
         trace_color = _trace_colors.get(mode, color) if btn_grp is not None else color
         if mode == 0:
@@ -711,7 +967,8 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     button.setText(std_texts.get("reimport_button", "Import again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11),
-            state["show_indicative"], state.get("show_raw", False))
+            state["show_indicative"], state.get("show_raw", False),
+            state.get("chart_mode", "smith"))
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
     if callable(hook):
@@ -995,7 +1252,8 @@ def _on_measure(wizard, standard, name, color, button, std_texts, state):
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     button.setText(std_texts.get("remeasure_button", "Measure again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11),
-            state["show_indicative"], state.get("show_raw", False))
+            state["show_indicative"], state.get("show_raw", False),
+            state.get("chart_mode", "smith"))
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
     if callable(hook):
@@ -1021,12 +1279,29 @@ def _short_legend_name(standard, name):
     return short
 
 
-def _render(wizard, standard, name, color, std_texts, measured, show_indicative, show_raw=False):
-    """Draw base Smith chart + expected reference + (optional) measured trace."""
-    from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import SmithChartManager
+def _render(wizard, standard, name, color, std_texts, measured,
+            show_indicative, show_raw=False, chart_mode="smith"):
+    """Draw S11 in the current chart mode (smith / db / phase)."""
     ax = wizard.current_ax
     if ax is None:
         return
+
+    if chart_mode == "db":
+        _render_magnitude(ax, wizard, standard, name, color, std_texts,
+                          measured, show_indicative, show_raw)
+        if wizard.current_canvas:
+            wizard.current_canvas.draw()
+        return
+
+    if chart_mode == "phase":
+        _render_phase(ax, wizard, standard, name, color, std_texts,
+                      measured, show_indicative, show_raw)
+        if wizard.current_canvas:
+            wizard.current_canvas.draw()
+        return
+
+    # ── Smith chart (default) ───────────────────────────────────────────── #
+    from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import SmithChartManager
     manager = SmithChartManager()
     builder = manager.builder
     builder.ax = ax
@@ -1314,7 +1589,8 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm)
         wizard.epsilon_result = None
         state["show_raw"] = False
-        _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm), state["show_indicative"], False)
+        _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm),
+                state["show_indicative"], False, state.get("chart_mode", "smith"))
         btn_delete_precal.setVisible(True)
         hook = getattr(wizard, "_on_precal_applied_hook", None)
         if callable(hook):
