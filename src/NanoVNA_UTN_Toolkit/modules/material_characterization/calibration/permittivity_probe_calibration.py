@@ -69,7 +69,7 @@ class PermittivityProbeCalibration:
 
         # Per-standard measurement storage.
         self.measurements: Dict[str, Dict] = {
-            key: {"freqs": None, "s11": None, "measured": False}
+            key: {"freqs": None, "s11": None, "measured": False, "source": None}
             for key in STANDARD_KEYS + (MUT_KEY,)
         }
 
@@ -127,7 +127,7 @@ class PermittivityProbeCalibration:
     # Measurement storage
     # --------------------------------------------------------------------- #
 
-    def set_measurement(self, standard_key: str, freqs, s11) -> bool:
+    def set_measurement(self, standard_key: str, freqs, s11, source: str = "measured") -> bool:
         """Store a measurement and persist it as a Touchstone .s1p file."""
         key = standard_key.lower()
         if key not in self.measurements:
@@ -139,14 +139,20 @@ class PermittivityProbeCalibration:
             self.measurements[key]["freqs"] = freqs
             self.measurements[key]["s11"] = s11
             self.measurements[key]["measured"] = True
+            self.measurements[key]["source"] = source
 
             path = os.path.join(self.results_path, f"{key}.s1p")
             self._save_as_touchstone(freqs, s11, path)
-            logger.info("[PermittivityProbeCalibration] Stored %s (%d points)", key, len(freqs))
+            logger.info("[PermittivityProbeCalibration] Stored %s (%d points, source=%s)", key, len(freqs), source)
             return True
         except Exception as exc:  # noqa: BLE001 - report and signal failure
             logger.error("[PermittivityProbeCalibration] Error storing %s: %s", key, exc)
             return False
+
+    def get_source(self, standard_key: str) -> Optional[str]:
+        """Return the data source tag for a standard, or None if not measured."""
+        data = self.measurements.get(standard_key.lower())
+        return data.get("source") if data else None
 
     def import_standard_from_touchstone(self, standard_key: str, filepath: str) -> bool:
         """
@@ -160,7 +166,7 @@ class PermittivityProbeCalibration:
             net = rf.Network(filepath)
             freqs = np.asarray(net.f, dtype=float)        # skrf normalizes to Hz
             s11 = np.asarray(net.s[:, 0, 0], dtype=complex)
-            return self.set_measurement(standard_key, freqs, s11)
+            return self.set_measurement(standard_key, freqs, s11, source="imported")
         except Exception as exc:  # noqa: BLE001
             logger.error("[PermittivityProbeCalibration] Import failed (%s): %s", filepath, exc)
             return False

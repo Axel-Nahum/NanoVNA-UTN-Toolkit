@@ -460,6 +460,20 @@ class PermittivityExporter:
         doc.append(NoEscape(rf"\item \textbf{{Temperature:}} {_esc(temp_str)}"))
         doc.append(NoEscape(rf"\item \textbf{{Reference Liquids:}} {_esc(refs_text)}"))
         doc.append(NoEscape(rf"\item \textbf{{Frequency Range:}} {_esc(freq_str)}"))
+
+        # Data sources per standard
+        if cal is not None:
+            _LABELS = {"open": "Open", "short": "Short", "ref1": "Ref 1", "ref2": "Ref 2", "dut": "DUT"}
+            src_parts = []
+            for key, label in _LABELS.items():
+                src = cal.get_source(key)
+                if src is not None:
+                    src_parts.append(f"{label}: {src}")
+            if src_parts:
+                doc.append(NoEscape(
+                    rf"\item \textbf{{Data sources:}} {_esc(', '.join(src_parts))}"
+                ))
+
         doc.append(NoEscape(r"\end{itemize}"))
         doc.append(NoEscape(r"\end{flushleft}"))
         doc.append(NoEscape(r"\end{center}"))

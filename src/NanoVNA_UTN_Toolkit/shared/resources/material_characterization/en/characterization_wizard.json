@@ -139,6 +139,10 @@
     "export_title": "Save permittivity figure",
     "export_ok_title": "Saved",
     "export_ok": "Figure saved to:\n{path}",
+    "sources_title": "Data sources",
+    "source_measured": "measured",
+    "source_imported": "imported",
+    "source_preset_prefix": "preset:",
     "criterion_title": "Branch selection criterion",
     "criterion_text": "Physical filter: Re(ε) > 0, Im(ε) ≤ 1×10⁻⁶  ·  Traversal: high → low frequency  ·  Seed: root with smallest |Im(ε)| at highest valid frequency  ·  Tracking: polynomial extrapolation (window 5, order ≤2) + nearest-neighbour  ·  Ill-conditioned points (|S₁₁ʳ¹ − S₁₁ʳ²| < 0.01) excluded as gaps"
   }

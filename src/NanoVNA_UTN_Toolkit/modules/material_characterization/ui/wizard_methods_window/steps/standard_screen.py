@@ -372,7 +372,8 @@ def build_standard_screen(wizard, descriptor, step_def):
                 return
             freqs, s11_orig = originals.pop(standard.key)
             getattr(wizard, "_precal_open", {}).pop(standard.key, None)
-            wizard.perm_calibration.set_measurement(standard.key, freqs, s11_orig)
+            _src = wizard.perm_calibration.get_source(standard.key) or "measured"
+            wizard.perm_calibration.set_measurement(standard.key, freqs, s11_orig, source=_src)
             wizard.epsilon_result = None
             state["show_raw"] = False
             if state.get("raw_chk_artist") is not None:
@@ -963,7 +964,7 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
     imported = _ask_s1p_matching_sweep(wizard, std_texts)
     if imported is None:
         return
-    freqs, s11 = _store_measurement(wizard, standard.key, imported[0], imported[1])
+    freqs, s11 = _store_measurement(wizard, standard.key, imported[0], imported[1], source="imported")
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     button.setText(std_texts.get("reimport_button", "Import again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11),
@@ -1067,7 +1068,7 @@ def _load_preset_into_step(wizard, standard, name, std_texts, preset_name):
         else:
             return None
 
-    freqs, s11 = _store_measurement(wizard, standard.key, freqs, s11)
+    freqs, s11 = _store_measurement(wizard, standard.key, freqs, s11, source=f"preset:{preset_name}")
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
@@ -1195,7 +1196,7 @@ def _suggested_preset_name(wizard, descriptor, standard) -> str:
     return name
 
 
-def _store_measurement(wizard, std_key, freqs_raw, s11_raw):
+def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measured"):
     """Store a raw S11, applying pre-cal normalization if active for this step.
 
     If wizard._precal_open[std_key] exists and the OPEN grid matches, the raw
@@ -1239,7 +1240,7 @@ def _store_measurement(wizard, std_key, freqs_raw, s11_raw):
                 except Exception:
                     pass
 
-    wizard.perm_calibration.set_measurement(std_key, freqs_raw, s11_to_store)
+    wizard.perm_calibration.set_measurement(std_key, freqs_raw, s11_to_store, source=source)
     wizard.epsilon_result = None
     return freqs_raw, s11_to_store
 
@@ -1586,7 +1587,8 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
             np.asarray(s11_liq, dtype=complex).copy(),
         )
         s11_norm = np.asarray(s11_liq, dtype=complex) / np.asarray(s11_open, dtype=complex)
-        wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm)
+        _src = wizard.perm_calibration.get_source(standard.key) or "measured"
+        wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm, source=_src)
         wizard.epsilon_result = None
         state["show_raw"] = False
         _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm),

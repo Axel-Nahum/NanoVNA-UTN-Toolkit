@@ -93,6 +93,7 @@ def build_result_screen(wizard, descriptor, step_def):
         mid.addStretch(1)
     else:
         _build_summary(wizard, mid, result, rtexts)
+        _build_sources(wizard, mid, rtexts)
         _build_warnings(wizard, mid, result, rtexts)
         # _build_intermediate is called after right half so it gets manager/ax/canvas
 
@@ -175,6 +176,74 @@ def _build_summary(wizard, layout, result, rtexts):
     label.setWordWrap(True)
     label.setStyleSheet("font-size: 15px;")
     layout.addWidget(label)
+
+
+def _build_sources(wizard, layout, rtexts):
+    """Compact popup button showing data source per standard."""
+    cal = getattr(wizard, "perm_calibration", None)
+    if cal is None:
+        return
+
+    _DISPLAY = {
+        "open":  "Open",
+        "short": "Short",
+        "ref1":  "Ref 1",
+        "ref2":  "Ref 2",
+        "dut":   "DUT",
+    }
+    prefix = rtexts.get("source_preset_prefix", "preset:")
+    src_measured = rtexts.get("source_measured", "measured")
+    src_imported = rtexts.get("source_imported", "imported")
+
+    rows = []
+    for key, label in _DISPLAY.items():
+        src = cal.get_source(key)
+        if src is None:
+            continue
+        if src == "measured":
+            tag = src_measured
+        elif src == "imported":
+            tag = src_imported
+        elif src.startswith("preset:"):
+            tag = prefix + src[len("preset:"):]
+        else:
+            tag = src
+        rows.append((label, tag))
+
+    if not rows:
+        return
+
+    title = rtexts.get("sources_title", "Data sources")
+
+    def _show_popup():
+        dlg = QDialog(None, Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        dlg.setStyleSheet(
+            "QDialog { background: #f0f4ff; border: 1px solid #7aa0e0; border-radius: 6px; }"
+        )
+        v = QVBoxLayout(dlg)
+        v.setContentsMargins(12, 10, 12, 10)
+        v.setSpacing(4)
+        hdr = QLabel(f"<b>{title}</b>")
+        hdr.setStyleSheet("font-size: 12px; color: #2a4a8a;")
+        v.addWidget(hdr)
+        for label, tag in rows:
+            item = QLabel(f"• {label}: {tag}")
+            item.setStyleSheet("font-size: 11px; color: #1a3060;")
+            v.addWidget(item)
+        dlg.adjustSize()
+        dlg.move(btn.mapToGlobal(btn.rect().bottomLeft()))
+        dlg.exec()
+
+    btn = QPushButton(f"📋  {title}")
+    btn.setStyleSheet(
+        "QPushButton { background: transparent; color: #4a6fa5; border: none;"
+        " font-size: 12px; padding: 2px 0px; text-align: left; }"
+        "QPushButton:hover { color: #2a4a8a; text-decoration: underline; }"
+    )
+    btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    btn.clicked.connect(_show_popup)
+    layout.addSpacing(4)
+    layout.addWidget(btn)
 
 
 def _build_warnings(wizard, layout, result, rtexts):

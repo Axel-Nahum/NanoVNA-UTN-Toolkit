@@ -139,6 +139,10 @@
     "export_title": "Guardar figura de permitividad",
     "export_ok_title": "Guardado",
     "export_ok": "Figura guardada en:\n{path}",
+    "sources_title": "Origen de los datos",
+    "source_measured": "medido",
+    "source_imported": "importado",
+    "source_preset_prefix": "preset:",
     "criterion_title": "Criterio de selección de rama",
     "criterion_text": "Filtro físico: Re(ε) > 0, Im(ε) ≤ 1×10⁻⁶  ·  Recorrido: frecuencia alta → baja  ·  Semilla: raíz de menor |Im(ε)| en la frecuencia válida más alta  ·  Seguimiento: extrapolación polinómica (ventana 5, orden ≤2) + vecino más cercano  ·  Puntos mal condicionados (|S₁₁ʳ¹ − S₁₁ʳ²| < 0.01) excluidos como gaps"
   }
