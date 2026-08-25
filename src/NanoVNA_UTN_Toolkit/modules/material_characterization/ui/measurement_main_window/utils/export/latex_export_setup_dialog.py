@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QCheckBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QLineEdit, QFileDialog, QTextEdit, QGroupBox, QMessageBox,
 )
 from PySide6.QtCore import Qt, QThread, Signal
@@ -85,6 +85,7 @@ class PermittivityLatexSetupDialog(QDialog):
 
         self._setup_compiler_group(layout)
         self._setup_path_group(layout)
+        self._setup_options_group(layout)
         self._setup_buttons(layout)
         layout.addStretch()
 
@@ -137,6 +138,16 @@ class PermittivityLatexSetupDialog(QDialog):
         self.path_hint.setStyleSheet("color: gray; font-size: 12px;")
         layout.addWidget(self.path_hint)
 
+        parent_layout.addWidget(group)
+
+    def _setup_options_group(self, parent_layout):
+        group = QGroupBox("Report Options")
+        layout = QVBoxLayout(group)
+        self.include_steps_chk = QCheckBox(
+            "Include calibration standard measurements (S11 chart + table per step)"
+        )
+        self.include_steps_chk.setChecked(False)
+        layout.addWidget(self.include_steps_chk)
         parent_layout.addWidget(group)
 
     def _setup_buttons(self, parent_layout):
@@ -289,6 +300,7 @@ class PermittivityLatexSetupDialog(QDialog):
             sample_name=main_window._sample_name(),
             output_path=self.output_path,
             wizard_window=main_window.wizard_window,
+            include_steps=self.include_steps_chk.isChecked(),
         )
         preview.exec()
         self.reject()

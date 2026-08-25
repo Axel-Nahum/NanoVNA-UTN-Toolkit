@@ -134,18 +134,25 @@ class PermittivityExporter:
 
     # ------------------------------------------------------------------ #
 
-    def render_images(self, freqs, s11_data, eps_selected, output_dir):
+    def render_images(self, freqs, s11_data, eps_selected, output_dir,
+                      wizard_window=None, include_steps=False):
         """Rasterize every figure into ``output_dir``.  Uses self.figures if available.
 
         Must run on the UI thread: matplotlib is not thread-safe.
         """
         if self.figures:
-            return self._generate_plots_from_figures(self.figures, output_dir)
-        return self._generate_plots(freqs, s11_data, eps_selected, output_dir)
+            image_files = self._generate_plots_from_figures(self.figures, output_dir)
+        else:
+            image_files = self._generate_plots(freqs, s11_data, eps_selected, output_dir)
+
+        if include_steps and wizard_window is not None:
+            image_files.update(self._render_step_charts(wizard_window, output_dir))
+
+        return image_files
 
     def compile_pdf(
         self, freqs, eps_selected, image_files, sample_name,
-        wizard_window, output_path, compiler_path,
+        wizard_window, output_path, compiler_path, include_steps=False,
     ):
         """Build the .tex from already-rendered images and run LaTeX.
 
@@ -160,6 +167,7 @@ class PermittivityExporter:
             sample_name=sample_name,
             wizard_window=wizard_window,
             compiler_path=compiler_path,
+            include_steps=include_steps,
         )
 
     def export_to_pdf(
@@ -268,9 +276,60 @@ class PermittivityExporter:
 
     # ------------------------------------------------------------------ #
 
+    def _render_step_charts(self, wizard_window, output_dir):
+        """Render |S11| magnitude charts for each calibration standard."""
+        _LABELS = {
+            "open":  "Open",
+            "short": "Short",
+            "ref1":  "Reference 1",
+            "ref2":  "Reference 2",
+            "dut":   "Unknown Liquid (DUT)",
+        }
+        cal = getattr(wizard_window, "perm_calibration", None)
+        if cal is None:
+            return {}
+
+        # Enhance ref labels with liquid name
+        try:
+            from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
+                get_reference_liquid,
+            )
+            if cal.ref1_key:
+                _LABELS["ref1"] = f"Reference 1 ({get_reference_liquid(cal.ref1_key).display_name})"
+            if cal.ref2_key:
+                _LABELS["ref2"] = f"Reference 2 ({get_reference_liquid(cal.ref2_key).display_name})"
+        except Exception:
+            pass
+
+        image_files = {}
+        for key, label in _LABELS.items():
+            data = cal.get_measurement(key)
+            if data is None:
+                continue
+            freqs_s, s11_s = np.asarray(data[0], dtype=float), np.asarray(data[1], dtype=complex)
+            div, unit = _freq_scale(freqs_s)
+            mag_db = 20 * np.log10(np.abs(s11_s) + 1e-15)
+
+            fig, ax = plt.subplots(figsize=(7, 3))
+            fig.patch.set_facecolor("white")
+            ax.set_facecolor("white")
+            ax.plot(freqs_s / div, mag_db, color="#1a6bbf", linewidth=1.5)
+            ax.set_xlabel(f"Frequency ({unit})", fontsize=10)
+            ax.set_ylabel(r"$|S_{11}|$ (dB)", fontsize=10)
+            ax.set_title(f"{label} — $|S_{{11}}|$", fontsize=11, pad=8)
+            ax.grid(True, linestyle="--", alpha=0.5)
+            fig.tight_layout()
+            path = os.path.join(output_dir, f"step_{key}.png")
+            fig.savefig(path, dpi=200, bbox_inches="tight")
+            plt.close(fig)
+            image_files[f"step_{key}"] = path
+        return image_files
+
+    # ------------------------------------------------------------------ #
+
     def _create_latex_document(
         self, freqs, eps_selected, image_files, file_path,
-        sample_name, wizard_window, compiler_path,
+        sample_name, wizard_window, compiler_path, include_steps=False,
     ):
         try:
             from pylatex import Document, Section, Subsection, Command, Figure, NewPage
@@ -331,6 +390,11 @@ class PermittivityExporter:
                     r" excluded as gaps (NaN)"
                     r"\end{itemize}"
                 ))
+
+        # Calibration standard measurements (optional)
+        if include_steps:
+            self._build_step_sections(doc, image_files, wizard_window, NoEscape, NewPage,
+                                      Section, Subsection, Figure)
 
         # Data table page
         if eps_selected is not None and freqs is not None:
@@ -406,6 +470,87 @@ class PermittivityExporter:
             r"\normalsize\medskip"
         ))
         doc.append(NoEscape(table_body))
+
+    # ------------------------------------------------------------------ #
+
+    def _build_step_sections(self, doc, image_files, wizard_window,
+                              NoEscape, NewPage, Section, Subsection, Figure):
+        """Append one subsection per calibration standard: S11 chart + mini-table."""
+        _KEYS = ["open", "short", "ref1", "ref2", "dut"]
+        _LABELS = {
+            "open":  "Open",
+            "short": "Short",
+            "ref1":  "Reference 1",
+            "ref2":  "Reference 2",
+            "dut":   "Unknown Liquid (DUT)",
+        }
+        cal = getattr(wizard_window, "perm_calibration", None)
+
+        # Enhance ref labels
+        try:
+            from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
+                get_reference_liquid,
+            )
+            if cal and cal.ref1_key:
+                _LABELS["ref1"] = f"Reference 1 ({get_reference_liquid(cal.ref1_key).display_name})"
+            if cal and cal.ref2_key:
+                _LABELS["ref2"] = f"Reference 2 ({get_reference_liquid(cal.ref2_key).display_name})"
+        except Exception:
+            pass
+
+        doc.append(NewPage())
+        with doc.create(Section("Calibration Standard Measurements")):
+            any_added = False
+            for key in _KEYS:
+                img_key = f"step_{key}"
+                if img_key not in image_files:
+                    continue
+                if cal is None:
+                    continue
+                data = cal.get_measurement(key)
+                if data is None:
+                    continue
+
+                label = _LABELS.get(key, key.capitalize())
+                freqs_s = np.asarray(data[0], dtype=float)
+                s11_s   = np.asarray(data[1], dtype=complex)
+                div, unit = _freq_scale(freqs_s)
+                n = len(freqs_s)
+                stride = max(1, n // 8)
+
+                with doc.create(Subsection(label)):
+                    with doc.create(Figure(position="H")) as fig_latex:
+                        fig_latex.add_image(
+                            image_files[img_key].replace("\\", "/"),
+                            width=NoEscape(r"0.85\linewidth"),
+                        )
+
+                    # Mini-table: Frequency | Re(S11) | Im(S11) | |S11| dB
+                    rows_tex = []
+                    for i in range(0, n, stride):
+                        f_val  = freqs_s[i] / div
+                        re_val = float(np.real(s11_s[i]))
+                        im_val = float(np.imag(s11_s[i]))
+                        db_val = 20 * np.log10(abs(complex(re_val, im_val)) + 1e-15)
+                        rows_tex.append(
+                            f"{f_val:.3f} & {re_val:.4f} & {im_val:+.4f} & {db_val:.2f} \\\\"
+                        )
+
+                    table_body = "\n".join([
+                        r"\begin{tabular}{cccc}",
+                        r"\toprule",
+                        rf"\textbf{{Frequency ({unit})}} & \textbf{{Re($S_{{11}}$)}} & "
+                        rf"\textbf{{Im($S_{{11}}$)}} & \textbf{{$|S_{{11}}|$ (dB)}} \\",
+                        r"\midrule",
+                    ] + rows_tex + [
+                        r"\bottomrule",
+                        r"\end{tabular}",
+                    ])
+                    doc.append(NoEscape(table_body))
+                    any_added = True
+
+            if not any_added:
+                doc.append(NoEscape(r"\textit{No step measurements available.}"))
 
     # ------------------------------------------------------------------ #
 

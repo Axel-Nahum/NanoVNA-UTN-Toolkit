@@ -492,9 +492,9 @@ def build_standard_screen(wizard, descriptor, step_def):
         preset_row.addWidget(preset_combo, stretch=1)
         src_layout.addLayout(preset_row)
 
-        mid.addSpacing(14)
+        mid.addSpacing(24)
         mid.addWidget(src_frame)
-        mid.addSpacing(34)
+        mid.addSpacing(20)
     # ──────────────────────────────────────────────────────────────────── #
 
     measure_btn = QPushButton(
@@ -519,12 +519,18 @@ def build_standard_screen(wizard, descriptor, step_def):
         lambda: _do_save_measurement(wizard, descriptor, standard, std_texts))
 
     measure_row = QHBoxLayout()
-    measure_row.setSpacing(10)
     measure_row.addStretch(1)
     measure_row.addWidget(measure_btn)
-    measure_row.addWidget(btn_save_preset)
     measure_row.addStretch(1)
     mid.addLayout(measure_row)
+
+    mid.addSpacing(10)
+
+    save_row = QHBoxLayout()
+    save_row.addStretch(1)
+    save_row.addWidget(btn_save_preset)
+    save_row.addStretch(1)
+    mid.addLayout(save_row)
 
     # Every path that stores a measurement re-enables saving.
     wizard._on_measurement_stored_hook = lambda: btn_save_preset.setEnabled(True)

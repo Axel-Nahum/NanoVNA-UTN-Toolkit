@@ -127,6 +127,7 @@ class PermittivityPdfPreviewDialog(QDialog):
     def __init__(
         self, parent=None, freqs=None, s11_data=None, eps_selected=None,
         sample_name=None, output_path=None, wizard_window=None,
+        include_steps=False,
     ):
         super().__init__(parent)
 
@@ -138,6 +139,7 @@ class PermittivityPdfPreviewDialog(QDialog):
         self.sample_name = sample_name or "sample"
         self.output_path = output_path
         self.wizard_window = wizard_window
+        self.include_steps = include_steps
 
         self.current_graph_index = 0
         self.current_figure = 0
@@ -906,7 +908,9 @@ class PermittivityPdfPreviewDialog(QDialog):
         tmp_dir = tempfile.mkdtemp(prefix="nanovna_report_")
         try:
             image_files = exporter.render_images(
-                self.freqs, self.s11_data, self.eps_selected, tmp_dir
+                self.freqs, self.s11_data, self.eps_selected, tmp_dir,
+                wizard_window=self.wizard_window,
+                include_steps=self.include_steps,
             )
         except Exception as exc:
             logger.exception("[PermittivityPdfPreviewDialog] figure rendering failed")
@@ -924,6 +928,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                 wizard_window=self.wizard_window,
                 output_path=output_path,
                 compiler_path=compiler_info[1],
+                include_steps=self.include_steps,
             )
 
         def _on_done(success, error_message):
