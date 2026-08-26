@@ -3,13 +3,88 @@ Calibration menu actions for the characterization main window.
 """
 
 import logging
+import os
 
-from PySide6.QtWidgets import QMessageBox
+from pathlib import Path
 
+from PySide6 import QtCore
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
+from PySide6.QtWidgets import (
+    QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
+    QMessageBox, QPushButton, QScrollArea, QVBoxLayout, QWidget,
+)
+
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import calibration_store
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
 
 logger = logging.getLogger(__name__)
 
+# assets/icons/delete.svg is 7 levels up from this file's directory
+_ICON_PATH = str(Path(__file__).resolve().parents[7] / "assets" / "icons" / "delete.svg")
+
+
+def _delete_icon():
+    return QIcon(_ICON_PATH) if os.path.exists(_ICON_PATH) else QIcon()
+
+
+# --------------------------------------------------------------------------- #
+# Shared helpers
+# --------------------------------------------------------------------------- #
+
+def _load_calibration_into_wizard(wizard, cal_name):
+    """Load a saved calibration into *wizard* and jump to the DUT step."""
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import get as get_technique
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import (
+        update_step_screen,
+    )
+
+    cal_data, meta = calibration_store.load_calibration(cal_name)
+
+    if not meta.technique_id:
+        raise ValueError(
+            f"Calibration '{meta.display_name or cal_name}' has no technique ID stored in its manifest.\n"
+            "This calibration was saved incorrectly. Please redo the measurement and save it again."
+        )
+
+    try:
+        descriptor = get_technique(meta.technique_id)
+    except KeyError:
+        raise ValueError(
+            f"Calibration '{meta.display_name or cal_name}' references unknown technique '{meta.technique_id}'.\n"
+            "The calibration may have been created with a different version of the app."
+        )
+
+    wizard.selected_technique_id = meta.technique_id
+    wizard.selected_method = descriptor.name_token
+    wizard.temperature_c = meta.temperature_c
+    if meta.f_start_hz is not None:
+        wizard.sweep_start_freq = meta.f_start_hz
+    if meta.f_stop_hz is not None:
+        wizard.sweep_stop_freq = meta.f_stop_hz
+    if meta.points is not None:
+        wizard.sweep_steps = meta.points
+    wizard.perm_calibration.set_reference_liquids(meta.ref1_key, meta.ref2_key)
+    wizard.perm_calibration.set_temperature(meta.temperature_c)
+
+    for key, (freqs, s11) in cal_data.items():
+        wizard.perm_calibration.set_measurement(
+            key, freqs, s11, source=f"calibration:{meta.name}"
+        )
+
+    dut_step = next(
+        (i + 1 for i, s in enumerate(descriptor.steps)
+         if s.standard is not None and s.standard.key == "dut"),
+        None,
+    )
+    if dut_step is not None:
+        wizard.current_step = dut_step
+        update_step_screen(wizard)
+
+
+# --------------------------------------------------------------------------- #
+# Menu actions
+# --------------------------------------------------------------------------- #
 
 def open_wizard(main_window):
     """Open the characterization wizard to start a new session."""
@@ -17,8 +92,126 @@ def open_wizard(main_window):
 
 
 def select_calibration(main_window):
-    """Show a dialog to select a saved calibration and jump to the DUT step."""
-    logger.info("[calibration_menu] select_calibration — not yet implemented")
+    """Show a list of saved calibrations; on selection open wizard at DUT step."""
+    calibrations = calibration_store.list_calibrations()
+    if not calibrations:
+        QMessageBox.information(
+            main_window,
+            "No calibrations",
+            "No saved calibrations found.\nUse the wizard to create and save one first.",
+        )
+        return
+
+    # ------------------------------------------------------------------ #
+    # Build dialog (same style as DUT select_kit_dialog)
+    # ------------------------------------------------------------------ #
+    dialog = QDialog(main_window)
+    dialog.setWindowTitle("Select Calibration")
+    dialog.setMinimumWidth(500)
+    layout = QVBoxLayout(dialog)
+
+    select_label = QLabel("Select a calibration to load:")
+    select_label.setStyleSheet("font-size: 9pt;")
+    layout.addWidget(select_label)
+
+    list_widget = QListWidget()
+    for meta in calibrations:
+        tech = "Simplified" if meta.is_simplified else "Full (2 refs)"
+        refs = meta.ref1_key + (f" + {meta.ref2_key}" if meta.ref2_key else "")
+        label = f"{meta.display_name or meta.name}  |  {tech}  ·  {refs}  ·  {meta.temperature_c:.1f} °C  ·  {meta.saved[:10]}"
+        item = QListWidgetItem(label)
+        item.setData(Qt.ItemDataRole.UserRole, meta.name)
+        list_widget.addItem(item)
+    layout.addWidget(list_widget)
+
+    # Single-selection tag area — fixed height to stay compact like DUT
+    selected_name = [None]
+    selected_area = QHBoxLayout()
+    selected_area.setContentsMargins(2, 2, 2, 2)
+    selected_container = QWidget()
+    selected_container.setLayout(selected_area)
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setFixedHeight(40)
+    scroll.setWidget(selected_container)
+    layout.addWidget(scroll)
+
+    def add_selected(item):
+        for i in reversed(range(selected_area.count())):
+            w = selected_area.itemAt(i).widget()
+            if w:
+                w.setParent(None)
+        selected_name[0] = None
+
+        name = item.data(Qt.ItemDataRole.UserRole)
+        selected_name[0] = name
+
+        tag = QWidget()
+        tag_layout = QHBoxLayout(tag)
+        tag_layout.setContentsMargins(5, 2, 5, 2)
+        meta = next((m for m in calibrations if m.name == name), None)
+        tag_layout.addWidget(QLabel(meta.display_name if meta else name))
+
+        remove_btn = QPushButton()
+        remove_btn.setIcon(_delete_icon())
+        remove_btn.setIconSize(QtCore.QSize(20, 20))
+        remove_btn.setFixedSize(30, 30)
+        remove_btn.setFlat(True)
+        remove_btn.setStyleSheet(
+            "QPushButton { border: none; background-color: transparent; }"
+            "QPushButton:hover { background-color: rgba(255, 0, 0, 50); }"
+        )
+
+        def remove_tag():
+            tag.setParent(None)
+            selected_name[0] = None
+
+        remove_btn.clicked.connect(remove_tag)
+        tag_layout.addWidget(remove_btn)
+        selected_area.addWidget(tag)
+
+    list_widget.itemClicked.connect(add_selected)
+
+    # Buttons
+    btn_layout = QHBoxLayout()
+    btn_cancel = QPushButton("Cancel")
+    btn_select = QPushButton("Select")
+    btn_layout.addWidget(btn_cancel)
+    btn_layout.addWidget(btn_select)
+    layout.addLayout(btn_layout)
+
+    def on_select():
+        import traceback as _tb
+
+        if not selected_name[0]:
+            QMessageBox.warning(dialog, "No selection", "Select a calibration first.")
+            return
+
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.wizard_methods_window import (
+            CharacterizationWizard,
+        )
+
+        cal_name = selected_name[0]
+        vna = getattr(getattr(main_window, "wizard_window", None), "vna", None) \
+              or getattr(main_window, "vna", None)
+
+        try:
+            wizard = CharacterizationWizard(vna_device=vna)
+            _load_calibration_into_wizard(wizard, cal_name)
+        except Exception as exc:
+            full = _tb.format_exc()
+            logger.exception("[calibration_menu] failed to load calibration '%s'", cal_name)
+            QMessageBox.critical(main_window, "Load failed", full)
+            return
+
+        dialog.accept()
+        wizard.show()
+        main_window.close()
+
+    btn_cancel.clicked.connect(dialog.reject)
+    btn_select.clicked.connect(on_select)
+
+    dialog.exec()
 
 
 def save_calibration(main_window):
@@ -47,10 +240,130 @@ def save_calibration(main_window):
 
     texts = load_text("characterization_wizard.json")
     rtexts = texts.get("result", {})
-    dlg = _SaveCalibrationDialog(main_window, rtexts, cal)
+    # Pass the actual wizard so selected_technique_id is read correctly;
+    # ui_parent=main_window so dialogs appear on top of the visible window.
+    dlg = _SaveCalibrationDialog(wizard, rtexts, cal, ui_parent=main_window)
     dlg.exec()
 
 
 def delete_calibration(main_window):
-    """Show a dialog to delete one or more saved calibrations."""
-    logger.info("[calibration_menu] delete_calibration — not yet implemented")
+    """Show a list of saved calibrations and delete the selected ones (multi-select)."""
+    calibrations = calibration_store.list_calibrations()
+    if not calibrations:
+        QMessageBox.information(
+            main_window,
+            "No calibrations",
+            "No saved calibrations found.",
+        )
+        return
+
+    # ------------------------------------------------------------------ #
+    # Build dialog (same style as DUT delete_kit_dialog)
+    # ------------------------------------------------------------------ #
+    dialog = QDialog(main_window)
+    dialog.setWindowTitle("Delete Calibration")
+    dialog.setMinimumWidth(500)
+    layout = QVBoxLayout(dialog)
+
+    lbl = QLabel("Select one or more calibrations to delete:")
+    lbl.setStyleSheet("font-size: 9pt;")
+    layout.addWidget(lbl)
+
+    list_widget = QListWidget()
+    for meta in calibrations:
+        tech = "Simplified" if meta.is_simplified else "Full (2 refs)"
+        refs = meta.ref1_key + (f" + {meta.ref2_key}" if meta.ref2_key else "")
+        label = f"{meta.display_name or meta.name}  |  {tech}  ·  {refs}  ·  {meta.temperature_c:.1f} °C  ·  {meta.saved[:10]}"
+        item = QListWidgetItem(label)
+        item.setData(Qt.ItemDataRole.UserRole, meta.name)
+        list_widget.addItem(item)
+    layout.addWidget(list_widget)
+
+    # Multi-selection tag area — fixed height to stay compact like DUT
+    selected_names = set()  # set of cal slugs
+    selected_labels = {}    # slug → display label
+    selected_area = QHBoxLayout()
+    selected_area.setContentsMargins(2, 2, 2, 2)
+    selected_container = QWidget()
+    selected_container.setLayout(selected_area)
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setFixedHeight(40)
+    scroll.setWidget(selected_container)
+    layout.addWidget(scroll)
+
+    def add_selected(item):
+        slug = item.data(Qt.ItemDataRole.UserRole)
+        if slug in selected_names:
+            return
+        selected_names.add(slug)
+        meta = next((m for m in calibrations if m.name == slug), None)
+        disp = meta.display_name if meta else slug
+        selected_labels[slug] = disp
+
+        tag = QWidget()
+        tag_layout = QHBoxLayout(tag)
+        tag_layout.setContentsMargins(5, 2, 5, 2)
+        tag_layout.addWidget(QLabel(disp))
+
+        remove_btn = QPushButton()
+        remove_btn.setIcon(_delete_icon())
+        remove_btn.setIconSize(QtCore.QSize(20, 20))
+        remove_btn.setFixedSize(30, 30)
+        remove_btn.setFlat(True)
+        remove_btn.setStyleSheet(
+            "QPushButton { border: none; background-color: transparent; }"
+            "QPushButton:hover { background-color: rgba(255, 0, 0, 50); }"
+        )
+
+        def remove_tag(s=slug, w=tag):
+            w.setParent(None)
+            selected_names.discard(s)
+
+        remove_btn.clicked.connect(remove_tag)
+        tag_layout.addWidget(remove_btn)
+        selected_area.addWidget(tag)
+
+    list_widget.itemClicked.connect(add_selected)
+
+    # Buttons
+    btn_layout = QHBoxLayout()
+    btn_cancel = QPushButton("Cancel")
+    btn_delete = QPushButton("Delete")
+    btn_layout.addWidget(btn_cancel)
+    btn_layout.addWidget(btn_delete)
+    layout.addLayout(btn_layout)
+
+    def on_delete():
+        if not selected_names:
+            QMessageBox.warning(dialog, "No selection", "Select at least one calibration to delete.")
+            return
+
+        names_list = "\n".join(selected_labels.get(s, s) for s in selected_names)
+        confirm = QMessageBox.question(
+            dialog,
+            "Confirm delete",
+            f"Delete the following calibrations permanently?\n\n{names_list}",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if confirm != QMessageBox.StandardButton.Yes:
+            return
+
+        errors = []
+        for slug in list(selected_names):
+            try:
+                calibration_store.delete_calibration(slug)
+            except Exception as exc:
+                errors.append(f"{selected_labels.get(slug, slug)}: {exc}")
+
+        if errors:
+            QMessageBox.warning(dialog, "Some deletions failed", "\n".join(errors))
+        else:
+            QMessageBox.information(dialog, "Deleted", "Selected calibrations have been deleted.")
+
+        dialog.accept()
+
+    btn_cancel.clicked.connect(dialog.reject)
+    btn_delete.clicked.connect(on_delete)
+
+    dialog.exec()

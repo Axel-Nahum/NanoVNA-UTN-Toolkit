@@ -194,7 +194,7 @@ def _setup_save_calibration_button(wizard, rtexts):
 class _SaveCalibrationDialog:
     """Dialog that lets the user choose internal save or ZIP export."""
 
-    def __init__(self, wizard, rtexts, cal):
+    def __init__(self, wizard, rtexts, cal, ui_parent=None):
         from PySide6.QtWidgets import (
             QDialog, QVBoxLayout, QHBoxLayout, QLineEdit,
             QRadioButton, QDialogButtonBox, QLabel,
@@ -204,13 +204,14 @@ class _SaveCalibrationDialog:
         self._wizard = wizard
         self._rtexts = rtexts
         self._cal = cal
+        self._ui_parent = ui_parent if ui_parent is not None else wizard
 
         default_name = (
             f"cal_{getattr(wizard, 'selected_technique_id', 'cal')}"
             f"_{_dt.now().strftime('%Y%m%d_%H%M%S')}"
         )
 
-        self._dlg = QDialog(wizard)
+        self._dlg = QDialog(self._ui_parent)
         self._dlg.setWindowTitle(rtexts.get("save_kit_dialog_title", "Save calibration kit"))
         self._dlg.setMinimumWidth(420)
 
@@ -261,10 +262,21 @@ class _SaveCalibrationDialog:
         wizard = self._wizard
         rtexts = self._rtexts
         cal = self._cal
-        tech_id = getattr(wizard, "selected_technique_id", "")
+        tech_id = getattr(wizard, "selected_technique_id", None) or ""
         temp_c = getattr(wizard, "temperature_c", 25.0)
         device = str(getattr(wizard, "vna_device", "") or "")
 
+        if not tech_id:
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                wizard,
+                "Cannot save",
+                "The active session has no technique selected. "
+                "Return to the wizard and complete a full measurement first.",
+            )
+            return
+
+        p = self._ui_parent
         if self._rb_internal.isChecked():
             try:
                 calibration_store.save_calibration(
@@ -273,15 +285,15 @@ class _SaveCalibrationDialog:
                 )
                 self._dlg.accept()
                 QMessageBox.information(
-                    wizard,
+                    p,
                     rtexts.get("save_kit_success_title", "Calibration saved"),
                     rtexts.get("save_kit_success_internal", "Calibration '{name}' saved to the local library.").format(name=display_name),
                 )
             except Exception as exc:
-                QMessageBox.critical(wizard, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
+                QMessageBox.critical(p, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
         else:
             dest_dir = QFileDialog.getExistingDirectory(
-                wizard, rtexts.get("save_kit_dialog_title", "Export calibration — choose folder"),
+                p, rtexts.get("save_kit_dialog_title", "Export calibration — choose folder"),
                 str(__import__("pathlib").Path.home()),
             )
             if not dest_dir:
@@ -293,12 +305,12 @@ class _SaveCalibrationDialog:
                 )
                 self._dlg.accept()
                 QMessageBox.information(
-                    wizard,
+                    p,
                     rtexts.get("save_kit_success_title", "Calibration saved"),
                     rtexts.get("save_kit_success_zip", "Calibration exported to:\n{path}").format(path=out_folder),
                 )
             except Exception as exc:
-                QMessageBox.critical(wizard, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
+                QMessageBox.critical(p, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
 
 
 def _sample_name(wizard, rtexts):
