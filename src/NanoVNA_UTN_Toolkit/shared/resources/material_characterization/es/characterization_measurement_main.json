@@ -33,6 +33,10 @@
     "show_s11": "S11 — Diagrama de Smith",
     "show_table": "Tabla de Resultados",
     "calibration": "Calibración",
+    "cal_open_wizard": "Abrir asistente…",
+    "cal_select_kit": "Seleccionar calibración…",
+    "cal_save_kit": "Guardar calibración…",
+    "cal_delete_kit": "Eliminar calibración…",
     "help": "Ayuda",
     "about_en": "Acerca de (EN)",
     "about_es": "Acerca de (ES)"

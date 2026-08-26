@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget, QPushButton,
     QHBoxLayout, QComboBox, QFrame, QSizePolicy, QFileDialog, QMessageBox
 )
-from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import kit_store
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import calibration_store
 from PySide6.QtGui import QGuiApplication
 
 try:
@@ -275,27 +275,27 @@ class MaterialCharacterizationWelcome(QMainWindow):
         layout.addSpacing(14)
 
         # Dropdown
-        self._load_characterization_kits()
-        self.kit_dropdown = QComboBox()
-        self.kit_dropdown.setStyleSheet(_COMBO)
-        self.kit_dropdown.addItem("None")
-        self._set_current_kit_selection()
-        self.kit_dropdown.currentTextChanged.connect(self._on_kit_selection_changed)
-        layout.addWidget(self.kit_dropdown)
+        self._load_saved_calibrations()
+        self.calibration_dropdown = QComboBox()
+        self.calibration_dropdown.setStyleSheet(_COMBO)
+        self.calibration_dropdown.addItem("None")
+        self._set_current_calibration_selection()
+        self.calibration_dropdown.currentTextChanged.connect(self._on_calibration_selection_changed)
+        layout.addWidget(self.calibration_dropdown)
 
-        current_text = self.kit_dropdown.currentText()
-        self.selected_kit_name = None if current_text.startswith("None") else current_text
+        current_text = self.calibration_dropdown.currentText()
+        self.selected_calibration_name = None if current_text.startswith("None") else current_text
 
         layout.addSpacing(10)
 
-        # Kit info label
-        self.kit_info_label = QLabel(self.charac_welcome_ui_no_characterization_selected)
-        self.kit_info_label.setWordWrap(True)
-        self.kit_info_label.setStyleSheet(
+        # Calibration info label
+        self.calibration_info_label = QLabel(self.charac_welcome_ui_no_characterization_selected)
+        self.calibration_info_label.setWordWrap(True)
+        self.calibration_info_label.setStyleSheet(
             "font-size: 12px; color: #555555; background: transparent; font-style: italic;"
         )
-        layout.addWidget(self.kit_info_label)
-        self._update_kit_info_display()
+        layout.addWidget(self.calibration_info_label)
+        self._update_calibration_info_display()
 
         layout.addStretch(1)
 
@@ -364,60 +364,60 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
-    def _load_characterization_kits(self):
-        """Scan the kit directory and cache all valid KitMeta objects."""
-        self._kit_metas: dict = {}  # name -> KitMeta
+    def _load_saved_calibrations(self):
+        """Scan the calibration directory and cache all valid CalibrationMeta objects."""
+        self._calibration_metas: dict = {}  # name -> CalibrationMeta
         try:
-            for meta in kit_store.list_kits():
-                self._kit_metas[meta.name] = meta
+            for meta in calibration_store.list_calibrations():
+                self._calibration_metas[meta.name] = meta
         except Exception:
-            logging.exception("[characterization_welcome] failed to load kits")
+            logging.exception("[characterization_welcome] failed to load calibrations")
 
-    def _set_current_kit_selection(self):
-        """Populate the dropdown with kit items and restore last selection."""
-        for meta in self._kit_metas.values():
-            self.kit_dropdown.addItem(meta.display_name or meta.name)
+    def _set_current_calibration_selection(self):
+        """Populate the dropdown with calibration items and restore last selection."""
+        for meta in self._calibration_metas.values():
+            self.calibration_dropdown.addItem(meta.display_name or meta.name)
         # No persistent last-selection for now; leave at "None"
 
-    def _on_kit_selection_changed(self, selected_text):
+    def _on_calibration_selection_changed(self, selected_text):
         if selected_text and selected_text != "None":
             # Find by display_name
-            self.selected_kit_name = next(
-                (n for n, m in self._kit_metas.items()
+            self.selected_calibration_name = next(
+                (n for n, m in self._calibration_metas.items()
                  if (m.display_name or m.name) == selected_text),
                 None,
             )
         else:
-            self.selected_kit_name = None
-        self._update_kit_info_display()
-        # Update the primary button label to reflect whether a kit is active
+            self.selected_calibration_name = None
+        self._update_calibration_info_display()
+        # Update the primary button label to reflect whether a calibration is active
         if hasattr(self, "characterization_methods_button"):
-            if self.selected_kit_name:
+            if self.selected_calibration_name:
                 self.characterization_methods_button.setText("▶  Measure unknown liquid")
             else:
                 self.characterization_methods_button.setText(
                     self.charac_welcome_ui_open_methods_button
                 )
 
-    def _update_kit_info_display(self):
-        if not hasattr(self, "kit_info_label"):
+    def _update_calibration_info_display(self):
+        if not hasattr(self, "calibration_info_label"):
             return
-        if self.selected_kit_name and self.selected_kit_name in self._kit_metas:
-            meta = self._kit_metas[self.selected_kit_name]
+        if self.selected_calibration_name and self.selected_calibration_name in self._calibration_metas:
+            meta = self._calibration_metas[self.selected_calibration_name]
             tech = "Simplified (1 ref)" if meta.is_simplified else "Full (2 refs)"
             refs = meta.ref1_key + (f" + {meta.ref2_key}" if meta.ref2_key else "")
             info = (
-                f"Kit: {meta.display_name}\n"
+                f"Calibration: {meta.display_name}\n"
                 f"Method: {tech}  ·  Refs: {refs}  ·  {meta.temperature_c:.1f} °C\n"
                 f"Saved: {meta.saved[:10]}"
             )
-            self.kit_info_label.setText(info)
-            self.kit_info_label.setStyleSheet(
+            self.calibration_info_label.setText(info)
+            self.calibration_info_label.setStyleSheet(
                 "font-size: 12px; color: #cccccc; background: transparent;"
             )
         else:
-            self.kit_info_label.setText(self.charac_welcome_ui_no_characterization_selected)
-            self.kit_info_label.setStyleSheet(
+            self.calibration_info_label.setText(self.charac_welcome_ui_no_characterization_selected)
+            self.calibration_info_label.setStyleSheet(
                 "font-size: 12px; color: #555555; background: transparent; font-style: italic;"
             )
 
@@ -440,14 +440,14 @@ class MaterialCharacterizationWelcome(QMainWindow):
         if not zip_path:
             return
         try:
-            kit_name = kit_store.import_kit_from_zip(zip_path)
+            kit_name = calibration_store.import_calibration(zip_path)
         except Exception as exc:
             QMessageBox.critical(self, "Import failed", str(exc))
             return
 
         # Refresh internal state and jump straight to the wizard DUT step
-        self._load_characterization_kits()
-        self.selected_kit_name = kit_name
+        self._load_saved_calibrations()
+        self.selected_calibration_name = kit_name
         self.open_characterization_methods()
 
     def open_characterization_methods(self):
@@ -457,16 +457,16 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         logging.info("[material_characterization_welcome.open_characterization_methods] Opening characterization methods window")
 
-        kit_name = getattr(self, "selected_kit_name", None)
+        kit_name = getattr(self, "selected_calibration_name", None)
 
         if self.vna:
             wizard = CharacterizationWizard(vna_device=self.vna)
         else:
             wizard = CharacterizationWizard()
 
-        if kit_name and kit_name in getattr(self, "_kit_metas", {}):
+        if kit_name and kit_name in getattr(self, "_calibration_metas", {}):
             try:
-                cal_data, meta = kit_store.load_kit(kit_name)
+                cal_data, meta = calibration_store.load_calibration(kit_name)
                 descriptor = get_technique(meta.technique_id)
 
                 wizard.selected_technique_id = meta.technique_id

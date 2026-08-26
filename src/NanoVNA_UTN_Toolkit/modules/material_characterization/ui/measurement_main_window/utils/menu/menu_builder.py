@@ -7,6 +7,12 @@ from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import tog
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.menu.plot_manager.plot_manager import (
     open_plot_manager,
 )
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.menu.calibration_menu.calibration_menu import (
+    open_wizard,
+    select_calibration,
+    save_calibration,
+    delete_calibration,
+)
 
 show_about_dialog = safe_import(
     "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu",
@@ -75,7 +81,25 @@ def build_menu(main_window) -> None:
     # ------------------------------------------------------------------ #
     # Calibration / Kits
     # ------------------------------------------------------------------ #
-    menubar.addMenu(menu.get("calibration", "Calibration"))
+    cal_menu = menubar.addMenu(menu.get("calibration", "Calibration"))
+
+    wizard_action = QAction(menu.get("cal_open_wizard", "Open Wizard…"), main_window)
+    wizard_action.triggered.connect(lambda: open_wizard(main_window))
+    cal_menu.addAction(wizard_action)
+
+    cal_menu.addSeparator()
+
+    select_action = QAction(menu.get("cal_select_kit", "Select Calibration…"), main_window)
+    select_action.triggered.connect(lambda: select_calibration(main_window))
+    cal_menu.addAction(select_action)
+
+    save_action = QAction(menu.get("cal_save_kit", "Save Calibration…"), main_window)
+    save_action.triggered.connect(lambda: save_calibration(main_window))
+    cal_menu.addAction(save_action)
+
+    delete_action = QAction(menu.get("cal_delete_kit", "Delete Calibration…"), main_window)
+    delete_action.triggered.connect(lambda: delete_calibration(main_window))
+    cal_menu.addAction(delete_action)
 
     # ------------------------------------------------------------------ #
     # Help

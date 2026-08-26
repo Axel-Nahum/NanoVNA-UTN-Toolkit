@@ -23,7 +23,7 @@
       "import_section_title": "Import Characterization Package:",
       "import_description": "Import a complete characterization package that already contains its associated calibration and configuration data.",
       "import_button": "Import Methods",
-      "import_hint": "Accepts .charpkg files exported from the Save as kit dialog. Once imported, the wizard opens directly at the unknown liquid measurement step.",
+      "import_hint": "Accepts .charpkg files exported from the Save calibration dialog. Once imported, the wizard opens directly at the unknown liquid measurement step.",
       "features": [
         "Pre-configured calibration kit for the selected method",
         "Measurement method settings and parameters",

@@ -54,7 +54,7 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_win
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.step_sidebar import (
     build_step_sidebar,
 )
-from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import kit_store
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import calibration_store
 
 logger = logging.getLogger(__name__)
 
@@ -158,19 +158,19 @@ def build_result_screen(wizard, descriptor, step_def):
     wizard.content_layout.addWidget(container, stretch=1)
 
     wizard.next_button.setEnabled(True)
-    _setup_save_kit_button(wizard, rtexts)
+    _setup_save_calibration_button(wizard, rtexts)
 
 
-def _setup_save_kit_button(wizard, rtexts):
-    """Show the bottom-bar save-kit button and wire it up for this result session."""
+def _setup_save_calibration_button(wizard, rtexts):
+    """Show the bottom-bar save-calibration button and wire it up for this result session."""
     from PySide6.QtWidgets import QMessageBox
 
-    btn = getattr(wizard, "save_kit_button", None)
+    btn = getattr(wizard, "save_calibration_button", None)
     cal = getattr(wizard, "perm_calibration", None)
     if btn is None or cal is None:
         return
 
-    btn.setText(rtexts.get("save_kit_button", "💾  Save as kit"))
+    btn.setText(rtexts.get("save_kit_button", "💾  Save calibration"))
     btn.setStyleSheet(
         "QPushButton { font-size: 13px; background-color: #4CAF50; color: white;"
         " font-weight: bold; border-radius: 4px; padding: 0 14px; }"
@@ -184,14 +184,14 @@ def _setup_save_kit_button(wizard, rtexts):
         pass
 
     def _on_save():
-        dlg = _SaveKitDialog(wizard, rtexts, cal)
+        dlg = _SaveCalibrationDialog(wizard, rtexts, cal)
         dlg.exec()
 
     btn.clicked.connect(_on_save)
     btn.setVisible(True)
 
 
-class _SaveKitDialog:
+class _SaveCalibrationDialog:
     """Dialog that lets the user choose internal save or ZIP export."""
 
     def __init__(self, wizard, rtexts, cal):
@@ -206,7 +206,7 @@ class _SaveKitDialog:
         self._cal = cal
 
         default_name = (
-            f"kit_{getattr(wizard, 'selected_technique_id', 'kit')}"
+            f"cal_{getattr(wizard, 'selected_technique_id', 'cal')}"
             f"_{_dt.now().strftime('%Y%m%d_%H%M%S')}"
         )
 
@@ -267,35 +267,35 @@ class _SaveKitDialog:
 
         if self._rb_internal.isChecked():
             try:
-                kit_store.save_kit(
+                calibration_store.save_calibration(
                     name=slug, display_name=display_name, cal=cal,
                     technique_id=tech_id, temperature_c=temp_c, device_name=device,
                 )
                 self._dlg.accept()
                 QMessageBox.information(
                     wizard,
-                    rtexts.get("save_kit_success_title", "Kit saved"),
-                    rtexts.get("save_kit_success_internal", "Kit '{name}' saved to the local library.").format(name=display_name),
+                    rtexts.get("save_kit_success_title", "Calibration saved"),
+                    rtexts.get("save_kit_success_internal", "Calibration '{name}' saved to the local library.").format(name=display_name),
                 )
             except Exception as exc:
                 QMessageBox.critical(wizard, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
         else:
             dest_dir = QFileDialog.getExistingDirectory(
-                wizard, rtexts.get("save_kit_dialog_title", "Export kit — choose folder"),
+                wizard, rtexts.get("save_kit_dialog_title", "Export calibration — choose folder"),
                 str(__import__("pathlib").Path.home()),
             )
             if not dest_dir:
                 return
             try:
-                out_folder = kit_store.save_kit_to_zip(
+                out_folder = calibration_store.export_calibration(
                     dest_dir=dest_dir, slug=slug, display_name=display_name, cal=cal,
                     technique_id=tech_id, temperature_c=temp_c, device_name=device,
                 )
                 self._dlg.accept()
                 QMessageBox.information(
                     wizard,
-                    rtexts.get("save_kit_success_title", "Kit saved"),
-                    rtexts.get("save_kit_success_zip", "Kit exported to:\n{path}").format(path=out_folder),
+                    rtexts.get("save_kit_success_title", "Calibration saved"),
+                    rtexts.get("save_kit_success_zip", "Calibration exported to:\n{path}").format(path=out_folder),
                 )
             except Exception as exc:
                 QMessageBox.critical(wizard, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))

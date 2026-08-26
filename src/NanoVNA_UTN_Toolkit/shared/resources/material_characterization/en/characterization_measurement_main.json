@@ -33,6 +33,10 @@
     "show_s11": "S11 — Smith Chart",
     "show_table": "Results Table",
     "calibration": "Calibration",
+    "cal_open_wizard": "Open Wizard…",
+    "cal_select_kit": "Select Calibration…",
+    "cal_save_kit": "Save Calibration…",
+    "cal_delete_kit": "Delete Calibration…",
     "help": "Help",
     "about_en": "About (EN)",
     "about_es": "About (ES)"

@@ -23,7 +23,7 @@
       "import_section_title": "Importar Paquete de Caracterización:",
       "import_description": "Importa un paquete completo de caracterización que ya contiene sus datos de calibración y configuración asociados.",
       "import_button": "Importar Métodos",
-      "import_hint": "Acepta archivos .charpkg exportados desde el diálogo Guardar como kit. Una vez importado, el asistente se abre directamente en el paso de medición del líquido incógnita.",
+      "import_hint": "Acepta archivos .charpkg exportados desde el diálogo Guardar calibración. Una vez importado, el asistente se abre directamente en el paso de medición del líquido incógnita.",
       "features": [
         "Kit de calibración preconfigurado para el método seleccionado",
         "Configuración y parámetros del método de medición",
