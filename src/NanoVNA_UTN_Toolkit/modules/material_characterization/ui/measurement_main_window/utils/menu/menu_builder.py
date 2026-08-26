@@ -8,6 +8,7 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_w
     open_plot_manager,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.menu.calibration_menu.calibration_menu import (
+    import_calibration_pkg,
     open_wizard,
     select_calibration,
     save_calibration,
@@ -88,6 +89,10 @@ def build_menu(main_window) -> None:
     cal_menu.addAction(wizard_action)
 
     cal_menu.addSeparator()
+
+    import_action = QAction(menu.get("cal_import", "Import Calibration…"), main_window)
+    import_action.triggered.connect(lambda: import_calibration_pkg(main_window))
+    cal_menu.addAction(import_action)
 
     select_action = QAction(menu.get("cal_select_kit", "Select Calibration…"), main_window)
     select_action.triggered.connect(lambda: select_calibration(main_window))

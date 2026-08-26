@@ -34,6 +34,7 @@
     "show_table": "Results Table",
     "calibration": "Calibration",
     "cal_open_wizard": "Open Wizard…",
+    "cal_import": "Import Calibration…",
     "cal_select_kit": "Select Calibration…",
     "cal_save_kit": "Save Calibration…",
     "cal_delete_kit": "Delete Calibration…",
