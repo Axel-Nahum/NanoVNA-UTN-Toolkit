@@ -398,7 +398,9 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
         "Physical filter: Re(ε) > 0, Im(ε) ≤ 1×10⁻⁶  ·  Traversal: high → low frequency"
         "  ·  Seed: root with smallest |Im(ε)| at highest valid frequency"
         "  ·  Tracking: polynomial extrapolation (window 5, order ≤2) + nearest-neighbour"
-        "  ·  Ill-conditioned points (|S₁₁ʳ¹ − S₁₁ʳ²| < 0.01) excluded as gaps",
+        "  ·  Ill-conditioned points (|S₁₁ʳ¹ − S₁₁ʳ²| < 0.01) excluded as gaps"
+        "  ·  With the simplified-method seed available, the root closest to that"
+        " curve is chosen instead (shown as the cross-check overlay)",
     )
     crit_lbl = QLabel(f"<b>{crit_title}:</b> {crit_text}")
     crit_lbl.setWordWrap(True)
@@ -450,6 +452,17 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
 
     layout.addSpacing(10)
 
+    # Cross-check overlay: the simplified (single-reference) curve travels in
+    # the result whenever it seeded the quintic. Both methods solve the same
+    # physics below the radiation-dominated band, so the two curve pairs should
+    # hug each other there — a visible gap flags a ref2 problem.
+    cc_chk = None
+    cc_label = rtexts.get("crosscheck_tag", "simplified")
+    if getattr(result, "eps_crosscheck", None) is not None:
+        cc_chk = QCheckBox(rtexts.get(
+            "crosscheck_label", "Show cross-check (simplified method)"))
+        layout.addWidget(cc_chk)
+
     chk = QCheckBox(rtexts.get("branch_override_label", "Override automatic branch selection"))
     layout.addWidget(chk)
 
@@ -473,36 +486,37 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
     combo_row.addWidget(branch_combo, stretch=1)
     layout.addWidget(combo_container)
 
-    def _draw_branch(b: int):
-        eps_curve = tracked[:, b]
-        gray = np.column_stack([tracked[:, j] for j in range(5) if j != b])
-        manager.update_epsilon_curves(ax, result.f_hz, eps_curve, canvas=None, candidates=gray, autoscale=False)
+    def _redraw():
+        """Single redraw path honouring BOTH toggles (branch override + cross-check)."""
+        cc = result.eps_crosscheck if (cc_chk is not None and cc_chk.isChecked()) else None
+        if chk.isChecked():
+            b = branch_combo.itemData(branch_combo.currentIndex())
+            b = 0 if b is None else int(b)
+            eps_curve = tracked[:, b]
+            gray = np.column_stack([tracked[:, j] for j in range(5) if j != b])
+            manager.update_epsilon_curves(
+                ax, result.f_hz, eps_curve, canvas=None, candidates=gray,
+                autoscale=False, crosscheck=cc, crosscheck_label=cc_label,
+            )
+        else:
+            manager.update_epsilon_curves(
+                ax, result.f_hz, result.eps_selected, canvas=None,
+                autoscale=False, crosscheck=cc, crosscheck_label=cc_label,
+            )
         if fixed_ylim is not None:
             ax.set_ylim(fixed_ylim)
         canvas.draw()
 
-    def _apply_branch(branch_idx):
-        b = branch_combo.itemData(branch_idx)
-        if b is not None:
-            _draw_branch(b)
-
     def _on_check(checked):
         combo_container.setVisible(bool(checked))
-        if checked:
-            _draw_branch(branch_combo.currentIndex())
-        else:
-            manager.update_epsilon_curves(
-                ax, result.f_hz, result.eps_selected, canvas=None,
-                autoscale=False,
-            )
-            if fixed_ylim is not None:
-                ax.set_ylim(fixed_ylim)
-            canvas.draw()
+        _redraw()
 
     chk.toggled.connect(_on_check)
     branch_combo.currentIndexChanged.connect(
-        lambda idx: _apply_branch(idx) if chk.isChecked() else None
+        lambda _idx: _redraw() if chk.isChecked() else None
     )
+    if cc_chk is not None:
+        cc_chk.toggled.connect(lambda _c: _redraw())
 
 
 def _format_equation(result, i, rtexts):

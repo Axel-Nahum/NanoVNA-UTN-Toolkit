@@ -326,8 +326,35 @@ class PermittivityProbeCalibration:
             logger.error("[PermittivityProbeCalibration] DUT grid != calibration grid")
             return None
 
-        self.epsilon_result = solve_epsilon_r(s11, self.pattern_constants)
+        self.epsilon_result = solve_epsilon_r(
+            s11, self.pattern_constants, eps_seed=self._simplified_seed(cal_f, s11)
+        )
         return self.epsilon_result
+
+    def _simplified_seed(self, cal_f, s11_dut) -> Optional[np.ndarray]:
+        """Simplified (Gn=0) curve used to seed the quintic and as cross-check.
+
+        The full technique already measured everything the simplified formula
+        needs (open/short/ref1), so the seed comes for free. Best-effort: on
+        any failure the solver falls back to its own seeding, unchanged.
+        """
+        try:
+            simplified = solve_epsilon_simplified(
+                cal_f,
+                s11_dut,
+                self.measurements["open"]["s11"],
+                self.measurements["short"]["s11"],
+                self.measurements["ref1"]["s11"],
+                get_reference_liquid(self.ref1_key),
+                self.temperature_c,
+            )
+            return simplified.eps
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "[PermittivityProbeCalibration] simplified seed unavailable (%s); "
+                "falling back to unseeded tracking", exc
+            )
+            return None
 
     def _compute_epsilon_simplified(self, freqs, s11) -> Optional[SimplifiedEpsilonResult]:
         """Closed-form path: Short + Open(air) + one reference liquid."""

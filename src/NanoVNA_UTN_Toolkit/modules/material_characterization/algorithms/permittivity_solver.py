@@ -73,6 +73,12 @@ class EpsilonResult:
         Complex (n_freq,) constant term of the degree-5 polynomial.
     warnings : list[str]
         Non-fatal issues collected during the computation.
+    eps_crosscheck : np.ndarray | None
+        Complex (n_freq,) curve of the SIMPLIFIED (single-reference,
+        closed-form) method when it was supplied as ``eps_seed``. Kept for the
+        cross-check overlay in the result screen: a large divergence between
+        the two methods at low frequency flags a problem with the second
+        reference liquid (the only standard that enters solely through Gn).
     """
 
     f_hz: np.ndarray
@@ -84,6 +90,7 @@ class EpsilonResult:
     gn: np.ndarray
     third_term: np.ndarray
     warnings: List[str]
+    eps_crosscheck: np.ndarray | None = None
 
     def polynomial_coeffs_at(self, index: int) -> np.ndarray:
         """Return the degree-5 polynomial coefficients [Gn,0,0,1,0,third] at a frequency."""
@@ -161,6 +168,7 @@ def solve_epsilon_r(
     track_window: int = 5,
     track_order: int = 2,
     cond_floor: float = 1e-2,
+    eps_seed: np.ndarray | None = None,
 ) -> EpsilonResult:
     """
     Solve for epsilon_r over the whole frequency grid and track a branch.
@@ -177,6 +185,13 @@ def solve_epsilon_r(
         nearly indistinguishable (|S11_ref1 - S11_ref2| < cond_floor); those
         points are marked as gaps instead of returning a spurious root.
 
+        When ``eps_seed`` is given (the SIMPLIFIED single-reference curve, the
+        Gn=0 limit of this same equation), it replaces the per-frequency
+        prediction wherever it is finite: the quintic root closest to the seed
+        is chosen. This is the strategy of the Sonda_2026_py reference
+        (``get_er_DUT_completo``), where the simplified solution seeds the
+        quintic. Without a seed the behaviour is unchanged.
+
     ES: Arma el polinomio de grado 5 por frecuencia, calcula todas las raices,
         filtra las fisicamente admisibles (Re>re_min, Im<=im_tol) y sigue una
         rama continua en frecuencia mediante prediccion polinomica de ventana
@@ -189,15 +204,33 @@ def solve_epsilon_r(
         indistinguibles (|S11_ref1 - S11_ref2| < cond_floor); esos puntos se
         marcan como gap en vez de devolver una raiz espuria.
 
+        Si se pasa ``eps_seed`` (la curva SIMPLIFICADA de una referencia, el
+        limite Gn=0 de esta misma ecuacion), reemplaza la prediccion por
+        frecuencia donde sea finita: se elige la raiz del quintico mas cercana
+        a la semilla. Es la estrategia de la referencia Sonda_2026_py
+        (``get_er_DUT_completo``), donde la solucion simplificada siembra el
+        quintico. Sin semilla el comportamiento no cambia.
+
     Parameters
     ----------
     cond_floor : float
         Threshold for |S11_ref1 - S11_ref2| below which a frequency point is
         considered ill-conditioned and excluded from the branch (default 1e-2).
+    eps_seed : np.ndarray | None
+        Optional per-frequency prediction (same grid). Stored in the result as
+        ``eps_crosscheck`` for the UI overlay; a large low-band divergence
+        between seed and selection raises a ref2-quality warning.
     """
     s11_m = np.asarray(s11_m, dtype=complex)
     n = s11_m.shape[0]
     warnings: List[str] = []
+
+    if eps_seed is not None:
+        eps_seed = np.asarray(eps_seed, dtype=complex)
+        if eps_seed.shape != s11_m.shape:
+            raise ValueError(
+                f"eps_seed shape {eps_seed.shape} != measurement shape {s11_m.shape}"
+            )
 
     third = compute_third_term(s11_m, pc)
 
@@ -233,7 +266,17 @@ def solve_epsilon_r(
 
         cands = eps_candidates[i, admissible]
 
-        if not last_eps:
+        seed_here = (
+            eps_seed[i]
+            if eps_seed is not None and np.isfinite(eps_seed[i])
+            else None
+        )
+
+        if seed_here is not None:
+            # The simplified (Gn=0) solution IS the physical branch of this
+            # equation up to the radiation correction: pick the root nearest it.
+            choice = int(np.argmin(np.abs(cands - seed_here)))
+        elif not last_eps:
             # Seed at the highest valid frequency: smallest imaginary part
             # (closest to lossless / passive limit).
             choice = int(np.argmin(np.abs(np.imag(cands))))
@@ -297,6 +340,31 @@ def solve_epsilon_r(
             warnings.append(msg)
             logger.warning("[permittivity_solver] %s", msg)
 
+    # Cross-check: the simplified curve must agree with the selection in the
+    # LOWER half of the band, where radiation is negligible and both methods
+    # solve the same physics. A large divergence there points at ref2 -- the
+    # only standard that enters solely through Gn, so an error in it hides
+    # from every other consistency check.
+    if eps_seed is not None:
+        low_band = np.arange(n) < n // 2
+        both = low_band & np.isfinite(eps_selected) & np.isfinite(eps_seed)
+        if np.count_nonzero(both) >= 5:
+            re_sel = np.real(eps_selected[both])
+            re_seed = np.real(eps_seed[both])
+            with np.errstate(divide="ignore", invalid="ignore"):
+                rel = np.abs(re_sel - re_seed) / np.maximum(np.abs(re_seed), 1e-6)
+            med = float(np.median(rel))
+            if med > 0.25:
+                msg = (
+                    f"Full-method result diverges {med:.0%} (median) from the "
+                    f"simplified cross-check in the lower half-band, where both "
+                    f"should agree. Check the second reference liquid (ref2): it "
+                    f"only enters through Gn, so an error there is invisible to "
+                    f"the other standards."
+                )
+                warnings.append(msg)
+                logger.warning("[permittivity_solver] %s", msg)
+
     warnings.extend(pc.warnings)
 
     return EpsilonResult(
@@ -309,4 +377,5 @@ def solve_epsilon_r(
         gn=np.asarray(pc.gn, dtype=complex),
         third_term=np.asarray(third, dtype=complex),
         warnings=warnings,
+        eps_crosscheck=eps_seed,
     )

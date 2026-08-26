@@ -143,7 +143,8 @@ class EpsilonChartManager:
         return self.fig, self.ax, self.canvas
 
     def update_epsilon_curves(self, ax, freqs, eps_selected, canvas=None,
-                              candidates=None, autoscale=True):
+                              candidates=None, autoscale=True, crosscheck=None,
+                              crosscheck_label=None):
         """
         Draw the selected permittivity branch (and optional faint candidates).
 
@@ -153,6 +154,11 @@ class EpsilonChartManager:
             The auto-selected / chosen branch, aligned with ``freqs``.
         candidates : np.ndarray (complex) (n_freq, k), optional
             All candidate roots, drawn faintly (real part only) for comparison.
+        crosscheck : np.ndarray (complex) (n_freq,), optional
+            Simplified-method curve overlaid as dotted lines in the same
+            colors, so both methods can be compared on one chart.
+        crosscheck_label : str, optional
+            Legend label of the cross-check pair (default "simplified").
         """
         try:
             freqs = np.asarray(freqs, dtype=float)
@@ -192,6 +198,19 @@ class EpsilonChartManager:
             ax.plot(freqs, loss, color=self.config.loss_color,
                     linewidth=self.config.loss_linewidth,
                     label=getattr(self, "_loss_label", r"$\varepsilon_r''$"), zorder=3)
+
+            if crosscheck is not None:
+                crosscheck = np.asarray(crosscheck, dtype=complex)
+                cc_tag = crosscheck_label or "simplified"
+                # Dotted, same colors: reads as "the same quantity, other method".
+                ax.plot(freqs, _fill_nans(np.real(crosscheck)),
+                        color=self.config.real_color, linewidth=1.4,
+                        linestyle=":", alpha=0.85, zorder=2,
+                        label=rf"$\varepsilon_r'$ ({cc_tag})")
+                ax.plot(freqs, _fill_nans(-np.imag(crosscheck)),
+                        color=self.config.loss_color, linewidth=1.4,
+                        linestyle=":", alpha=0.85, zorder=2,
+                        label=rf"$\varepsilon_r''$ ({cc_tag})")
 
             ax.legend(loc="upper right")
 

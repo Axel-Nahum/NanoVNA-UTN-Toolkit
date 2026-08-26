@@ -114,3 +114,86 @@ if __name__ == "__main__":
                 failures += 1
                 print(f"FAIL {name}: {exc}")
     raise SystemExit(1 if failures else 0)
+
+
+def _synthetic_pattern_case(n=21):
+    """Same synthetic construction as the roundtrip test, shared by seed tests."""
+    f = np.linspace(1e8, 2e9, n)
+    eps_true = np.linspace(20, 25, n) - 1j * np.linspace(3, 6, n)
+    gn = np.full(n, 0.01 - 0.002j)
+    third_req = -(eps_true + gn * np.power(eps_true, 2.5))
+    s_m = -third_req / (2 + third_req)
+    pc = PatternConstants(
+        f_hz=f, temp_c=25.0, gn=gn,
+        y_ref1=np.zeros(n, complex), y_ref2=np.ones(n, complex),
+        s11_short=np.full(n, -1 + 0j), s11_ref1=np.zeros(n, complex),
+        s11_ref2=np.ones(n, complex),
+        ref1_key="water", ref2_key="ipa", warnings=[],
+    )
+    return f, eps_true, s_m, pc
+
+
+def test_seeded_solver_follows_seed_and_attaches_crosscheck():
+    """With eps_seed given, the nearest root to the seed is selected and the
+    seed travels in the result as eps_crosscheck (for the UI overlay)."""
+    _f, eps_true, s_m, pc = _synthetic_pattern_case()
+
+    seed = eps_true + (0.3 - 0.1j)          # slightly-off seed, as in real use
+    res = solve_epsilon_r(s_m, pc, eps_seed=seed)
+    assert np.nanmax(np.abs(res.eps_selected - eps_true)) < 1e-9
+    assert res.eps_crosscheck is not None
+    np.testing.assert_allclose(res.eps_crosscheck, seed)
+
+    # NaN gaps in the seed fall back to the unseeded tracker (no crash, no gap).
+    seed_gappy = seed.copy()
+    seed_gappy[5:9] = np.nan + 0j
+    res2 = solve_epsilon_r(s_m, pc, eps_seed=seed_gappy)
+    assert np.nanmax(np.abs(res2.eps_selected - eps_true)) < 1e-9
+
+    # Unseeded behaviour unchanged: no crosscheck attached.
+    res3 = solve_epsilon_r(s_m, pc)
+    assert res3.eps_crosscheck is None
+
+
+def test_golden_full_method_seeded_2026():
+    """Regression (H13 / task 5.3): full method on the bundled 2026 probe-21mm
+    presets, swept from 1 MHz, must land on the canonical ethanol branch."""
+    try:
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import (
+            preset_store,
+        )
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.permittivity_probe_calibration import (
+            PermittivityProbeCalibration,
+        )
+        data = {
+            key: preset_store.load_preset(name)[:2]
+            for key, name in (
+                ("open", "open_air_r60_probe21_2026"),
+                ("short", "short_r60_probe21_2026"),
+                ("ref1", "water_r60_probe21_2026"),
+                ("ref2", "ipa_r60_probe21_2026"),
+                ("dut", "ethanol_r60_probe21_2026"),
+            )
+        }
+    except Exception:
+        import pytest
+        pytest.skip("bundled 2026 presets not available")
+
+    cal = PermittivityProbeCalibration()
+    assert cal.set_reference_liquids("water", "ipa")
+    cal.set_temperature(22.0)
+    for key, (freqs, s11) in data.items():
+        cal.set_measurement(key, freqs, s11)
+
+    res = cal.compute_epsilon()
+    assert res is not None
+    assert res.eps_crosscheck is not None     # the simplified seed was used
+
+    for f_tgt, expected in ((0.1e9, 23.36 - 3.59j),
+                            (0.5e9, 15.59 - 9.64j),
+                            (1.0e9, 9.55 - 8.95j)):
+        i = int(np.argmin(np.abs(res.f_hz - f_tgt)))
+        got = res.eps_selected[i]
+        assert abs(got - expected) < 0.05 * abs(expected), (
+            f"@{f_tgt/1e9:.1f} GHz: {got:.3f} vs expected {expected:.3f}"
+        )
