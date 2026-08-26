@@ -149,6 +149,9 @@
     "simplified_note": "ε_r sale de la fórmula cerrada de razón cruzada (Higa 2016, ec. 18) usando Short, Open (aire, ε=1.0006) y un líquido de referencia — no hay raíces candidatas ni nada que sobrescribir. Se desprecia el término de radiación de la sonda, así que la exactitud degrada hacia alta frecuencia; para máxima exactitud usar el método completo de dos líquidos.",
     "simplified_reference": "Líquido de referencia: {ref}  ·  T = {temp:.1f} °C",
     "crosscheck_label": "Mostrar cross-check (método simplificado)",
-    "crosscheck_tag": "simplificado"
+    "crosscheck_tag": "simplificado",
+    "extend_button": "Extender a método completo (2.º líquido)…",
+    "extend_title": "¿Extender a método completo?",
+    "extend_msg": "Todo lo medido hasta ahora (Open, Short, {ref1} y la incógnita) se conserva. El asistente pasa a la técnica completa de dos líquidos y solo falta medir o importar el segundo líquido de referencia ({ref2}) — podés cambiarlo en el paso de Configuración.\n\nEl resultado se recalcula con el solver de grado 5, sembrado por la curva simplificada que se muestra acá.\n\n¿Continuar?"
   }
 }

@@ -149,6 +149,9 @@
     "simplified_note": "ε_r comes from the closed-form cross-ratio formula (Higa 2016, eq. 18) using Short, Open (air, ε=1.0006) and one reference liquid — there are no candidate roots and nothing to override. The probe's radiation term is neglected, so accuracy degrades toward high frequency; for best accuracy use the full two-liquid method.",
     "simplified_reference": "Reference liquid: {ref}  ·  T = {temp:.1f} °C",
     "crosscheck_label": "Show cross-check (simplified method)",
-    "crosscheck_tag": "simplified"
+    "crosscheck_tag": "simplified",
+    "extend_button": "Extend to full method (2nd liquid)…",
+    "extend_title": "Extend to full method?",
+    "extend_msg": "Everything measured so far (Open, Short, {ref1} and the unknown) is kept. The wizard switches to the full two-liquid technique and only the second reference liquid ({ref2}) remains to be measured or imported — you can change it in the Configuration step.\n\nThe result will be recomputed with the degree-5 solver, seeded by the simplified curve shown here.\n\nContinue?"
   }
 }

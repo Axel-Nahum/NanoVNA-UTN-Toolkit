@@ -132,6 +132,7 @@ def build_result_screen(wizard, descriptor, step_def):
         # closed formula with a single curve and nothing to override.
         if isinstance(result, SimplifiedEpsilonResult):
             _build_simplified_note(mid, result, rtexts)
+            _build_extend_to_full(wizard, mid, rtexts)
         else:
             _build_intermediate(mid, result, rtexts, manager, ax, canvas, fixed_ylim)
         mid.addStretch(1)
@@ -383,6 +384,108 @@ def _build_simplified_note(layout, result, rtexts):
     ).format(ref=result.ref_liquid_key, temp=result.temperature_c))
     ref_line.setStyleSheet("font-size: 11px; color: #555555;")
     layout.addWidget(ref_line)
+
+
+_FULL_TECHNIQUE_ID = "open_coax_liquids"
+
+
+def _build_extend_to_full(wizard, layout, rtexts):
+    """Button that upgrades a simplified session to the full two-liquid method.
+
+    EN: The simplified technique shares its standard keys (open/short/ref1/dut)
+        with the full one, so everything already measured carries over: the
+        wizard only needs the SECOND reference liquid. Clicking switches the
+        active technique and lands on the ref2 step; the result then recomputes
+        with the degree-5 solver, seeded by the simplified curve just shown.
+
+    ES: La tecnica simplificada comparte las claves de patrones
+        (open/short/ref1/dut) con la completa, asi que todo lo ya medido se
+        conserva: al asistente solo le falta el SEGUNDO liquido de referencia.
+        El click cambia la tecnica activa y cae en el paso de ref2; el
+        resultado se recalcula con el solver de grado 5, sembrado por la curva
+        simplificada recien mostrada.
+    """
+    from PySide6.QtWidgets import QMessageBox
+
+    layout.addSpacing(12)
+    btn = QPushButton(rtexts.get("extend_button", "Extend to full method (2nd liquid)…"))
+    btn.setFixedHeight(30)
+    btn.setStyleSheet(
+        "QPushButton { color: #4da6ff; border: 1px solid #4da6ff;"
+        " border-radius: 4px; padding: 0 14px; font-size: 12px; }"
+        " QPushButton:hover { background: #0a1828; }"
+    )
+    layout.addWidget(btn, alignment=Qt.AlignLeft)
+
+    def _on_extend():
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import (
+            get as get_technique,
+        )
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
+            liquid_keys, set_liquid_key,
+        )
+
+        try:
+            full = get_technique(_FULL_TECHNIQUE_ID)
+        except KeyError:
+            logger.error("[result_screen] full technique '%s' not registered", _FULL_TECHNIQUE_ID)
+            return
+
+        # ref2 default: IPA, unless ref1 already is IPA (they must differ).
+        ref1_liquid = liquid_keys(wizard).get("ref1") or "water"
+        ref2_liquid = "ipa" if ref1_liquid != "ipa" else "water"
+
+        ref2_index = next(
+            (i + 1 for i, s in enumerate(full.steps)
+             if s.standard is not None and s.standard.key == "ref2"),
+            None,
+        )
+        if ref2_index is None:
+            logger.error("[result_screen] full technique has no ref2 step")
+            return
+
+        answer = QMessageBox.question(
+            wizard,
+            rtexts.get("extend_title", "Extend to full method?"),
+            rtexts.get(
+                "extend_msg",
+                "Everything measured so far (Open, Short, {ref1} and the unknown) is "
+                "kept. The wizard switches to the full two-liquid technique and only "
+                "the second reference liquid ({ref2}) remains to be measured or "
+                "imported — you can change it in the Configuration step.\n\n"
+                "The result will be recomputed with the degree-5 solver, seeded by "
+                "the simplified curve shown here.\n\nContinue?",
+            ).format(ref1=ref1_liquid, ref2=ref2_liquid),
+            QMessageBox.Yes | QMessageBox.No,
+        )
+        if answer != QMessageBox.Yes:
+            return
+
+        set_liquid_key(wizard, "ref2", ref2_liquid)
+        if not wizard.perm_calibration.set_reference_liquids(ref1_liquid, ref2_liquid):
+            logger.error("[result_screen] could not set reference liquids %s/%s",
+                         ref1_liquid, ref2_liquid)
+            return
+
+        # Switch the active technique; measurements live in perm_calibration
+        # (shared standard keys), so nothing is lost. The stale simplified
+        # result must not be reused by the full technique's result screen.
+        wizard.selected_technique_id = _FULL_TECHNIQUE_ID
+        methods = load_text("characterization_methods.json").get("methods", {})
+        wizard.selected_method = methods.get(_FULL_TECHNIQUE_ID, {}).get(
+            "title", _FULL_TECHNIQUE_ID)
+        wizard.epsilon_result = None
+        wizard.perm_calibration.pattern_constants = None
+
+        logger.info("[result_screen] extended to '%s'; jumping to ref2 (step %d)",
+                    _FULL_TECHNIQUE_ID, ref2_index)
+        wizard.current_step = ref2_index
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import (
+            update_step_screen,
+        )
+        update_step_screen(wizard)
+
+    btn.clicked.connect(_on_extend)
 
 
 def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=None, fixed_ylim=None):
