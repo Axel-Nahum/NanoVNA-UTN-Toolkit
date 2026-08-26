@@ -54,6 +54,7 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_win
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.step_sidebar import (
     build_step_sidebar,
 )
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import kit_store
 
 logger = logging.getLogger(__name__)
 
@@ -157,6 +158,58 @@ def build_result_screen(wizard, descriptor, step_def):
     wizard.content_layout.addWidget(container, stretch=1)
 
     wizard.next_button.setEnabled(True)
+    _setup_save_kit_button(wizard, rtexts)
+
+
+def _setup_save_kit_button(wizard, rtexts):
+    """Show the bottom-bar save-kit button and wire it up for this result session."""
+    from PySide6.QtWidgets import QInputDialog, QMessageBox
+
+    btn = getattr(wizard, "save_kit_button", None)
+    cal = getattr(wizard, "perm_calibration", None)
+    if btn is None or cal is None:
+        return
+
+    btn.setText(rtexts.get("save_kit_button", "💾  Save as kit"))
+
+    try:
+        btn.clicked.disconnect()
+    except RuntimeError:
+        pass
+
+    def _on_save():
+        from datetime import datetime as _dt
+        default_name = (
+            f"kit_{getattr(wizard, 'selected_technique_id', 'kit')}"
+            f"_{_dt.now().strftime('%Y%m%d_%H%M%S')}"
+        )
+        display_name, ok = QInputDialog.getText(
+            wizard, rtexts.get("save_kit_title", "Save calibration kit"),
+            rtexts.get("save_kit_label", "Kit name:"), text=default_name,
+        )
+        if not ok or not display_name.strip():
+            return
+        display_name = display_name.strip()
+        slug = "".join(c if c.isalnum() or c in "-_" else "_" for c in display_name)
+        try:
+            kit_store.save_kit(
+                name=slug,
+                display_name=display_name,
+                cal=cal,
+                technique_id=getattr(wizard, "selected_technique_id", ""),
+                temperature_c=getattr(wizard, "temperature_c", 25.0),
+                device_name=str(getattr(wizard, "vna_device", "") or ""),
+            )
+            QMessageBox.information(
+                wizard,
+                rtexts.get("save_kit_success_title", "Kit saved"),
+                rtexts.get("save_kit_success", "Kit '{name}' saved successfully.").format(name=display_name),
+            )
+        except Exception as exc:
+            QMessageBox.critical(wizard, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
+
+    btn.clicked.connect(_on_save)
+    btn.setVisible(True)
 
 
 def _sample_name(wizard, rtexts):

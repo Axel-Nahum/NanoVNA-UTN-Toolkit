@@ -170,12 +170,24 @@ class CharacterizationWizard(QMainWindow):
             self.go_to_next_step
         )
 
+        self.save_kit_button = QPushButton("💾  Save as kit")
+        self.save_kit_button.setFixedHeight(30)
+        self.save_kit_button.setStyleSheet("font-size: 13px; padding: 0 12px;")
+        self.save_kit_button.setVisible(False)
+
         self.bottom_layout.addWidget(
             self.back_button,
             alignment=Qt.AlignLeft
         )
 
         self.bottom_layout.addStretch(1)
+
+        self.bottom_layout.addWidget(
+            self.save_kit_button,
+            alignment=Qt.AlignRight
+        )
+
+        self.bottom_layout.addSpacing(8)
 
         self.bottom_layout.addWidget(
             self.next_button,

@@ -214,6 +214,8 @@ medicion_fluidos/
 Plan*.md
 *Trello.md
 Tareas_Trello*.md
+metodo_simplificado.md
+sonda/
 
 # personal test measurement sets for exercising the characterization wizard offline
 test_data/

@@ -16,8 +16,9 @@ logging.getLogger('matplotlib').setLevel(logging.WARNING)
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget, QPushButton,
-    QHBoxLayout, QComboBox, QFrame, QSizePolicy
+    QHBoxLayout, QComboBox, QFrame, QSizePolicy, QFileDialog, QMessageBox
 )
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import kit_store
 from PySide6.QtGui import QGuiApplication
 
 try:
@@ -359,27 +360,55 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
+    def _load_characterization_kits(self):
+        """Scan the kit directory and cache all valid KitMeta objects."""
+        self._kit_metas: dict = {}  # name -> KitMeta
+        try:
+            for meta in kit_store.list_kits():
+                self._kit_metas[meta.name] = meta
+        except Exception:
+            logging.exception("[characterization_welcome] failed to load kits")
+
     def _set_current_kit_selection(self):
-        logging.info("h")
+        """Populate the dropdown with kit items and restore last selection."""
+        for meta in self._kit_metas.values():
+            self.kit_dropdown.addItem(meta.display_name or meta.name)
+        # No persistent last-selection for now; leave at "None"
 
     def _on_kit_selection_changed(self, selected_text):
-        logging.info("h")
+        if selected_text and selected_text != "None":
+            # Find by display_name
+            self.selected_kit_name = next(
+                (n for n, m in self._kit_metas.items()
+                 if (m.display_name or m.name) == selected_text),
+                None,
+            )
+        else:
+            self.selected_kit_name = None
+        self._update_kit_info_display()
+        # Update the primary button label to reflect whether a kit is active
+        if hasattr(self, "characterization_methods_button"):
+            if self.selected_kit_name:
+                self.characterization_methods_button.setText("▶  Measure unknown liquid")
+            else:
+                self.characterization_methods_button.setText(
+                    self.charac_welcome_ui_open_methods_button
+                )
 
     def _update_kit_info_display(self):
-        if hasattr(self, 'selected_kit_name') and self.selected_kit_name:
-            if hasattr(self, 'kit_names') and self.selected_kit_name in self.kit_names:
-                kit_index = self.kit_names.index(self.selected_kit_name)
-                kit_id = (
-                    self.kit_ids[kit_index]
-                    if kit_index < len(self.kit_ids)
-                    else "Unknown"
-                )
+        if not hasattr(self, "kit_info_label"):
+            return
+        if self.selected_kit_name and self.selected_kit_name in self._kit_metas:
+            meta = self._kit_metas[self.selected_kit_name]
+            self.kit_info_label.setText("\n".join(meta.summary_lines()))
+            self.kit_info_label.setStyleSheet(
+                "font-size: 12px; color: #333333; background: transparent;"
+            )
         else:
-            if hasattr(self, 'kit_info_label'):
-                self.kit_info_label.setText(self.charac_welcome_ui_no_characterization_selected)
-
-    def _load_characterization_kits(self):
-        logging.info("[load_characterization_kits]")
+            self.kit_info_label.setText(self.charac_welcome_ui_no_characterization_selected)
+            self.kit_info_label.setStyleSheet(
+                "font-size: 12px; color: #555555; background: transparent; font-style: italic;"
+            )
 
     def _get_current_calibration_name(self):
         settings_calibration = get_settings(
@@ -392,23 +421,85 @@ class MaterialCharacterizationWelcome(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------ #
 
     def import_characterization_package(self):
-        logging.info(
-            "[material_characterization_welcome.import_characterization_package] Import characterization package clicked"
+        """Let the user pick a kit folder from anywhere and copy it into the kits directory."""
+        src_dir = QFileDialog.getExistingDirectory(
+            self, "Select kit folder", str(Path.home())
         )
+        if not src_dir:
+            return
+        src_path = Path(src_dir)
+        manifest = src_path / "manifest.json"
+        if not manifest.exists():
+            QMessageBox.warning(self, "Invalid kit", "The selected folder does not contain a valid kit (manifest.json not found).")
+            return
+        import shutil
+        dest = kit_store.get_kit_dir() / src_path.name
+        if dest.exists():
+            QMessageBox.warning(self, "Kit already exists", f"A kit named '{src_path.name}' already exists.")
+            return
+        try:
+            shutil.copytree(str(src_path), str(dest))
+            # Reload kits and refresh dropdown
+            self._load_characterization_kits()
+            self.kit_dropdown.clear()
+            self.kit_dropdown.addItem("None")
+            self._set_current_kit_selection()
+            QMessageBox.information(self, "Kit imported", f"Kit '{src_path.name}' imported successfully.")
+        except Exception as exc:
+            QMessageBox.critical(self, "Import failed", str(exc))
 
     def open_characterization_methods(self):
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.wizard_methods_window import CharacterizationWizard
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import update_step_screen
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import get as get_technique
 
-        logging.info(
-            "[material_characterization_welcome.open_characterization_methods] Opening characterization methods window"
-        )
+        logging.info("[material_characterization_welcome.open_characterization_methods] Opening characterization methods window")
+
+        kit_name = getattr(self, "selected_kit_name", None)
 
         if self.vna:
-            self.welcome_windows = CharacterizationWizard(vna_device=self.vna)
+            wizard = CharacterizationWizard(vna_device=self.vna)
         else:
-            self.welcome_windows = CharacterizationWizard()
+            wizard = CharacterizationWizard()
 
-        self.welcome_windows.show()
+        if kit_name and kit_name in getattr(self, "_kit_metas", {}):
+            try:
+                cal_data, meta = kit_store.load_kit(kit_name)
+                descriptor = get_technique(meta.technique_id)
+
+                wizard.selected_technique_id = meta.technique_id
+                wizard.selected_method = descriptor.name_token
+                wizard.temperature_c = meta.temperature_c
+                if meta.f_start_hz is not None:
+                    wizard.sweep_start_freq = meta.f_start_hz
+                if meta.f_stop_hz is not None:
+                    wizard.sweep_stop_freq = meta.f_stop_hz
+                if meta.points is not None:
+                    wizard.sweep_steps = meta.points
+                wizard.perm_calibration.set_reference_liquids(meta.ref1_key, meta.ref2_key)
+                wizard.perm_calibration.set_temperature(meta.temperature_c)
+
+                for key, (freqs, s11) in cal_data.items():
+                    wizard.perm_calibration.set_measurement(
+                        key, freqs, s11, source=f"kit:{meta.name}"
+                    )
+
+                # Find the DUT step index (current_step = descriptor index + 1)
+                dut_step = next(
+                    (i + 1 for i, s in enumerate(descriptor.steps)
+                     if s.standard is not None and s.standard.key == "dut"),
+                    None,
+                )
+                if dut_step is not None:
+                    wizard.current_step = dut_step
+                    update_step_screen(wizard)
+
+            except Exception as exc:
+                logging.exception("[open_characterization_methods] failed to load kit '%s'", kit_name)
+                QMessageBox.critical(wizard, "Kit load failed", str(exc))
+
+        self.welcome_windows = wizard
+        wizard.show()
         self.close()
 
     def return_to_menu_window(self):

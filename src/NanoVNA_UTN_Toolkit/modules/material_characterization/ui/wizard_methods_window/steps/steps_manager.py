@@ -38,6 +38,8 @@ logger = logging.getLogger(__name__)
 def update_step_screen(self):
     """Render the screen for the wizard's current step."""
     self.clear_content()
+    if hasattr(self, "save_kit_button"):
+        self.save_kit_button.setVisible(False)
 
     if self.current_step == 0 or not self.selected_technique_id:
         build_introduction_screen(self)

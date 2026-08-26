@@ -152,6 +152,12 @@
     "crosscheck_tag": "simplificado",
     "extend_button": "Extender a método completo (2.º líquido)…",
     "extend_title": "¿Extender a método completo?",
-    "extend_msg": "Todo lo medido hasta ahora (Open, Short, {ref1} y la incógnita) se conserva. El asistente pasa a la técnica completa de dos líquidos y solo falta medir o importar el segundo líquido de referencia ({ref2}) — podés cambiarlo en el paso de Configuración.\n\nEl resultado se recalcula con el solver de grado 5, sembrado por la curva simplificada que se muestra acá.\n\n¿Continuar?"
+    "extend_msg": "Todo lo medido hasta ahora (Open, Short, {ref1} y la incógnita) se conserva. El asistente pasa a la técnica completa de dos líquidos y solo falta medir o importar el segundo líquido de referencia ({ref2}) — podés cambiarlo en el paso de Configuración.\n\nEl resultado se recalcula con el solver de grado 5, sembrado por la curva simplificada que se muestra acá.\n\n¿Continuar?",
+    "save_kit_button": "💾  Guardar como kit",
+    "save_kit_title": "Guardar kit de calibración",
+    "save_kit_label": "Nombre del kit:",
+    "save_kit_success_title": "Kit guardado",
+    "save_kit_success": "Kit '{name}' guardado correctamente.",
+    "save_kit_fail_title": "Error al guardar"
   }
 }

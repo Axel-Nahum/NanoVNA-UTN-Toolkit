@@ -152,6 +152,12 @@
     "crosscheck_tag": "simplified",
     "extend_button": "Extend to full method (2nd liquid)…",
     "extend_title": "Extend to full method?",
-    "extend_msg": "Everything measured so far (Open, Short, {ref1} and the unknown) is kept. The wizard switches to the full two-liquid technique and only the second reference liquid ({ref2}) remains to be measured or imported — you can change it in the Configuration step.\n\nThe result will be recomputed with the degree-5 solver, seeded by the simplified curve shown here.\n\nContinue?"
+    "extend_msg": "Everything measured so far (Open, Short, {ref1} and the unknown) is kept. The wizard switches to the full two-liquid technique and only the second reference liquid ({ref2}) remains to be measured or imported — you can change it in the Configuration step.\n\nThe result will be recomputed with the degree-5 solver, seeded by the simplified curve shown here.\n\nContinue?",
+    "save_kit_button": "💾  Save as kit",
+    "save_kit_title": "Save calibration kit",
+    "save_kit_label": "Kit name:",
+    "save_kit_success_title": "Kit saved",
+    "save_kit_success": "Kit '{name}' saved successfully.",
+    "save_kit_fail_title": "Save failed"
   }
 }
