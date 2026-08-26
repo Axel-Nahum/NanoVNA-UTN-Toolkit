@@ -154,10 +154,16 @@
     "extend_title": "Extend to full method?",
     "extend_msg": "Everything measured so far (Open, Short, {ref1} and the unknown) is kept. The wizard switches to the full two-liquid technique and only the second reference liquid ({ref2}) remains to be measured or imported — you can change it in the Configuration step.\n\nThe result will be recomputed with the degree-5 solver, seeded by the simplified curve shown here.\n\nContinue?",
     "save_kit_button": "💾  Save as kit",
-    "save_kit_title": "Save calibration kit",
-    "save_kit_label": "Kit name:",
+    "save_kit_dialog_title": "Save calibration kit",
+    "save_kit_name_label": "Kit name:",
+    "save_kit_internal_radio": "Save internally (appears in the welcome dropdown)",
+    "save_kit_zip_radio": "Export as .charpkg file (for sharing)",
+    "save_kit_zip_hint": "Creates a folder with a .charpkg (importable in the app) and a .zip (openable with WinRAR, 7-Zip or Windows Explorer).",
+    "save_kit_ok": "Save",
+    "save_kit_cancel": "Cancel",
     "save_kit_success_title": "Kit saved",
-    "save_kit_success": "Kit '{name}' saved successfully.",
+    "save_kit_success_internal": "Kit '{name}' saved to the local library.",
+    "save_kit_success_zip": "Kit exported to:\n{path}",
     "save_kit_fail_title": "Save failed"
   }
 }

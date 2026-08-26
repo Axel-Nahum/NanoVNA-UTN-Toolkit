@@ -342,9 +342,13 @@ class MaterialCharacterizationWelcome(QMainWindow):
             layout.addLayout(row)
             layout.addSpacing(8)
 
+        import_hint = QLabel(self.charac_welcome_ui_import_hint)
+        import_hint.setWordWrap(True)
+        import_hint.setStyleSheet("font-size: 11px; color: #888888; font-style: italic; background: transparent;")
+        layout.addWidget(import_hint)
+
         layout.addStretch(1)
 
-        # Secondary button
         self.import_button = QPushButton(self.charac_welcome_ui_import_button_text)
         self.import_button.setFixedHeight(44)
         self.import_button.setStyleSheet(_BTN_PRIMARY)
@@ -400,9 +404,16 @@ class MaterialCharacterizationWelcome(QMainWindow):
             return
         if self.selected_kit_name and self.selected_kit_name in self._kit_metas:
             meta = self._kit_metas[self.selected_kit_name]
-            self.kit_info_label.setText("\n".join(meta.summary_lines()))
+            tech = "Simplified (1 ref)" if meta.is_simplified else "Full (2 refs)"
+            refs = meta.ref1_key + (f" + {meta.ref2_key}" if meta.ref2_key else "")
+            info = (
+                f"Kit: {meta.display_name}\n"
+                f"Method: {tech}  ·  Refs: {refs}  ·  {meta.temperature_c:.1f} °C\n"
+                f"Saved: {meta.saved[:10]}"
+            )
+            self.kit_info_label.setText(info)
             self.kit_info_label.setStyleSheet(
-                "font-size: 12px; color: #333333; background: transparent;"
+                "font-size: 12px; color: #cccccc; background: transparent;"
             )
         else:
             self.kit_info_label.setText(self.charac_welcome_ui_no_characterization_selected)
@@ -421,32 +432,23 @@ class MaterialCharacterizationWelcome(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------ #
 
     def import_characterization_package(self):
-        """Let the user pick a kit folder from anywhere and copy it into the kits directory."""
-        src_dir = QFileDialog.getExistingDirectory(
-            self, "Select kit folder", str(Path.home())
+        """Import a .charpkg file and jump directly to the DUT measurement step."""
+        zip_path, _ = QFileDialog.getOpenFileName(
+            self, "Import characterization kit", str(Path.home()),
+            "Characterization package (*.charpkg);;All files (*)",
         )
-        if not src_dir:
-            return
-        src_path = Path(src_dir)
-        manifest = src_path / "manifest.json"
-        if not manifest.exists():
-            QMessageBox.warning(self, "Invalid kit", "The selected folder does not contain a valid kit (manifest.json not found).")
-            return
-        import shutil
-        dest = kit_store.get_kit_dir() / src_path.name
-        if dest.exists():
-            QMessageBox.warning(self, "Kit already exists", f"A kit named '{src_path.name}' already exists.")
+        if not zip_path:
             return
         try:
-            shutil.copytree(str(src_path), str(dest))
-            # Reload kits and refresh dropdown
-            self._load_characterization_kits()
-            self.kit_dropdown.clear()
-            self.kit_dropdown.addItem("None")
-            self._set_current_kit_selection()
-            QMessageBox.information(self, "Kit imported", f"Kit '{src_path.name}' imported successfully.")
+            kit_name = kit_store.import_kit_from_zip(zip_path)
         except Exception as exc:
             QMessageBox.critical(self, "Import failed", str(exc))
+            return
+
+        # Refresh internal state and jump straight to the wizard DUT step
+        self._load_characterization_kits()
+        self.selected_kit_name = kit_name
+        self.open_characterization_methods()
 
     def open_characterization_methods(self):
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.wizard_methods_window import CharacterizationWizard

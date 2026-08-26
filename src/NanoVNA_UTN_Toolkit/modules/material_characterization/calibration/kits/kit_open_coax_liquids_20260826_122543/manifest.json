@@ -1,0 +1,26 @@
+{
+  "name": "kit_open_coax_liquids_20260826_122543",
+  "display_name": "kit_open_coax_liquids_20260826_122543",
+  "technique_id": "open_coax_liquids",
+  "ref1_key": "water",
+  "ref2_key": "ipa",
+  "temperature_c": 25.0,
+  "device_name": "<NanoVNA_UTN_Toolkit.compat.PatchedVNA object at 0x0000022A13549940>",
+  "saved": "2026-08-26T12:25:44",
+  "standards": [
+    "open",
+    "short",
+    "ref1",
+    "ref2"
+  ],
+  "sources": {
+    "open": "imported",
+    "short": "imported",
+    "ref1": "imported",
+    "ref2": "imported"
+  },
+  "f_start_hz": 1000000.0,
+  "f_stop_hz": 1500000000.0,
+  "points": 201,
+  "schema_version": 1
+}

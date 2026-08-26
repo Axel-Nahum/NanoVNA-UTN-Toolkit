@@ -41,6 +41,7 @@ class CharacterizationResourceLoader:
         self.window.charac_welcome_ui_import_section_title = characterization_section.get("import_section_title", "")
         self.window.charac_welcome_ui_import_description = characterization_section.get("import_description", "")
         self.window.charac_welcome_ui_import_button_text = characterization_section.get("import_button", "")
+        self.window.charac_welcome_ui_import_hint = characterization_section.get("import_hint", "")
         self.window.charac_welcome_ui_features = characterization_section.get("features", [])
 
     def load_characterization_method_resources(self):

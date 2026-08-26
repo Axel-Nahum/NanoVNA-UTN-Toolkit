@@ -163,7 +163,7 @@ def build_result_screen(wizard, descriptor, step_def):
 
 def _setup_save_kit_button(wizard, rtexts):
     """Show the bottom-bar save-kit button and wire it up for this result session."""
-    from PySide6.QtWidgets import QInputDialog, QMessageBox
+    from PySide6.QtWidgets import QMessageBox
 
     btn = getattr(wizard, "save_kit_button", None)
     cal = getattr(wizard, "perm_calibration", None)
@@ -171,6 +171,12 @@ def _setup_save_kit_button(wizard, rtexts):
         return
 
     btn.setText(rtexts.get("save_kit_button", "💾  Save as kit"))
+    btn.setStyleSheet(
+        "QPushButton { font-size: 13px; background-color: #4CAF50; color: white;"
+        " font-weight: bold; border-radius: 4px; padding: 0 14px; }"
+        " QPushButton:hover { background-color: #388E3C; }"
+        " QPushButton:pressed { background-color: #2E7D32; }"
+    )
 
     try:
         btn.clicked.disconnect()
@@ -178,38 +184,121 @@ def _setup_save_kit_button(wizard, rtexts):
         pass
 
     def _on_save():
+        dlg = _SaveKitDialog(wizard, rtexts, cal)
+        dlg.exec()
+
+    btn.clicked.connect(_on_save)
+    btn.setVisible(True)
+
+
+class _SaveKitDialog:
+    """Dialog that lets the user choose internal save or ZIP export."""
+
+    def __init__(self, wizard, rtexts, cal):
+        from PySide6.QtWidgets import (
+            QDialog, QVBoxLayout, QHBoxLayout, QLineEdit,
+            QRadioButton, QDialogButtonBox, QLabel,
+        )
         from datetime import datetime as _dt
+
+        self._wizard = wizard
+        self._rtexts = rtexts
+        self._cal = cal
+
         default_name = (
             f"kit_{getattr(wizard, 'selected_technique_id', 'kit')}"
             f"_{_dt.now().strftime('%Y%m%d_%H%M%S')}"
         )
-        display_name, ok = QInputDialog.getText(
-            wizard, rtexts.get("save_kit_title", "Save calibration kit"),
-            rtexts.get("save_kit_label", "Kit name:"), text=default_name,
-        )
-        if not ok or not display_name.strip():
-            return
-        display_name = display_name.strip()
-        slug = "".join(c if c.isalnum() or c in "-_" else "_" for c in display_name)
-        try:
-            kit_store.save_kit(
-                name=slug,
-                display_name=display_name,
-                cal=cal,
-                technique_id=getattr(wizard, "selected_technique_id", ""),
-                temperature_c=getattr(wizard, "temperature_c", 25.0),
-                device_name=str(getattr(wizard, "vna_device", "") or ""),
-            )
-            QMessageBox.information(
-                wizard,
-                rtexts.get("save_kit_success_title", "Kit saved"),
-                rtexts.get("save_kit_success", "Kit '{name}' saved successfully.").format(name=display_name),
-            )
-        except Exception as exc:
-            QMessageBox.critical(wizard, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
 
-    btn.clicked.connect(_on_save)
-    btn.setVisible(True)
+        self._dlg = QDialog(wizard)
+        self._dlg.setWindowTitle(rtexts.get("save_kit_dialog_title", "Save calibration kit"))
+        self._dlg.setMinimumWidth(420)
+
+        layout = QVBoxLayout(self._dlg)
+        layout.setSpacing(10)
+
+        layout.addWidget(QLabel(rtexts.get("save_kit_name_label", "Kit name:")))
+        self._name_edit = QLineEdit(default_name)
+        layout.addWidget(self._name_edit)
+
+        self._rb_internal = QRadioButton(
+            rtexts.get("save_kit_internal_radio", "Save internally (appears in the welcome dropdown)")
+        )
+        self._rb_internal.setChecked(True)
+        self._rb_zip = QRadioButton(
+            rtexts.get("save_kit_zip_radio", "Export as .charpkg file (for sharing)")
+        )
+        layout.addWidget(self._rb_internal)
+        layout.addWidget(self._rb_zip)
+
+        zip_hint = QLabel(rtexts.get(
+            "save_kit_zip_hint",
+            "Creates a folder with a .charpkg (importable in the app) and a .zip (openable with any archive tool)."
+        ))
+        zip_hint.setWordWrap(True)
+        zip_hint.setStyleSheet("font-size: 11px; color: #888888; font-style: italic; margin-left: 20px;")
+        layout.addWidget(zip_hint)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.button(QDialogButtonBox.StandardButton.Ok).setText(rtexts.get("save_kit_ok", "Save"))
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(rtexts.get("save_kit_cancel", "Cancel"))
+        buttons.accepted.connect(self._on_accepted)
+        buttons.rejected.connect(self._dlg.reject)
+        layout.addWidget(buttons)
+
+    def exec(self):
+        self._dlg.exec()
+
+    def _on_accepted(self):
+        from PySide6.QtWidgets import QFileDialog, QMessageBox
+
+        display_name = self._name_edit.text().strip()
+        if not display_name:
+            self._dlg.reject()
+            return
+
+        slug = "".join(c if c.isalnum() or c in "-_" else "_" for c in display_name)
+        wizard = self._wizard
+        rtexts = self._rtexts
+        cal = self._cal
+        tech_id = getattr(wizard, "selected_technique_id", "")
+        temp_c = getattr(wizard, "temperature_c", 25.0)
+        device = str(getattr(wizard, "vna_device", "") or "")
+
+        if self._rb_internal.isChecked():
+            try:
+                kit_store.save_kit(
+                    name=slug, display_name=display_name, cal=cal,
+                    technique_id=tech_id, temperature_c=temp_c, device_name=device,
+                )
+                self._dlg.accept()
+                QMessageBox.information(
+                    wizard,
+                    rtexts.get("save_kit_success_title", "Kit saved"),
+                    rtexts.get("save_kit_success_internal", "Kit '{name}' saved to the local library.").format(name=display_name),
+                )
+            except Exception as exc:
+                QMessageBox.critical(wizard, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
+        else:
+            dest_dir = QFileDialog.getExistingDirectory(
+                wizard, rtexts.get("save_kit_dialog_title", "Export kit — choose folder"),
+                str(__import__("pathlib").Path.home()),
+            )
+            if not dest_dir:
+                return
+            try:
+                out_folder = kit_store.save_kit_to_zip(
+                    dest_dir=dest_dir, slug=slug, display_name=display_name, cal=cal,
+                    technique_id=tech_id, temperature_c=temp_c, device_name=device,
+                )
+                self._dlg.accept()
+                QMessageBox.information(
+                    wizard,
+                    rtexts.get("save_kit_success_title", "Kit saved"),
+                    rtexts.get("save_kit_success_zip", "Kit exported to:\n{path}").format(path=out_folder),
+                )
+            except Exception as exc:
+                QMessageBox.critical(wizard, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
 
 
 def _sample_name(wizard, rtexts):
