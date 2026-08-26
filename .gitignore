@@ -209,6 +209,9 @@ __marimo__/
 # Material characterization generated measurement results (runtime outputs)
 src/NanoVNA_UTN_Toolkit/modules/material_characterization/calibration/probe_results/
 
+# Saved calibration packages (user-generated runtime data, not source code)
+src/NanoVNA_UTN_Toolkit/modules/material_characterization/calibration/kits/
+
 # temporary files generated during development and testing of fluid measurement module
 medicion_fluidos/
 Plan*.md
