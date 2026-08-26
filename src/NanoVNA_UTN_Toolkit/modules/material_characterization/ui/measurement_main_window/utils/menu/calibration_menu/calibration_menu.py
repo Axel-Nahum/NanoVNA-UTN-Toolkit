@@ -87,8 +87,16 @@ def _load_calibration_into_wizard(wizard, cal_name):
 # --------------------------------------------------------------------------- #
 
 def open_wizard(main_window):
-    """Open the characterization wizard to start a new session."""
-    logger.info("[calibration_menu] open_wizard — not yet implemented")
+    """Open the characterization wizard to start a new session from scratch."""
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.wizard_methods_window import (
+        CharacterizationWizard,
+    )
+
+    vna = getattr(getattr(main_window, "wizard_window", None), "vna", None) \
+          or getattr(main_window, "vna", None)
+    wizard = CharacterizationWizard(vna_device=vna)
+    wizard.show()
+    main_window.close()
 
 
 def select_calibration(main_window):
