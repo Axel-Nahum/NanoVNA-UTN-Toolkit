@@ -9,7 +9,7 @@ from pathlib import Path
 
 from PySide6 import QtCore
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtWidgets import (
     QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
     QMessageBox, QPushButton, QScrollArea, QVBoxLayout, QWidget,
@@ -195,6 +195,7 @@ def select_calibration(main_window):
     layout.addWidget(select_label)
 
     list_widget = QListWidget()
+    list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     for meta in calibrations:
         tech = "Simplified" if meta.is_simplified else "Full (2 refs)"
         refs = meta.ref1_key + (f" + {meta.ref2_key}" if meta.ref2_key else "")
@@ -203,6 +204,10 @@ def select_calibration(main_window):
         item.setData(Qt.ItemDataRole.UserRole, meta.name)
         list_widget.addItem(item)
     layout.addWidget(list_widget)
+    # Resize dialog to fit the widest item, capped at 80 % of the screen width.
+    _hint_w = list_widget.sizeHintForColumn(0) + 40
+    _max_w  = QGuiApplication.primaryScreen().availableGeometry().width() * 8 // 10
+    dialog.resize(max(500, min(_hint_w, _max_w)), dialog.sizeHint().height())
 
     # Single-selection tag area — fixed height to stay compact like DUT
     selected_name = [None]
@@ -213,6 +218,8 @@ def select_calibration(main_window):
     scroll = QScrollArea()
     scroll.setWidgetResizable(True)
     scroll.setFixedHeight(40)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+    scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     scroll.setWidget(selected_container)
     layout.addWidget(scroll)
 
@@ -245,6 +252,7 @@ def select_calibration(main_window):
         def remove_tag():
             tag.setParent(None)
             selected_name[0] = None
+            list_widget.clearSelection()
 
         remove_btn.clicked.connect(remove_tag)
         tag_layout.addWidget(remove_btn)
@@ -344,12 +352,14 @@ def delete_calibration(main_window):
     dialog.setWindowTitle("Delete Calibration")
     dialog.setMinimumWidth(500)
     layout = QVBoxLayout(dialog)
+    layout.setSpacing(10)
 
     lbl = QLabel("Select one or more calibrations to delete:")
     lbl.setStyleSheet("font-size: 9pt;")
     layout.addWidget(lbl)
 
     list_widget = QListWidget()
+    list_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     for meta in calibrations:
         tech = "Simplified" if meta.is_simplified else "Full (2 refs)"
         refs = meta.ref1_key + (f" + {meta.ref2_key}" if meta.ref2_key else "")
@@ -358,17 +368,23 @@ def delete_calibration(main_window):
         item.setData(Qt.ItemDataRole.UserRole, meta.name)
         list_widget.addItem(item)
     layout.addWidget(list_widget)
+    # Resize dialog to fit the widest item, capped at 80 % of the screen width.
+    _hint_w = list_widget.sizeHintForColumn(0) + 40
+    _max_w  = QGuiApplication.primaryScreen().availableGeometry().width() * 8 // 10
+    dialog.resize(max(500, min(_hint_w, _max_w)), dialog.sizeHint().height())
 
-    # Multi-selection tag area — fixed height to stay compact like DUT
-    selected_names = set()  # set of cal slugs
-    selected_labels = {}    # slug → display label
+    # Multi-selection tag area — scrolls horizontally when tags overflow
+    selected_names = set()
+    selected_labels = {}
     selected_area = QHBoxLayout()
-    selected_area.setContentsMargins(2, 2, 2, 2)
+    selected_area.setContentsMargins(4, 4, 4, 4)
     selected_container = QWidget()
     selected_container.setLayout(selected_area)
     scroll = QScrollArea()
     scroll.setWidgetResizable(True)
-    scroll.setFixedHeight(40)
+    scroll.setFixedHeight(60)
+    scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+    scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
     scroll.setWidget(selected_container)
     layout.addWidget(scroll)
 
@@ -381,8 +397,8 @@ def delete_calibration(main_window):
         disp = meta.display_name if meta else slug
         selected_labels[slug] = disp
 
-        tag = QWidget()
-        tag_layout = QHBoxLayout(tag)
+        tag_widget = QWidget()
+        tag_layout = QHBoxLayout(tag_widget)
         tag_layout.setContentsMargins(5, 2, 5, 2)
         tag_layout.addWidget(QLabel(disp))
 
@@ -395,14 +411,14 @@ def delete_calibration(main_window):
             "QPushButton { border: none; background-color: transparent; }"
             "QPushButton:hover { background-color: rgba(255, 0, 0, 50); }"
         )
+        tag_layout.addWidget(remove_btn)
 
-        def remove_tag(s=slug, w=tag):
-            w.setParent(None)
-            selected_names.discard(s)
+        def remove_tag():
+            tag_widget.setParent(None)
+            selected_names.discard(slug)
 
         remove_btn.clicked.connect(remove_tag)
-        tag_layout.addWidget(remove_btn)
-        selected_area.addWidget(tag)
+        selected_area.addWidget(tag_widget)
 
     list_widget.itemClicked.connect(add_selected)
 
@@ -436,12 +452,12 @@ def delete_calibration(main_window):
             except Exception as exc:
                 errors.append(f"{selected_labels.get(slug, slug)}: {exc}")
 
-        if errors:
-            QMessageBox.warning(dialog, "Some deletions failed", "\n".join(errors))
-        else:
-            QMessageBox.information(dialog, "Deleted", "Selected calibrations have been deleted.")
-
         dialog.accept()
+
+        if errors:
+            QMessageBox.warning(main_window, "Some deletions failed", "\n".join(errors))
+        else:
+            QMessageBox.information(main_window, "Deleted", "Calibrations deleted successfully.")
 
     btn_cancel.clicked.connect(dialog.reject)
     btn_delete.clicked.connect(on_delete)
