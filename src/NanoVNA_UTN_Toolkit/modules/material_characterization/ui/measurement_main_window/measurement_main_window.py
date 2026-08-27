@@ -96,9 +96,22 @@ class MeasurementMainWindow(QMainWindow):
             "shared/utils/dark_light_mode/dark_light_config.ini",
             Path(__file__).resolve(),
         )
+        # In this codebase is_dark_mode=False means dark mode is active (inverted naming).
         self.is_dark_mode = _dl.value("Dark_Light/is_dark_mode", False, type=bool)
+        self._is_dark = not self.is_dark_mode
 
+        _app_bg   = "#2c2c30" if self._is_dark else "#eeeef4"
+        _card_bg  = "#363638" if self._is_dark else "#ffffff"
+        _card_bdr = "#484848" if self._is_dark else "#c8c8d0"
+        self._app_bg  = _app_bg
+        self._card_bg = _card_bg
+        self._card_bdr = _card_bdr
+
+        # dark_light_config already sets QWidget bg globally; only isolate #mainContent
+        # so the card children don't inherit the app bg and override the card color.
         self.central_widget = QWidget()
+        self.central_widget.setObjectName("mainContent")
+        self.central_widget.setStyleSheet(f"#mainContent {{ background-color: {_app_bg}; }}")
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
         self.main_layout.setContentsMargins(20, 14, 20, 14)
@@ -113,13 +126,31 @@ class MeasurementMainWindow(QMainWindow):
 
     # --------------------------------------------------------------------- #
 
+    def setStyleSheet(self, stylesheet: str) -> None:
+        super().setStyleSheet(stylesheet)
+        if not hasattr(self, "central_widget"):
+            return
+        # During toggle: is_dark_mode=True means switching TO dark (inverted naming).
+        _going_dark = getattr(self, "is_dark_mode", False)
+        self._is_dark  = _going_dark
+        self._app_bg   = "#2c2c30" if _going_dark else "#eeeef4"
+        self._card_bg  = "#363638" if _going_dark else "#ffffff"
+        self._card_bdr = "#484848" if _going_dark else "#c8c8d0"
+        self.central_widget.setStyleSheet(
+            f"#mainContent {{ background-color: {self._app_bg}; }}"
+        )
+
+    # --------------------------------------------------------------------- #
+
     def _build_header(self):
         title = QLabel(self._texts.get("title", "Permittivity Results"))
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 22px; font-weight: bold; border: none;")
+        _title_fg    = "#e8e8f0" if self._is_dark else "#1a1a2e"
+        _subtitle_fg = "#8888a0" if self._is_dark else "#606080"
+        title.setStyleSheet(f"font-size: 22px; font-weight: bold; color: {_title_fg}; border: none; background: transparent;")
         subtitle = QLabel("Complex permittivity ε_r(f) of the characterized material")
         subtitle.setAlignment(Qt.AlignCenter)
-        subtitle.setStyleSheet("font-size: 12px; border: none;")
+        subtitle.setStyleSheet(f"font-size: 12px; color: {_subtitle_fg}; border: none; background: transparent;")
         self.main_layout.addWidget(title)
         self.main_layout.addWidget(subtitle)
 
@@ -217,9 +248,15 @@ class MeasurementMainWindow(QMainWindow):
         geo = QGuiApplication.primaryScreen().availableGeometry()
         max_w = geo.width() - 80
 
+        _card_bg  = getattr(self, "_card_bg",  "#252525")
+        _card_bdr = getattr(self, "_card_bdr", "#3d3d3d")
         card = QWidget()
         card.setObjectName("card")
-        card.setStyleSheet(_CARD)
+        card.setStyleSheet(
+            f"QWidget#card {{ background-color: {_card_bg};"
+            f" border: 1px solid {_card_bdr}; border-radius: 10px; }}"
+        )
+        card.setMinimumSize(0, 0)
         card_layout = QVBoxLayout(card)
         card_layout.setContentsMargins(16, 16, 16, 12)
         card_layout.setSpacing(8)
@@ -266,14 +303,24 @@ class MeasurementMainWindow(QMainWindow):
 
         card_layout.addLayout(chart_layout, 1)
         card_layout.addWidget(marker_bar)
-        card_layout.addWidget(_hsep())
+
+        sep = QWidget()
+        sep.setObjectName("cardSep")
+        sep.setFixedHeight(1)
+        sep.setStyleSheet(f"#cardSep {{ background-color: #484848; border: none; }}")
+        card_layout.addWidget(sep)
 
         caption = QLabel(
-            "ε′ = real part (energy storage)  ·  ε″ = imaginary part (dielectric losses)  ·  "
-            "Right-click to export"
+            "ε′ = real part (energy storage)  ·  "
+            "ε″ = imaginary part (dielectric losses)  ·  "
+            "Right-click on chart to export"
         )
+        caption.setObjectName("chartCaption")
         caption.setWordWrap(True)
-        caption.setStyleSheet("font-size: 11px; border: none; background: transparent;")
+        caption.setStyleSheet(
+            f"#chartCaption {{ font-size: 10px; color: #555566;"
+            f" border: none; background-color: {_card_bg}; }}"
+        )
         card_layout.addWidget(caption)
 
         return card
@@ -281,33 +328,58 @@ class MeasurementMainWindow(QMainWindow):
     # --------------------------------------------------------------------- #
 
     def _build_marker_data_row(self):
-        """Two plain white labels below the canvas showing live frequency + permittivity."""
+        """Two compact badge-style labels centered under their respective sliders."""
         from PySide6.QtWidgets import QSizePolicy
 
-        _lstyle = "font-size: 13px; border: none; background: transparent;"
+        _card_bg = getattr(self, "_card_bg", "#363638")
+
+        _BADGE_BG = (
+            "background-color: #1a1f2e; border: 1px solid #2d4a6e; border-radius: 5px;"
+        )
+        _KEY_STYLE = (
+            "font-size: 9px; font-weight: bold; color: #5a8fc0;"
+            " border: none; background: transparent;"
+        )
+        _VAL_STYLE = (
+            "font-size: 11px; color: #7ab3f5; border: none; background: transparent;"
+        )
+
+        def _make_badge(key_text, placeholder):
+            badge = QWidget()
+            badge.setStyleSheet(_BADGE_BG)
+            badge.setFixedHeight(30)
+            bl = QHBoxLayout(badge)
+            bl.setContentsMargins(8, 0, 8, 0)
+            bl.setSpacing(5)
+            key_lbl = QLabel(key_text)
+            key_lbl.setStyleSheet(_KEY_STYLE)
+            val_lbl = QLabel(placeholder)
+            val_lbl.setStyleSheet(_VAL_STYLE)
+            bl.addStretch(1)
+            bl.addWidget(key_lbl)
+            bl.addWidget(val_lbl)
+            bl.addStretch(1)
+            return badge, val_lbl
 
         row = QWidget()
+        row.setObjectName("markerBar")
+        row.setStyleSheet(f"#markerBar {{ background-color: {_card_bg}; border: none; }}")
         row.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         row_layout = QHBoxLayout(row)
-        row_layout.setContentsMargins(4, 6, 4, 6)
+        row_layout.setContentsMargins(0, 4, 0, 4)
         row_layout.setSpacing(0)
 
-        self._marker1_info_label = QLabel("—")
-        self._marker1_info_label.setStyleSheet(_lstyle)
-        self._marker1_info_label.setAlignment(Qt.AlignCenter)
+        badge1, self._marker1_info_label = _make_badge("ε′  M1", "—")
+        badge2, self._marker2_info_label = _make_badge("ε″  M2", "—")
 
-        sep = QLabel("|")
-        sep.setStyleSheet(_lstyle)
-        sep.setAlignment(Qt.AlignCenter)
-        sep.setFixedWidth(20)
-
-        self._marker2_info_label = QLabel("—")
-        self._marker2_info_label.setStyleSheet(_lstyle)
-        self._marker2_info_label.setAlignment(Qt.AlignCenter)
-
-        row_layout.addWidget(self._marker1_info_label, 1)
-        row_layout.addWidget(sep)
-        row_layout.addWidget(self._marker2_info_label, 1)
+        # Mirror the matplotlib slider positions [0.08, 0.38] and [0.54, 0.38]
+        # so each badge sits centered under its slider track.
+        # Stretch proportions: 8 | badge(38) | 8 | badge(38) | 8  = 100 units
+        row_layout.addStretch(8)
+        row_layout.addWidget(badge1, 38)
+        row_layout.addStretch(8)
+        row_layout.addWidget(badge2, 38)
+        row_layout.addStretch(8)
 
         return row
 
@@ -354,24 +426,21 @@ class MeasurementMainWindow(QMainWindow):
             pass
 
         # ------------------------------------------------------------------ #
-        # Pixel-based layout: sliders occupy a fixed pixel band at the bottom
-        # so they never overlap the x-axis labels regardless of window size.
+        # Slider band: fixed fractions with a pixel minimum for usability.
+        # The main axes is positioned by tight_layout so it auto-fits the
+        # title, axis labels and tick labels at every window size.
         # ------------------------------------------------------------------ #
-        _SL_H_PX   = 26   # slider track height in pixels
-        _SL_BOT_PX = 10   # padding below sliders
-        _GAP_PX    = 54   # gap between slider top and main-axes bottom
-                          # (absorbs x-axis tick labels at any dpi/size)
+        _SL_BOT_FRAC  = 0.015
+        _SL_H_FRAC    = 0.045
+        _SL_H_MIN_PX  = 22
 
-        def _compute_positions():
-            fig_h = fig.get_size_inches()[1] * fig.dpi
-            sl_bot = _SL_BOT_PX / fig_h
-            sl_h   = _SL_H_PX / fig_h
-            ax_bot = (_SL_BOT_PX + _SL_H_PX + _GAP_PX) / fig_h
-            ax_h   = max(0.30, 1.0 - ax_bot - 0.06)
-            return sl_bot, sl_h, ax_bot, ax_h
+        def _slider_positions():
+            fig_h  = max(1.0, fig.get_size_inches()[1] * fig.dpi)
+            sl_bot = _SL_BOT_FRAC
+            sl_h   = max(_SL_H_MIN_PX / fig_h, _SL_H_FRAC)
+            return sl_bot, sl_h
 
-        sl_bot0, sl_h0, ax_bot0, ax_h0 = _compute_positions()
-        ax.set_position([0.10, ax_bot0, 0.86, ax_h0])
+        sl_bot0, sl_h0 = _slider_positions()
 
         # Marker cursors
         self._cursor1, = ax.plot([], [], "o", markersize=m1_size, color=m1_color,
@@ -389,33 +458,41 @@ class MeasurementMainWindow(QMainWindow):
 
         def _adjust_layout(event=None):
             try:
-                sl_bot, sl_h, ax_bot, ax_h = _compute_positions()
-                ax.set_position([0.10, ax_bot, 0.86, ax_h])
+                sl_bot, sl_h = _slider_positions()
+                _bottom = sl_bot + sl_h + 0.015   # small gap above slider band
+
+                # Hide slider axes so tight_layout ignores them completely.
+                sl1_ax.set_visible(False)
+                sl2_ax.set_visible(False)
+                try:
+                    fig.tight_layout(rect=[0.0, _bottom, 1.0, 1.0])
+                except Exception:
+                    pass
+                sl1_ax.set_visible(True)
+                sl2_ax.set_visible(True)
+
+                # Place slider axes manually below the chart.
                 sl1_ax.set_position([0.08, sl_bot, 0.38, sl_h])
                 sl2_ax.set_position([0.54, sl_bot, 0.38, sl_h])
+
+                # Center title over the full figure width, not just the axes box.
+                pos = ax.get_position()
+                if pos.width > 0:
+                    ax.title.set_x((0.5 - pos.x0) / pos.width)
+
+                canvas.draw_idle()
             except Exception:
                 pass
 
+        _adjust_layout()
         fig.canvas.mpl_connect("resize_event", _adjust_layout)
 
-        # Restore last saved marker positions (clamped to valid range). With no
-        # saved positions the two cursors start apart: born on the same index
-        # they overlap exactly and read as a single cursor.
-        _ini_mk = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
-
-        def _saved_index(key, fallback):
-            try:
-                return min(max(int(_ini_mk.value(key)), 0), n - 1)
-            except (TypeError, ValueError):
-                return min(max(fallback, 0), n - 1)
-
-        # Independent by default: linking is an explicit opt-in from the chart
-        # context menu, not the out-of-the-box behaviour. Read before the sliders
-        # are built so their initial handles agree with the cursors.
-        self._cursors_linked = str(_ini_mk.value("markers/linked", "false")).lower() == "true"
-
-        _init_idx1 = _saved_index("markers/index_1", n // 3)
-        _init_idx2 = _init_idx1 if self._cursors_linked else _saved_index("markers/index_2", (2 * n) // 3)
+        # Always start both markers at index 0, always unlinked.
+        # Saved INI positions and link state are intentionally ignored here —
+        # each new result window is a fresh measurement session.
+        self._cursors_linked = False
+        _init_idx1 = 0
+        _init_idx2 = 0
 
         try:
             slider1 = Slider(sl1_ax, "", 0, n - 1, valinit=_init_idx1, valstep=1,
@@ -452,7 +529,7 @@ class MeasurementMainWindow(QMainWindow):
             self._cursor1.set_data([freq], [eps_r])
             if hasattr(self, "_marker1_info_label"):
                 self._marker1_info_label.setText(
-                    f"f = {_fmt_freq(freq)}    ε' = {eps_r:.4f}")
+                    f"{_fmt_freq(freq)}   ε′ = {eps_r:.4f}")
             get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                 "markers/index_1", idx
             )
@@ -464,7 +541,7 @@ class MeasurementMainWindow(QMainWindow):
                     self._cursor2.set_data([freq], [self._marker_loss_eps[idx]])
                 if hasattr(self, "_marker2_info_label"):
                     self._marker2_info_label.setText(
-                        f"f = {_fmt_freq(freq)}    ε'' = {self._marker_loss_eps[idx]:.4f}")
+                        f"{_fmt_freq(freq)}   ε″ = {self._marker_loss_eps[idx]:.4f}")
                 get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                     "markers/index_2", idx
                 )
@@ -481,7 +558,7 @@ class MeasurementMainWindow(QMainWindow):
             self._cursor2.set_data([freq], [eps_i])
             if hasattr(self, "_marker2_info_label"):
                 self._marker2_info_label.setText(
-                    f"f = {_fmt_freq(freq)}    ε'' = {eps_i:.4f}")
+                    f"{_fmt_freq(freq)}   ε″ = {eps_i:.4f}")
             get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                 "markers/index_2", idx
             )
@@ -493,7 +570,7 @@ class MeasurementMainWindow(QMainWindow):
                     self._cursor1.set_data([freq], [self._marker_real_eps[idx]])
                 if hasattr(self, "_marker1_info_label"):
                     self._marker1_info_label.setText(
-                        f"f = {_fmt_freq(freq)}    ε' = {self._marker_real_eps[idx]:.4f}")
+                        f"{_fmt_freq(freq)}   ε′ = {self._marker_real_eps[idx]:.4f}")
                 get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                     "markers/index_1", idx
                 )
