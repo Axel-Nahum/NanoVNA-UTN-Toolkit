@@ -43,3 +43,7 @@ la carpeta de antecedentes de la sonda,
 ## Presets eliminados
 
 Registro de presets borrados desde el asistente (append-only).
+- **2026-08-27T16:04:39** - eliminado `water_open_coax_liquids_simplified_25.0C_50kHz-1.5GHz_101pts_20260827-160158` (water, reference)
+- **2026-08-27T16:04:42** - eliminado `water_open_coax_liquids_simplified_25.0C_50kHz-1.5GHz_101pts_20260827-160207` (water, reference)
+- **2026-08-27T16:05:44** - eliminado `water_open_coax_liquids_simplified_25.0C_50kHz-1.5GHz_101pts_20260827-160518` (water, reference)
+- **2026-08-27T16:05:47** - eliminado `water_open_coax_liquids_simplified_25.0C_50kHz-1.5GHz_101pts_20260827-160522` (water, reference)

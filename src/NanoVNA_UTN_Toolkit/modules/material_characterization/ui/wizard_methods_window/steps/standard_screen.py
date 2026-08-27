@@ -441,6 +441,16 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     already = wizard.perm_calibration.is_standard_measured(standard.key)
 
+    # ── Save-preset button (created here so it can be placed in preset_row) ─ #
+    btn_save_preset = QPushButton(std_texts.get("save_preset", "Save as preset…"))
+    btn_save_preset.setEnabled(already)
+    btn_save_preset.setStyleSheet(
+        "QPushButton { color: #7ab3f5; border: 1px solid #7ab3f5;"
+        " border-radius: 4px; padding: 0 10px; font-size: 11px; }"
+        " QPushButton:hover { background: #0f1e30; }"
+        " QPushButton:disabled { color: #3a4a5a; border-color: #3a4a5a; }"
+    )
+
     # ── Source selector (reference liquids only) ──────────────────────── #
     btn_grp = None
     if is_reference:
@@ -450,7 +460,7 @@ def build_standard_screen(wizard, descriptor, step_def):
         )
         # Without the Save/Delete action row the box is two rows shorter; one
         # more when the import option is hidden (Debug Mode off).
-        src_frame.setMinimumHeight(126 if debug_mode else 100)
+        src_frame.setMinimumHeight(112 if debug_mode else 88)
         src_layout = QVBoxLayout(src_frame)
         src_layout.setContentsMargins(14, 12, 14, 14)
         src_layout.setSpacing(8)
@@ -484,12 +494,20 @@ def build_standard_screen(wizard, descriptor, step_def):
         # this screen only consumes presets, it no longer manages the library.
         _refresh_preset_combo(preset_combo, selected_liquid_key(wizard, standard))
 
-        # [rb_preset] [combo ────────] — misma fila, Qt los alinea vertical automáticamente
+        def _save_and_refresh():
+            _do_save_measurement(wizard, descriptor, standard, std_texts)
+            _refresh_preset_combo(preset_combo, selected_liquid_key(wizard, standard))
+
+        btn_save_preset.clicked.connect(_save_and_refresh)
+
+        # [rb_preset] [combo ──] [Save as preset…] — button right of combo
+        btn_save_preset.setFixedHeight(26)
         preset_row = QHBoxLayout()
         preset_row.setContentsMargins(0, 0, 0, 0)
         preset_row.setSpacing(8)
         preset_row.addWidget(rb_preset)
         preset_row.addWidget(preset_combo, stretch=1)
+        preset_row.addWidget(btn_save_preset)
         src_layout.addLayout(preset_row)
 
         mid.addSpacing(24)
@@ -504,20 +522,6 @@ def build_standard_screen(wizard, descriptor, step_def):
     measure_btn.setFixedHeight(38)
     measure_btn.setFixedWidth(220)
 
-    # Saving belongs next to Measure: what it stores is exactly what this step
-    # just captured. Available on every step, not only the reference liquids.
-    btn_save_preset = QPushButton(std_texts.get("save_preset", "Save as preset…"))
-    btn_save_preset.setFixedHeight(38)
-    btn_save_preset.setEnabled(already)
-    btn_save_preset.setStyleSheet(
-        "QPushButton { color: #7ab3f5; border: 1px solid #7ab3f5;"
-        " border-radius: 4px; padding: 0 12px; font-size: 11px; }"
-        " QPushButton:hover { background: #0f1e30; }"
-        " QPushButton:disabled { color: #3a4a5a; border-color: #3a4a5a; }"
-    )
-    btn_save_preset.clicked.connect(
-        lambda: _do_save_measurement(wizard, descriptor, standard, std_texts))
-
     measure_row = QHBoxLayout()
     measure_row.addStretch(1)
     measure_row.addWidget(measure_btn)
@@ -526,11 +530,15 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     mid.addSpacing(10)
 
-    save_row = QHBoxLayout()
-    save_row.addStretch(1)
-    save_row.addWidget(btn_save_preset)
-    save_row.addStretch(1)
-    mid.addLayout(save_row)
+    if not is_reference:
+        btn_save_preset.clicked.connect(
+            lambda: _do_save_measurement(wizard, descriptor, standard, std_texts))
+        btn_save_preset.setFixedHeight(38)
+        save_row = QHBoxLayout()
+        save_row.addStretch(1)
+        save_row.addWidget(btn_save_preset)
+        save_row.addStretch(1)
+        mid.addLayout(save_row)
 
     # Every path that stores a measurement re-enables saving.
     wizard._on_measurement_stored_hook = lambda: btn_save_preset.setEnabled(True)
