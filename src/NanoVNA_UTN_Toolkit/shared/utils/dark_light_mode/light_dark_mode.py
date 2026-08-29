@@ -143,9 +143,9 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             }
 
             QMenu::separator {
-                height: 0.5px;
-                background: white;
-                margin: 4px 0px;
+                height: 1px;
+                background: #555555;
+                margin: 3px 8px;
             }
 
             QTabBar::tab {
@@ -407,9 +407,9 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             }
 
             QMenu::separator {
-                height: 0.5px;
-                background: black;
-                margin: 4px 0px;
+                height: 1px;
+                background: #c0c0c0;
+                margin: 3px 8px;
             }
 
             QTabBar::tab {
@@ -936,6 +936,12 @@ def dark_light_config(self):
 
         QMenu::item:selected {{
             background-color: {menu_item_color};
+        }}
+
+        QMenu::separator {{
+            height: 1px;
+            background: rgba(128, 128, 128, 0.5);
+            margin: 3px 8px;
         }}
 
         /* Lists and trees */

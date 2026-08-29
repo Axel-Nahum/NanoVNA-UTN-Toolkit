@@ -50,6 +50,12 @@ def build_menu(main_window) -> None:
     export_pdf_action.triggered.connect(main_window._export_pdf)
     file_menu.addAction(export_pdf_action)
 
+    file_menu.addSeparator()
+    from NanoVNA_UTN_Toolkit.shared.utils.preferences.preferences import open_preferences_dialog
+    pref_action = QAction("⚙  Preferences…", main_window)
+    pref_action.triggered.connect(lambda: open_preferences_dialog(main_window))
+    file_menu.addAction(pref_action)
+
     # ------------------------------------------------------------------ #
     # Plots
     # ------------------------------------------------------------------ #

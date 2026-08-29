@@ -51,7 +51,13 @@ from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_ena
 # ---------------------------------------------------------------------------
 # Chart-mode persistence
 # ---------------------------------------------------------------------------
-_CHART_PREFS_PATH = Path.home() / ".nanovna_utn_toolkit" / "chart_prefs.ini"
+def _chart_prefs_path() -> Path:
+    if getattr(sys, "frozen", False):
+        return (Path(os.getenv("APPDATA")) / "NanoVNA-UTN-Toolkit"
+                / "INI" / "material_characterization" / "chart_prefs" / "chart_prefs.ini")
+    return Path.home() / ".nanovna_utn_toolkit" / "chart_prefs.ini"
+
+_CHART_PREFS_PATH = _chart_prefs_path()
 _CHART_SECTION    = "wizard_chart"
 _CHART_MODE_KEY   = "mode"
 _CHART_MODES      = ("smith", "db", "phase")
@@ -460,7 +466,7 @@ def build_standard_screen(wizard, descriptor, step_def):
         )
         # Without the Save/Delete action row the box is two rows shorter; one
         # more when the import option is hidden (Debug Mode off).
-        src_frame.setMinimumHeight(112 if debug_mode else 88)
+        src_frame.setMinimumHeight(126)
         src_layout = QVBoxLayout(src_frame)
         src_layout.setContentsMargins(14, 12, 14, 14)
         src_layout.setSpacing(8)
@@ -476,10 +482,9 @@ def build_standard_screen(wizard, descriptor, step_def):
         btn_grp.addButton(rb_measure, 0)
         src_layout.addWidget(rb_measure)
 
-        if debug_mode:
-            rb_import = QRadioButton(std_texts.get("source_import", "Import .s1p file"))
-            btn_grp.addButton(rb_import, 1)
-            src_layout.addWidget(rb_import)
+        rb_import = QRadioButton(std_texts.get("source_import", "Import .s1p file"))
+        btn_grp.addButton(rb_import, 1)
+        src_layout.addWidget(rb_import)
 
         # Fila: [rb_preset] [combo ─────────────]
         rb_preset = QRadioButton(std_texts.get("source_preset", "Use saved preset"))

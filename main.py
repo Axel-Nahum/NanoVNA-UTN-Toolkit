@@ -84,21 +84,25 @@ def ensure_paths():
         # Carpeta donde PyInstaller pone los datos
         base_dir = sys._MEIPASS
 
-        # Dentro del .spec pusiste INI y Measurements
-        src_ini = os.path.join(base_dir, "INI")
-        src_meas = os.path.join(base_dir, "Measurements")
-
         appdata = os.getenv("APPDATA")
         root = os.path.join(appdata, "NanoVNA-UTN-Toolkit")
-
-        dst_ini = os.path.join(root, "INI")
-        dst_meas = os.path.join(root, "Measurements")
-
         os.makedirs(root, exist_ok=True)
 
-        # Copia sin sobrescribir (solo primera vez)
+        # INI defaults — copia sin sobrescribir (preserva cambios del usuario)
+        src_ini = os.path.join(base_dir, "INI")
+        dst_ini = os.path.join(root, "INI")
         copy_contents(src_ini, dst_ini)
+
+        # Measurements legacy
+        src_meas = os.path.join(base_dir, "Measurements")
+        dst_meas = os.path.join(root, "Measurements")
         copy_contents(src_meas, dst_meas)
+
+        # Presets de characterization — solo copia los que no existan (preserva presets del usuario)
+        src_presets = os.path.join(base_dir, "bundled_presets", "preset_liquids")
+        dst_presets = os.path.join(root, "modules", "material_characterization",
+                                   "calibration", "preset_liquids")
+        copy_contents(src_presets, dst_presets)
 
         return dst_ini, dst_meas
 

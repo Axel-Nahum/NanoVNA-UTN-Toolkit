@@ -3,13 +3,9 @@ Calibration menu actions for the characterization main window.
 """
 
 import logging
-import os
 
-from pathlib import Path
-
-from PySide6 import QtCore
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QGuiApplication, QIcon
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
     QMessageBox, QPushButton, QScrollArea, QVBoxLayout, QWidget,
@@ -20,12 +16,19 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader i
 
 logger = logging.getLogger(__name__)
 
-# assets/icons/delete.svg is 7 levels up from this file's directory
-_ICON_PATH = str(Path(__file__).resolve().parents[7] / "assets" / "icons" / "delete.svg")
+_REMOVE_BTN_STYLE = (
+    "QPushButton { border: none; background-color: transparent;"
+    " color: #cc4444; font-size: 14px; font-weight: bold; }"
+    " QPushButton:hover { color: #ff6666; background-color: rgba(255,0,0,30); }"
+)
 
 
-def _delete_icon():
-    return QIcon(_ICON_PATH) if os.path.exists(_ICON_PATH) else QIcon()
+def _make_remove_btn() -> "QPushButton":
+    btn = QPushButton("✕")
+    btn.setFixedSize(30, 30)
+    btn.setFlat(True)
+    btn.setStyleSheet(_REMOVE_BTN_STYLE)
+    return btn
 
 
 # --------------------------------------------------------------------------- #
@@ -239,15 +242,7 @@ def select_calibration(main_window):
         meta = next((m for m in calibrations if m.name == name), None)
         tag_layout.addWidget(QLabel(meta.display_name if meta else name))
 
-        remove_btn = QPushButton()
-        remove_btn.setIcon(_delete_icon())
-        remove_btn.setIconSize(QtCore.QSize(20, 20))
-        remove_btn.setFixedSize(30, 30)
-        remove_btn.setFlat(True)
-        remove_btn.setStyleSheet(
-            "QPushButton { border: none; background-color: transparent; }"
-            "QPushButton:hover { background-color: rgba(255, 0, 0, 50); }"
-        )
+        remove_btn = _make_remove_btn()
 
         def remove_tag():
             tag.setParent(None)
@@ -402,15 +397,7 @@ def delete_calibration(main_window):
         tag_layout.setContentsMargins(5, 2, 5, 2)
         tag_layout.addWidget(QLabel(disp))
 
-        remove_btn = QPushButton()
-        remove_btn.setIcon(_delete_icon())
-        remove_btn.setIconSize(QtCore.QSize(20, 20))
-        remove_btn.setFixedSize(30, 30)
-        remove_btn.setFlat(True)
-        remove_btn.setStyleSheet(
-            "QPushButton { border: none; background-color: transparent; }"
-            "QPushButton:hover { background-color: rgba(255, 0, 0, 50); }"
-        )
+        remove_btn = _make_remove_btn()
         tag_layout.addWidget(remove_btn)
 
         def remove_tag():

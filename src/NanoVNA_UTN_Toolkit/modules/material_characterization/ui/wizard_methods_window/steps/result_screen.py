@@ -721,6 +721,7 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
         layout.addWidget(cc_chk)
 
     chk = QCheckBox(rtexts.get("branch_override_label", "Override automatic branch selection"))
+    chk.setVisible(False)
     layout.addWidget(chk)
 
     combo_container = QWidget()

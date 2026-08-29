@@ -330,6 +330,8 @@ def change_language(self, language, dialog):
 # ------------------------------------------------------------------------------------------------------------------- #
 
 def update_ui_texts(self):
+    if not hasattr(self, "description_label"):
+        return
 
     self.description_label.setText(
         self.menu_description

@@ -301,8 +301,25 @@ class MeasurementMainWindow(QMainWindow):
         canvas.setContextMenuPolicy(Qt.CustomContextMenu)
         canvas.customContextMenuRequested.connect(self._show_chart_context_menu)
 
-        card_layout.addLayout(chart_layout, 1)
-        card_layout.addWidget(marker_bar)
+        # Match marker-bar background to the matplotlib figure so they look like one canvas
+        _fc = fig.get_facecolor()
+        _fig_bg = "#{:02x}{:02x}{:02x}".format(
+            int(_fc[0] * 255), int(_fc[1] * 255), int(_fc[2] * 255))
+        marker_bar.setStyleSheet(
+            f"#markerBar {{ background-color: {_fig_bg}; border: none; }}"
+        )
+
+        # Wrap canvas + marker-bar in a single panel so they scale together
+        chart_panel = QWidget()
+        chart_panel.setStyleSheet(f"background-color: {_fig_bg}; border: none;")
+        chart_panel.setMaximumWidth(max_w)
+        _cp_layout = QVBoxLayout(chart_panel)
+        _cp_layout.setContentsMargins(0, 0, 0, 10)
+        _cp_layout.setSpacing(0)
+        _cp_layout.addLayout(chart_layout, 1)
+        _cp_layout.addWidget(marker_bar)
+
+        card_layout.addWidget(chart_panel, 1)
 
         sep = QWidget()
         sep.setObjectName("cardSep")
@@ -311,8 +328,8 @@ class MeasurementMainWindow(QMainWindow):
         card_layout.addWidget(sep)
 
         caption = QLabel(
-            "ε′ = real part (energy storage)  ·  "
-            "ε″ = imaginary part (dielectric losses)  ·  "
+            "ε′ = real part (energy storage)  ;  "
+            "ε″ = imaginary part (dielectric losses)  ;  "
             "Right-click on chart to export"
         )
         caption.setObjectName("chartCaption")
@@ -369,8 +386,8 @@ class MeasurementMainWindow(QMainWindow):
         row_layout.setContentsMargins(0, 4, 0, 4)
         row_layout.setSpacing(0)
 
-        badge1, self._marker1_info_label = _make_badge("ε′  M1", "—")
-        badge2, self._marker2_info_label = _make_badge("ε″  M2", "—")
+        badge1, self._marker1_info_label = _make_badge("Real", "—")
+        badge2, self._marker2_info_label = _make_badge("Imag", "—")
 
         # Mirror the matplotlib slider positions [0.08, 0.38] and [0.54, 0.38]
         # so each badge sits centered under its slider track.
@@ -529,7 +546,7 @@ class MeasurementMainWindow(QMainWindow):
             self._cursor1.set_data([freq], [eps_r])
             if hasattr(self, "_marker1_info_label"):
                 self._marker1_info_label.setText(
-                    f"{_fmt_freq(freq)}   ε′ = {eps_r:.4f}")
+                    f"F = {_fmt_freq(freq)} ; ε ={eps_r:.4f}")
             get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                 "markers/index_1", idx
             )
@@ -541,7 +558,7 @@ class MeasurementMainWindow(QMainWindow):
                     self._cursor2.set_data([freq], [self._marker_loss_eps[idx]])
                 if hasattr(self, "_marker2_info_label"):
                     self._marker2_info_label.setText(
-                        f"{_fmt_freq(freq)}   ε″ = {self._marker_loss_eps[idx]:.4f}")
+                        f"F = {_fmt_freq(freq)} ; ε ={self._marker_loss_eps[idx]:.4f}")
                 get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                     "markers/index_2", idx
                 )
@@ -558,7 +575,7 @@ class MeasurementMainWindow(QMainWindow):
             self._cursor2.set_data([freq], [eps_i])
             if hasattr(self, "_marker2_info_label"):
                 self._marker2_info_label.setText(
-                    f"{_fmt_freq(freq)}   ε″ = {eps_i:.4f}")
+                    f"F = {_fmt_freq(freq)} ; ε ={eps_i:.4f}")
             get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                 "markers/index_2", idx
             )
@@ -570,7 +587,7 @@ class MeasurementMainWindow(QMainWindow):
                     self._cursor1.set_data([freq], [self._marker_real_eps[idx]])
                 if hasattr(self, "_marker1_info_label"):
                     self._marker1_info_label.setText(
-                        f"{_fmt_freq(freq)}   ε′ = {self._marker_real_eps[idx]:.4f}")
+                        f"F = {_fmt_freq(freq)} ; ε ={self._marker_real_eps[idx]:.4f}")
                 get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                     "markers/index_1", idx
                 )

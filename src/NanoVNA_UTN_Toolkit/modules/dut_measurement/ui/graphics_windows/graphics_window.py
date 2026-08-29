@@ -301,6 +301,12 @@ class NanoVNAGraphics(QMainWindow):
 
         file_menu.addSeparator()
 
+        from NanoVNA_UTN_Toolkit.shared.utils.preferences.preferences import open_preferences_dialog
+        pref_action = file_menu.addAction("⚙  Preferences…")
+        pref_action.triggered.connect(lambda: open_preferences_dialog(self))
+
+        file_menu.addSeparator()
+
         exit_action = file_menu.addAction(f"{self.measurement_menu_back_to_menu}")
         exit_action.triggered.connect(lambda: self.return_to_menu_window())
 
