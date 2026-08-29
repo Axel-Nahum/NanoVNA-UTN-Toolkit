@@ -341,31 +341,33 @@ class SmithChartManager:
                                  canvas=None, color_map=None):
         """Update wizard Smith chart with new measurement."""
         if color_map is None:
-            color_map = {'open': 'red', 'short': 'green', 'match': 'blue'}
-        
+            color_map = {'open': 'red', 'short': 'green', 'match': 'blue', 'open or short': 'orange'}
+
         try:
             # Clear and redraw base
             ax.clear()
-            
+
             # Get sweep configuration for base chart
             network_base = self.builder.create_empty_network(freqs[0], freqs[-1], len(freqs))
             network_base.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
-            
+
             # Configure appearance
             self.builder.ax = ax  # Temporarily set for configuration
             self.builder._configure_smith_chart_appearance()
-            
+            ax.set_title(r"$\mathrm{Smith\ Diagram}$", fontsize=14, pad=30,
+                         color=self.config.text_color)
+
             # Plot measurement data
             color = color_map.get(standard_name.lower(), self.config.trace_color)
             ax.plot(np.real(s11_data), np.imag(s11_data), 'o-',
                    color=color, linewidth=self.config.linewidth, markersize=3)
-            
+
             # Add starting point marker
             self.builder.add_start_point_marker(s11_data, color=color)
-            
+
             # Add legend
             legend_line = Line2D([0], [0], color=color)
-            ax.legend([legend_line], [rf"$\mathrm{{S11 - {standard_name}}}$"], 
+            ax.legend([legend_line], [r"$\mathrm{S11}$"],
                 loc='upper left', bbox_to_anchor=(-0.17, 1.14))
             
             # Refresh canvas

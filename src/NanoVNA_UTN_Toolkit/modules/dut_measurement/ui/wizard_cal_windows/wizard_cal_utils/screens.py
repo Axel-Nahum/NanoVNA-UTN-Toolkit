@@ -504,7 +504,7 @@ def show_step_screen(self, step, parent = None):
             instruction_text = "Open or Short standard already measured ✓"
             instruction_style = "font-size: 14px; padding: 8px; color: lightgreen;"
         else:
-            instruction_text = " or Short standard and press Measure"
+            instruction_text = "Connect Open or Short standard and press Measure"
             instruction_style = "font-size: 14px; padding: 8px; color: yellow;"
     else:
         if is_measured:
@@ -531,7 +531,8 @@ def show_step_screen(self, step, parent = None):
     
     # Status label to show measurement state
     if is_measured:
-        status_text = f"{step_name} measurement complete"
+        _status_name = "Open/Short" if self.selected_method == "Open/Short Normalization" else step_name
+        status_text = f"{_status_name} measurement complete"
         status_style = "font-size: 12px; padding: 4px; color: lightgreen;"
     else:
         status_text = f"{self.dut_wizard_ui_label_measure}"

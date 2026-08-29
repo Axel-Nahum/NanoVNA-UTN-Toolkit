@@ -9,6 +9,28 @@ from PySide6.QtCore import Qt
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
+def _remove_spikes(s11, threshold=2.5):
+    """Replace isolated spikes with the average of adjacent neighbors (complex).
+
+    A point s11[i] is a spike when its deviation from the linear interpolation
+    of its neighbors is more than `threshold` times the variation between those
+    neighbors.  Only truly isolated outliers — not smooth gradients — are removed.
+    """
+    s11 = np.array(s11, dtype=complex)
+    n = len(s11)
+    if n < 3:
+        return s11
+    result = s11.copy()
+    for i in range(1, n - 1):
+        expected = (s11[i - 1] + s11[i + 1]) / 2.0
+        residual = abs(s11[i] - expected)
+        neighbor_spread = abs(s11[i + 1] - s11[i - 1])
+        if residual > threshold * max(neighbor_spread, 1e-9):
+            result[i] = expected
+    return result
+
+# ------------------------------------------------------------------------------------------------------------------ #
+
 def update_smith_chart(self, freqs, s11, standard_name):
     """Update Smith chart with measured calibration data."""
     from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import SmithChartManager
@@ -303,8 +325,8 @@ def perform_calibration_measurement(self, step, standard_name):
             
             logging.info(f"[CalibrationWizard] Reading S11 data...")
             s11_data = self.vna_device.readValues("data 0")
-            s11 = np.array(s11_data)
-            
+            s11 = _remove_spikes(np.array(s11_data))
+
             logging.info(f"[CalibrationWizard] Got {len(freqs)} frequency points and {len(s11)} S11 points")
             
             # Verify that we got the expected number of points
@@ -347,7 +369,8 @@ def perform_calibration_measurement(self, step, standard_name):
                         self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
 
                 # Update Smith chart with measured data
-                update_smith_chart(self, freqs, s11, standard_name)
+                chart_label = "OPEN or SHORT" if getattr(self, 'selected_method', None) == "Open/Short Normalization" else standard_name
+                update_smith_chart(self, freqs, s11, chart_label)
 
                 # Update status
                 self.status_label.setText(f"{display_name} measured successfully!")
