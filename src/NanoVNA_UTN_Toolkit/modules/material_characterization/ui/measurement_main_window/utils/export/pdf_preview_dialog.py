@@ -24,7 +24,7 @@ from NanoVNA_UTN_Toolkit.shared.utils.export.pdf_generation_task import (
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QMessageBox, QWidget, QCheckBox, QLineEdit, QComboBox,
-    QFrame, QStylePainter, QStyleOptionComboBox, QFileDialog,
+    QFrame, QStylePainter, QStyleOptionComboBox, QFileDialog, QTextEdit,
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QGuiApplication
@@ -48,8 +48,8 @@ get_settings = safe_import(
 _CHART_INI_EXE = "INI/material_characterization/characterization_chart_config/characterization_chart_config.ini"
 _CHART_INI_DEV = "modules/material_characterization/ui/measurement_main_window/characterization_chart_config/characterization_chart_config.ini"
 
-# How many markers each graph supports
-_GRAPH_MARKER_COUNT = {0: 1, 1: 2}
+# How many markers each graph supports  (graph 0 = permittivity, graph 1 = Smith)
+_GRAPH_MARKER_COUNT = {0: 2, 1: 1}
 
 # --------------------------------------------------------------------------- #
 
@@ -117,17 +117,20 @@ class PermittivityPdfPreviewDialog(QDialog):
     """
     Preview dialog for the characterization PDF export.
 
-    Graph 0: S11 Smith chart  — 1 marker (one trace)
-    Graph 1: Permittivity ε'+ε'' — 2 markers (Marker 1 = ε', Marker 2 = ε'')
-    Colors read from characterization_chart_config.ini for the permittivity markers.
-    """
+    When include_notes=False — 2 steps:
+      Step 0: Permittivity ε'+ε''  (2 markers)
+      Step 1: S11 Smith chart       (1 marker)
 
-    TOTAL_GRAPHS = 2
+    When include_notes=True — 3 steps:
+      Step 0: Notes / Comments      (text editor, no graph)
+      Step 1: Permittivity ε'+ε''  (2 markers)
+      Step 2: S11 Smith chart       (1 marker)
+    """
 
     def __init__(
         self, parent=None, freqs=None, s11_data=None, eps_selected=None,
         sample_name=None, output_path=None, wizard_window=None,
-        include_steps=False,
+        include_steps=False, include_notes=False,
     ):
         super().__init__(parent)
 
@@ -140,15 +143,15 @@ class PermittivityPdfPreviewDialog(QDialog):
         self.output_path = output_path
         self.wizard_window = wizard_window
         self.include_steps = include_steps
+        self.include_notes = include_notes
+        self.TOTAL_GRAPHS = 3 if include_notes else 2
 
         self.current_graph_index = 0
-        self.current_figure = 0
         self.saved_figures = []
 
-        # Marker state per graph — sized to max markers (2), but only
-        # _GRAPH_MARKER_COUNT[g] slots are used for graph g.
-        self.marker_positions = {i: [None, None] for i in range(self.TOTAL_GRAPHS)}
-        self.marker_active = {i: [False, False] for i in range(self.TOTAL_GRAPHS)}
+        # Marker state keyed by data-graph index (0=permittivity, 1=smith)
+        self.marker_positions = {i: [None, None] for i in range(2)}
+        self.marker_active = {i: [False, False] for i in range(2)}
         self.ann_objects = []
         self.markers = []
 
@@ -187,11 +190,17 @@ class PermittivityPdfPreviewDialog(QDialog):
     # Helpers
     # ------------------------------------------------------------------ #
 
+    def _data_graph_index(self, graph_index):
+        """Map navigation index → data index (0=permittivity, 1=smith).
+        Returns -1 for the notes step."""
+        return graph_index - (1 if self.include_notes else 0)
+
     def _marker_count(self, graph_index):
-        return _GRAPH_MARKER_COUNT.get(graph_index, 1)
+        dgi = self._data_graph_index(graph_index)
+        return _GRAPH_MARKER_COUNT.get(dgi, 0)
 
     def _marker_colors(self, graph_index):
-        if graph_index == 0:
+        if self._data_graph_index(graph_index) == 1:
             return [self._s11_marker_color]
         return self._perm_marker_colors
 
@@ -229,6 +238,27 @@ class PermittivityPdfPreviewDialog(QDialog):
         main_layout.addWidget(subtitle)
         main_layout.addSpacing(4)
 
+        # Notes step widget (full-size panel, replaces canvas when on step 0 with include_notes)
+        self.notes_step_widget = QWidget()
+        self.notes_step_widget.setMinimumHeight(360)
+        notes_step_layout = QVBoxLayout(self.notes_step_widget)
+        notes_step_layout.setContentsMargins(8, 12, 8, 12)
+        notes_step_label = QLabel("Notes / Comments")
+        notes_step_label.setStyleSheet("font-size: 13px; font-weight: bold; color: #cccccc;")
+        notes_step_layout.addWidget(notes_step_label)
+        notes_step_hint = QLabel(
+            "Write any observations, conclusions or relevant information to include in the report."
+        )
+        notes_step_hint.setStyleSheet("font-size: 11px; color: #999999;")
+        notes_step_hint.setWordWrap(True)
+        notes_step_layout.addWidget(notes_step_hint)
+        notes_step_layout.addSpacing(6)
+        self.notes_edit = QTextEdit()
+        self.notes_edit.setPlaceholderText("Enter notes here…")
+        notes_step_layout.addWidget(self.notes_edit)
+        self.notes_step_widget.setVisible(False)
+        main_layout.addWidget(self.notes_step_widget)
+
         # Canvas
         self.fig, self.ax = plt.subplots()
         self.fig.patch.set_facecolor("white")
@@ -260,7 +290,8 @@ class PermittivityPdfPreviewDialog(QDialog):
         self.prev_button.setStyleSheet(nav_style)
         self.next_button.setStyleSheet(nav_style)
 
-        canvas_frame = QFrame()
+        self.canvas_frame = QFrame()
+        canvas_frame = self.canvas_frame
         canvas_frame.setStyleSheet(
             "QFrame { border: 1px solid #444444; border-radius: 4px; background-color: white; }"
         )
@@ -269,16 +300,16 @@ class PermittivityPdfPreviewDialog(QDialog):
         frame_layout.setSpacing(0)
         frame_layout.addWidget(self.canvas)
 
+        main_layout.addWidget(canvas_frame, alignment=Qt.AlignCenter)
+        main_layout.addSpacing(4)
+
         nav_strip = QHBoxLayout()
-        nav_strip.setContentsMargins(8, 5, 8, 5)
+        nav_strip.setContentsMargins(8, 2, 8, 2)
         nav_strip.addWidget(self.prev_button)
         nav_strip.addStretch(1)
-        nav_strip.addStretch(1)
         nav_strip.addWidget(self.next_button)
-        frame_layout.addLayout(nav_strip)
-
-        main_layout.addWidget(canvas_frame, alignment=Qt.AlignCenter)
-        main_layout.addSpacing(6)
+        main_layout.addLayout(nav_strip)
+        main_layout.addSpacing(2)
 
         # Marker widgets — create once for each graph × each slot
         # Graph 0: slot 0 only (1 marker). Graph 1: slots 0 and 1 (2 markers).
@@ -321,14 +352,15 @@ class PermittivityPdfPreviewDialog(QDialog):
         self.marker_layout.setContentsMargins(0, 0, 0, 0)
         self.marker_layout.setSpacing(0)
 
-        marker_container = QWidget()
+        self.marker_container = QWidget()
+        marker_container = self.marker_container
         mc_layout = QHBoxLayout(marker_container)
         mc_layout.setContentsMargins(0, 0, 0, 0)
         mc_layout.addStretch()
         mc_layout.addLayout(self.marker_layout)
         mc_layout.addStretch()
         main_layout.addWidget(marker_container, alignment=Qt.AlignCenter)
-        main_layout.addSpacing(10)
+        main_layout.addSpacing(4)
 
         # Generate button
         self.export_button = _NoEnterButton("Generate PDF Report")
@@ -364,7 +396,7 @@ class PermittivityPdfPreviewDialog(QDialog):
             left=margin, right=1 - margin,
             top=1 - margin - 0.04, bottom=margin,
         )
-        if getattr(self, "current_graph_index", 0) == 0:
+        if self._data_graph_index(getattr(self, "current_graph_index", 0)) == 1:
             self.fig.subplots_adjust(left=margin, right=1 - margin,
                                      top=1 - margin, bottom=margin)
             self.ax.set_aspect("equal", adjustable="box")
@@ -395,15 +427,25 @@ class PermittivityPdfPreviewDialog(QDialog):
     # ------------------------------------------------------------------ #
 
     def _plot_graph(self, index):
+        is_notes_step = self.include_notes and index == 0
+        self.notes_step_widget.setVisible(is_notes_step)
+        self.canvas_frame.setVisible(not is_notes_step)
+        self.marker_container.setVisible(not is_notes_step)
+
+        if is_notes_step:
+            return
+
         self.fig.clear()
         self.ax = self.fig.add_subplot(111)
         self.ax.set_facecolor("white")
         self.fig.subplots_adjust(left=0.15, right=0.90, top=0.90, bottom=0.18)
 
-        if index == 0:
-            self._plot_smith()
-        else:
+        dgi = self._data_graph_index(index)
+        if dgi == 0:
             self._plot_permittivity()
+        else:
+            self._plot_smith()
+            self.fig.subplots_adjust(left=0.14, right=0.86, top=0.86, bottom=0.14)
 
         self.canvas.draw()
         self._update_markers(index)
@@ -453,42 +495,41 @@ class PermittivityPdfPreviewDialog(QDialog):
         self.ax.set_ylabel(r"$\varepsilon_r$", fontsize=12)
         self.ax.grid(True, linestyle="--", alpha=0.5)
         self.ax.legend(loc="upper right", fontsize=11)
-        self.fig.subplots_adjust(left=0.13, right=0.95, top=0.90, bottom=0.14)
+        self.fig.subplots_adjust(left=0.13, right=0.92, top=0.87, bottom=0.14)
 
     # ------------------------------------------------------------------ #
     # Navigation
     # ------------------------------------------------------------------ #
 
-    def _show_next_graph(self):
+    def _save_fig_at_current(self):
+        """Save the current matplotlib figure into saved_figures by data index."""
+        if self.include_notes and self.current_graph_index == 0:
+            return
+        dgi = self._data_graph_index(self.current_graph_index)
         fig_copy = copy.deepcopy(self.fig)
-        if len(self.saved_figures) <= self.current_figure:
+        if dgi >= len(self.saved_figures):
+            while len(self.saved_figures) < dgi:
+                self.saved_figures.append(None)
             self.saved_figures.append(fig_copy)
         else:
-            self.saved_figures[self.current_figure] = fig_copy
+            self.saved_figures[dgi] = fig_copy
 
+    def _show_next_graph(self):
+        self._save_fig_at_current()
         if self.current_graph_index < self.TOTAL_GRAPHS - 1:
             self.current_graph_index += 1
-            self.current_figure += 1
             self._plot_graph(self.current_graph_index)
             self._update_nav_buttons()
             self._update_marker_checkboxes()
-
         self.export_button.setEnabled(self.current_graph_index == self.TOTAL_GRAPHS - 1)
 
     def _show_previous_graph(self):
-        fig_copy = copy.deepcopy(self.fig)
-        if len(self.saved_figures) <= self.current_figure:
-            self.saved_figures.append(fig_copy)
-        else:
-            self.saved_figures[self.current_figure] = fig_copy
-
+        self._save_fig_at_current()
         if self.current_graph_index > 0:
             self.current_graph_index -= 1
-            self.current_figure -= 1
             self._plot_graph(self.current_graph_index)
             self._update_nav_buttons()
             self._update_marker_checkboxes()
-
         self.export_button.setEnabled(self.current_graph_index == self.TOTAL_GRAPHS - 1)
 
     def _update_nav_buttons(self):
@@ -546,6 +587,10 @@ class PermittivityPdfPreviewDialog(QDialog):
         if graph_index is None:
             graph_index = self.current_graph_index
 
+        # Notes step has no markers/axes
+        if self.include_notes and graph_index == 0:
+            return
+
         ax = self.ax
         n = self._marker_count(graph_index)
         colors = self._marker_colors(graph_index)
@@ -561,15 +606,16 @@ class PermittivityPdfPreviewDialog(QDialog):
         self.ann_objects = []
         self.markers = []
 
+        dgi = self._data_graph_index(graph_index)
         cbs = self.marker_checkboxes[graph_index]
         edits_combos = self.marker_freq_edits[graph_index]
-        self.marker_active[graph_index] = [cbs[s].isChecked() for s in range(n)]
+        self.marker_active[dgi] = [cbs[s].isChecked() for s in range(n)]
 
         _xlim = ax.get_xlim()
         _ylim = ax.get_ylim()
 
         for slot in range(n):
-            active = self.marker_active[graph_index][slot]
+            active = self.marker_active[dgi][slot]
             edit, combo = edits_combos[slot]
             color = colors[slot]
 
@@ -596,7 +642,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                 edit.setText(f"{nearest_val:.2f}")
                 unit_display = combo.currentText()
 
-                if graph_index == 0:
+                if dgi == 1:
                     # Smith: x=Re, y=Im
                     x = float(np.real(self.s11_data[idx_f]))
                     y = float(np.imag(self.s11_data[idx_f]))
@@ -621,8 +667,8 @@ class PermittivityPdfPreviewDialog(QDialog):
                     )
 
                 ann_x, ann_y = (
-                    self.marker_positions[graph_index][slot]
-                    if self.marker_positions[graph_index][slot] else (x, y)
+                    self.marker_positions[dgi][slot]
+                    if self.marker_positions[dgi][slot] else (x, y)
                 )
 
                 mk_line, = ax.plot(x, y, marker="o", color=color, markersize=8)
@@ -658,7 +704,7 @@ class PermittivityPdfPreviewDialog(QDialog):
 
                 self.markers.append(mk_line)
                 self.ann_objects.append({"text": txt, "patch": patch, "idx": slot})
-                self.marker_positions[graph_index][slot] = (ann_x, ann_y)
+                self.marker_positions[dgi][slot] = (ann_x, ann_y)
 
             else:
                 edit.setEnabled(False)
@@ -793,7 +839,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                     patch.set_x(px0 + ddx)
                     patch.set_y(py0 + ddy)
                     txt.set_position((tx0 + ddx, ty0 + ddy))
-                    self.marker_positions[self.current_graph_index][obj["idx"]] = (
+                    self.marker_positions[self._data_graph_index(self.current_graph_index)][obj["idx"]] = (
                         tx0 + ddx, ty0 + ddy
                     )
                 except Exception:
@@ -843,7 +889,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                 try:
                     L, B, R, T = _patch_px(obj["patch"])
                     cx_d, cy_d = _px_to_data((L + R) / 2, (B + T) / 2)
-                    self.marker_positions[self.current_graph_index][obj["idx"]] = (cx_d, cy_d)
+                    self.marker_positions[self._data_graph_index(self.current_graph_index)][obj["idx"]] = (cx_d, cy_d)
                 except Exception:
                     pass
             drag_state.update({
@@ -866,11 +912,7 @@ class PermittivityPdfPreviewDialog(QDialog):
     # ------------------------------------------------------------------ #
 
     def _save_current_graph(self):
-        fig_copy = copy.deepcopy(self.fig)
-        if len(self.saved_figures) <= self.current_figure:
-            self.saved_figures.append(fig_copy)
-        else:
-            self.saved_figures[self.current_figure] = fig_copy
+        self._save_fig_at_current()
 
     def _generate_pdf(self):
         """Rasterize the previews here, then compile LaTeX on a worker thread.
@@ -919,16 +961,20 @@ class PermittivityPdfPreviewDialog(QDialog):
             QMessageBox.critical(self, "Export Failed", f"Could not render the plots:\n{exc}")
             return
 
+        notes_text = self.notes_edit.toPlainText().strip() if self.include_notes else ""
+
         def _compile():
             exporter.compile_pdf(
                 freqs=self.freqs,
                 eps_selected=self.eps_selected,
+                s11_data=self.s11_data,
                 image_files=image_files,
                 sample_name=self.sample_name,
                 wizard_window=self.wizard_window,
                 output_path=output_path,
                 compiler_path=compiler_info[1],
                 include_steps=self.include_steps,
+                notes=notes_text,
             )
 
         def _on_done(success, error_message):

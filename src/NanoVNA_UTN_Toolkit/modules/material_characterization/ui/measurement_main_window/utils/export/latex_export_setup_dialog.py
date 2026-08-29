@@ -148,6 +148,9 @@ class PermittivityLatexSetupDialog(QDialog):
         )
         self.include_steps_chk.setChecked(False)
         layout.addWidget(self.include_steps_chk)
+        self.include_notes_chk = QCheckBox("Include notes / comments section")
+        self.include_notes_chk.setChecked(False)
+        layout.addWidget(self.include_notes_chk)
         parent_layout.addWidget(group)
 
     def _setup_buttons(self, parent_layout):
@@ -301,6 +304,7 @@ class PermittivityLatexSetupDialog(QDialog):
             output_path=self.output_path,
             wizard_window=main_window.wizard_window,
             include_steps=self.include_steps_chk.isChecked(),
+            include_notes=self.include_notes_chk.isChecked(),
         )
         preview.exec()
         self.reject()

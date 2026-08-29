@@ -152,7 +152,8 @@ class PermittivityExporter:
 
     def compile_pdf(
         self, freqs, eps_selected, image_files, sample_name,
-        wizard_window, output_path, compiler_path, include_steps=False,
+        wizard_window, output_path, compiler_path, include_steps=False, notes="",
+        s11_data=None,
     ):
         """Build the .tex from already-rendered images and run LaTeX.
 
@@ -162,12 +163,14 @@ class PermittivityExporter:
         self._create_latex_document(
             freqs=freqs,
             eps_selected=eps_selected,
+            s11_data=s11_data,
             image_files=image_files,
             file_path=Path(output_path).with_suffix(""),
             sample_name=sample_name,
             wizard_window=wizard_window,
             compiler_path=compiler_path,
             include_steps=include_steps,
+            notes=notes,
         )
 
     def export_to_pdf(
@@ -206,7 +209,7 @@ class PermittivityExporter:
     def _generate_plots_from_figures(self, figures, output_dir):
         """Save existing preview figures as high-DPI PNGs for LaTeX inclusion."""
         image_files = {}
-        keys = ["smith", "permittivity"]
+        keys = ["permittivity", "smith"]
         for i, fig in enumerate(figures):
             key = keys[i] if i < len(keys) else f"fig_{i}"
             path = os.path.join(output_dir, f"{key}.png")
@@ -301,6 +304,14 @@ class PermittivityExporter:
         except Exception:
             pass
 
+        _COLORS = {
+            "open":  "#e67e22",
+            "short": "#2980b9",
+            "ref1":  "#27ae60",
+            "ref2":  "#8e44ad",
+            "dut":   "#c0392b",
+        }
+
         image_files = {}
         for key, label in _LABELS.items():
             data = cal.get_measurement(key)
@@ -309,16 +320,17 @@ class PermittivityExporter:
             freqs_s, s11_s = np.asarray(data[0], dtype=float), np.asarray(data[1], dtype=complex)
             div, unit = _freq_scale(freqs_s)
             mag_db = 20 * np.log10(np.abs(s11_s) + 1e-15)
+            color = _COLORS.get(key, "#1a6bbf")
 
-            fig, ax = plt.subplots(figsize=(7, 3))
+            fig, ax = plt.subplots(figsize=(8, 4))
             fig.patch.set_facecolor("white")
             ax.set_facecolor("white")
-            ax.plot(freqs_s / div, mag_db, color="#1a6bbf", linewidth=1.5)
-            ax.set_xlabel(f"Frequency ({unit})", fontsize=10)
-            ax.set_ylabel(r"$|S_{11}|$ (dB)", fontsize=10)
-            ax.set_title(f"{label} — $|S_{{11}}|$", fontsize=11, pad=8)
+            ax.plot(freqs_s / div, mag_db, color=color, linewidth=1.8)
+            ax.set_xlabel(f"Frequency ({unit})", fontsize=11)
+            ax.set_ylabel(r"$|S_{11}|$ (dB)", fontsize=11)
+            ax.set_title(f"{label} — $|S_{{11}}|$", fontsize=12, pad=10)
             ax.grid(True, linestyle="--", alpha=0.5)
-            fig.tight_layout()
+            fig.subplots_adjust(left=0.12, right=0.96, top=0.88, bottom=0.16)
             path = os.path.join(output_dir, f"step_{key}.png")
             fig.savefig(path, dpi=200, bbox_inches="tight")
             plt.close(fig)
@@ -329,7 +341,8 @@ class PermittivityExporter:
 
     def _create_latex_document(
         self, freqs, eps_selected, image_files, file_path,
-        sample_name, wizard_window, compiler_path, include_steps=False,
+        sample_name, wizard_window, compiler_path, include_steps=False, notes="",
+        s11_data=None,
     ):
         try:
             from pylatex import Document, Section, Subsection, Command, Figure, NewPage
@@ -352,19 +365,21 @@ class PermittivityExporter:
         current_dt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._create_cover_page(doc, freqs, sample_name, wizard_window, current_dt)
 
+        if notes and notes.strip():
+            doc.append(NewPage())
+            with doc.create(Section("Notes")):
+                for line in notes.strip().splitlines():
+                    stripped = line.strip()
+                    if stripped:
+                        doc.append(NoEscape(
+                            stripped.replace("&", r"\&").replace("%", r"\%").replace("_", r"\_")
+                        ))
+                    doc.append(NoEscape(r"\\"))
+
         doc.append(NewPage())
         with doc.create(Section("Measurement Results")):
-            # Smith S11
-            if "smith" in image_files:
-                with doc.create(Subsection(NoEscape(r"$S_{11}$ \textemdash{} Smith Chart"))):
-                    with doc.create(Figure(position="H")) as fig_latex:
-                        fig_latex.add_image(
-                            image_files["smith"].replace("\\", "/"),
-                            width=NoEscape(r"0.65\linewidth"),
-                        )
-                doc.append(NewPage())
 
-            # Permittivity
+            # --- Page: Permittivity graph + table ---
             if "permittivity" in image_files:
                 with doc.create(Subsection(NoEscape(
                     r"Complex Permittivity $\varepsilon_r(f)$"
@@ -372,35 +387,29 @@ class PermittivityExporter:
                     with doc.create(Figure(position="H")) as fig_latex:
                         fig_latex.add_image(
                             image_files["permittivity"].replace("\\", "/"),
-                            width=NoEscape(r"0.9\linewidth"),
+                            width=NoEscape(r"0.78\linewidth"),
                         )
+                if freqs is not None and eps_selected is not None:
+                    doc.append(NoEscape(r"\vspace{1.2em}"))
+                    self._build_permittivity_mini_table(doc, freqs, eps_selected, NoEscape)
 
-            # Branch selection criterion
-            with doc.create(Subsection("Branch Selection Criterion")):
-                doc.append(NoEscape(
-                    r"\begin{itemize}"
-                    r"\item \textbf{Physical filter:} $\mathrm{Re}(\varepsilon) > 0$,"
-                    r" $\mathrm{Im}(\varepsilon) \leq 1\times10^{-6}$"
-                    r"\item \textbf{Traversal:} high $\rightarrow$ low frequency"
-                    r"\item \textbf{Seed:} root with smallest $|\mathrm{Im}(\varepsilon)|$"
-                    r" at the highest valid frequency"
-                    r"\item \textbf{Tracking:} polynomial extrapolation (window\,5, order\,$\leq$2)"
-                    r" + nearest-neighbour match"
-                    r"\item \textbf{Ill-conditioned points} ($|S_{11}^{r_1} - S_{11}^{r_2}| < 0.01$)"
-                    r" excluded as gaps (NaN)"
-                    r"\end{itemize}"
-                ))
+            # --- Page: Smith S11 graph + table ---
+            if "smith" in image_files:
+                doc.append(NewPage())
+                with doc.create(Subsection(NoEscape(r"$S_{11}$ \textemdash{} Smith Chart"))):
+                    with doc.create(Figure(position="H")) as fig_latex:
+                        fig_latex.add_image(
+                            image_files["smith"].replace("\\", "/"),
+                            width=NoEscape(r"0.55\linewidth"),
+                        )
+                if freqs is not None and s11_data is not None:
+                    doc.append(NoEscape(r"\vspace{1.2em}"))
+                    self._build_s11_mini_table(doc, freqs, s11_data, NoEscape)
 
         # Calibration standard measurements (optional)
         if include_steps:
             self._build_step_sections(doc, image_files, wizard_window, NoEscape, NewPage,
                                       Section, Subsection, Figure)
-
-        # Data table page
-        if eps_selected is not None and freqs is not None:
-            doc.append(NewPage())
-            with doc.create(Section("Permittivity Data Table")):
-                self._build_data_table(doc, freqs, eps_selected)
 
         # Compile
         compiler_name = os.path.basename(compiler_path).replace(".exe", "")
@@ -414,6 +423,74 @@ class PermittivityExporter:
             os.environ["PATH"] = original_path
 
     # ------------------------------------------------------------------ #
+
+    def _build_permittivity_mini_table(self, doc, freqs, eps_selected, NoEscape):
+        """Compact permittivity table (≤20 rows) appended below the graph."""
+        f_hz = np.asarray(freqs, dtype=float)
+        eps  = np.asarray(eps_selected, dtype=complex)
+        n    = len(f_hz)
+        max_rows = 20
+        stride = max(1, n // max_rows)
+        indices = list(range(0, n, stride))[:max_rows]
+
+        div, unit = (1e9, "GHz") if f_hz[-1] >= 0.5e9 else (1e6, "MHz") if f_hz[-1] >= 0.5e6 else (1e3, "kHz")
+
+        rows_tex = []
+        for i in indices:
+            f_val  = f_hz[i] / div
+            re_val = float(np.real(eps[i]))
+            im_val = float(np.imag(eps[i]))
+            tan_d  = abs(im_val / re_val) if abs(re_val) > 1e-15 else 0.0
+            rows_tex.append(
+                rf"{f_val:.3f} & {re_val:.4f} & {im_val:+.4f} & {tan_d:.4f} \\"
+            )
+
+        table_body = "\n".join([
+            r"\begin{center}",
+            r"\begin{tabular}{cccc}",
+            r"\toprule",
+            rf"\textbf{{Frequency ({unit})}} & \textbf{{$\varepsilon_r'$}} & \textbf{{$\varepsilon_r''$}} & \textbf{{$\tan\delta$}} \\",
+            r"\midrule",
+        ] + rows_tex + [
+            r"\bottomrule",
+            r"\end{tabular}",
+            r"\end{center}",
+        ])
+        doc.append(NoEscape(table_body))
+
+    def _build_s11_mini_table(self, doc, freqs, s11_data, NoEscape):
+        """Compact S11 table (≤20 rows) appended below the Smith chart."""
+        f_hz = np.asarray(freqs, dtype=float)
+        s11  = np.asarray(s11_data, dtype=complex)
+        n    = len(f_hz)
+        max_rows = 20
+        stride = max(1, n // max_rows)
+        indices = list(range(0, n, stride))[:max_rows]
+
+        div, unit = (1e9, "GHz") if f_hz[-1] >= 0.5e9 else (1e6, "MHz") if f_hz[-1] >= 0.5e6 else (1e3, "kHz")
+
+        rows_tex = []
+        for i in indices:
+            f_val  = f_hz[i] / div
+            re_val = float(np.real(s11[i]))
+            im_val = float(np.imag(s11[i]))
+            db_val = 20 * np.log10(abs(complex(re_val, im_val)) + 1e-15)
+            rows_tex.append(
+                rf"{f_val:.3f} & {re_val:.4f} & {im_val:+.4f} & {db_val:.2f} \\"
+            )
+
+        table_body = "\n".join([
+            r"\begin{center}",
+            r"\begin{tabular}{cccc}",
+            r"\toprule",
+            rf"\textbf{{Frequency ({unit})}} & \textbf{{Re($S_{{11}}$)}} & \textbf{{Im($S_{{11}}$)}} & \textbf{{$|S_{{11}}|$ (dB)}} \\",
+            r"\midrule",
+        ] + rows_tex + [
+            r"\bottomrule",
+            r"\end{tabular}",
+            r"\end{center}",
+        ])
+        doc.append(NoEscape(table_body))
 
     def _build_data_table(self, doc, freqs, eps_selected):
         """Append a longtable with Frequency / ε′ / ε″ / tan δ columns."""
@@ -498,58 +575,63 @@ class PermittivityExporter:
         except Exception:
             pass
 
-        doc.append(NewPage())
-        with doc.create(Section("Calibration Standard Measurements")):
-            any_added = False
-            for key in _KEYS:
-                img_key = f"step_{key}"
-                if img_key not in image_files:
-                    continue
-                if cal is None:
-                    continue
-                data = cal.get_measurement(key)
-                if data is None:
-                    continue
+        any_added = False
+        for key in _KEYS:
+            img_key = f"step_{key}"
+            if img_key not in image_files:
+                continue
+            if cal is None:
+                continue
+            data = cal.get_measurement(key)
+            if data is None:
+                continue
 
-                label = _LABELS.get(key, key.capitalize())
-                freqs_s = np.asarray(data[0], dtype=float)
-                s11_s   = np.asarray(data[1], dtype=complex)
-                div, unit = _freq_scale(freqs_s)
-                n = len(freqs_s)
-                stride = max(1, n // 8)
+            label = _LABELS.get(key, key.capitalize())
+            freqs_s = np.asarray(data[0], dtype=float)
+            s11_s   = np.asarray(data[1], dtype=complex)
+            div, unit = _freq_scale(freqs_s)
+            n = len(freqs_s)
+            max_rows = 20
+            stride = max(1, n // max_rows)
+            indices = list(range(0, n, stride))[:max_rows]
 
-                with doc.create(Subsection(label)):
-                    with doc.create(Figure(position="H")) as fig_latex:
-                        fig_latex.add_image(
-                            image_files[img_key].replace("\\", "/"),
-                            width=NoEscape(r"0.85\linewidth"),
-                        )
+            doc.append(NewPage())
+            with doc.create(Section(label)):
+                with doc.create(Figure(position="H")) as fig_latex:
+                    fig_latex.add_image(
+                        image_files[img_key].replace("\\", "/"),
+                        width=NoEscape(r"0.88\linewidth"),
+                    )
 
-                    # Mini-table: Frequency | Re(S11) | Im(S11) | |S11| dB
-                    rows_tex = []
-                    for i in range(0, n, stride):
-                        f_val  = freqs_s[i] / div
-                        re_val = float(np.real(s11_s[i]))
-                        im_val = float(np.imag(s11_s[i]))
-                        db_val = 20 * np.log10(abs(complex(re_val, im_val)) + 1e-15)
-                        rows_tex.append(
-                            f"{f_val:.3f} & {re_val:.4f} & {im_val:+.4f} & {db_val:.2f} \\\\"
-                        )
+                doc.append(NoEscape(r"\vspace{1.2em}"))
+                rows_tex = []
+                for i in indices:
+                    f_val  = freqs_s[i] / div
+                    re_val = float(np.real(s11_s[i]))
+                    im_val = float(np.imag(s11_s[i]))
+                    db_val = 20 * np.log10(abs(complex(re_val, im_val)) + 1e-15)
+                    rows_tex.append(
+                        f"{f_val:.3f} & {re_val:.4f} & {im_val:+.4f} & {db_val:.2f} \\\\"
+                    )
 
-                    table_body = "\n".join([
-                        r"\begin{tabular}{cccc}",
-                        r"\toprule",
-                        rf"\textbf{{Frequency ({unit})}} & \textbf{{Re($S_{{11}}$)}} & "
-                        rf"\textbf{{Im($S_{{11}}$)}} & \textbf{{$|S_{{11}}|$ (dB)}} \\",
-                        r"\midrule",
-                    ] + rows_tex + [
-                        r"\bottomrule",
-                        r"\end{tabular}",
-                    ])
-                    doc.append(NoEscape(table_body))
-                    any_added = True
+                table_body = "\n".join([
+                    r"\begin{center}",
+                    r"\begin{tabular}{cccc}",
+                    r"\toprule",
+                    rf"\textbf{{Frequency ({unit})}} & \textbf{{Re($S_{{11}}$)}} & "
+                    rf"\textbf{{Im($S_{{11}}$)}} & \textbf{{$|S_{{11}}|$ (dB)}} \\",
+                    r"\midrule",
+                ] + rows_tex + [
+                    r"\bottomrule",
+                    r"\end{tabular}",
+                    r"\end{center}",
+                ])
+                doc.append(NoEscape(table_body))
+                any_added = True
 
-            if not any_added:
+        if not any_added:
+            doc.append(NewPage())
+            with doc.create(Section("Calibration Standard Measurements")):
                 doc.append(NoEscape(r"\textit{No step measurements available.}"))
 
     # ------------------------------------------------------------------ #
