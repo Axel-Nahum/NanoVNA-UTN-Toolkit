@@ -47,11 +47,11 @@ def format_frequency_smart(freq_hz):
 def format_frequency_smart_split(freq_hz):
     """Format frequency and return (value, unit) tuple."""
     if freq_hz >= 1e9:
-        return f"{freq_hz/1e9:.3f}", "GHz"
+        return f"{freq_hz/1e9:.2f}", "GHz"
     elif freq_hz >= 1e6:
-        return f"{freq_hz/1e6:.3f}", "MHz"
+        return f"{freq_hz/1e6:.2f}", "MHz"
     elif freq_hz >= 1e3:
-        return f"{freq_hz/1e3:.3f}", "kHz"
+        return f"{freq_hz/1e3:.2f}", "kHz"
     else:
         return f"{freq_hz:.1f}", "Hz"
 
@@ -164,6 +164,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
     elif graph_type == "Magnitude":
 
         fig, ax = plt.subplots(figsize=(4,3))
+        fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
         fig.patch.set_facecolor(f"{background_color_graphics}")
@@ -209,6 +210,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
     elif graph_type == "Phase":
 
         fig, ax = plt.subplots(figsize=(4,3))
+        fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
         fig.patch.set_facecolor(f"{background_color_graphics}")
@@ -269,7 +271,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
 
     # --- Centered sub-layout for the 4 blocks ---
     center_layout = QHBoxLayout()
-    center_layout.setSpacing(15)  # space between columns
+    center_layout.setSpacing(8)  # space between columns
     center_layout.setAlignment(Qt.AlignCenter)  # everything centered in the box
 
     # --- Column 1: Frequency ---
@@ -287,47 +289,14 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
     hbox_freq.addWidget(lbl_text)
 
     initial_freq_value, initial_freq_unit = format_frequency_smart_split(freqs[0])
-    edit_value = QLineEdit(initial_freq_value)
-    edit_value.setSelection(0, 0)
-    edit_value.setCursorPosition(0)
-    edit_value.clearFocus()
-
-    def limit_frequency_input(text, max_digits=6, max_decimals=3, allow_dashes=False):
-        if text == "--":   # allow placeholder
-            return text
-        filtered = "".join(c for c in text if c.isdigit() or c == ".")
-        if filtered.count(".") > 1:
-            parts = filtered.split(".", 1)
-            filtered = parts[0] + "." + "".join(parts[1:]).replace(".", "")
-        if "." in filtered:
-            integer_part, decimal_part = filtered.split(".", 1)
-            integer_part = integer_part[:max_digits]
-            decimal_part = decimal_part[:max_decimals]
-            filtered = integer_part + "." + decimal_part
-        else:
-            filtered = filtered[:max_digits]
-        return filtered
-
-    def on_text_changed():
-        new_text = limit_frequency_input(edit_value.text(), 3, 3)
-        if new_text != edit_value.text():
-            edit_value.setText(new_text)
-        text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
-        min_width = max(text_width + 10, 40)
-        edit_value.setFixedWidth(min_width)
-
-    edit_value.textChanged.connect(on_text_changed)
-    edit_value.setStyleSheet("font-size:14px; border:none; background:transparent;")
-    edit_value.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
-    min_width = max(text_width + 10, 40)
-    edit_value.setFixedWidth(min_width)
+    edit_value = QLabel(initial_freq_value)
+    edit_value.setStyleSheet("font-size:14px;")
+    edit_value.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     hbox_freq.addWidget(edit_value)
 
     lbl_unit = QLabel(initial_freq_unit)
     lbl_unit.setStyleSheet("font-size:14px;")
     lbl_unit.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-    lbl_unit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
     hbox_freq.addWidget(lbl_unit)
 
     col_left.addLayout(hbox_freq)
@@ -336,6 +305,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
     label_val = QLabel(f"{s_param}: -- + j--")
     label_val.setStyleSheet("font-size:14px; padding:1px;")
     label_val.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    label_val.setMinimumWidth(label_val.fontMetrics().horizontalAdvance(f"{s_param}: -1.000 - j1.000") + 8)
     col_s11 = QVBoxLayout()
     col_s11.setSpacing(5)
     col_s11.setAlignment(Qt.AlignVCenter)
@@ -361,7 +331,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
 
     # --- Add columns to centered layout with separators ---
     center_layout.addLayout(col_left)
-    
+
     label_sep = QLabel("-")
     center_layout.addWidget(label_sep)
 
@@ -443,7 +413,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
     layout_top_2.setContentsMargins(12, 8, 12, 8)
 
     center_layout_2 = QHBoxLayout()
-    center_layout_2.setSpacing(15)
+    center_layout_2.setSpacing(8)
     center_layout_2.setAlignment(Qt.AlignCenter)
 
     # --- Column 1: Frequency ---
@@ -461,28 +431,14 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
     hbox_freq_2.addWidget(lbl_text_2)
 
     initial_freq_value_2, initial_freq_unit_2 = format_frequency_smart_split(freqs[0])
-    edit_value_2 = QLineEdit(initial_freq_value_2)
-
-    def on_text_changed_2():
-        new_text = limit_frequency_input(edit_value_2.text(), 3, 3)
-        if new_text != edit_value_2.text():
-            edit_value_2.setText(new_text)
-        text_width = edit_value_2.fontMetrics().horizontalAdvance(edit_value_2.text())
-        min_width = max(text_width + 10, 40)
-        edit_value_2.setFixedWidth(min_width)
-
-    edit_value_2.textChanged.connect(on_text_changed_2)
-    edit_value_2.setStyleSheet("font-size:14px; border:none; background:transparent;")
-    edit_value_2.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    text_width = edit_value_2.fontMetrics().horizontalAdvance(edit_value_2.text())
-    min_width = max(text_width + 10, 40)
-    edit_value_2.setFixedWidth(min_width)
+    edit_value_2 = QLabel(initial_freq_value_2)
+    edit_value_2.setStyleSheet("font-size:14px;")
+    edit_value_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     hbox_freq_2.addWidget(edit_value_2)
 
     lbl_unit_2 = QLabel(initial_freq_unit_2)
     lbl_unit_2.setStyleSheet("font-size:14px;")
     lbl_unit_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-    lbl_unit_2.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
     hbox_freq_2.addWidget(lbl_unit_2)
 
     col_left_2.addLayout(hbox_freq_2)
@@ -491,6 +447,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
     label_val_2 = QLabel(f"{s_param}: -- + j--")
     label_val_2.setStyleSheet("font-size:14px; padding:1px;")
     label_val_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    label_val_2.setMinimumWidth(label_val_2.fontMetrics().horizontalAdvance(f"{s_param}: -1.000 - j1.000") + 8)
     col_s11_2 = QVBoxLayout()
     col_s11_2.setSpacing(5)
     col_s11_2.setAlignment(Qt.AlignVCenter)
@@ -636,11 +593,9 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
 
         # === Actualizar labels ===
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
+        edit_value.blockSignals(True)
         edit_value.setText(freq_value)
-
-        text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
-        edit_value.setFixedWidth(max(text_width + 10, 50))
-
+        edit_value.blockSignals(False)
         labels_dict["unit"].setText(freq_unit)
         labels_dict["val"].setText(
             f"{current_s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex) >= 0 else '-'} j{abs(np.imag(val_complex)):.3f}"
@@ -727,18 +682,19 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
                 else:
                     mag_value = magnitude
 
-            cursor_graph_2.set_xdata([freqs[index] * 1e-6])
+            _fq_div2, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            cursor_graph_2.set_xdata([freqs[index] / _fq_div2])
             cursor_graph_2.set_ydata([mag_value])
 
         elif graph_type == "Phase":
-            cursor_graph_2.set_data([freqs[index] * 1e-6], [phase_deg])
+            _fq_div2, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            cursor_graph_2.set_data([freqs[index] / _fq_div2], [phase_deg])
 
         # === Actualizar labels del panel 2 ===
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
+        edit_value_2.blockSignals(True)
         edit_value_2.setText(freq_value)
-        text_width = edit_value_2.fontMetrics().horizontalAdvance(edit_value_2.text())
-        edit_value_2.setFixedWidth(max(text_width + 10, 50))
-
+        edit_value_2.blockSignals(False)
         labels_dict_2["unit"].setText(freq_unit)
         labels_dict_2["val"].setText(
             f"{current_s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex) >= 0 else '-'} j{abs(np.imag(val_complex)):.3f}"
@@ -805,15 +761,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         except:
             pass
 
-    edit_value.editingFinished.connect(freq_edited)
-
     def freq_edited_2(new_slider=None):
-
-        if new_slider is None:
-            logging.warning("freq_edited_2 called with new_slider=None")
-        else:
-            logging.info("freq_edited_2 called with valid new_slider")
-
         try:
             freq_hz = parse_frequency_input(edit_value_2.text())
             if freq_hz is not None:
@@ -822,7 +770,6 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
             edit_value_2.clearFocus()
         except:
             pass
-    edit_value_2.editingFinished.connect(freq_edited_2)
 
     # --- Cursor draggable ---
     dragging_1 = {"active": False}
@@ -1137,41 +1084,6 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         new_slider_2.label.set_visible(False)
         new_slider_2.valtext.set_visible(False)
 
-        # Reconnect edit_value callback so it uses updated freqs
-        def freq_edited_local():
-            try:
-                freq_hz = parse_frequency_input(edit_value.text())
-                if freq_hz is not None:
-                    index = np.argmin(np.abs(new_freqs - freq_hz))
-                    update_cursor(index)
-                edit_value.clearFocus()
-            except Exception as e:
-                print("Edit freq error:", e)
-
-        try:
-            edit_value.editingFinished.disconnect()
-        except Exception:
-            pass
-
-        edit_value.editingFinished.connect(freq_edited_local)
-
-        def freq_edited_2_local():
-            try:
-                freq_hz = parse_frequency_input(edit_value_2.text())
-                if freq_hz is not None:
-                    index = np.argmin(np.abs(new_freqs - freq_hz))
-                    update_cursor_2(index)
-                edit_value_2.clearFocus()
-            except Exception as e:
-                print("Edit freq 2 error:", e)
-
-        try:
-            edit_value_2.editingFinished.disconnect()
-        except Exception:
-            pass
-
-        edit_value_2.editingFinished.connect(freq_edited_2_local)
-
         # Final redraw
         try:
             if canvas is not None:
@@ -1195,18 +1107,6 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         nonlocal S_data, freqs
         S_data = new_s_data
         freqs = new_freqs
-        # Update freq_edited function to use new freqs
-        def freq_edited():
-            try:
-                freq_hz = parse_frequency_input(edit_value.text())
-                if freq_hz is not None:
-                    index = np.argmin(np.abs(freqs - freq_hz))
-                    update_cursor_2(index)
-                edit_value.clearFocus()
-            except:
-                pass
-        edit_value.editingFinished.disconnect()
-        edit_value.editingFinished.connect(freq_edited)
 
     def update_s_param_only(new_s_param):
         nonlocal s_param
@@ -1287,6 +1187,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
 
     elif graph_type == "Magnitude":
         fig, ax = plt.subplots(figsize=(4,3))
+        fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
         fig.patch.set_facecolor(f"{background_color_graphics}")
@@ -1332,6 +1233,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
 
     elif graph_type == "Phase":
         fig, ax = plt.subplots(figsize=(4,3))
+        fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
         fig.patch.set_facecolor(f"{background_color_graphics}")
@@ -1389,7 +1291,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
 
     # --- Centered sub-layout for the 4 blocks ---
     center_layout = QHBoxLayout()
-    center_layout.setSpacing(15)  # space between columns
+    center_layout.setSpacing(8)  # space between columns
     center_layout.setAlignment(Qt.AlignCenter)  # everything centered in the box
 
     # --- Column 1: Frequency ---
@@ -1407,46 +1309,14 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
     hbox_freq.addWidget(lbl_text)
 
     initial_freq_value, initial_freq_unit = format_frequency_smart_split(freqs[0])
-    edit_value = QLineEdit(initial_freq_value)
-
-    def limit_frequency_input(text, max_digits=6, max_decimals=3, allow_dashes=False):
-        if text == "--":  # allow dashes
-            return text
-        filtered = "".join(c for c in text if c.isdigit() or c == ".")
-        if filtered.count(".") > 1:
-            parts = filtered.split(".", 1)
-            filtered = parts[0] + "." + "".join(parts[1:]).replace(".", "")
-        if "." in filtered:
-            integer_part, decimal_part = filtered.split(".", 1)
-            integer_part = integer_part[:max_digits]
-            decimal_part = decimal_part[:max_decimals]
-            filtered = integer_part + "." + decimal_part
-        else:
-            filtered = filtered[:max_digits]
-        return filtered
-
-    def on_text_changed():
-        new_text = limit_frequency_input(edit_value.text(), 3, 3, allow_dashes=True)
-        if new_text != edit_value.text():
-            edit_value.setText(new_text)
-        if new_text != edit_value.text():
-            edit_value.setText(new_text)
-        text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
-        min_width = max(text_width + 10, 40)
-        edit_value.setFixedWidth(min_width)
-
-    edit_value.textChanged.connect(on_text_changed)
-    edit_value.setStyleSheet("font-size:14px; border:none; background:transparent;")
-    edit_value.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
-    min_width = max(text_width + 10, 40)
-    edit_value.setFixedWidth(min_width)
+    edit_value = QLabel(initial_freq_value)
+    edit_value.setStyleSheet("font-size:14px;")
+    edit_value.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     hbox_freq.addWidget(edit_value)
 
     lbl_unit = QLabel(initial_freq_unit)
     lbl_unit.setStyleSheet("font-size:14px;")
     lbl_unit.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-    lbl_unit.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
     hbox_freq.addWidget(lbl_unit)
 
     col_left.addLayout(hbox_freq)
@@ -1455,6 +1325,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
     label_val = QLabel(f"{s_param}: -- + j--")
     label_val.setStyleSheet("font-size:14px; padding:1px;")
     label_val.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    label_val.setMinimumWidth(label_val.fontMetrics().horizontalAdvance(f"{s_param}: -1.000 - j1.000") + 8)
     col_s11 = QVBoxLayout()
     col_s11.setSpacing(5)
     col_s11.setAlignment(Qt.AlignVCenter)
@@ -1561,7 +1432,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
     layout_top_2.setContentsMargins(12, 8, 12, 8)
 
     center_layout_2 = QHBoxLayout()
-    center_layout_2.setSpacing(15)
+    center_layout_2.setSpacing(8)
     center_layout_2.setAlignment(Qt.AlignCenter)
 
     # --- Column 1: Frequency ---
@@ -1579,28 +1450,14 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
     hbox_freq_2.addWidget(lbl_text_2)
 
     initial_freq_value_2, initial_freq_unit_2 = format_frequency_smart_split(freqs[0])
-    edit_value_2 = QLineEdit(initial_freq_value_2)
-
-    def on_text_changed_2():
-        new_text = limit_frequency_input(edit_value_2.text(), 3, 3, allow_dashes=True)
-        if new_text != edit_value_2.text():
-            edit_value_2.setText(new_text)
-        text_width = edit_value_2.fontMetrics().horizontalAdvance(edit_value_2.text())
-        min_width = max(text_width + 10, 40)
-        edit_value_2.setFixedWidth(min_width)
-
-    edit_value_2.textChanged.connect(on_text_changed_2)
-    edit_value_2.setStyleSheet("font-size:14px; border:none; background:transparent;")
-    edit_value_2.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    text_width = edit_value_2.fontMetrics().horizontalAdvance(edit_value_2.text())
-    min_width = max(text_width + 10, 40)
-    edit_value_2.setFixedWidth(min_width)
+    edit_value_2 = QLabel(initial_freq_value_2)
+    edit_value_2.setStyleSheet("font-size:14px;")
+    edit_value_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
     hbox_freq_2.addWidget(edit_value_2)
 
     lbl_unit_2 = QLabel(initial_freq_unit_2)
     lbl_unit_2.setStyleSheet("font-size:14px;")
     lbl_unit_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
-    lbl_unit_2.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
     hbox_freq_2.addWidget(lbl_unit_2)
 
     col_left_2.addLayout(hbox_freq_2)
@@ -1609,6 +1466,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
     label_val_2 = QLabel(f"{s_param}: -- + j--")
     label_val_2.setStyleSheet("font-size:14px; padding:1px;")
     label_val_2.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.TextSelectableByKeyboard)
+    label_val_2.setMinimumWidth(label_val_2.fontMetrics().horizontalAdvance(f"{s_param}: -1.000 - j1.000") + 8)
     col_s11_2 = QVBoxLayout()
     col_s11_2.setSpacing(5)
     col_s11_2.setAlignment(Qt.AlignVCenter)
@@ -1747,12 +1605,9 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
             cursor_graph.set_data([freqs[index] / _fq_div], [phase_deg])
 
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
+        edit_value.blockSignals(True)
         edit_value.setText(f"  {freq_value}")
-
-        # Update field width when frequency changes from slider
-        text_width = edit_value.fontMetrics().horizontalAdvance(edit_value.text())
-        min_width = max(text_width + 10, 50)
-        edit_value.setFixedWidth(min_width)
+        edit_value.blockSignals(False)
         labels_dict["unit"].setText(freq_unit)
 
         labels_dict["val"].setText(f"{current_s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex)>=0 else '-'} j{abs(np.imag(val_complex)):.3f}")
@@ -1837,19 +1692,19 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
             print(f"cursor_right despuéx -> x: {cursor_graph_2.get_xdata()}, y: {cursor_graph_2.get_ydata()}, id: {id(cursor_graph_2)}")
             print("=== update_right_cursor end ===")
 
-            cursor_graph_2.set_xdata([freqs[index] * 1e-6])
+            _fq_div2, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            cursor_graph_2.set_xdata([freqs[index] / _fq_div2])
             cursor_graph_2.set_ydata([mag_value])
 
         elif graph_type == "Phase":
-            cursor_graph_2.set_data([freqs[index] * 1e-6], [phase_deg])
+            _fq_div2, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            cursor_graph_2.set_data([freqs[index] / _fq_div2], [phase_deg])
 
         # === Actualizar labels del panel 2 ===
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
+        edit_value_2.blockSignals(True)
         edit_value_2.setText(freq_value)
-
-        text_width = edit_value_2.fontMetrics().horizontalAdvance(edit_value_2.text())
-        edit_value_2.setFixedWidth(max(text_width + 10, 50))
-
+        edit_value_2.blockSignals(False)
         labels_dict_2["unit"].setText(freq_unit)
         labels_dict_2["val"].setText(
             f"{current_s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex) >= 0 else '-'} j{abs(np.imag(val_complex)):.3f}"
@@ -1915,15 +1770,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
             edit_value.clearFocus()
         except:
             pass
-    edit_value.editingFinished.connect(freq_edited)
-
     def freq_edited_2(new_slider=None):
-
-        if new_slider == None:
-            logging.warning("freq_edited_2 called with new_slider=None")
-        else:
-            logging.info("freq_edited_2 called with valid new_slider")
-
         try:
             freq_hz = parse_frequency_input(edit_value_2.text())
             if freq_hz is not None:
@@ -1932,7 +1779,6 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
             edit_value_2.clearFocus()
         except:
             pass
-    edit_value.editingFinished.connect(freq_edited_2)
 
     # --- Inicializar ---
     update_cursor(0)
@@ -2247,23 +2093,6 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         new_slider_2.vline.set_visible(False)
         new_slider_2.label.set_visible(False)
         new_slider_2.valtext.set_visible(False)
-
-        # Reconnect edit_value callback so it uses updated freqs
-        def freq_edited_local():
-            try:
-                freq_hz = parse_frequency_input(edit_value.text())
-                if freq_hz is not None:
-                    index = np.argmin(np.abs(new_freqs - freq_hz))
-                    update_cursor(index)
-                edit_value.clearFocus()
-            except Exception as e:
-                logging.error("Edit freq error:", e)
-
-        try:
-            edit_value.editingFinished.disconnect()
-        except Exception:
-            pass
-        edit_value.editingFinished.connect(freq_edited_local)
 
         # Final redraw
         try:

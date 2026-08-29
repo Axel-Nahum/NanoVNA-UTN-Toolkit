@@ -444,6 +444,14 @@ class NanoVNAGraphics(QMainWindow):
             left_s_param
         )
 
+        # Warm up matplotlib layout cache so the first real draw doesn't jitter.
+        for _canvas in (getattr(self, "canvas_left", None), getattr(self, "canvas_right", None)):
+            if _canvas is not None:
+                try:
+                    _canvas.draw()
+                except Exception:
+                    pass
+
         # ---------------- INIT REALTIME STATE ----------------
 
         self._rt_generation = 0

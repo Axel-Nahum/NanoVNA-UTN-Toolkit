@@ -115,9 +115,6 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
         else:
             ax.set_ylim(self.ymin_right, self.ymax_right)
 
-    ax.relim()
-    ax.autoscale_view()
-
 # ----------------------------------------------------------------------------------
 
 def update_plots_realtime(self):

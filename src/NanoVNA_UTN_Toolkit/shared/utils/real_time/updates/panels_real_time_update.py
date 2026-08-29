@@ -5,11 +5,11 @@ import logging
 def _fmt_freq_smart(hz):
     """Return (value_str, unit_str) for hz, using the most natural unit."""
     if hz >= 1e9:
-        return f"{hz / 1e9:.3f}", "GHz"
+        return f"{hz / 1e9:.2f}", "GHz"
     if hz >= 1e6:
-        return f"{hz / 1e6:.3f}", "MHz"
+        return f"{hz / 1e6:.2f}", "MHz"
     if hz >= 1e3:
-        return f"{hz / 1e3:.3f}", "kHz"
+        return f"{hz / 1e3:.2f}", "kHz"
     return f"{hz:.1f}", "Hz"
 
 
@@ -34,7 +34,9 @@ def update_panel_labels(self, s_left, s_right, graph_left, graph_right, unit_lef
             mag_linear = np.abs(val)
             phase      = np.angle(val) * 180 / np.pi
             freq_val, freq_unit = _fmt_freq_smart(freqs[idx])
+            labels["freq"].blockSignals(True)
             labels["freq"].setText(freq_val)
+            labels["freq"].blockSignals(False)
             if "unit" in labels:
                 labels["unit"].setText(freq_unit)
             labels["val"].setText(f"{s_param}: {val.real:.3f} - j{abs(val.imag):.3f}" if val.imag < 0 else f"{s_param}: {val.real:.3f} + j{val.imag:.3f}")

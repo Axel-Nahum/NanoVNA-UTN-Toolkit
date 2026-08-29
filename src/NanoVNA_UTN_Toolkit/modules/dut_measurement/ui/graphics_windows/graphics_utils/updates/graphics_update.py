@@ -451,26 +451,6 @@ def update_plots_with_new_data(self, skip_reset=False):
         # --- Recreate cursors for new graph types ---
         logging.info("[graphics_window.update_plots_with_new_data] Recreating cursors for new graph types")
 
-        if hasattr(self, 'freqs_edit_left') and self.freqs_edit_left:
-            self.labels_left["freq"].editingFinished.connect(
-                lambda: self.freqs_edit_left(self.slider_left)
-            )
-
-        if hasattr(self, 'freqs_edit_right') and self.freqs_edit_right:
-            self.labels_right["freq"].editingFinished.connect(
-                lambda: self.freqs_edit_right(self.slider_right)
-            )
-
-        if hasattr(self, 'freqs_edit_left_2') and callable(self.freqs_edit_left_2):
-            self.labels_left_2["freq"].editingFinished.connect(
-                lambda s=self.slider_left_2: self.freqs_edit_left_2(s)
-            )
-
-        if hasattr(self, 'freqs_edit_right_2') and self.freqs_edit_right_2:
-            self.labels_right_2["freq"].editingFinished.connect(
-                lambda: self.freqs_edit_right_2(self.slider_right_2)
-            )
-
         recreate_cursors_for_new_plots(
             self,
             graph_type_1=graph_type_tab1,
