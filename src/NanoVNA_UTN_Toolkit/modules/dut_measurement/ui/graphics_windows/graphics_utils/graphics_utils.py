@@ -22,9 +22,14 @@ plt.rcParams['mathtext.rm'] = 'serif'     # Consistent numbers and text
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QLabel, QSizePolicy, QLineEdit
 from PySide6.QtCore import QSettings
 
-# Import get_settings 
+# Import get_settings
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
+
+get_freq_display_unit = safe_import(
+    "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils",
+    "get_freq_display_unit"
+)
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
@@ -621,11 +626,13 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
                 else:
                     mag_value = magnitude
 
-            cursor_graph.set_xdata([freqs[index] * 1e-6])
+            _fq_div, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            cursor_graph.set_xdata([freqs[index] / _fq_div])
             cursor_graph.set_ydata([mag_value])
 
         elif graph_type == "Phase":
-            cursor_graph.set_data([freqs[index] * 1e-6], [phase_deg])
+            _fq_div, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            cursor_graph.set_data([freqs[index] / _fq_div], [phase_deg])
 
         # === Actualizar labels ===
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
@@ -1732,10 +1739,12 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
                 else:
                     mag_value = magnitude
 
-            cursor_graph.set_xdata([freqs[index] * 1e-6])
+            _fq_div, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            cursor_graph.set_xdata([freqs[index] / _fq_div])
             cursor_graph.set_ydata([mag_value])
         elif graph_type == "Phase":
-            cursor_graph.set_data([freqs[index]*1e-6], [phase_deg])
+            _fq_div, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            cursor_graph.set_data([freqs[index] / _fq_div], [phase_deg])
 
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
         edit_value.setText(f"  {freq_value}")

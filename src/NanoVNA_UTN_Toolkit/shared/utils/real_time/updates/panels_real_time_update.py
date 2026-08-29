@@ -1,11 +1,17 @@
 import numpy as np
 import logging
 
-try:
-    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils import get_freq_display_unit
-except ImportError:
-    def get_freq_display_unit(self):
-        return 1e6, 'MHz'
+
+def _fmt_freq_smart(hz):
+    """Return (value_str, unit_str) for hz, using the most natural unit."""
+    if hz >= 1e9:
+        return f"{hz / 1e9:.3f}", "GHz"
+    if hz >= 1e6:
+        return f"{hz / 1e6:.3f}", "MHz"
+    if hz >= 1e3:
+        return f"{hz / 1e3:.3f}", "kHz"
+    return f"{hz:.1f}", "Hz"
+
 
 def update_panel_labels(self, s_left, s_right, graph_left, graph_right, unit_left, unit_right, idx_left, idx_right):
     try:
@@ -18,7 +24,6 @@ def update_panel_labels(self, s_left, s_right, graph_left, graph_right, unit_lef
         self._rt_freqs   = self.freqs
 
         freqs = self.freqs
-        freq_div, freq_unit = get_freq_display_unit(self)
 
         n = len(freqs)
         idx_left  = min(max(0, idx_left),  n - 1)
@@ -26,10 +31,12 @@ def update_panel_labels(self, s_left, s_right, graph_left, graph_right, unit_lef
 
         def fill_labels(labels, s_data, idx, s_param):
             val        = s_data[idx]
-            x          = freqs[idx] / freq_div
             mag_linear = np.abs(val)
             phase      = np.angle(val) * 180 / np.pi
-            labels["freq"].setText(f"{x:.2f} {freq_unit}")
+            freq_val, freq_unit = _fmt_freq_smart(freqs[idx])
+            labels["freq"].setText(freq_val)
+            if "unit" in labels:
+                labels["unit"].setText(freq_unit)
             labels["val"].setText(f"{s_param}: {val.real:.3f} - j{abs(val.imag):.3f}" if val.imag < 0 else f"{s_param}: {val.real:.3f} + j{val.imag:.3f}")
             labels["mag"].setText(f"|{s_param}|: {mag_linear:.3f}")
             labels["phase"].setText(f"{self.measurement_ui_s_parameter_phase} {phase:.2f}°")
