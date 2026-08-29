@@ -476,21 +476,34 @@ def _clamp_hz(hz, min_hz, max_hz):
     return max(min_hz, min(max_hz, hz))
 
 
+def _best_unit(hz: float) -> str:
+    """Return the most readable unit for a frequency value in Hz."""
+    if hz >= 1e9:
+        return "GHz"
+    if hz >= 1e6:
+        return "MHz"
+    if hz >= 1e3:
+        return "kHz"
+    return "Hz"
+
+
 def _init_widgets(wizard, valid_points, min_hz, max_hz, debug_mode=False):
     start_hz = _clamp_hz(getattr(wizard, "sweep_start_freq", 50_000), min_hz, max_hz)
     stop_hz = _clamp_hz(getattr(wizard, "sweep_stop_freq", 1_500_000_000), min_hz, max_hz)
     steps = getattr(wizard, "sweep_steps", 101)
     temp = getattr(wizard, "temperature_c", 25.0)
 
-    wizard.start_freq_unit.setCurrentText("kHz")
-    wizard.start_freq_unit._prev_unit = "kHz"
-    _apply_freq_range(wizard.start_freq_input, "kHz", min_hz, max_hz)
-    wizard.start_freq_input.setValue(start_hz / _UNIT_MULT["kHz"])
+    start_unit = _best_unit(start_hz)
+    wizard.start_freq_unit.setCurrentText(start_unit)
+    wizard.start_freq_unit._prev_unit = start_unit
+    _apply_freq_range(wizard.start_freq_input, start_unit, min_hz, max_hz)
+    wizard.start_freq_input.setValue(start_hz / _UNIT_MULT[start_unit])
 
-    wizard.stop_freq_unit.setCurrentText("MHz")
-    wizard.stop_freq_unit._prev_unit = "MHz"
-    _apply_freq_range(wizard.stop_freq_input, "MHz", min_hz, max_hz)
-    wizard.stop_freq_input.setValue(stop_hz / _UNIT_MULT["MHz"])
+    stop_unit = _best_unit(stop_hz)
+    wizard.stop_freq_unit.setCurrentText(stop_unit)
+    wizard.stop_freq_unit._prev_unit = stop_unit
+    _apply_freq_range(wizard.stop_freq_input, stop_unit, min_hz, max_hz)
+    wizard.stop_freq_input.setValue(stop_hz / _UNIT_MULT[stop_unit])
 
     # Choose stored points if valid, else nearest default. In Debug Mode a
     # value the device does not offer is still honoured (typed into the combo).

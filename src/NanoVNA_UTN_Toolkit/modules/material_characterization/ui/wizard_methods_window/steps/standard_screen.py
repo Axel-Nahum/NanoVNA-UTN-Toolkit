@@ -99,6 +99,26 @@ def _apply_light_axes(ax) -> None:
     ax.grid(True, color="#e0e0e0", linewidth=0.7, linestyle="--")
 
 
+def _freq_unit_for_range(start_hz: float, stop_hz: float):
+    """Return (divisor, unit_str) for the frequency range [start_hz, stop_hz].
+
+    Rules (user-specified):
+      both in kHz → kHz; both in MHz → MHz; both in GHz → GHz;
+      kHz + GHz → GHz; kHz + MHz or MHz + GHz → MHz.
+    """
+    def _tier(f):
+        if f >= 1e9: return 2
+        if f >= 1e6: return 1
+        return 0
+
+    t0, t1 = _tier(start_hz), _tier(stop_hz)
+    if t0 == t1:
+        return (1e9, "GHz") if t0 == 2 else (1e6, "MHz") if t0 == 1 else (1e3, "kHz")
+    if 1 in (t0, t1):   # one side is MHz → use MHz
+        return 1e6, "MHz"
+    return 1e9, "GHz"   # kHz + GHz → GHz
+
+
 def _render_magnitude(ax, wizard, standard, name, color, std_texts,
                       measured, show_indicative, show_raw) -> None:
     """Render |S11| in dB vs frequency."""
@@ -111,13 +131,14 @@ def _render_magnitude(ax, wizard, standard, name, color, std_texts,
     fig = ax.get_figure()
     ax.clear()
     ax.set_aspect('auto')       # skrf's plot_s_smith sets aspect='equal'; reset it
-    fig.subplots_adjust(left=0.14, right=0.96, top=0.82, bottom=0.18)
+    fig.subplots_adjust(left=0.14, right=0.96, top=0.82, bottom=0.13)
     _apply_light_axes(ax)
 
     start  = wizard.get_sweep_start_frequency()
     stop   = wizard.get_sweep_stop_frequency()
     points = wizard.get_sweep_steps()
-    f_ghz  = np.linspace(start, stop, points) / 1e9
+    div, freq_unit = _freq_unit_for_range(start, stop)
+    f_x    = np.linspace(start, stop, points) / div
 
     handles, labels = [], []
 
@@ -128,7 +149,7 @@ def _render_magnitude(ax, wizard, standard, name, color, std_texts,
                 liquid = get_reference_liquid(liq_key)
                 f_hz = np.linspace(start, stop, points)
                 s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
-                ax.plot(f_ghz, 20 * np.log10(np.abs(s_ind) + 1e-15),
+                ax.plot(f_x, 20 * np.log10(np.abs(s_ind) + 1e-15),
                         linestyle=":", color=color, linewidth=1.4, zorder=1)
                 handles.append(Line2D([0], [0], linestyle=":", color=color))
                 labels.append("indicative")
@@ -138,7 +159,7 @@ def _render_magnitude(ax, wizard, standard, name, color, std_texts,
     if measured is not None:
         _, s11 = measured
         s11 = np.asarray(s11, dtype=complex)
-        f_plot = np.linspace(start, stop, len(s11)) / 1e9
+        f_plot = np.linspace(start, stop, len(s11)) / div
         ax.plot(f_plot, 20 * np.log10(np.abs(s11) + 1e-15),
                 "-", color=color, linewidth=2, zorder=3)
         handles.append(Line2D([0], [0], color=color))
@@ -149,13 +170,15 @@ def _render_magnitude(ax, wizard, standard, name, color, std_texts,
         if raw_data is not None:
             _, s11_raw = raw_data
             s11_raw = np.asarray(s11_raw, dtype=complex)
-            f_plot = np.linspace(start, stop, len(s11_raw)) / 1e9
+            f_plot = np.linspace(start, stop, len(s11_raw)) / div
             ax.plot(f_plot, 20 * np.log10(np.abs(s11_raw) + 1e-15),
                     "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
             handles.append(Line2D([0], [0], color="#999999", linestyle="--", alpha=0.75))
             labels.append("raw")
 
-    ax.set_xlabel("Frequency (GHz)", fontsize=9, color="#333333")
+    _x_margin = (stop - start) / div * 0.04
+    ax.set_xlim(start / div - _x_margin, stop / div + _x_margin)
+    ax.set_xlabel(f"Frequency ({freq_unit})", fontsize=9, color="#333333")
     ax.set_ylabel(r"$|S_{11}|$ (dB)", fontsize=9, color="#333333")
     ax.set_title(std_texts.get("chart_title_magnitude", "Magnitude"),
                  fontsize=13, pad=24, color="#222222")
@@ -175,13 +198,14 @@ def _render_phase(ax, wizard, standard, name, color, std_texts,
     fig = ax.get_figure()
     ax.clear()
     ax.set_aspect('auto')       # skrf's plot_s_smith sets aspect='equal'; reset it
-    fig.subplots_adjust(left=0.14, right=0.96, top=0.82, bottom=0.18)
+    fig.subplots_adjust(left=0.14, right=0.96, top=0.82, bottom=0.13)
     _apply_light_axes(ax)
 
     start  = wizard.get_sweep_start_frequency()
     stop   = wizard.get_sweep_stop_frequency()
     points = wizard.get_sweep_steps()
-    f_ghz  = np.linspace(start, stop, points) / 1e9
+    div, freq_unit = _freq_unit_for_range(start, stop)
+    f_x    = np.linspace(start, stop, points) / div
 
     handles, labels = [], []
 
@@ -193,7 +217,7 @@ def _render_phase(ax, wizard, standard, name, color, std_texts,
                 f_hz = np.linspace(start, stop, points)
                 s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
                 phase_ind = np.unwrap(np.angle(s_ind)) * 180.0 / np.pi
-                ax.plot(f_ghz, phase_ind,
+                ax.plot(f_x, phase_ind,
                         linestyle=":", color=color, linewidth=1.4, zorder=1)
                 handles.append(Line2D([0], [0], linestyle=":", color=color))
                 labels.append("indicative")
@@ -203,7 +227,7 @@ def _render_phase(ax, wizard, standard, name, color, std_texts,
     if measured is not None:
         _, s11 = measured
         s11 = np.asarray(s11, dtype=complex)
-        f_plot = np.linspace(start, stop, len(s11)) / 1e9
+        f_plot = np.linspace(start, stop, len(s11)) / div
         phase = np.unwrap(np.angle(s11)) * 180.0 / np.pi
         ax.plot(f_plot, phase, "-", color=color, linewidth=2, zorder=3)
         handles.append(Line2D([0], [0], color=color))
@@ -214,14 +238,16 @@ def _render_phase(ax, wizard, standard, name, color, std_texts,
         if raw_data is not None:
             _, s11_raw = raw_data
             s11_raw = np.asarray(s11_raw, dtype=complex)
-            f_plot = np.linspace(start, stop, len(s11_raw)) / 1e9
+            f_plot = np.linspace(start, stop, len(s11_raw)) / div
             phase_raw = np.unwrap(np.angle(s11_raw)) * 180.0 / np.pi
             ax.plot(f_plot, phase_raw,
                     "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
             handles.append(Line2D([0], [0], color="#999999", linestyle="--", alpha=0.75))
             labels.append("raw")
 
-    ax.set_xlabel("Frequency (GHz)", fontsize=9, color="#333333")
+    _x_margin = (stop - start) / div * 0.04
+    ax.set_xlim(start / div - _x_margin, stop / div + _x_margin)
+    ax.set_xlabel(f"Frequency ({freq_unit})", fontsize=9, color="#333333")
     ax.set_ylabel(r"$\angle S_{11}$ (°)", fontsize=9, color="#333333")
     ax.set_title(std_texts.get("chart_title_phase", "Phase"),
                  fontsize=13, pad=24, color="#222222")
@@ -248,7 +274,8 @@ def _render_real_imag(fig, wizard, standard, name, color, std_texts,
     start  = wizard.get_sweep_start_frequency()
     stop   = wizard.get_sweep_stop_frequency()
     points = wizard.get_sweep_steps()
-    f_ghz  = np.linspace(start, stop, points) / 1e9
+    div, freq_unit = _freq_unit_for_range(start, stop)
+    f_x    = np.linspace(start, stop, points) / div
 
     handles, labels = [], []
 
@@ -259,8 +286,8 @@ def _render_real_imag(fig, wizard, standard, name, color, std_texts,
                 liquid = get_reference_liquid(liq_key)
                 f_hz = np.linspace(start, stop, points)
                 s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
-                ax_re.plot(f_ghz, np.real(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
-                ax_im.plot(f_ghz, np.imag(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
+                ax_re.plot(f_x, np.real(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
+                ax_im.plot(f_x, np.imag(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
                 handles.append(Line2D([0], [0], linestyle=":", color=color))
                 labels.append("indicative")
             except Exception:
@@ -269,7 +296,7 @@ def _render_real_imag(fig, wizard, standard, name, color, std_texts,
     if measured is not None:
         _, s11 = measured
         s11 = np.asarray(s11, dtype=complex)
-        f_plot = np.linspace(start, stop, len(s11)) / 1e9
+        f_plot = np.linspace(start, stop, len(s11)) / div
         ax_re.plot(f_plot, np.real(s11), "-", color=color, linewidth=2, zorder=3)
         ax_im.plot(f_plot, np.imag(s11), "-", color=color, linewidth=2, zorder=3)
         handles.append(Line2D([0], [0], color=color))
@@ -280,15 +307,18 @@ def _render_real_imag(fig, wizard, standard, name, color, std_texts,
         if raw_data is not None:
             _, s11_raw = raw_data
             s11_raw = np.asarray(s11_raw, dtype=complex)
-            f_plot = np.linspace(start, stop, len(s11_raw)) / 1e9
+            f_plot = np.linspace(start, stop, len(s11_raw)) / div
             ax_re.plot(f_plot, np.real(s11_raw), "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
             ax_im.plot(f_plot, np.imag(s11_raw), "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
             handles.append(Line2D([0], [0], color="#999999", linestyle="--", alpha=0.75))
             labels.append("raw")
 
+    _x_margin = (stop - start) / div * 0.04
+    ax_re.set_xlim(start / div - _x_margin, stop / div + _x_margin)
+    ax_im.set_xlim(start / div - _x_margin, stop / div + _x_margin)
     ax_re.set_ylabel(r"$\mathrm{Re}(S_{11})$", fontsize=9, color="#333333")
     ax_im.set_ylabel(r"$\mathrm{Im}(S_{11})$", fontsize=9, color="#333333")
-    ax_im.set_xlabel("Frequency (GHz)", fontsize=9, color="#333333")
+    ax_im.set_xlabel(f"Frequency ({freq_unit})", fontsize=9, color="#333333")
     ax_re.set_title("Real / Imaginary", fontsize=12, pad=8, color="#222222")
     ax_re.tick_params(labelbottom=False)
     if handles:
@@ -314,7 +344,8 @@ def _render_db_phase(fig, wizard, standard, name, color, std_texts,
     start  = wizard.get_sweep_start_frequency()
     stop   = wizard.get_sweep_stop_frequency()
     points = wizard.get_sweep_steps()
-    f_ghz  = np.linspace(start, stop, points) / 1e9
+    div, freq_unit = _freq_unit_for_range(start, stop)
+    f_x    = np.linspace(start, stop, points) / div
 
     def _mag(s):
         return np.abs(s) if mag_linear else 20 * np.log10(np.abs(s) + 1e-15)
@@ -328,9 +359,9 @@ def _render_db_phase(fig, wizard, standard, name, color, std_texts,
                 liquid = get_reference_liquid(liq_key)
                 f_hz = np.linspace(start, stop, points)
                 s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
-                ax_mag.plot(f_ghz, _mag(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
+                ax_mag.plot(f_x, _mag(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
                 phase_ind = np.unwrap(np.angle(s_ind)) * 180.0 / np.pi
-                ax_ph.plot(f_ghz, phase_ind, linestyle=":", color=color, linewidth=1.4, zorder=1)
+                ax_ph.plot(f_x, phase_ind, linestyle=":", color=color, linewidth=1.4, zorder=1)
                 handles.append(Line2D([0], [0], linestyle=":", color=color))
                 labels.append("indicative")
             except Exception:
@@ -339,7 +370,7 @@ def _render_db_phase(fig, wizard, standard, name, color, std_texts,
     if measured is not None:
         _, s11 = measured
         s11 = np.asarray(s11, dtype=complex)
-        f_plot = np.linspace(start, stop, len(s11)) / 1e9
+        f_plot = np.linspace(start, stop, len(s11)) / div
         ax_mag.plot(f_plot, _mag(s11), "-", color=color, linewidth=2, zorder=3)
         phase = np.unwrap(np.angle(s11)) * 180.0 / np.pi
         ax_ph.plot(f_plot, phase, "-", color=color, linewidth=2, zorder=3)
@@ -351,17 +382,20 @@ def _render_db_phase(fig, wizard, standard, name, color, std_texts,
         if raw_data is not None:
             _, s11_raw = raw_data
             s11_raw = np.asarray(s11_raw, dtype=complex)
-            f_plot = np.linspace(start, stop, len(s11_raw)) / 1e9
+            f_plot = np.linspace(start, stop, len(s11_raw)) / div
             ax_mag.plot(f_plot, _mag(s11_raw), "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
             phase_raw = np.unwrap(np.angle(s11_raw)) * 180.0 / np.pi
             ax_ph.plot(f_plot, phase_raw, "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
             handles.append(Line2D([0], [0], color="#999999", linestyle="--", alpha=0.75))
             labels.append("raw")
 
+    _x_margin = (stop - start) / div * 0.04
+    ax_mag.set_xlim(start / div - _x_margin, stop / div + _x_margin)
+    ax_ph.set_xlim(start / div - _x_margin, stop / div + _x_margin)
     mag_ylabel = r"$|S_{11}|$ (×)" if mag_linear else r"$|S_{11}|$ (dB)"
     ax_mag.set_ylabel(mag_ylabel, fontsize=9, color="#333333")
     ax_ph.set_ylabel(r"$\angle S_{11}$ (°)", fontsize=9, color="#333333")
-    ax_ph.set_xlabel("Frequency (GHz)", fontsize=9, color="#333333")
+    ax_ph.set_xlabel(f"Frequency ({freq_unit})", fontsize=9, color="#333333")
     ax_mag.set_title("Magnitude / Phase", fontsize=12, pad=8, color="#222222")
     ax_mag.tick_params(labelbottom=False)
     if handles:
@@ -451,7 +485,7 @@ def build_standard_screen(wizard, descriptor, step_def):
     wizard.title_label.setText(title_tmpl.format(index=wizard.current_step, total=total, name=name))
 
     # Per-screen render state (mutated by the checkboxes).
-    state = {"show_indicative": True, "show_raw": False}
+    state = {"show_indicative": False, "show_raw": False}
 
     # Left half: sidebar + mid (occupies ~62% of the window, chart gets 38%)
     left_half_layout = QHBoxLayout()
@@ -523,11 +557,10 @@ def build_standard_screen(wizard, descriptor, step_def):
             wizard.perm_calibration.set_measurement(standard.key, freqs, s11_orig, source=_src)
             wizard.epsilon_result = None
             state["show_raw"] = False
-            if state.get("raw_chk_artist") is not None:
-                state["raw_chk_artist"].set_text(state.get("raw_chk_off", "☐  Show without pre-cal"))
-                state["raw_chk_artist"].set_visible(False)
-                if wizard.current_canvas:
-                    wizard.current_canvas.draw()
+            _raw_qt = state.get("raw_chk_qt")
+            if _raw_qt is not None:
+                _raw_qt.setChecked(False)
+                _raw_qt.setVisible(False)
             _render(wizard, standard, name, color, std_texts, (freqs, s11_orig),
                     state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
             btn_delete_precal_top.setVisible(False)
@@ -868,46 +901,105 @@ def build_standard_screen(wizard, descriptor, step_def):
     _mag_toggle_ref.append(_btn_mag_toggle)
 
     def _position_mag_toggle():
-        w = canvas.width()
-        if w > 0:
-            _btn_mag_toggle.move(w - _btn_mag_toggle.width() - 6, 6)
+        try:
+            w = canvas.width()
+            if w > 0:
+                _btn_mag_toggle.move(w - _btn_mag_toggle.width() - 6, 6)
+        except RuntimeError:
+            pass
 
     QTimer.singleShot(400, _position_mag_toggle)
 
     class _CanvasResizeFilter(QObject):
         def eventFilter(self_, obj, event):
             if event.type() == QEvent.Type.Resize:
-                _position_mag_toggle()
+                try:
+                    _position_mag_toggle()
+                except RuntimeError:
+                    pass
             return False
 
     _canvas_rf = _CanvasResizeFilter(canvas)
     canvas.installEventFilter(_canvas_rf)
 
-    # ── Checkboxes (reference liquid steps only) ────────────────────────── #
-    _chk_text = None
-    _chk_raw  = None
-    _chk_on = _chk_off = _raw_on = _raw_off = ""
+    # ── Qt checkboxes overlaid on canvas (reference liquid steps only) ──── #
+    _CHK_STYLE = (
+        "QCheckBox { background-color: rgba(255,255,255,190); color: #444444;"
+        " padding: 2px 6px; border-radius: 3px; font-size: 9px; }"
+        "QCheckBox::indicator { width: 12px; height: 12px; }"
+    )
+    _chk_indicative_qt = None
+    _chk_raw_qt = None
     if is_reference:
-        _chk_on  = '☑  ' + std_texts.get("show_indicative", "Show indicative reference")
-        _chk_off = '☐  ' + std_texts.get("show_indicative", "Show indicative reference")
-        _chk_text = fig.text(0.5, 0.065, _chk_on, ha='center', va='center',
-                              fontsize=9, color='#888888', picker=True)
+        _chk_indicative_qt = QCheckBox(
+            std_texts.get("show_indicative", "Show ideal reference"), canvas
+        )
+        _chk_indicative_qt.setChecked(False)
+        _chk_indicative_qt.setStyleSheet(_CHK_STYLE)
+        _chk_indicative_qt.setToolTip("Show theoretical S11 for the reference liquid")
+        _chk_indicative_qt.raise_()
 
-        _raw_on  = '☑  ' + std_texts.get("show_raw", "Show without pre-cal")
-        _raw_off = '☐  ' + std_texts.get("show_raw", "Show without pre-cal")
-        _chk_raw = fig.text(0.5, 0.020, _raw_off, ha='center', va='center',
-                             fontsize=9, color='#888888', picker=True, visible=False)
-        state["raw_chk_artist"] = _chk_raw
-        state["raw_chk_on"]     = _raw_on
-        state["raw_chk_off"]    = _raw_off
+        _chk_raw_qt = QCheckBox(
+            std_texts.get("show_raw", "Show without pre-cal"), canvas
+        )
+        _chk_raw_qt.setChecked(False)
+        _chk_raw_qt.setStyleSheet(_CHK_STYLE)
+        _chk_raw_qt.setVisible(False)
+        _chk_raw_qt.raise_()
+        state["raw_chk_qt"] = _chk_raw_qt
+
+        def _position_chk_boxes():
+            try:
+                ch = _chk_indicative_qt.sizeHint().height() + 2
+                y1 = canvas.height() - ch - 6
+                y2 = y1 - ch - 2
+                _chk_indicative_qt.adjustSize()
+                _chk_raw_qt.adjustSize()
+                _chk_indicative_qt.move(6, y1)
+                _chk_raw_qt.move(6, y2)
+            except RuntimeError:
+                pass
+
+        QTimer.singleShot(400, _position_chk_boxes)
+
+        class _ChkResizeFilter(QObject):
+            def eventFilter(self_, obj, event):
+                if event.type() == QEvent.Type.Resize:
+                    try:
+                        _position_chk_boxes()
+                    except RuntimeError:
+                        pass
+                return False
+
+        _chk_rf = _ChkResizeFilter(canvas)
+        canvas.installEventFilter(_chk_rf)
 
         if standard.key in getattr(wizard, "_precal_originals", {}):
-            _chk_raw.set_visible(True)
+            _chk_raw_qt.setVisible(True)
+
+        def _on_indicative_toggled(checked):
+            state["show_indicative"] = checked
+            stored_now = wizard.perm_calibration.get_measurement(standard.key)
+            _render(wizard, standard, name, color, std_texts, stored_now,
+                    state["show_indicative"], state.get("show_raw", False),
+                    state.get("chart_mode", "reimag"), state.get("mag_linear", False))
+
+        def _on_raw_toggled(checked):
+            if standard.key not in getattr(wizard, "_precal_originals", {}):
+                _chk_raw_qt.setChecked(False)
+                return
+            state["show_raw"] = checked
+            stored_now = wizard.perm_calibration.get_measurement(standard.key)
+            _render(wizard, standard, name, color, std_texts, stored_now,
+                    state["show_indicative"], state["show_raw"],
+                    state.get("chart_mode", "reimag"), state.get("mag_linear", False))
+
+        _chk_indicative_qt.toggled.connect(_on_indicative_toggled)
+        _chk_raw_qt.toggled.connect(_on_raw_toggled)
 
         def _on_precal_applied():
-            _chk_raw.set_visible(True)
-            if wizard.current_canvas:
-                wizard.current_canvas.draw()
+            if _chk_raw_qt is not None:
+                _chk_raw_qt.setVisible(True)
         wizard._on_precal_applied_hook = _on_precal_applied
 
         _orig_discard = wizard._precal_discard_hooks.get(standard.key)
@@ -915,10 +1007,9 @@ def build_standard_screen(wizard, descriptor, step_def):
             if callable(_orig_discard):
                 _orig_discard()
             state["show_raw"] = False
-            _chk_raw.set_text(_raw_off)
-            _chk_raw.set_visible(False)
-            if wizard.current_canvas:
-                wizard.current_canvas.draw()
+            if _chk_raw_qt is not None:
+                _chk_raw_qt.setChecked(False)
+                _chk_raw_qt.setVisible(False)
         wizard._precal_discard_hooks[standard.key] = _on_precal_discard_full
 
     # ── Tab button click handlers ────────────────────────────────────────── #
@@ -948,26 +1039,6 @@ def build_standard_screen(wizard, descriptor, step_def):
     _btn_dbphase.clicked.connect(lambda: _on_tab_click("dbphase"))
     _btn_smith.clicked.connect(lambda: _on_tab_click("smith"))
     _btn_mag_toggle.clicked.connect(_on_mag_toggle)
-
-    # ── Pick handler for in-canvas checkboxes only ────────────────────── #
-    def _on_pick(event):
-        stored_now = wizard.perm_calibration.get_measurement(standard.key)
-        if _chk_text is not None and event.artist is _chk_text:
-            state["show_indicative"] = not state["show_indicative"]
-            _chk_text.set_text(_chk_on if state["show_indicative"] else _chk_off)
-            _render(wizard, standard, name, color, std_texts, stored_now,
-                    state["show_indicative"], state.get("show_raw", False),
-                    state["chart_mode"], state.get("mag_linear", False))
-        elif _chk_raw is not None and event.artist is _chk_raw:
-            if standard.key not in getattr(wizard, "_precal_originals", {}):
-                return
-            state["show_raw"] = not state["show_raw"]
-            _chk_raw.set_text(_raw_on if state["show_raw"] else _raw_off)
-            _render(wizard, standard, name, color, std_texts, stored_now,
-                    state["show_indicative"], state["show_raw"],
-                    state["chart_mode"], state.get("mag_linear", False))
-
-    fig.canvas.mpl_connect('pick_event', _on_pick)
 
     right_half = QWidget()
     right_half.setLayout(right)

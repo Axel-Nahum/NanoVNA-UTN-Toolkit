@@ -43,9 +43,7 @@ from PySide6.QtGui import QGuiApplication
 from ...exporters.latex_exporter import LatexExporter
 from ...exporters.touchstone_exporter import TouchstoneExporter
 
-# Import dark-light mode toggle function with error handling to log issues without crashing the application
-
-toggle_menu_dark_mode, dark_light_config = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode", "toggle_menu_dark_mode", "dark_light_config")
+dark_light_config = safe_import("NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode", "dark_light_config")
 
 # Import get_settings 
 
@@ -350,15 +348,7 @@ class NanoVNAGraphics(QMainWindow):
 
         #self.lock_markers.triggered.connect(toggle_markers_lock) 
 
-#-------- Dark-light Mode --------------------------------------------------------------------------- #
-
-        text_light_dark = settings.value("Dark_Light/text_light_dark", "text_light_dark")
-
-        #light_dark_mode = edit_menu.addAction(text_light_dark)
-
         self.is_dark_mode = settings.value("Dark_Light/is_dark_mode", False, type=bool)
-
-        #light_dark_mode.triggered.connect(lambda: toggle_menu_dark_mode(self, light_dark_mode))
 
 #-------- Other options ---------------------------------------------------------------------------- #
 

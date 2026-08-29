@@ -59,21 +59,36 @@ def _freq_formatter(value, _pos):
     return f"{value:.0f} Hz"
 
 
+def _freq_unit_for_range(start_hz: float, stop_hz: float):
+    """Return (divisor, unit_str) for a frequency range, matching the user unit rule.
+
+    Both in kHz → kHz; both MHz → MHz; both GHz → GHz;
+    kHz + GHz → GHz; kHz + MHz or MHz + GHz → MHz.
+    """
+    def _tier(f):
+        if f >= 1e9: return 2
+        if f >= 1e6: return 1
+        return 0
+
+    t0, t1 = _tier(start_hz), _tier(stop_hz)
+    if t0 == t1:
+        return (1e9, "GHz") if t0 == 2 else (1e6, "MHz") if t0 == 1 else (1e3, "kHz")
+    if 1 in (t0, t1):
+        return 1e6, "MHz"
+    return 1e9, "GHz"
+
+
 def _make_freq_axis(freqs):
     """Return (unit_str, FuncFormatter) for a clean single-unit x-axis.
 
     Ticks show plain numbers (e.g. 0.5, 1, 1.5) without trailing zeros;
     the unit appears only in the axis label ("Frequency (GHz)").
+    Uses start + end frequency to determine the unit via the user rule.
     """
-    max_f = float(np.max(np.asarray(freqs, dtype=float)))
-    if max_f >= 0.5e9:
-        div, unit = 1e9, "GHz"
-    elif max_f >= 0.5e6:
-        div, unit = 1e6, "MHz"
-    elif max_f >= 0.5e3:
-        div, unit = 1e3, "kHz"
-    else:
-        div, unit = 1.0, "Hz"
+    arr = np.asarray(freqs, dtype=float)
+    start_f = float(arr[0]) if len(arr) > 0 else 0.0
+    stop_f  = float(arr[-1]) if len(arr) > 0 else 0.0
+    div, unit = _freq_unit_for_range(start_f, stop_f)
 
     def _fmt(value, _pos, _div=div):
         v = value / _div
@@ -223,7 +238,7 @@ class EpsilonChartManager:
                     ax.set_ylim(y_min - y_margin, y_max + y_margin)
 
                 freq_range = float(freqs[-1] - freqs[0])
-                x_margin = freq_range * 0.05
+                x_margin = freq_range * 0.04
                 ax.set_xlim(float(freqs[0]) - x_margin, float(freqs[-1]) + x_margin)
 
             if canvas:
