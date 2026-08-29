@@ -60,16 +60,18 @@ def _chart_prefs_path() -> Path:
 _CHART_PREFS_PATH = _chart_prefs_path()
 _CHART_SECTION    = "wizard_chart"
 _CHART_MODE_KEY   = "mode"
-_CHART_MODES      = ("smith", "db", "phase")
+_CHART_MODES      = ("reimag", "dbphase", "smith")
 _TAB_ACTIVE_COLOR   = "#4da6ff"
 _TAB_INACTIVE_COLOR = "#404055"
 
 
 def _load_chart_mode() -> str:
+    _LEGACY = {"db": "dbphase", "phase": "dbphase"}
     cfg = configparser.ConfigParser()
     cfg.read(_CHART_PREFS_PATH)
-    mode = cfg.get(_CHART_SECTION, _CHART_MODE_KEY, fallback="smith")
-    return mode if mode in _CHART_MODES else "smith"
+    mode = cfg.get(_CHART_SECTION, _CHART_MODE_KEY, fallback="reimag")
+    mode = _LEGACY.get(mode, mode)
+    return mode if mode in _CHART_MODES else "reimag"
 
 
 def _save_chart_mode(mode: str) -> None:
@@ -225,6 +227,145 @@ def _render_phase(ax, wizard, standard, name, color, std_texts,
                  fontsize=13, pad=24, color="#222222")
     if handles:
         ax.legend(handles, labels, fontsize=8, framealpha=0.9, loc="best")
+
+
+def _render_real_imag(fig, wizard, standard, name, color, std_texts,
+                      measured, show_indicative, show_raw) -> None:
+    """Render Re(S11) on top and Im(S11) on bottom, sharing the frequency axis."""
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
+        get_reference_liquid, indicative_s11,
+    )
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
+        selected_liquid_key,
+    )
+    fig.clf()
+    ax_re = fig.add_subplot(2, 1, 1)
+    ax_im = fig.add_subplot(2, 1, 2)
+    fig.subplots_adjust(left=0.15, right=0.96, top=0.88, bottom=0.12, hspace=0.45)
+    _apply_light_axes(ax_re)
+    _apply_light_axes(ax_im)
+
+    start  = wizard.get_sweep_start_frequency()
+    stop   = wizard.get_sweep_stop_frequency()
+    points = wizard.get_sweep_steps()
+    f_ghz  = np.linspace(start, stop, points) / 1e9
+
+    handles, labels = [], []
+
+    if show_indicative and standard.kind is StandardKind.REFERENCE_LIQUID:
+        liq_key = selected_liquid_key(wizard, standard)
+        if liq_key:
+            try:
+                liquid = get_reference_liquid(liq_key)
+                f_hz = np.linspace(start, stop, points)
+                s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
+                ax_re.plot(f_ghz, np.real(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
+                ax_im.plot(f_ghz, np.imag(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
+                handles.append(Line2D([0], [0], linestyle=":", color=color))
+                labels.append("indicative")
+            except Exception:
+                pass
+
+    if measured is not None:
+        _, s11 = measured
+        s11 = np.asarray(s11, dtype=complex)
+        f_plot = np.linspace(start, stop, len(s11)) / 1e9
+        ax_re.plot(f_plot, np.real(s11), "-", color=color, linewidth=2, zorder=3)
+        ax_im.plot(f_plot, np.imag(s11), "-", color=color, linewidth=2, zorder=3)
+        handles.append(Line2D([0], [0], color=color))
+        labels.append(_short_legend_name(standard, name))
+
+    if show_raw and standard.kind is StandardKind.REFERENCE_LIQUID:
+        raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
+        if raw_data is not None:
+            _, s11_raw = raw_data
+            s11_raw = np.asarray(s11_raw, dtype=complex)
+            f_plot = np.linspace(start, stop, len(s11_raw)) / 1e9
+            ax_re.plot(f_plot, np.real(s11_raw), "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
+            ax_im.plot(f_plot, np.imag(s11_raw), "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
+            handles.append(Line2D([0], [0], color="#999999", linestyle="--", alpha=0.75))
+            labels.append("raw")
+
+    ax_re.set_ylabel(r"$\mathrm{Re}(S_{11})$", fontsize=9, color="#333333")
+    ax_im.set_ylabel(r"$\mathrm{Im}(S_{11})$", fontsize=9, color="#333333")
+    ax_im.set_xlabel("Frequency (GHz)", fontsize=9, color="#333333")
+    ax_re.set_title("Real / Imaginary", fontsize=12, pad=8, color="#222222")
+    ax_re.tick_params(labelbottom=False)
+    if handles:
+        ax_re.legend(handles, labels, fontsize=8, framealpha=0.9, loc="best")
+
+
+def _render_db_phase(fig, wizard, standard, name, color, std_texts,
+                     measured, show_indicative, show_raw, mag_linear=False) -> None:
+    """Render |S11| magnitude (top) and unwrapped phase (bottom)."""
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
+        get_reference_liquid, indicative_s11,
+    )
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
+        selected_liquid_key,
+    )
+    fig.clf()
+    ax_mag = fig.add_subplot(2, 1, 1)
+    ax_ph  = fig.add_subplot(2, 1, 2)
+    fig.subplots_adjust(left=0.15, right=0.96, top=0.88, bottom=0.12, hspace=0.45)
+    _apply_light_axes(ax_mag)
+    _apply_light_axes(ax_ph)
+
+    start  = wizard.get_sweep_start_frequency()
+    stop   = wizard.get_sweep_stop_frequency()
+    points = wizard.get_sweep_steps()
+    f_ghz  = np.linspace(start, stop, points) / 1e9
+
+    def _mag(s):
+        return np.abs(s) if mag_linear else 20 * np.log10(np.abs(s) + 1e-15)
+
+    handles, labels = [], []
+
+    if show_indicative and standard.kind is StandardKind.REFERENCE_LIQUID:
+        liq_key = selected_liquid_key(wizard, standard)
+        if liq_key:
+            try:
+                liquid = get_reference_liquid(liq_key)
+                f_hz = np.linspace(start, stop, points)
+                s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
+                ax_mag.plot(f_ghz, _mag(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
+                phase_ind = np.unwrap(np.angle(s_ind)) * 180.0 / np.pi
+                ax_ph.plot(f_ghz, phase_ind, linestyle=":", color=color, linewidth=1.4, zorder=1)
+                handles.append(Line2D([0], [0], linestyle=":", color=color))
+                labels.append("indicative")
+            except Exception:
+                pass
+
+    if measured is not None:
+        _, s11 = measured
+        s11 = np.asarray(s11, dtype=complex)
+        f_plot = np.linspace(start, stop, len(s11)) / 1e9
+        ax_mag.plot(f_plot, _mag(s11), "-", color=color, linewidth=2, zorder=3)
+        phase = np.unwrap(np.angle(s11)) * 180.0 / np.pi
+        ax_ph.plot(f_plot, phase, "-", color=color, linewidth=2, zorder=3)
+        handles.append(Line2D([0], [0], color=color))
+        labels.append(_short_legend_name(standard, name))
+
+    if show_raw and standard.kind is StandardKind.REFERENCE_LIQUID:
+        raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
+        if raw_data is not None:
+            _, s11_raw = raw_data
+            s11_raw = np.asarray(s11_raw, dtype=complex)
+            f_plot = np.linspace(start, stop, len(s11_raw)) / 1e9
+            ax_mag.plot(f_plot, _mag(s11_raw), "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
+            phase_raw = np.unwrap(np.angle(s11_raw)) * 180.0 / np.pi
+            ax_ph.plot(f_plot, phase_raw, "--", color="#999999", linewidth=1.3, zorder=2, alpha=0.75)
+            handles.append(Line2D([0], [0], color="#999999", linestyle="--", alpha=0.75))
+            labels.append("raw")
+
+    mag_ylabel = r"$|S_{11}|$ (×)" if mag_linear else r"$|S_{11}|$ (dB)"
+    ax_mag.set_ylabel(mag_ylabel, fontsize=9, color="#333333")
+    ax_ph.set_ylabel(r"$\angle S_{11}$ (°)", fontsize=9, color="#333333")
+    ax_ph.set_xlabel("Frequency (GHz)", fontsize=9, color="#333333")
+    ax_mag.set_title("Magnitude / Phase", fontsize=12, pad=8, color="#222222")
+    ax_mag.tick_params(labelbottom=False)
+    if handles:
+        ax_mag.legend(handles, labels, fontsize=8, framealpha=0.9, loc="best")
 
 
 def _refresh_preset_combo(combo: QComboBox, liquid_key=None) -> None:
@@ -388,7 +529,7 @@ def build_standard_screen(wizard, descriptor, step_def):
                 if wizard.current_canvas:
                     wizard.current_canvas.draw()
             _render(wizard, standard, name, color, std_texts, (freqs, s11_orig),
-                    state["show_indicative"], False, state.get("chart_mode", "smith"))
+                    state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
             btn_delete_precal_top.setVisible(False)
 
         btn_delete_precal_top.clicked.connect(_delete_precal)
@@ -602,7 +743,7 @@ def build_standard_screen(wizard, descriptor, step_def):
             freqs, s11 = loaded
             _render(wizard, standard, name, _trace_colors[2], std_texts,
                     (freqs, s11), state["show_indicative"], state.get("show_raw", False),
-                    state.get("chart_mode", "smith"))
+                    state.get("chart_mode", "reimag"), state.get("mag_linear", False))
 
         btn_grp.idClicked.connect(_on_source_changed)
         preset_combo.currentIndexChanged.connect(
@@ -621,7 +762,6 @@ def build_standard_screen(wizard, descriptor, step_def):
         mid.addWidget(dev_import_btn, alignment=Qt.AlignHCenter)
         mid.addSpacing(4)
         def _dev_import_clicked():
-            _lock_chart_size()
             _on_import(wizard, standard, name, color, measure_btn, std_texts, state)
         dev_import_btn.clicked.connect(_dev_import_clicked)
 
@@ -638,8 +778,9 @@ def build_standard_screen(wizard, descriptor, step_def):
     right.setSpacing(2)
 
     # ── Chart-mode tabs: Qt QPushButton widgets above the canvas ──────── #
-    _initial_mode = "smith"
+    _initial_mode = "reimag"
     state["chart_mode"] = _initial_mode
+    state["mag_linear"] = False
 
     _BTN_ACTIVE = (
         "QPushButton {"
@@ -667,17 +808,22 @@ def build_standard_screen(wizard, descriptor, step_def):
         "}"
     )
 
-    _btn_smith = QPushButton("◎")
-    _btn_db    = QPushButton("dB")
-    _btn_phase = QPushButton("∠")
-    for _btn in (_btn_smith, _btn_db, _btn_phase):
-        _btn.setFixedSize(38, 28)
+    _btn_reimag   = QPushButton("Re/Im")
+    _btn_dbphase  = QPushButton("dB/∠")
+    _btn_smith    = QPushButton("◎")
+    for _btn in (_btn_reimag, _btn_dbphase, _btn_smith):
+        _btn.setFixedSize(48, 28)
 
-    _TAB_BTNS = {"smith": _btn_smith, "db": _btn_db, "phase": _btn_phase}
+    _TAB_BTNS = {"reimag": _btn_reimag, "dbphase": _btn_dbphase, "smith": _btn_smith}
+    _mag_toggle_ref = []  # filled after canvas is created
 
     def _update_tabs(active_mode: str) -> None:
         for m, btn in _TAB_BTNS.items():
             btn.setStyleSheet(_BTN_ACTIVE if m == active_mode else _BTN_INACTIVE)
+        if _mag_toggle_ref:
+            _mag_toggle_ref[0].setVisible(active_mode == "dbphase")
+            if active_mode == "dbphase":
+                _mag_toggle_ref[0].raise_()
 
     _update_tabs(_initial_mode)
 
@@ -685,11 +831,13 @@ def build_standard_screen(wizard, descriptor, step_def):
     tab_row.setContentsMargins(0, 2, 0, 4)
     tab_row.setSpacing(6)
     tab_row.addStretch(1)
+    tab_row.addWidget(_btn_reimag)
+    tab_row.addWidget(_btn_dbphase)
     tab_row.addWidget(_btn_smith)
-    tab_row.addWidget(_btn_db)
-    tab_row.addWidget(_btn_phase)
     right.addLayout(tab_row)
 
+    from PySide6.QtCore import QTimer
+    from PySide6.QtWidgets import QSizePolicy as _SP
     from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import create_wizard_smith_chart
     fig, ax, canvas = create_wizard_smith_chart(
         start_freq=wizard.get_sweep_start_frequency(),
@@ -699,6 +847,41 @@ def build_standard_screen(wizard, descriptor, step_def):
         figsize=(6, 6),
     )
     wizard.current_fig, wizard.current_ax, wizard.current_canvas = fig, ax, canvas
+
+    # ── dB/× overlay toggle (top-right inside canvas, only in dbphase mode) ─ #
+    _BTN_OV_DB = (
+        "QPushButton { background-color: rgba(255,255,255,200); color: #444444;"
+        " border: 1px solid #bbbbbb; border-radius: 3px; font-size: 10px; padding: 0px; }"
+        "QPushButton:hover { background-color: rgba(230,230,230,220); }"
+    )
+    _BTN_OV_LIN = (
+        "QPushButton { background-color: rgba(255,243,224,220); color: #c06000;"
+        " border: 1px solid #e09030; border-radius: 3px; font-size: 10px; padding: 0px; }"
+        "QPushButton:hover { background-color: rgba(255,225,180,230); }"
+    )
+    _btn_mag_toggle = QPushButton("dB", canvas)
+    _btn_mag_toggle.setFixedSize(30, 20)
+    _btn_mag_toggle.setStyleSheet(_BTN_OV_DB)
+    _btn_mag_toggle.setToolTip("Toggle: dB ↔ linear (\xd7)")
+    _btn_mag_toggle.setVisible(False)
+    _btn_mag_toggle.raise_()
+    _mag_toggle_ref.append(_btn_mag_toggle)
+
+    def _position_mag_toggle():
+        w = canvas.width()
+        if w > 0:
+            _btn_mag_toggle.move(w - _btn_mag_toggle.width() - 6, 6)
+
+    QTimer.singleShot(400, _position_mag_toggle)
+
+    class _CanvasResizeFilter(QObject):
+        def eventFilter(self_, obj, event):
+            if event.type() == QEvent.Type.Resize:
+                _position_mag_toggle()
+            return False
+
+    _canvas_rf = _CanvasResizeFilter(canvas)
+    canvas.installEventFilter(_canvas_rf)
 
     # ── Checkboxes (reference liquid steps only) ────────────────────────── #
     _chk_text = None
@@ -747,11 +930,24 @@ def build_standard_screen(wizard, descriptor, step_def):
         _save_chart_mode(new_mode)
         stored_now = wizard.perm_calibration.get_measurement(standard.key)
         _render(wizard, standard, name, color, std_texts, stored_now,
-                state["show_indicative"], state.get("show_raw", False), new_mode)
+                state["show_indicative"], state.get("show_raw", False),
+                new_mode, state.get("mag_linear", False))
 
+    def _on_mag_toggle() -> None:
+        state["mag_linear"] = not state.get("mag_linear", False)
+        is_linear = state["mag_linear"]
+        _btn_mag_toggle.setText("\xd7" if is_linear else "dB")
+        _btn_mag_toggle.setStyleSheet(_BTN_OV_LIN if is_linear else _BTN_OV_DB)
+        stored_now = wizard.perm_calibration.get_measurement(standard.key)
+        _render(wizard, standard, name, color, std_texts, stored_now,
+                state["show_indicative"], state.get("show_raw", False),
+                "dbphase", is_linear)
+        _btn_mag_toggle.raise_()
+
+    _btn_reimag.clicked.connect(lambda: _on_tab_click("reimag"))
+    _btn_dbphase.clicked.connect(lambda: _on_tab_click("dbphase"))
     _btn_smith.clicked.connect(lambda: _on_tab_click("smith"))
-    _btn_db.clicked.connect(lambda: _on_tab_click("db"))
-    _btn_phase.clicked.connect(lambda: _on_tab_click("phase"))
+    _btn_mag_toggle.clicked.connect(_on_mag_toggle)
 
     # ── Pick handler for in-canvas checkboxes only ────────────────────── #
     def _on_pick(event):
@@ -760,14 +956,16 @@ def build_standard_screen(wizard, descriptor, step_def):
             state["show_indicative"] = not state["show_indicative"]
             _chk_text.set_text(_chk_on if state["show_indicative"] else _chk_off)
             _render(wizard, standard, name, color, std_texts, stored_now,
-                    state["show_indicative"], state.get("show_raw", False), state["chart_mode"])
+                    state["show_indicative"], state.get("show_raw", False),
+                    state["chart_mode"], state.get("mag_linear", False))
         elif _chk_raw is not None and event.artist is _chk_raw:
             if standard.key not in getattr(wizard, "_precal_originals", {}):
                 return
             state["show_raw"] = not state["show_raw"]
             _chk_raw.set_text(_raw_on if state["show_raw"] else _raw_off)
             _render(wizard, standard, name, color, std_texts, stored_now,
-                    state["show_indicative"], state["show_raw"], state["chart_mode"])
+                    state["show_indicative"], state["show_raw"],
+                    state["chart_mode"], state.get("mag_linear", False))
 
     fig.canvas.mpl_connect('pick_event', _on_pick)
 
@@ -788,20 +986,8 @@ def build_standard_screen(wizard, descriptor, step_def):
     right_half.setFixedWidth(max(260, int((getattr(wizard, "_wiz_w", 1300) - 40) * 0.38)))
     right_half.setMinimumHeight(260)
 
-    # Once the widget is actually painted (real pixel sizes available), lock
-    # both the canvas AND right_half to their actual sizes so that status-label
-    # text changes in the left column cannot compress the chart during a sweep.
-    from PySide6.QtCore import QTimer
+    canvas.setSizePolicy(_SP.Policy.Expanding, _SP.Policy.Expanding)
 
-    def _lock_chart_size() -> None:
-        cw, ch = canvas.width(), canvas.height()
-        if cw > 0 and ch > 0:
-            canvas.setFixedSize(cw, ch)
-        rh = right_half.height()
-        if rh > 0:
-            right_half.setFixedHeight(rh)
-
-    QTimer.singleShot(350, _lock_chart_size)
     _chart_filter = _HalfWidthFilter(right_half, container)
     container.installEventFilter(_chart_filter)
 
@@ -836,13 +1022,10 @@ def build_standard_screen(wizard, descriptor, step_def):
     _render(wizard, standard, name,
             _trace_colors[2] if (btn_grp is not None and pending_preset) else color,
             std_texts, stored, state["show_indicative"], state.get("show_raw", False),
-            state.get("chart_mode", "smith"))
+            state.get("chart_mode", "reimag"), state.get("mag_linear", False))
     wizard.next_button.setEnabled(already)
 
     def _btn_clicked():
-        # Lock canvas + right_half sizes before any sweep so the Next-button
-        # appearing (or status-label changes) cannot reflow and compress the chart.
-        _lock_chart_size()
         mode = btn_grp.checkedId() if btn_grp is not None else 0
         trace_color = _trace_colors.get(mode, color) if btn_grp is not None else color
         if mode == 0:
@@ -988,7 +1171,7 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
     button.setText(std_texts.get("reimport_button", "Import again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11),
             state["show_indicative"], state.get("show_raw", False),
-            state.get("chart_mode", "smith"))
+            state.get("chart_mode", "reimag"), state.get("mag_linear", False))
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
     if callable(hook):
@@ -1273,7 +1456,7 @@ def _on_measure(wizard, standard, name, color, button, std_texts, state):
     button.setText(std_texts.get("remeasure_button", "Measure again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11),
             state["show_indicative"], state.get("show_raw", False),
-            state.get("chart_mode", "smith"))
+            state.get("chart_mode", "reimag"), state.get("mag_linear", False))
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
     if callable(hook):
@@ -1300,24 +1483,35 @@ def _short_legend_name(standard, name):
 
 
 def _render(wizard, standard, name, color, std_texts, measured,
-            show_indicative, show_raw=False, chart_mode="smith"):
-    """Draw S11 in the current chart mode (smith / db / phase)."""
-    ax = wizard.current_ax
-    if ax is None:
+            show_indicative, show_raw=False, chart_mode="reimag", mag_linear=False):
+    """Draw S11 in the current chart mode (reimag / dbphase / smith)."""
+    fig = wizard.current_fig
+    if fig is None:
         return
 
-    if chart_mode == "db":
-        _render_magnitude(ax, wizard, standard, name, color, std_texts,
+    if chart_mode == "reimag":
+        _render_real_imag(fig, wizard, standard, name, color, std_texts,
                           measured, show_indicative, show_raw)
         if wizard.current_canvas:
             wizard.current_canvas.draw()
         return
 
-    if chart_mode == "phase":
-        _render_phase(ax, wizard, standard, name, color, std_texts,
-                      measured, show_indicative, show_raw)
+    if chart_mode == "dbphase":
+        _render_db_phase(fig, wizard, standard, name, color, std_texts,
+                         measured, show_indicative, show_raw, mag_linear)
         if wizard.current_canvas:
             wizard.current_canvas.draw()
+        return
+
+    # Smith: restore a single subplot if coming from a two-axis mode
+    if len(fig.axes) != 1:
+        fig.clf()
+        ax = fig.add_subplot(1, 1, 1)
+        wizard.current_ax = ax
+    else:
+        ax = wizard.current_ax
+
+    if ax is None:
         return
 
     # ── Smith chart (default) ───────────────────────────────────────────── #
@@ -1611,7 +1805,7 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         wizard.epsilon_result = None
         state["show_raw"] = False
         _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm),
-                state["show_indicative"], False, state.get("chart_mode", "smith"))
+                state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
         btn_delete_precal.setVisible(True)
         hook = getattr(wizard, "_on_precal_applied_hook", None)
         if callable(hook):
