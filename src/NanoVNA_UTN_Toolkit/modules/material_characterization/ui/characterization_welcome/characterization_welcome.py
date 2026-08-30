@@ -38,15 +38,23 @@ CharacterizationResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resourc
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
-_CARD = """
+_CARD_DARK = """
     QWidget#card {
-        background-color: #252525;
-        border: 1px solid #3d3d3d;
+        background-color: #252538;
+        border: 1px solid #383850;
         border-radius: 10px;
     }
 """
 
-_BTN_PRIMARY = """
+_CARD_LIGHT = """
+    QWidget#card {
+        background-color: #e8e8f4;
+        border: 1px solid #c4c4d8;
+        border-radius: 10px;
+    }
+"""
+
+_BTN_PRIMARY_DARK = """
     QPushButton {
         background-color: #1a3a5c;
         color: white;
@@ -60,7 +68,21 @@ _BTN_PRIMARY = """
     QPushButton:pressed { background-color: #12263d; }
 """
 
-_BTN_SECONDARY = """
+_BTN_PRIMARY_LIGHT = """
+    QPushButton {
+        background-color: #2d5a8e;
+        color: white;
+        border: 1px solid #a0bcd8;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: bold;
+        padding: 11px;
+    }
+    QPushButton:hover  { background-color: #3a6fa8; }
+    QPushButton:pressed { background-color: #1a4a7a; }
+"""
+
+_BTN_SECONDARY_DARK = """
     QPushButton {
         background-color: transparent;
         color: #4da6ff;
@@ -74,7 +96,21 @@ _BTN_SECONDARY = """
     QPushButton:pressed { background-color: #12263d; }
 """
 
-_BTN_BACK = """
+_BTN_SECONDARY_LIGHT = """
+    QPushButton {
+        background-color: transparent;
+        color: #2d5a8e;
+        border: 1px solid #a0bcd8;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: bold;
+        padding: 11px;
+    }
+    QPushButton:hover  { background-color: #dce8f8; color: #1a3a5c; border: 1px solid #5a8fc0; }
+    QPushButton:pressed { background-color: #c8d8f0; }
+"""
+
+_BTN_BACK_DARK = """
     QPushButton {
         background-color: #1c2533;
         color: #7ab3f5;
@@ -93,11 +129,26 @@ _BTN_BACK = """
     QPushButton:pressed { background-color: #12263d; }
 """
 
-_COMBO = """
+_BTN_BACK_LIGHT = """
+    QPushButton {
+        background-color: #e0e0f0;
+        color: #1e1e2e;
+        border: 1px solid #c4c4d8;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 9px 28px;
+        letter-spacing: 0.3px;
+    }
+    QPushButton:hover { background-color: #d0d0e8; }
+    QPushButton:pressed { background-color: #c0c0d8; }
+"""
+
+_COMBO_DARK = """
     QComboBox {
-        background-color: #333333;
+        background-color: #2a2a3e;
         color: white;
-        border: 1px solid #505050;
+        border: 1px solid #383850;
         border-radius: 6px;
         padding: 8px 12px;
         font-size: 13px;
@@ -108,17 +159,40 @@ _COMBO = """
     QComboBox::drop-down { width: 0px; border: none; background: transparent; }
     QComboBox::down-arrow { image: none; width: 0px; height: 0px; }
     QComboBox QAbstractItemView {
-        background-color: #333333;
+        background-color: #2a2a3e;
         color: white;
         selection-background-color: #2d5a8e;
-        border: 1px solid #505050;
+        border: 1px solid #383850;
+        padding: 4px;
+    }
+"""
+
+_COMBO_LIGHT = """
+    QComboBox {
+        background-color: #ebebf5;
+        color: #1e1e2e;
+        border: 1px solid #c4c4d8;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 13px;
+        min-height: 38px;
+    }
+    QComboBox:hover  { border: 1px solid #5a8fc0; }
+    QComboBox:focus  { border: 1px solid #5a8fc0; }
+    QComboBox::drop-down { width: 0px; border: none; background: transparent; }
+    QComboBox::down-arrow { image: none; width: 0px; height: 0px; }
+    QComboBox QAbstractItemView {
+        background-color: #f8f8ff;
+        color: #1e1e2e;
+        selection-background-color: #dcdcf0;
+        border: 1px solid #c4c4d8;
         padding: 4px;
     }
 """
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
-def _hsep(color="#363636"):
+def _hsep(color="#383850"):
     """Thin horizontal separator line."""
     line = QWidget()
     line.setFixedHeight(1)
@@ -169,6 +243,35 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         dark_light_config(self)
 
+        _theme_cfg = get_settings(
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+            "shared/utils/dark_light_mode/dark_light_config.ini",
+            Path(__file__).resolve(),
+        )
+        _is_dark = not _theme_cfg.value("Dark_Light/is_dark_mode", False, type=bool)
+        if _is_dark:
+            self._card_style   = _CARD_DARK
+            self._combo_style  = _COMBO_DARK
+            self._btn_primary  = _BTN_PRIMARY_DARK
+            self._btn_back     = _BTN_BACK_DARK
+            self._sep_color    = "#383850"
+            self._title_color  = "#ffffff"
+            self._subtitle_color = "#8888aa"
+            self._secondary_color = "#8888aa"
+            self._muted_color  = "#8888aa"
+            self._info_color   = "#5a5a78"
+        else:
+            self._card_style   = _CARD_LIGHT
+            self._combo_style  = _COMBO_LIGHT
+            self._btn_primary  = _BTN_PRIMARY_LIGHT
+            self._btn_back     = _BTN_BACK_LIGHT
+            self._sep_color    = "#c4c4d8"
+            self._title_color  = "#1e1e2e"
+            self._subtitle_color = "#5a5a78"
+            self._secondary_color = "#5a5a78"
+            self._muted_color  = "#8888aa"
+            self._info_color   = "#8888aa"
+
         self.vna_device = vna_device
 
         logging.info(
@@ -194,9 +297,9 @@ class MaterialCharacterizationWelcome(QMainWindow):
         root.setContentsMargins(24, 18, 24, 18)
 
         self._build_header(root)
-        root.addWidget(_hsep())
+        root.addWidget(_hsep(self._sep_color))
         self._build_main_cards(root)
-        root.addWidget(_hsep())
+        root.addWidget(_hsep(self._sep_color))
         self._build_footer(root)
 
         self._create_menus()
@@ -210,12 +313,12 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         title = QLabel(self.charac_welcome_ui_header_title)
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #ffffff;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self._title_color};")
 
         subtitle = QLabel(self.charac_welcome_ui_descriptions[0] if self.charac_welcome_ui_descriptions else "")
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setWordWrap(True)
-        subtitle.setStyleSheet("font-size: 12px; color: #666666;")
+        subtitle.setStyleSheet(f"font-size: 12px; color: {self._subtitle_color};")
 
         center.addWidget(title)
         center.addWidget(subtitle)
@@ -229,7 +332,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         back = QPushButton(self.charac_welcome_ui_back_button)
         back.setFixedSize(200, 38)
-        back.setStyleSheet(_BTN_BACK)
+        back.setStyleSheet(self._btn_back)
         back.clicked.connect(self.return_to_menu_window)
 
         row.addStretch(1)
@@ -251,7 +354,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
     def _build_left_card(self):
         card = QWidget()
         card.setObjectName("card")
-        card.setStyleSheet(_CARD)
+        card.setStyleSheet(self._card_style)
 
         layout = QVBoxLayout(card)
         layout.setContentsMargins(22, 20, 22, 20)
@@ -259,17 +362,17 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         # Card title
         title_lbl = QLabel(self.charac_welcome_ui_method_selection_title)
-        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
+        title_lbl.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {self._title_color}; background: transparent;")
         layout.addWidget(title_lbl)
 
         layout.addSpacing(6)
-        layout.addWidget(_hsep())
+        layout.addWidget(_hsep(self._sep_color))
         layout.addSpacing(14)
 
         # Subtitle
         sub = QLabel(self.charac_welcome_ui_kit_selection_subtitle)
         sub.setWordWrap(True)
-        sub.setStyleSheet("font-size: 12px; color: #777777; background: transparent;")
+        sub.setStyleSheet(f"font-size: 12px; color: {self._secondary_color}; background: transparent;")
         layout.addWidget(sub)
 
         layout.addSpacing(14)
@@ -277,7 +380,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         # Dropdown
         self._load_saved_calibrations()
         self.calibration_dropdown = QComboBox()
-        self.calibration_dropdown.setStyleSheet(_COMBO)
+        self.calibration_dropdown.setStyleSheet(self._combo_style)
         self.calibration_dropdown.addItem("None")
         self._set_current_calibration_selection()
         self.calibration_dropdown.currentTextChanged.connect(self._on_calibration_selection_changed)
@@ -292,7 +395,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         self.calibration_info_label = QLabel(self.charac_welcome_ui_no_characterization_selected)
         self.calibration_info_label.setWordWrap(True)
         self.calibration_info_label.setStyleSheet(
-            "font-size: 12px; color: #555555; background: transparent; font-style: italic;"
+            f"font-size: 12px; color: {self._info_color}; background: transparent; font-style: italic;"
         )
         layout.addWidget(self.calibration_info_label)
         self._update_calibration_info_display()
@@ -302,7 +405,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         # Primary button
         self.characterization_methods_button = QPushButton(self.charac_welcome_ui_open_methods_button)
         self.characterization_methods_button.setFixedHeight(44)
-        self.characterization_methods_button.setStyleSheet(_BTN_PRIMARY)
+        self.characterization_methods_button.setStyleSheet(self._btn_primary)
         self.characterization_methods_button.clicked.connect(self.open_characterization_methods)
         layout.addWidget(self.characterization_methods_button)
 
@@ -313,7 +416,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
     def _build_right_card(self):
         card = QWidget()
         card.setObjectName("card")
-        card.setStyleSheet(_CARD)
+        card.setStyleSheet(self._card_style)
 
         layout = QVBoxLayout(card)
         layout.setContentsMargins(22, 20, 22, 20)
@@ -321,17 +424,17 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         # Card title
         title_lbl = QLabel(self.charac_welcome_ui_import_section_title)
-        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
+        title_lbl.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {self._title_color}; background: transparent;")
         layout.addWidget(title_lbl)
 
         layout.addSpacing(6)
-        layout.addWidget(_hsep())
+        layout.addWidget(_hsep(self._sep_color))
         layout.addSpacing(14)
 
         # Main description
         desc = QLabel(self.charac_welcome_ui_import_description)
         desc.setWordWrap(True)
-        desc.setStyleSheet("font-size: 12px; color: #999999; background: transparent;")
+        desc.setStyleSheet(f"font-size: 12px; color: {self._muted_color}; background: transparent;")
         layout.addWidget(desc)
 
         layout.addSpacing(18)
@@ -344,14 +447,14 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         import_hint = QLabel(self.charac_welcome_ui_import_hint)
         import_hint.setWordWrap(True)
-        import_hint.setStyleSheet("font-size: 11px; color: #888888; font-style: italic; background: transparent;")
+        import_hint.setStyleSheet(f"font-size: 11px; color: {self._muted_color}; font-style: italic; background: transparent;")
         layout.addWidget(import_hint)
 
         layout.addStretch(1)
 
         self.import_button = QPushButton(self.charac_welcome_ui_import_button_text)
         self.import_button.setFixedHeight(44)
-        self.import_button.setStyleSheet(_BTN_PRIMARY)
+        self.import_button.setStyleSheet(self._btn_primary)
         self.import_button.clicked.connect(self.import_characterization_package)
         layout.addWidget(self.import_button)
 

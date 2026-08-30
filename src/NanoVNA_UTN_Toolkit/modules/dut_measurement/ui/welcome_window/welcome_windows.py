@@ -46,15 +46,23 @@ stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_tim
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
-_CARD = """
+_CARD_DARK = """
     QWidget#card {
-        background-color: #252525;
-        border: 1px solid #3d3d3d;
+        background-color: #252538;
+        border: 1px solid #383850;
         border-radius: 10px;
     }
 """
 
-_BTN_PRIMARY = """
+_CARD_LIGHT = """
+    QWidget#card {
+        background-color: #e8e8f4;
+        border: 1px solid #c4c4d8;
+        border-radius: 10px;
+    }
+"""
+
+_BTN_PRIMARY_DARK = """
     QPushButton {
         background-color: #1a3a5c;
         color: white;
@@ -68,7 +76,21 @@ _BTN_PRIMARY = """
     QPushButton:pressed { background-color: #12263d; }
 """
 
-_BTN_SECONDARY = """
+_BTN_PRIMARY_LIGHT = """
+    QPushButton {
+        background-color: #2d5a8e;
+        color: white;
+        border: 1px solid #a0bcd8;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: bold;
+        padding: 11px;
+    }
+    QPushButton:hover  { background-color: #3a6fa8; }
+    QPushButton:pressed { background-color: #1a4a7a; }
+"""
+
+_BTN_SECONDARY_DARK = """
     QPushButton {
         background-color: transparent;
         color: #4da6ff;
@@ -82,7 +104,21 @@ _BTN_SECONDARY = """
     QPushButton:pressed { background-color: #12263d; }
 """
 
-_BTN_BACK = """
+_BTN_SECONDARY_LIGHT = """
+    QPushButton {
+        background-color: transparent;
+        color: #2d5a8e;
+        border: 1px solid #a0bcd8;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: bold;
+        padding: 11px;
+    }
+    QPushButton:hover  { background-color: #dce8f8; color: #1a3a5c; border: 1px solid #5a8fc0; }
+    QPushButton:pressed { background-color: #c8d8f0; }
+"""
+
+_BTN_BACK_DARK = """
     QPushButton {
         background-color: #1c2533;
         color: #7ab3f5;
@@ -96,11 +132,25 @@ _BTN_BACK = """
     QPushButton:pressed { background-color: #12263d; }
 """
 
-_COMBO = """
+_BTN_BACK_LIGHT = """
+    QPushButton {
+        background-color: #e0e0f0;
+        color: #1e1e2e;
+        border: 1px solid #c4c4d8;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 9px 28px;
+    }
+    QPushButton:hover  { background-color: #d0d0e8; }
+    QPushButton:pressed { background-color: #c0c0d8; }
+"""
+
+_COMBO_DARK = """
     QComboBox {
-        background-color: #333333;
+        background-color: #2a2a3e;
         color: white;
-        border: 1px solid #505050;
+        border: 1px solid #383850;
         border-radius: 6px;
         padding: 8px 12px;
         font-size: 13px;
@@ -111,17 +161,40 @@ _COMBO = """
     QComboBox::drop-down { width: 0px; border: none; background: transparent; }
     QComboBox::down-arrow { image: none; width: 0px; height: 0px; }
     QComboBox QAbstractItemView {
-        background-color: #333333;
+        background-color: #2a2a3e;
         color: white;
         selection-background-color: #2d5a8e;
-        border: 1px solid #505050;
+        border: 1px solid #383850;
+        padding: 4px;
+    }
+"""
+
+_COMBO_LIGHT = """
+    QComboBox {
+        background-color: #ebebf5;
+        color: #1e1e2e;
+        border: 1px solid #c4c4d8;
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 13px;
+        min-height: 38px;
+    }
+    QComboBox:hover  { border: 1px solid #4d90fe; }
+    QComboBox:focus  { border: 1px solid #4d90fe; }
+    QComboBox::drop-down { width: 0px; border: none; background: transparent; }
+    QComboBox::down-arrow { image: none; width: 0px; height: 0px; }
+    QComboBox QAbstractItemView {
+        background-color: #f8f8ff;
+        color: #1e1e2e;
+        selection-background-color: #dcdcf0;
+        border: 1px solid #c4c4d8;
         padding: 4px;
     }
 """
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
-def _hsep(color="#363636"):
+def _hsep(color="#383850"):
     line = QWidget()
     line.setFixedHeight(1)
     line.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -129,7 +202,7 @@ def _hsep(color="#363636"):
     return line
 
 
-def _bullet_row(icon, text, icon_color="#5cb85c"):
+def _bullet_row(icon, text, icon_color="#5cb85c", text_color="#aaaaaa"):
     row = QHBoxLayout()
     row.setSpacing(10)
     row.setContentsMargins(0, 0, 0, 0)
@@ -138,7 +211,7 @@ def _bullet_row(icon, text, icon_color="#5cb85c"):
     icon_lbl.setFixedWidth(18)
     text_lbl = QLabel(text)
     text_lbl.setWordWrap(True)
-    text_lbl.setStyleSheet("color: #aaaaaa; font-size: 12px; background: transparent;")
+    text_lbl.setStyleSheet(f"color: {text_color}; font-size: 12px; background: transparent;")
     row.addWidget(icon_lbl, alignment=Qt.AlignTop)
     row.addWidget(text_lbl, stretch=1)
     return row
@@ -165,6 +238,36 @@ class NanoVNAWelcome(QMainWindow):
         resourceLoader.load_dut_measurement_welcome_resources()
 
         dark_light_config(self)
+
+        _theme = get_settings(
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+            "shared/utils/dark_light_mode/dark_light_config.ini",
+            Path(__file__).resolve()
+        )
+        self.is_dark_mode = _theme.value("Dark_Light/is_dark_mode", False, type=bool)
+        _is_dark = not self.is_dark_mode
+        if _is_dark:
+            self._card_style    = _CARD_DARK
+            self._combo_style   = _COMBO_DARK
+            self._btn_primary   = _BTN_PRIMARY_DARK
+            self._btn_secondary = _BTN_SECONDARY_DARK
+            self._btn_back      = _BTN_BACK_DARK
+            self._sep_color     = "#383850"
+            self._title_color   = "#ffffff"
+            self._secondary_color = "#8888aa"
+            self._muted_color   = "#8888aa"
+            self._bullet_color  = "#8888aa"
+        else:
+            self._card_style    = _CARD_LIGHT
+            self._combo_style   = _COMBO_LIGHT
+            self._btn_primary   = _BTN_PRIMARY_LIGHT
+            self._btn_secondary = _BTN_SECONDARY_LIGHT
+            self._btn_back      = _BTN_BACK_LIGHT
+            self._sep_color     = "#c4c4d8"
+            self._title_color   = "#1e1e2e"
+            self._secondary_color = "#5a5a78"
+            self._muted_color   = "#8888aa"
+            self._bullet_color  = "#5a5a78"
 
         self.vna_device = vna_device
         logging.info("[welcome_windows.__init__] Initializing welcome window")
@@ -211,13 +314,13 @@ class NanoVNAWelcome(QMainWindow):
 
         title = QLabel(self.dut_welcome_ui_window_title)
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 20px; font-weight: bold; color: #ffffff;")
+        title.setStyleSheet(f"font-size: 20px; font-weight: bold; color: {self._title_color};")
 
         subtitle = QLabel(self.dut_welcome_ui_descriptions if isinstance(self.dut_welcome_ui_descriptions, str)
                           else (self.dut_welcome_ui_descriptions[0] if self.dut_welcome_ui_descriptions else ""))
         subtitle.setAlignment(Qt.AlignCenter)
         subtitle.setWordWrap(True)
-        subtitle.setStyleSheet("font-size: 12px; color: #666666;")
+        subtitle.setStyleSheet(f"font-size: 12px; color: {self._muted_color};")
 
         layout.addWidget(title)
         layout.addWidget(subtitle)
@@ -230,7 +333,7 @@ class NanoVNAWelcome(QMainWindow):
         row.setContentsMargins(0, 4, 0, 0)
         back = QPushButton(self.dut_welcome_ui_back_button)
         back.setFixedSize(200, 38)
-        back.setStyleSheet(_BTN_BACK)
+        back.setStyleSheet(self._btn_back)
         back.clicked.connect(self.return_to_menu_window)
         row.addStretch(1)
         row.addWidget(back)
@@ -252,7 +355,7 @@ class NanoVNAWelcome(QMainWindow):
     def _build_card_calibration(self):
         card = QWidget()
         card.setObjectName("card")
-        card.setStyleSheet(_CARD)
+        card.setStyleSheet(self._card_style)
 
         layout = QVBoxLayout(card)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -260,17 +363,17 @@ class NanoVNAWelcome(QMainWindow):
 
         # Title row
         title_lbl = QLabel(self.dut_welcome_ui_calibration_title)
-        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
+        title_lbl.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {self._title_color}; background: transparent;")
         layout.addWidget(title_lbl)
 
         layout.addSpacing(6)
-        layout.addWidget(_hsep())
+        layout.addWidget(_hsep(self._sep_color))
         layout.addSpacing(14)
 
         desc = QLabel(self.dut_welcome_ui_descriptions if isinstance(self.dut_welcome_ui_descriptions, str)
                       else "  ".join(self.dut_welcome_ui_descriptions))
         desc.setWordWrap(True)
-        desc.setStyleSheet("font-size: 12px; color: #999999; background: transparent;")
+        desc.setStyleSheet(f"font-size: 12px; color: {self._secondary_color}; background: transparent;")
         layout.addWidget(desc)
 
         layout.addSpacing(14)
@@ -281,14 +384,14 @@ class NanoVNAWelcome(QMainWindow):
             ("○", "Step-by-step guided measurement wizard"),
         ]
         for bullet, text in features:
-            layout.addLayout(_bullet_row(bullet, text, "#4da6ff"))
+            layout.addLayout(_bullet_row(bullet, text, "#4da6ff", self._bullet_color))
             layout.addSpacing(6)
 
         layout.addStretch(1)
 
         self.calibration_wizard_button = QPushButton(self.dut_welcome_ui_label_calibration_button)
         self.calibration_wizard_button.setFixedHeight(44)
-        self.calibration_wizard_button.setStyleSheet(_BTN_PRIMARY)
+        self.calibration_wizard_button.setStyleSheet(self._btn_primary)
         self.calibration_wizard_button.clicked.connect(self.open_calibration_wizard)
         layout.addWidget(self.calibration_wizard_button)
 
@@ -299,7 +402,7 @@ class NanoVNAWelcome(QMainWindow):
     def _build_card_measurements(self):
         card = QWidget()
         card.setObjectName("card")
-        card.setStyleSheet(_CARD)
+        card.setStyleSheet(self._card_style)
 
         layout = QVBoxLayout(card)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -307,15 +410,15 @@ class NanoVNAWelcome(QMainWindow):
 
         # Title row
         title_lbl = QLabel(self.dut_welcome_ui_kit_title)
-        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
+        title_lbl.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {self._title_color}; background: transparent;")
         layout.addWidget(title_lbl)
 
         layout.addSpacing(6)
-        layout.addWidget(_hsep())
+        layout.addWidget(_hsep(self._sep_color))
         layout.addSpacing(14)
 
         kit_lbl = QLabel(self.dut_welcome_ui_kit_selection_title)
-        kit_lbl.setStyleSheet("font-size: 12px; color: #777777; background: transparent;")
+        kit_lbl.setStyleSheet(f"font-size: 12px; color: {self._muted_color}; background: transparent;")
         layout.addWidget(kit_lbl)
 
         layout.addSpacing(10)
@@ -323,7 +426,7 @@ class NanoVNAWelcome(QMainWindow):
         self._load_calibration_kits()
 
         self.kit_dropdown = QComboBox()
-        self.kit_dropdown.setStyleSheet(_COMBO)
+        self.kit_dropdown.setStyleSheet(self._combo_style)
         self.kit_dropdown.addItem("None")
         for kit_name in self.kit_names:
             self.kit_dropdown.addItem(kit_name)
@@ -339,7 +442,7 @@ class NanoVNAWelcome(QMainWindow):
         self.kit_info_label = QLabel(self.dut_welcome_ui_no_kit_selected)
         self.kit_info_label.setWordWrap(True)
         self.kit_info_label.setStyleSheet(
-            "font-size: 12px; color: #555555; background: transparent; font-style: italic;"
+            f"font-size: 12px; color: {self._secondary_color}; background: transparent; font-style: italic;"
         )
         layout.addWidget(self.kit_info_label)
         self._update_kit_info_display()
@@ -348,7 +451,7 @@ class NanoVNAWelcome(QMainWindow):
 
         self.graphics_button = QPushButton(self.dut_welcome_ui_label_kit_button)
         self.graphics_button.setFixedHeight(44)
-        self.graphics_button.setStyleSheet(_BTN_PRIMARY)
+        self.graphics_button.setStyleSheet(self._btn_primary)
         self.graphics_button.clicked.connect(self.graphics_clicked)
         layout.addWidget(self.graphics_button)
 
@@ -359,7 +462,7 @@ class NanoVNAWelcome(QMainWindow):
     def _build_card_import(self):
         card = QWidget()
         card.setObjectName("card")
-        card.setStyleSheet(_CARD)
+        card.setStyleSheet(self._card_style)
 
         layout = QVBoxLayout(card)
         layout.setContentsMargins(20, 20, 20, 20)
@@ -367,35 +470,35 @@ class NanoVNAWelcome(QMainWindow):
 
         # Title row
         title_lbl = QLabel(self.dut_welcome_ui_import_calibration_title)
-        title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #ffffff; background: transparent;")
+        title_lbl.setStyleSheet(f"font-size: 14px; font-weight: bold; color: {self._title_color}; background: transparent;")
         layout.addWidget(title_lbl)
 
         layout.addSpacing(6)
-        layout.addWidget(_hsep())
+        layout.addWidget(_hsep(self._sep_color))
         layout.addSpacing(14)
 
         desc = QLabel(self.dut_welcome_ui_import_calibration_description)
         desc.setWordWrap(True)
-        desc.setStyleSheet("font-size: 12px; color: #999999; background: transparent;")
+        desc.setStyleSheet(f"font-size: 12px; color: {self._secondary_color}; background: transparent;")
         layout.addWidget(desc)
 
         layout.addSpacing(16)
 
         files_lbl = QLabel("Required Touchstone files:")
-        files_lbl.setStyleSheet("font-size: 12px; color: #666666; background: transparent;")
+        files_lbl.setStyleSheet(f"font-size: 12px; color: {self._muted_color}; background: transparent;")
         layout.addWidget(files_lbl)
 
         layout.addSpacing(8)
 
         for fname in ["open.s1p", "short.s1p", "load/match.s1p", "thru.s2p"]:
-            layout.addLayout(_bullet_row("✓", fname, "#5cb85c"))
+            layout.addLayout(_bullet_row("✓", fname, "#5cb85c", self._bullet_color))
             layout.addSpacing(5)
 
         layout.addStretch(1)
 
         self.import_button = QPushButton("Import Calibration")
         self.import_button.setFixedHeight(44)
-        self.import_button.setStyleSheet(_BTN_PRIMARY)
+        self.import_button.setStyleSheet(self._btn_primary)
         self.import_button.clicked.connect(self.import_calibration)
         layout.addWidget(self.import_button)
 

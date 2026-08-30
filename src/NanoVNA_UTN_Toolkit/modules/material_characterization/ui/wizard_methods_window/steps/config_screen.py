@@ -23,6 +23,7 @@ ES: Permite configurar el barrido de frecuencia (inicio/fin/puntos) y la
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIntValidator
@@ -32,6 +33,7 @@ from PySide6.QtWidgets import (
 )
 
 from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_enabled
+from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
     get_reference_liquid, list_reference_liquids,
@@ -84,6 +86,21 @@ def build_config_screen(wizard, descriptor, step_def):
     # recorded elsewhere (e.g. 2000 pts / 1 MHz-2 GHz on a Copper Mountain R60)
     # can be described exactly and therefore imported. The device limits are
     # still remembered, to warn when the configured sweep is not measurable.
+    _theme_cfg = get_settings(
+        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+        "shared/utils/dark_light_mode/dark_light_config.ini",
+        Path(__file__).resolve(),
+    )
+    _is_dark = not _theme_cfg.value("Dark_Light/is_dark_mode", False, type=bool)
+    if _is_dark:
+        _infocard_bg = "#12263d"
+        _infocard_border = "#2d5a8e"
+        _infocard_text = "#5ab3ff"
+    else:
+        _infocard_bg = "#dce8f8"
+        _infocard_border = "#a0bcd8"
+        _infocard_text = "#1a3a5c"
+
     debug_mode = is_debug_enabled()
     wizard._debug_sweep = debug_mode
     wizard._device_limits = (min_hz, max_hz, tuple(valid_points))
@@ -110,12 +127,12 @@ def build_config_screen(wizard, descriptor, step_def):
     else:
         dev_label = QLabel(cfg.get("no_device", "No nanoVNA connected (using default limits)."))
     dev_label.setWordWrap(True)
-    dev_label.setStyleSheet("font-size: 12px; color: #5ab3ff; border: none; background: transparent;")
+    dev_label.setStyleSheet(f"font-size: 12px; color: {_infocard_text}; border: none; background: transparent;")
 
     info_card = QWidget()
     info_card.setObjectName("infoCard")
     info_card.setStyleSheet(
-        "QWidget#infoCard { background-color: #12263d; border: 1px solid #2d5a8e; border-radius: 6px; }"
+        f"QWidget#infoCard {{ background-color: {_infocard_bg}; border: 1px solid {_infocard_border}; border-radius: 6px; }}"
     )
     info_card_layout = QHBoxLayout(info_card)
     info_card_layout.setContentsMargins(12, 8, 12, 8)

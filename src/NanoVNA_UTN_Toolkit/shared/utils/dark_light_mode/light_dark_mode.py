@@ -25,17 +25,17 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             light_dark_mode.setText("Light Mode 🔆")
 
         # --- QWidget ---
-        settings.setValue("Dark_Light/QWidget/background-color", "#2c2c30")
+        settings.setValue("Dark_Light/QWidget/background-color", "#1e1e2e")
 
         # --- Qframe ---
         settings.setValue("Dark_Light/Qframe/background-color", "white")
         settings.setValue("Dark_Light/Qframe/color", "white")
 
         # --- QTabWidget pane ---
-        settings.setValue("Dark_Light/QTabWidget_pane/background-color", "#343434")
+        settings.setValue("Dark_Light/QTabWidget_pane/background-color", "#2e2e42")
 
         # --- QTabBar ---
-        settings.setValue("Dark_Light/QTabBar/background-color", "#2f2f2f")
+        settings.setValue("Dark_Light/QTabBar/background-color", "#2a2a3e")
         settings.setValue("Dark_Light/QTabBar/color", "white")
         settings.setValue("Dark_Light/QTabBar/padding", "5px 12px")
         settings.setValue("Dark_Light/QTabBar/border", "none")
@@ -43,13 +43,13 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
         settings.setValue("Dark_Light/QTabBar/border-top-right-radius", "6px")
 
         # --- QTabBar selected ---
-        settings.setValue("Dark_Light/QTabBar_selected/background-color", "#4a4a4a")
+        settings.setValue("Dark_Light/QTabBar_selected/background-color", "#3a3a54")
         settings.setValue("Dark_Light/QTabBar_selected/color", "white")
 
         # --- QSpinBox ---
         settings.setValue("Dark_Light/QSpinBox/color", "white")
-        settings.setValue("Dark_Light/QSpinBox/background-color", "#2e2e2e")
-        settings.setValue("Dark_Light/QSpinBox/border", "1px solid #4a4a4a")
+        settings.setValue("Dark_Light/QSpinBox/background-color", "#252538")
+        settings.setValue("Dark_Light/QSpinBox/border", "1px solid #383850")
         settings.setValue("Dark_Light/QSpinBox/border-radius", "8px")
 
         # --- QGroupBox title ---
@@ -65,39 +65,39 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
         settings.setValue("Dark_Light/QLabel/color", "white")
 
         # --- QLineEdit ---
-        settings.setValue("Dark_Light/QLineEdit/background-color", "#2e2e2e")
+        settings.setValue("Dark_Light/QLineEdit/background-color", "#252538")
         settings.setValue("Dark_Light/QLineEdit/color", "white")
-        settings.setValue("Dark_Light/QLineEdit/border", "1px solid #4a4a4a")
+        settings.setValue("Dark_Light/QLineEdit/border", "1px solid #383850")
         settings.setValue("Dark_Light/QLineEdit/border-radius", "6px")
         settings.setValue("Dark_Light/QLineEdit/padding", "4px")
 
         # --- QLineEdit focus ---
-        settings.setValue("Dark_Light/QLineEdit_focus/background-color", "#383838")
+        settings.setValue("Dark_Light/QLineEdit_focus/background-color", "#2e2e42")
         settings.setValue("Dark_Light/QLineEdit_focus/border", "1px solid #6aa2ff")
 
         # --- QPushButton ---
-        settings.setValue("Dark_Light/QPushButton/background-color", "#343434")
+        settings.setValue("Dark_Light/QPushButton/background-color", "#2e2e42")
         settings.setValue("Dark_Light/QPushButton/color", "white")
-        settings.setValue("Dark_Light/QPushButton/border", "1px solid #4a4a4a")
+        settings.setValue("Dark_Light/QPushButton/border", "1px solid #383850")
         settings.setValue("Dark_Light/QPushButton/border-radius", "6px")
         settings.setValue("Dark_Light/QPushButton/padding", "4px 10px")
 
         # --- QPushButton hover/pressed ---
-        settings.setValue("Dark_Light/QPushButton_hover/background-color", "#3f3f3f")
-        settings.setValue("Dark_Light/QPushButton_pressed/background-color", "#2a2a2a")
+        settings.setValue("Dark_Light/QPushButton_hover/background-color", "#3a3a54")
+        settings.setValue("Dark_Light/QPushButton_pressed/background-color", "#1a1a2e")
 
         # --- QPushButton disabled ---
-        settings.setValue("Dark_Light/QPushButton_disabled/background-color", "#242424")
-        settings.setValue("Dark_Light/QPushButton_disabled/color", "#777777")
-        settings.setValue("Dark_Light/QPushButton_disabled/border", "1px solid #333333")
+        settings.setValue("Dark_Light/QPushButton_disabled/background-color", "#1e1e2e")
+        settings.setValue("Dark_Light/QPushButton_disabled/color", "#5a5a78")
+        settings.setValue("Dark_Light/QPushButton_disabled/border", "1px solid #2a2a3e")
 
         # --- QMenu ---
-        settings.setValue("Dark_Light/QMenu/background", "#363638")
+        settings.setValue("Dark_Light/QMenu/background", "#2e2e42")
         settings.setValue("Dark_Light/QMenu/color", "white")
-        settings.setValue("Dark_Light/QMenu/border", "1px solid #4a4a4a")
+        settings.setValue("Dark_Light/QMenu/border", "1px solid #383850")
 
         # --- QMenuBar ---
-        settings.setValue("Dark_Light/QMenuBar/background-color", "#2c2c30")
+        settings.setValue("Dark_Light/QMenuBar/background-color", "#1e1e2e")
         settings.setValue("Dark_Light/QMenuBar/color", "white")
 
         # --- QMenuBar items ---
@@ -106,28 +106,28 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
         settings.setValue("Dark_Light/QMenuBar_item/padding", "4px 10px")
 
         # --- QMenuBar selected item ---
-        settings.setValue("Dark_Light/QMenuBar_item_selected/background-color", "#4a4a4a")
+        settings.setValue("Dark_Light/QMenuBar_item_selected/background-color", "#3a3a54")
 
         # --- QMenu selected item ---
-        settings.setValue("Dark_Light/QMenu_item_selected/background-color", "#4a4a4a")
+        settings.setValue("Dark_Light/QMenu_item_selected/background-color", "#3a3a54")
 
         # --- QComboBox ---
         settings.setValue("Dark_Light/QComboBox/color", "white")
-        settings.setValue("Dark_Light/QComboBox/background-color", "#3b3b3b")
-        settings.setValue("Dark_Light/QComboBox/border", "2px solid white")
+        settings.setValue("Dark_Light/QComboBox/background-color", "#2a2a3e")
+        settings.setValue("Dark_Light/QComboBox/border", "1px solid #383850")
         settings.setValue("Dark_Light/QComboBox/border-radius", "6px")
 
         # --- QComboBox hover/focus ---
-        settings.setValue("Dark_Light/QComboBox:hover/background-color", "#4d4d4d")
-        settings.setValue("Dark_Light/QComboBox:focus/background-color", "#4d4d4d")
+        settings.setValue("Dark_Light/QComboBox:hover/background-color", "#363650")
+        settings.setValue("Dark_Light/QComboBox:focus/background-color", "#363650")
 
         # --- QComboBox placeholder ---
-        settings.setValue("Dark_Light/QComboBox::placeholder/color", "#cccccc")
+        settings.setValue("Dark_Light/QComboBox::placeholder/color", "#8888aa")
 
         # --- QCheckBox ---
         settings.setValue("Dark_Light/QCheckBox/color", "white")
-        settings.setValue("Dark_Light/QCheckBox/background-color", "#2e2e2e")
-        settings.setValue("Dark_Light/QCheckBox/border", "1px solid #4a4a4a")
+        settings.setValue("Dark_Light/QCheckBox/background-color", "#252538")
+        settings.setValue("Dark_Light/QCheckBox/border", "1px solid #383850")
 
         # --- QCheckBox checked ---
         settings.setValue("Dark_Light/QCheckBox_checked/background-color", "#4d90fe")
@@ -135,21 +135,21 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
 
         self.setStyleSheet("""
             QWidget {
-                background-color: #2c2c30;
+                background-color: #1e1e2e;
             }
 
             QTabWidget::pane {
-                background-color: #363638;
+                background-color: #2e2e42;
             }
 
             QMenu::separator {
                 height: 1px;
-                background: #555555;
+                background: #383850;
                 margin: 3px 8px;
             }
 
             QTabBar::tab {
-                background-color: #363638;
+                background-color: #2a2a3e;
                 color: white;
                 padding: 5px 12px;
                 border: none;
@@ -158,14 +158,14 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             }
 
             QTabBar::tab:selected {
-                background-color: #424244;
+                background-color: #3a3a54;
                 color: white;
             }
 
             QSpinBox {
-                background-color: #2e2e2e;
+                background-color: #252538;
                 color: white;
-                border: 1px solid #4a4a4a;
+                border: 1px solid #383850;
                 border-radius: 8px;
             }
 
@@ -177,42 +177,42 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             }
 
             QLineEdit {
-                background-color: #2e2e2e;
+                background-color: #252538;
                 color: white;
-                border: 1px solid #4a4a4a;
+                border: 1px solid #383850;
                 border-radius: 6px;
                 padding: 4px;
             }
 
             QLineEdit:focus {
-                background-color: #383838;
+                background-color: #2e2e42;
                 border: 1px solid #6aa2ff;
             }
 
             QPushButton {
-                background-color: #363638;
+                background-color: #2e2e42;
                 color: white;
-                border: 1px solid #4a4a4a;
+                border: 1px solid #383850;
                 border-radius: 6px;
                 padding: 4px 10px;
             }
 
             QPushButton:hover {
-                background-color: #424244;
+                background-color: #3a3a54;
             }
 
             QPushButton:pressed {
-                background-color: #282828;
+                background-color: #1a1a2e;
             }
 
             QPushButton:disabled {
-                background-color: #282828;
-                color: #777777;
-                border: 1px solid #333333;
+                background-color: #1e1e2e;
+                color: #5a5a78;
+                border: 1px solid #2a2a3e;
             }
 
             QMenuBar {
-                background-color: #2c2c30;
+                background-color: #1e1e2e;
                 color: white;
             }
 
@@ -223,29 +223,29 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             }
 
             QMenuBar::item:selected {
-                background: #424244;
+                background: #3a3a54;
             }
 
             QMenu {
-                background-color: #363638;
+                background-color: #2e2e42;
                 color: white;
-                border: 1px solid #4a4a4a;
+                border: 1px solid #383850;
             }
 
             QMenu::item:selected {
-                background-color: #424244;
+                background-color: #3a3a54;
             }
 
             QComboBox {
-                background-color: #363638;
+                background-color: #2a2a3e;
                 color: white;
-                border: 2px solid white;
+                border: 1px solid #383850;
                 border-radius: 6px;
                 padding-left: 8px;
             }
 
             QComboBox:hover {
-                background-color: #424244;
+                background-color: #363650;
             }
 
             QComboBox::drop-down {
@@ -261,19 +261,19 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             }
 
             QComboBox QAbstractItemView {
-                background-color: #363638;
+                background-color: #2a2a3e;
                 color: white;
-                selection-background-color: #424244;
+                selection-background-color: #363650;
                 selection-color: white;
-                border: 1px solid white;
+                border: 1px solid #383850;
             }
 
             QComboBox:focus {
-                background-color: #424244;
+                background-color: #363650;
             }
 
             QComboBox::placeholder {
-                color: #cccccc;
+                color: #8888aa;
             }
         """)
         self.is_dark_mode = False
@@ -286,112 +286,112 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             light_dark_mode.setText("Dark Mode 🌙")
 
         # --- QWidget ---
-        settings.setValue("Dark_Light/QWidget/background-color", "#f0f0f0")
+        settings.setValue("Dark_Light/QWidget/background-color", "#f0f0f8")
 
         # --- Qframe ---
-        settings.setValue("Dark_Light/Qframe/background-color", "black")
-        settings.setValue("Dark_Light/Qframe/color", "black")
+        settings.setValue("Dark_Light/Qframe/background-color", "#c4c4d8")
+        settings.setValue("Dark_Light/Qframe/color", "#c4c4d8")
 
         # --- QTabWidget pane ---
-        settings.setValue("Dark_Light/QTabWidget_pane/background-color", "#e0e0e0")
+        settings.setValue("Dark_Light/QTabWidget_pane/background-color", "#e8e8f4")
 
         # --- QTabBar ---
-        settings.setValue("Dark_Light/QTabBar/background-color", "#c8c8c8")
-        settings.setValue("Dark_Light/QTabBar/color", "black")
+        settings.setValue("Dark_Light/QTabBar/background-color", "#dcdcf0")
+        settings.setValue("Dark_Light/QTabBar/color", "#1e1e2e")
         settings.setValue("Dark_Light/QTabBar/padding", "5px 12px")
         settings.setValue("Dark_Light/QTabBar/border", "none")
         settings.setValue("Dark_Light/QTabBar/border-top-left-radius", "6px")
         settings.setValue("Dark_Light/QTabBar/border-top-right-radius", "6px")
 
         # --- QTabBar selected ---
-        settings.setValue("Dark_Light/QTabBar_selected/background-color", "#dcdcdc")
-        settings.setValue("Dark_Light/QTabBar/color", "black")
+        settings.setValue("Dark_Light/QTabBar_selected/background-color", "#f0f0f8")
+        settings.setValue("Dark_Light/QTabBar/color", "#1e1e2e")
 
         # --- QTabBar alternate background ---
-        settings.setValue("Dark_Light/QTabBar/background-color", "#e0e0e0")
+        settings.setValue("Dark_Light/QTabBar/background-color", "#dcdcf0")
 
         # --- QSpinBox ---
-        settings.setValue("Dark_Light/QSpinBox/background-color", "white")
-        settings.setValue("Dark_Light/QSpinBox/color", "black")
-        settings.setValue("Dark_Light/QSpinBox/border", "1px solid #b0b0b0")
+        settings.setValue("Dark_Light/QSpinBox/background-color", "#f8f8ff")
+        settings.setValue("Dark_Light/QSpinBox/color", "#1e1e2e")
+        settings.setValue("Dark_Light/QSpinBox/border", "1px solid #c4c4d8")
         settings.setValue("Dark_Light/QSpinBox/border-radius", "8px")
 
         # --- QGroupBox title ---
-        settings.setValue("Dark_Light/QGroupBox_title/color", "black")
+        settings.setValue("Dark_Light/QGroupBox_title/color", "#1e1e2e")
 
         # --- QGroupBox border ---
-        settings.setValue("Dark_Light/QGroupBox/border", "1px solid #b0b0b0")
+        settings.setValue("Dark_Light/QGroupBox/border", "1px solid #c4c4d8")
         settings.setValue("Dark_Light/QGroupBox/border-radius", "8px")
         settings.setValue("Dark_Light/QGroupBox/margin-top", "14px")
         settings.setValue("Dark_Light/QGroupBox/padding", "8px")
 
         # --- QLabel ---
-        settings.setValue("Dark_Light/QLabel/color", "black")
+        settings.setValue("Dark_Light/QLabel/color", "#1e1e2e")
 
         # --- QLineEdit ---
-        settings.setValue("Dark_Light/QLineEdit/background-color", "#ffffff")
-        settings.setValue("Dark_Light/QLineEdit/color", "black")
-        settings.setValue("Dark_Light/QLineEdit/border", "1px solid #b0b0b0")
+        settings.setValue("Dark_Light/QLineEdit/background-color", "#f8f8ff")
+        settings.setValue("Dark_Light/QLineEdit/color", "#1e1e2e")
+        settings.setValue("Dark_Light/QLineEdit/border", "1px solid #c4c4d8")
         settings.setValue("Dark_Light/QLineEdit/border-radius", "6px")
         settings.setValue("Dark_Light/QLineEdit/padding", "4px")
 
         # --- QLineEdit focus ---
-        settings.setValue("Dark_Light/QLineEdit_focus/background-color", "#f0f8ff")
+        settings.setValue("Dark_Light/QLineEdit_focus/background-color", "#eef0ff")
         settings.setValue("Dark_Light/QLineEdit_focus/border", "1px solid #4d90fe")
 
         # --- QPushButton ---
-        settings.setValue("Dark_Light/QPushButton/background-color", "#e0e0e0")
-        settings.setValue("Dark_Light/QPushButton/color", "black")
-        settings.setValue("Dark_Light/QPushButton/border", "1px solid #b0b0b0")
+        settings.setValue("Dark_Light/QPushButton/background-color", "#e0e0f0")
+        settings.setValue("Dark_Light/QPushButton/color", "#1e1e2e")
+        settings.setValue("Dark_Light/QPushButton/border", "1px solid #c4c4d8")
         settings.setValue("Dark_Light/QPushButton/border-radius", "6px")
         settings.setValue("Dark_Light/QPushButton/padding", "4px 10px")
 
         # --- QPushButton hover/pressed ---
-        settings.setValue("Dark_Light/QPushButton_hover/background-color", "#d0d0d0")
-        settings.setValue("Dark_Light/QPushButton_pressed/background-color", "#c0c0c0")
+        settings.setValue("Dark_Light/QPushButton_hover/background-color", "#d0d0e8")
+        settings.setValue("Dark_Light/QPushButton_pressed/background-color", "#c0c0d8")
 
         # --- QPushButton disabled ---
-        settings.setValue("Dark_Light/QPushButton_disabled/background-color", "#f5f5f5")
-        settings.setValue("Dark_Light/QPushButton_disabled/color", "#a0a0a0")
-        settings.setValue("Dark_Light/QPushButton_disabled/border", "1px solid #d0d0d0")
+        settings.setValue("Dark_Light/QPushButton_disabled/background-color", "#eeeef8")
+        settings.setValue("Dark_Light/QPushButton_disabled/color", "#8888aa")
+        settings.setValue("Dark_Light/QPushButton_disabled/border", "1px solid #d0d0e8")
 
         # --- QMenu ---
-        settings.setValue("Dark_Light/QMenu/background", "#f0f0f0")
-        settings.setValue("Dark_Light/QMenu/color", "black")
-        settings.setValue("Dark_Light/QMenu/border", "1px solid #b0b0b0")
+        settings.setValue("Dark_Light/QMenu/background", "#f0f0f8")
+        settings.setValue("Dark_Light/QMenu/color", "#1e1e2e")
+        settings.setValue("Dark_Light/QMenu/border", "1px solid #c4c4d8")
 
         # --- QMenuBar ---
-        settings.setValue("Dark_Light/QMenuBar/background-color", "#f0f0f0")
-        settings.setValue("Dark_Light/QMenuBar/color", "black")
+        settings.setValue("Dark_Light/QMenuBar/background-color", "#e8e8f4")
+        settings.setValue("Dark_Light/QMenuBar/color", "#1e1e2e")
 
         # --- QMenuBar items ---
         settings.setValue("Dark_Light/QMenuBar_item/background", "transparent")
-        settings.setValue("Dark_Light/QMenuBar_item/color", "black")
+        settings.setValue("Dark_Light/QMenuBar_item/color", "#1e1e2e")
         settings.setValue("Dark_Light/QMenuBar_item/padding", "4px 10px")
 
         # --- QMenuBar selected item ---
-        settings.setValue("Dark_Light/QMenuBar_item_selected/background-color", "#dcdcdc")
+        settings.setValue("Dark_Light/QMenuBar_item_selected/background-color", "#d0d0e8")
 
         # --- QMenu selected item ---
-        settings.setValue("Dark_Light/QMenu_item_selected/background-color", "#dcdcdc")
+        settings.setValue("Dark_Light/QMenu_item_selected/background-color", "#dcdcf0")
 
         # --- QComboBox ---
-        settings.setValue("Dark_Light/QComboBox/color", "black")
-        settings.setValue("Dark_Light/QComboBox/background-color", "white")
-        settings.setValue("Dark_Light/QComboBox/border", "2px solid black")
+        settings.setValue("Dark_Light/QComboBox/color", "#1e1e2e")
+        settings.setValue("Dark_Light/QComboBox/background-color", "#ebebf5")
+        settings.setValue("Dark_Light/QComboBox/border", "1px solid #c4c4d8")
         settings.setValue("Dark_Light/QComboBox/border-radius", "6px")
 
         # --- QComboBox hover/focus ---
-        settings.setValue("Dark_Light/QComboBox:hover/background-color", "#a3a1a1")
-        settings.setValue("Dark_Light/QComboBox:focus/background-color", "#a3a1a1")
+        settings.setValue("Dark_Light/QComboBox:hover/background-color", "#dcdcf0")
+        settings.setValue("Dark_Light/QComboBox:focus/background-color", "#eef0ff")
 
         # --- QComboBox placeholder ---
-        settings.setValue("Dark_Light/QComboBox::placeholder/color", "#cccccc")
+        settings.setValue("Dark_Light/QComboBox::placeholder/color", "#8888aa")
 
         # --- QCheckBox ---
-        settings.setValue("Dark_Light/QCheckBox/color", "black")
-        settings.setValue("Dark_Light/QCheckBox/background-color", "#ffffff")
-        settings.setValue("Dark_Light/QCheckBox/border", "1px solid #b0b0b0")
+        settings.setValue("Dark_Light/QCheckBox/color", "#1e1e2e")
+        settings.setValue("Dark_Light/QCheckBox/background-color", "#f8f8ff")
+        settings.setValue("Dark_Light/QCheckBox/border", "1px solid #c4c4d8")
 
         # --- QCheckBox checked ---
         settings.setValue("Dark_Light/QCheckBox_checked/background-color", "#4d90fe")
@@ -399,22 +399,22 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
 
         self.setStyleSheet("""
             QWidget {
-                background-color: #f0f0f0;
+                background-color: #f0f0f8;
             }
 
             QTabWidget::pane {
-                background-color: #e0e0e0;
+                background-color: #e8e8f4;
             }
 
             QMenu::separator {
                 height: 1px;
-                background: #c0c0c0;
+                background: #c4c4d8;
                 margin: 3px 8px;
             }
 
             QTabBar::tab {
-                background-color: #dcdcdc;
-                color: black;
+                background-color: #dcdcf0;
+                color: #1e1e2e;
                 padding: 5px 12px;
                 border: none;
                 border-top-left-radius: 6px;
@@ -422,14 +422,14 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             }
 
             QTabBar::tab:selected {
-                background-color: #c8c8c8;
-                color: black;
+                background-color: #f0f0f8;
+                color: #1e1e2e;
             }
 
             QSpinBox {
-                background-color: white;
-                color: black;
-                border: 1px solid #b0b0b0;
+                background-color: #f8f8ff;
+                color: #1e1e2e;
+                border: 1px solid #c4c4d8;
                 border-radius: 8px;
             }
 
@@ -437,79 +437,79 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             QLabel,
             QRadioButton,
             QTextEdit {
-                color: black;
+                color: #1e1e2e;
             }
 
             QLineEdit {
-                background-color: #ffffff;
-                color: black;
-                border: 1px solid #b0b0b0;
+                background-color: #f8f8ff;
+                color: #1e1e2e;
+                border: 1px solid #c4c4d8;
                 border-radius: 6px;
                 padding: 4px;
             }
 
             QLineEdit:focus {
-                background-color: #f0f8ff;
+                background-color: #eef0ff;
                 border: 1px solid #4d90fe;
             }
 
             QPushButton {
-                background-color: #e0e0e0;
-                color: black;
-                border: 1px solid #b0b0b0;
+                background-color: #e0e0f0;
+                color: #1e1e2e;
+                border: 1px solid #c4c4d8;
                 border-radius: 6px;
                 padding: 4px 10px;
             }
 
             QPushButton:hover {
-                background-color: #d0d0d0;
+                background-color: #d0d0e8;
             }
 
             QPushButton:pressed {
-                background-color: #c0c0c0;
+                background-color: #c0c0d8;
             }
 
             QPushButton:disabled {
-                background-color: #f5f5f5;
-                color: #a0a0a0;
-                border: 1px solid #d0d0d0;
+                background-color: #eeeef8;
+                color: #8888aa;
+                border: 1px solid #d0d0e8;
             }
 
             QMenuBar {
-                background-color: #f0f0f0;
-                color: black;
+                background-color: #e8e8f4;
+                color: #1e1e2e;
             }
 
             QMenuBar::item {
                 background: transparent;
-                color: black;
+                color: #1e1e2e;
                 padding: 4px 10px;
             }
 
             QMenuBar::item:selected {
-                background: #dcdcdc;
+                background: #d0d0e8;
             }
 
             QMenu {
-                background-color: #f0f0f0;
-                color: black;
-                border: 1px solid #b0b0b0;
+                background-color: #f0f0f8;
+                color: #1e1e2e;
+                border: 1px solid #c4c4d8;
             }
 
             QMenu::item:selected {
-                background-color: #dcdcdc;
+                background-color: #dcdcf0;
             }
 
             QComboBox {
-                background-color: #ffffff;
-                color: black;
-                border: 2px solid black;
+                background-color: #ebebf5;
+                color: #1e1e2e;
+                border: 1px solid #c4c4d8;
                 border-radius: 6px;
                 padding-left: 8px;
             }
 
             QComboBox:hover {
-                background-color: #e6e6e6;
+                background-color: #dcdcf0;
             }
 
             QComboBox::drop-down {
@@ -525,19 +525,19 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             }
 
             QComboBox QAbstractItemView {
-                background-color: #ffffff;
-                color: black;
-                selection-background-color: #dcdcdc;
-                selection-color: black;
-                border: 1px solid black;
+                background-color: #f8f8ff;
+                color: #1e1e2e;
+                selection-background-color: #dcdcf0;
+                selection-color: #1e1e2e;
+                border: 1px solid #c4c4d8;
             }
 
             QComboBox:focus {
-                background-color: #f0f8ff;
+                background-color: #eef0ff;
             }
 
             QComboBox::placeholder {
-                color: #777777;
+                color: #8888aa;
             }
         """)
 
@@ -556,13 +556,13 @@ def dark_light_config(self):
     )
 
     # QWidget
-    background_color = settings.value("Dark_Light/QWidget/background-color", "#3a3a3a")
+    background_color = settings.value("Dark_Light/QWidget/background-color", "#1e1e2e")
 
     # QTabWidget
-    tabwidget_pane_bg = settings.value("Dark_Light/QTabWidget_pane/background-color", "#3b3b3b")
+    tabwidget_pane_bg = settings.value("Dark_Light/QTabWidget_pane/background-color", "#2e2e42")
 
     # QTabBar
-    tabbar_bg = settings.value("Dark_Light/QTabBar/background-color", "#2b2b2b")
+    tabbar_bg = settings.value("Dark_Light/QTabBar/background-color", "#2a2a3e")
     tabbar_color = settings.value("Dark_Light/QTabBar/color", "white")
     tabbar_padding = settings.value("Dark_Light/QTabBar/padding", "5px 12px")
     tabbar_border = settings.value("Dark_Light/QTabBar/border", "none")
@@ -570,11 +570,11 @@ def dark_light_config(self):
     tabbar_border_tr_radius = settings.value("Dark_Light/QTabBar/border-top-right-radius", "6px")
 
     # QTabBar selected
-    tabbar_selected_bg = settings.value("Dark_Light/QTabBar_selected/background-color", "#4d4d4d")
+    tabbar_selected_bg = settings.value("Dark_Light/QTabBar_selected/background-color", "#3a3a54")
     tabbar_selected_color = settings.value("Dark_Light/QTabBar_selected/color", "white")
 
     # QSpinBox
-    spinbox_bg = settings.value("Dark_Light/QSpinBox/background-color", "#3b3b3b")
+    spinbox_bg = settings.value("Dark_Light/QSpinBox/background-color", "#252538")
     spinbox_color = settings.value("Dark_Light/QSpinBox/color", "white")
     spinbox_border = settings.value("Dark_Light/QSpinBox/border", "1px solid white")
     spinbox_border_radius = settings.value("Dark_Light/QSpinBox/border-radius", "8px")
@@ -590,7 +590,7 @@ def dark_light_config(self):
     label_color = settings.value("Dark_Light/QLabel/color", "white")
 
     # QLineEdit
-    lineedit_bg = settings.value("Dark_Light/QLineEdit/background-color", "#3b3b3b")
+    lineedit_bg = settings.value("Dark_Light/QLineEdit/background-color", "#252538")
     lineedit_color = settings.value("Dark_Light/QLineEdit/color", "white")
     lineedit_border = settings.value("Dark_Light/QLineEdit/border", "1px solid white")
     lineedit_border_radius = settings.value("Dark_Light/QLineEdit/border-radius", "6px")
@@ -599,42 +599,42 @@ def dark_light_config(self):
     lineedit_focus_border = settings.value("Dark_Light/QLineEdit_focus/border", "1px solid #4d90fe")
 
     # QPushButton
-    pushbutton_bg = settings.value("Dark_Light/QPushButton/background-color", "#3b3b3b")
+    pushbutton_bg = settings.value("Dark_Light/QPushButton/background-color", "#2e2e42")
     pushbutton_color = settings.value("Dark_Light/QPushButton/color", "white")
     pushbutton_border = settings.value("Dark_Light/QPushButton/border", "1px solid white")
     pushbutton_border_radius = settings.value("Dark_Light/QPushButton/border-radius", "6px")
     pushbutton_padding = settings.value("Dark_Light/QPushButton/padding", "4px 10px")
-    pushbutton_hover_bg = settings.value("Dark_Light/QPushButton_hover/background-color", "#4d4d4d")
-    pushbutton_pressed_bg = settings.value("Dark_Light/QPushButton_pressed/background-color", "#5c5c5c")
+    pushbutton_hover_bg = settings.value("Dark_Light/QPushButton_hover/background-color", "#3a3a54")
+    pushbutton_pressed_bg = settings.value("Dark_Light/QPushButton_pressed/background-color", "#1a1a2e")
 
     # QPushButton disabled
-    pushbutton_disabled_bg = settings.value("Dark_Light/QPushButton_disabled/background-color", "#242424")
-    pushbutton_disabled_color = settings.value("Dark_Light/QPushButton_disabled/color", "#777777")
-    pushbutton_disabled_border = settings.value("Dark_Light/QPushButton_disabled/border", "1px solid #333333")
+    pushbutton_disabled_bg = settings.value("Dark_Light/QPushButton_disabled/background-color", "#1e1e2e")
+    pushbutton_disabled_color = settings.value("Dark_Light/QPushButton_disabled/color", "#5a5a78")
+    pushbutton_disabled_border = settings.value("Dark_Light/QPushButton_disabled/border", "1px solid #2a2a3e")
 
     # QMenu
-    menu_bg = settings.value("Dark_Light/QMenu/background", "#3a3a3a")
+    menu_bg = settings.value("Dark_Light/QMenu/background", "#2e2e42")
     menu_color = settings.value("Dark_Light/QMenu/color", "white")
-    menu_border = settings.value("Dark_Light/QMenu/border", "1px solid #3b3b3b")
-    menu_item_selected_bg = settings.value("Dark_Light/QMenu::item:selected/background-color", "#4d4d4d")
+    menu_border = settings.value("Dark_Light/QMenu/border", "1px solid #383850")
+    menu_item_selected_bg = settings.value("Dark_Light/QMenu::item:selected/background-color", "#3a3a54")
 
     # QMenuBar
-    menu_item_color = settings.value("Dark_Light/QMenu_item_selected/background-color", "#4d4d4d")
-    menubar_bg = settings.value("Dark_Light/QMenuBar/background-color", "#3a3a3a")
+    menu_item_color = settings.value("Dark_Light/QMenu_item_selected/background-color", "#3a3a54")
+    menubar_bg = settings.value("Dark_Light/QMenuBar/background-color", "#1e1e2e")
     menubar_color = settings.value("Dark_Light/QMenuBar/color", "white")
     menubar_item_bg = settings.value("Dark_Light/QMenuBar_item/background", "transparent")
     menubar_item_color = settings.value("Dark_Light/QMenuBar_item/color", "white")
     menubar_item_padding = settings.value("Dark_Light/QMenuBar_item/padding", "4px 10px")
-    menubar_item_selected_bg = settings.value("Dark_Light/QMenuBar_item_selected/background-color", "#4d4d4d")
+    menubar_item_selected_bg = settings.value("Dark_Light/QMenuBar_item_selected/background-color", "#3a3a54")
 
     # QComboBox
     combobox_color = settings.value("Dark_Light/QComboBox/color", "white")
-    combobox_bg = settings.value("Dark_Light/QComboBox/background-color", "#3b3b3b")
-    combobox_border = settings.value("Dark_Light/QComboBox/border", "2px solid white")
+    combobox_bg = settings.value("Dark_Light/QComboBox/background-color", "#2a2a3e")
+    combobox_border = settings.value("Dark_Light/QComboBox/border", "1px solid #383850")
     combobox_border_radius = settings.value("Dark_Light/QComboBox/border-radius", "6px")
-    combobox_hover_bg = settings.value("Dark_Light/QComboBox:hover/background-color", "#4d4d4d")
-    combobox_focus_bg = settings.value("Dark_Light/QComboBox:focus/background-color", "#4d4d4d")
-    combobox_placeholder_color = settings.value("Dark_Light/QComboBox::placeholder/color", "#cccccc")
+    combobox_hover_bg = settings.value("Dark_Light/QComboBox:hover/background-color", "#363650")
+    combobox_focus_bg = settings.value("Dark_Light/QComboBox:focus/background-color", "#363650")
+    combobox_placeholder_color = settings.value("Dark_Light/QComboBox::placeholder/color", "#8888aa")
 
     # QCheckBox
 
@@ -804,9 +804,9 @@ def dark_light_config(self):
             border: 1px solid #4d90fe;
         }}
 
-        QComboBox:disabled {{   
+        QComboBox:disabled {{
             color: gray;
-            background-color: #2a2a2a;
+            background-color: #1e1e2e;
         }}
 
         QComboBox {{

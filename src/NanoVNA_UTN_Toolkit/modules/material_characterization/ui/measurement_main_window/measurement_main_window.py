@@ -52,16 +52,7 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_
 
 _MAX_TABLE_ROWS = 500
 
-_CARD = "QWidget#card { background-color: #252525; border: 1px solid #3d3d3d; border-radius: 10px; }"
-_BADGE = (
-    "QLabel { background-color: #1e2a3a; color: #7ab3f5; border: 1px solid #2d5a8e;"
-    " border-radius: 5px; padding: 3px 10px; font-size: 11px; }"
-)
-
-
-
-
-def _hsep(color="#363636"):
+def _hsep(color="#383850"):
     line = QWidget()
     line.setFixedHeight(1)
     line.setStyleSheet(f"background-color: {color}; border: none;")
@@ -100,9 +91,9 @@ class MeasurementMainWindow(QMainWindow):
         self.is_dark_mode = _dl.value("Dark_Light/is_dark_mode", False, type=bool)
         self._is_dark = not self.is_dark_mode
 
-        _app_bg   = "#2c2c30" if self._is_dark else "#eeeef4"
-        _card_bg  = "#363638" if self._is_dark else "#ffffff"
-        _card_bdr = "#484848" if self._is_dark else "#c8c8d0"
+        _app_bg   = "#1e1e2e" if self._is_dark else "#f0f0f8"
+        _card_bg  = "#252538" if self._is_dark else "#f8f8ff"
+        _card_bdr = "#383850" if self._is_dark else "#c4c4d8"
         self._app_bg  = _app_bg
         self._card_bg = _card_bg
         self._card_bdr = _card_bdr
@@ -133,9 +124,9 @@ class MeasurementMainWindow(QMainWindow):
         # During toggle: is_dark_mode=True means switching TO dark (inverted naming).
         _going_dark = getattr(self, "is_dark_mode", False)
         self._is_dark  = _going_dark
-        self._app_bg   = "#2c2c30" if _going_dark else "#eeeef4"
-        self._card_bg  = "#363638" if _going_dark else "#ffffff"
-        self._card_bdr = "#484848" if _going_dark else "#c8c8d0"
+        self._app_bg   = "#1e1e2e" if _going_dark else "#f0f0f8"
+        self._card_bg  = "#252538" if _going_dark else "#f8f8ff"
+        self._card_bdr = "#383850" if _going_dark else "#c4c4d8"
         self.central_widget.setStyleSheet(
             f"#mainContent {{ background-color: {self._app_bg}; }}"
         )
@@ -183,12 +174,20 @@ class MeasurementMainWindow(QMainWindow):
              if start is not None and stop is not None else "—"),
         ]
 
-        _BADGE = (
-            "background-color: #1e2a3a; border: 1px solid #2d5a8e;"
-            " border-radius: 6px; padding: 4px 14px;"
-        )
-        _KEY_STYLE = "font-size: 10px; font-weight: bold; color: #5a8fc0; border: none; background: transparent;"
-        _VAL_STYLE = "font-size: 12px; color: #7ab3f5; border: none; background: transparent;"
+        if self._is_dark:
+            _BADGE = (
+                "background-color: #1e2a3a; border: 1px solid #2d5a8e;"
+                " border-radius: 6px; padding: 4px 14px;"
+            )
+            _KEY_STYLE = "font-size: 10px; font-weight: bold; color: #5a8fc0; border: none; background: transparent;"
+            _VAL_STYLE = "font-size: 12px; color: #7ab3f5; border: none; background: transparent;"
+        else:
+            _BADGE = (
+                "background-color: #dce8f8; border: 1px solid #a0bcd8;"
+                " border-radius: 6px; padding: 4px 14px;"
+            )
+            _KEY_STYLE = "font-size: 10px; font-weight: bold; color: #2a5580; border: none; background: transparent;"
+            _VAL_STYLE = "font-size: 12px; color: #1a3a5c; border: none; background: transparent;"
 
         row = QHBoxLayout()
         row.setSpacing(16)

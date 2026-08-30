@@ -102,43 +102,42 @@ def import_touchstone_data_calibration(self):
     label = QLabel(self.file_menu_select_method_label, dialog)
     main_layout.addWidget(label)
 
+    _theme = get_settings(
+        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+        "shared/utils/dark_light_mode/dark_light_config.ini",
+        Path(__file__).resolve()
+    )
+    _is_dark = not _theme.value("Dark_Light/is_dark_mode", False, type=bool)
+    if _is_dark:
+        _combo_bg, _combo_fg, _combo_border, _combo_hover, _combo_sel = \
+            "#2a2a3e", "white", "#383850", "#363650", "#2d5a8e"
+    else:
+        _combo_bg, _combo_fg, _combo_border, _combo_hover, _combo_sel = \
+            "#ebebf5", "#1e1e2e", "#c4c4d8", "#dcdcf0", "#d0d8f0"
+
     self.select_method = QComboBox()
-    self.select_method.setStyleSheet("""
-        QComboBox {
-            background-color: #3b3b3b;
-            color: white;
-            border: 2px solid white;
+    self.select_method.setStyleSheet(f"""
+        QComboBox {{
+            background-color: {_combo_bg};
+            color: {_combo_fg};
+            border: 1px solid {_combo_border};
             border-radius: 6px;
             padding: 8px;
             font-size: 14px;
             min-width: 200px;
-        }
-        QComboBox:hover {
-            background-color: #4d4d4d;
-        }
-        QComboBox::drop-down {
-            width: 0px;
-            border: none;
-            background: transparent;
-        }
-        QComboBox::down-arrow {
-            image: none;
-            width: 0px;
-            height: 0px;
-        }
-        QComboBox QAbstractItemView {
-            background-color: #3b3b3b;
-            color: white;
-            selection-background-color: #4d4d4d;
-            selection-color: white;
-            border: 1px solid white;
-        }
-        QComboBox:focus {
-            background-color: #4d4d4d;
-        }
-        QComboBox::placeholder {
-            color: #cccccc;
-        }
+        }}
+        QComboBox:hover {{ background-color: {_combo_hover}; }}
+        QComboBox::drop-down {{ width: 0px; border: none; background: transparent; }}
+        QComboBox::down-arrow {{ image: none; width: 0px; height: 0px; }}
+        QComboBox QAbstractItemView {{
+            background-color: {_combo_bg};
+            color: {_combo_fg};
+            selection-background-color: {_combo_sel};
+            selection-color: {_combo_fg};
+            border: 1px solid {_combo_border};
+        }}
+        QComboBox:focus {{ background-color: {_combo_hover}; }}
+        QComboBox::placeholder {{ color: #888888; }}
     """)
 
     self.select_method.setEditable(False)

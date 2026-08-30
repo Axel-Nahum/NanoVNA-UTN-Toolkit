@@ -15,11 +15,13 @@ ES: Primera pantalla del asistente. Arma el desplegable de tecnicas desde el
 """
 
 import logging
+from pathlib import Path
 
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QColor, QPixmap
 from PySide6.QtWidgets import QComboBox, QHBoxLayout, QLabel, QSizePolicy, QTextEdit, QVBoxLayout, QWidget
 
+from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text, image_path
 from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import all_descriptors
 
@@ -64,6 +66,32 @@ def build_introduction_screen(self):
     texts = load_text("characterization_methods.json")
     methods = texts.get("methods", {})
 
+    _theme_cfg = get_settings(
+        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+        "shared/utils/dark_light_mode/dark_light_config.ini",
+        Path(__file__).resolve(),
+    )
+    _is_dark = not _theme_cfg.value("Dark_Light/is_dark_mode", False, type=bool)
+
+    if _is_dark:
+        _combo_bg = "#2a2a3e"
+        _combo_fg = "white"
+        _combo_border = "#383850"
+        _combo_hover_bg = "#363650"
+        _infobox_bg = "#252538"
+        _infobox_border = "#383850"
+        _textedit_fg = "#dddddd"
+        _photo_border = "#383850"
+    else:
+        _combo_bg = "#ebebf5"
+        _combo_fg = "#1e1e2e"
+        _combo_border = "#c4c4d8"
+        _combo_hover_bg = "#dcdcf0"
+        _infobox_bg = "#e8e8f4"
+        _infobox_border = "#c4c4d8"
+        _textedit_fg = "#1e1e2e"
+        _photo_border = "#c4c4d8"
+
     self.title_label.setText(texts.get("title", "Characterization Methods"))
     self.next_button.setText("▶▶")
     self.next_button.setEnabled(False)
@@ -81,24 +109,24 @@ def build_introduction_screen(self):
     self.method_dropdown.setEditable(False)
     self.method_dropdown.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLengthWithIcon)
     self.method_dropdown.setMaximumWidth(500)
-    self.method_dropdown.setStyleSheet("""
-        QComboBox {
-            background-color: #3b3b3b;
-            color: white;
-            border: 2px solid white;
+    self.method_dropdown.setStyleSheet(f"""
+        QComboBox {{
+            background-color: {_combo_bg};
+            color: {_combo_fg};
+            border: 1px solid {_combo_border};
             border-radius: 6px;
             padding: 8px;
             font-size: 14px;
-        }
-        QComboBox:hover { background-color: #4d4d4d; }
-        QComboBox::drop-down { width: 0px; border: none; background: transparent; }
-        QComboBox::down-arrow { image: none; width: 0px; height: 0px; }
-        QComboBox QAbstractItemView {
-            background-color: #3b3b3b;
-            color: white;
-            selection-background-color: #4d4d4d;
-            border: 1px solid white;
-        }
+        }}
+        QComboBox:hover {{ background-color: {_combo_hover_bg}; }}
+        QComboBox::drop-down {{ width: 0px; border: none; background: transparent; }}
+        QComboBox::down-arrow {{ image: none; width: 0px; height: 0px; }}
+        QComboBox QAbstractItemView {{
+            background-color: {_combo_bg};
+            color: {_combo_fg};
+            selection-background-color: {_combo_hover_bg};
+            border: 1px solid {_combo_border};
+        }}
     """)
 
     self.method_dropdown.addItem(texts.get("dropdown_placeholder", "Select Characterization Method"))
@@ -117,12 +145,12 @@ def build_introduction_screen(self):
     # Info box: text on top, photos row fixed-height at bottom.
     info_box = QWidget()
     info_box.setObjectName("infoBox")
-    info_box.setStyleSheet("""
-        QWidget#infoBox {
-            background-color: #2b2b2b;
-            border: 2px solid #555555;
+    info_box.setStyleSheet(f"""
+        QWidget#infoBox {{
+            background-color: {_infobox_bg};
+            border: 1px solid {_infobox_border};
             border-radius: 8px;
-        }
+        }}
     """)
     info_box_layout = QVBoxLayout(info_box)
     info_box_layout.setContentsMargins(12, 12, 12, 12)
@@ -130,13 +158,13 @@ def build_introduction_screen(self):
 
     self.method_info = QTextEdit()
     self.method_info.setReadOnly(True)
-    self.method_info.setStyleSheet("""
-        QTextEdit {
-            background-color: #2b2b2b;
-            color: #dddddd;
+    self.method_info.setStyleSheet(f"""
+        QTextEdit {{
+            background-color: {_infobox_bg};
+            color: {_textedit_fg};
             border: none;
             font-size: 14px;
-        }
+        }}
     """)
     self.method_info.setText(texts.get("empty_description", ""))
     info_box_layout.addWidget(self.method_info, stretch=1)  # texto 1/3, fotos 2/3 del info box
@@ -148,12 +176,12 @@ def build_introduction_screen(self):
     self._method_photo_labels = [_ScaledImageLabel(), _ScaledImageLabel()]
     for lbl in self._method_photo_labels:
         lbl.setVisible(False)
-        lbl.setStyleSheet("border: 1px solid #555555; border-radius: 6px;")
+        lbl.setStyleSheet(f"border: 1px solid {_photo_border}; border-radius: 6px;")
         photos_row.addWidget(lbl)
 
     photos_row_widget = QWidget()
     photos_row_widget.setObjectName("photosRow")
-    photos_row_widget.setStyleSheet("QWidget#photosRow { background-color: #2b2b2b; border: none; }")
+    photos_row_widget.setStyleSheet(f"QWidget#photosRow {{ background-color: {_infobox_bg}; border: none; }}")
     photos_row_widget.setLayout(photos_row)
     photos_row_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
     photos_row_widget.setMinimumHeight(0)

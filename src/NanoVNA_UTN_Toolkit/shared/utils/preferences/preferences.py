@@ -32,7 +32,7 @@ def open_preferences_dialog(self):
 
     dialog.setWindowTitle("Preferences")
 
-    dialog.setFixedSize(340, 330)
+    dialog.setFixedSize(340, 270)
 
     dialog.setStyleSheet(self.styleSheet())
 
@@ -189,6 +189,11 @@ def open_preferences_dialog(self):
 
     debug_layout.addWidget(self.debug_mode_checkbox)
 
+    # Hidden — debug mode disabled; widgets kept for future re-enable
+    debug_label.setVisible(False)
+    self.debug_mode_checkbox.setVisible(False)
+    self.debug_mode_checkbox.setChecked(False)
+
 # ------------------------------------------------------------------------------------------------------------------- #
 # Add Settings Layouts
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -197,7 +202,7 @@ def open_preferences_dialog(self):
 
     preferences_layout.addLayout(language_layout)
 
-    preferences_layout.addLayout(debug_layout)
+    # preferences_layout.addLayout(debug_layout)  # hidden
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Buttons

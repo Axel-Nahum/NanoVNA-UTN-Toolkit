@@ -16,8 +16,12 @@ ES: Construye una lista vertical de todos los pasos del asistente para que el
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+
+from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques.base import StepKind, StandardKind
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
@@ -67,15 +71,38 @@ def build_step_sidebar(wizard, descriptor, texts) -> QWidget:
     """Return a sidebar widget listing every step with status + highlight."""
     liquids = texts.get("liquids", {})
 
+    _theme_cfg = get_settings(
+        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+        "shared/utils/dark_light_mode/dark_light_config.ini",
+        Path(__file__).resolve(),
+    )
+    _is_dark = not _theme_cfg.value("Dark_Light/is_dark_mode", False, type=bool)
+
+    if _is_dark:
+        _sidebar_bg = "#1e1e2e"
+        _sidebar_border = "#383850"
+        _header_color = "#ffffff"
+        _sep_color = "#383850"
+        _active_bg = "#1a3a5c"
+        _active_text = "#4da6ff"
+        _done_text = "#7ec97e"
+        _todo_text = "#777777"
+    else:
+        _sidebar_bg = "#e8e8f4"
+        _sidebar_border = "#c4c4d8"
+        _header_color = "#1e1e2e"
+        _sep_color = "#c4c4d8"
+        _active_bg = "#dce8f8"
+        _active_text = "#1a3a5c"
+        _done_text = "#2d7a2d"
+        _todo_text = "#8888aa"
+
     outer = QWidget()
     outer.setObjectName("sidebar")
-    outer.setStyleSheet("""
-        QWidget#sidebar {
-            background-color: #1a1a1a;
-            border: 1px solid #3a3a3a;
-            border-radius: 8px;
-        }
-    """)
+    outer.setStyleSheet(
+        f"QWidget#sidebar {{ background-color: {_sidebar_bg};"
+        f" border: 1px solid {_sidebar_border}; border-radius: 8px; }}"
+    )
     outer.setFixedWidth(220)
 
     layout = QVBoxLayout(outer)
@@ -84,14 +111,14 @@ def build_step_sidebar(wizard, descriptor, texts) -> QWidget:
 
     header = QLabel(texts.get("sidebar", {}).get("title", "Steps"))
     header.setStyleSheet(
-        "font-weight: bold; font-size: 14px; color: #ffffff;"
+        f"font-weight: bold; font-size: 14px; color: {_header_color};"
         "padding: 0 16px 6px 16px; border: none; background: transparent;"
     )
     layout.addWidget(header)
 
     sep = QFrame()
     sep.setFrameShape(QFrame.HLine)
-    sep.setStyleSheet("border: none; border-top: 1px solid #3a3a3a; margin: 0 10px 6px 10px;")
+    sep.setStyleSheet(f"border: none; border-top: 1px solid {_sep_color}; margin: 0 10px 6px 10px;")
     layout.addWidget(sep)
 
     for position, step_def in enumerate(descriptor.steps, start=1):
@@ -108,33 +135,33 @@ def build_step_sidebar(wizard, descriptor, texts) -> QWidget:
         if is_current:
             row.setStyleSheet(
                 f"QWidget#stepRow{position} {{"
-                "background-color: #1a3a5c;"
+                f"background-color: {_active_bg};"
                 "border-left: 3px solid #4da6ff;"
                 "}}"
             )
             icon = QLabel("▶")
-            icon.setStyleSheet("color: #4da6ff; font-size: 11px; border: none; background: transparent;")
+            icon.setStyleSheet(f"color: {_active_text}; font-size: 11px; border: none; background: transparent;")
             lbl = QLabel(f"{position}. {name}")
             lbl.setStyleSheet(
-                "color: #4da6ff; font-size: 13px; font-weight: bold;"
+                f"color: {_active_text}; font-size: 13px; font-weight: bold;"
                 "border: none; background: transparent;"
             )
         elif done:
             row.setStyleSheet(f"QWidget#stepRow{position} {{ background: transparent; }}")
             icon = QLabel("✓")
-            icon.setStyleSheet("color: #7ec97e; font-size: 12px; border: none; background: transparent;")
+            icon.setStyleSheet(f"color: {_done_text}; font-size: 12px; border: none; background: transparent;")
             lbl = QLabel(f"{position}. {name}")
             lbl.setStyleSheet(
-                "color: #7ec97e; font-size: 12px;"
+                f"color: {_done_text}; font-size: 12px;"
                 "border: none; background: transparent;"
             )
         else:
             row.setStyleSheet(f"QWidget#stepRow{position} {{ background: transparent; }}")
             icon = QLabel("○")
-            icon.setStyleSheet("color: #555555; font-size: 12px; border: none; background: transparent;")
+            icon.setStyleSheet(f"color: {_todo_text}; font-size: 12px; border: none; background: transparent;")
             lbl = QLabel(f"{position}. {name}")
             lbl.setStyleSheet(
-                "color: #777777; font-size: 12px;"
+                f"color: {_todo_text}; font-size: 12px;"
                 "border: none; background: transparent;"
             )
 

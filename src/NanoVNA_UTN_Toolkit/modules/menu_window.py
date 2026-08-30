@@ -68,6 +68,48 @@ class ModuleSelectionWindow(QMainWindow):
 
         dark_light_config(self)
 
+        _theme_cfg = get_settings(
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+            "shared/utils/dark_light_mode/dark_light_config.ini",
+            Path(__file__).resolve(),
+        )
+        self.is_dark_mode = _theme_cfg.value("Dark_Light/is_dark_mode", False, type=bool)
+        _is_dark = not self.is_dark_mode
+        if _is_dark:
+            self._card_style = (
+                "QFrame { background-color: #252538; border: 1px solid #383850;"
+                " border-radius: 10px; padding: 10px; }"
+            )
+            self._btn_open_style = """
+                QPushButton { background-color: #1a3a5c; color: white; border: 1px solid #2d5a8e;
+                    border-radius: 6px; font-size: 14px; font-weight: bold; }
+                QPushButton:hover  { background-color: #254e7a; }
+                QPushButton:pressed { background-color: #12263d; }
+            """
+            self._btn_pref_style = """
+                QPushButton { background-color: #1c2533; color: #7ab3f5; border: 1px solid #2d5a8e;
+                    border-radius: 6px; font-size: 13px; font-weight: 500; padding: 4px 12px; }
+                QPushButton:hover  { background-color: #1a3a5c; color: #aacfff; border: 1px solid #4da6ff; }
+                QPushButton:pressed { background-color: #12263d; }
+            """
+        else:
+            self._card_style = (
+                "QFrame { background-color: #e8e8f4; border: 1px solid #c4c4d8;"
+                " border-radius: 10px; padding: 10px; }"
+            )
+            self._btn_open_style = """
+                QPushButton { background-color: #2d5a8e; color: white; border: 1px solid #a0bcd8;
+                    border-radius: 6px; font-size: 14px; font-weight: bold; }
+                QPushButton:hover  { background-color: #3a6fa8; }
+                QPushButton:pressed { background-color: #1a4a7a; }
+            """
+            self._btn_pref_style = """
+                QPushButton { background-color: #e0e0f0; color: #1e1e2e; border: 1px solid #c4c4d8;
+                    border-radius: 6px; font-size: 13px; font-weight: 500; padding: 4px 12px; }
+                QPushButton:hover  { background-color: #d0d0e8; }
+                QPushButton:pressed { background-color: #c0c0d8; }
+            """
+
 # ------------------------------------------------------------------------------------------------------------------- #
 # Title and Window Size
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -138,18 +180,11 @@ class ModuleSelectionWindow(QMainWindow):
 # DUT Card
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        dut_card = QFrame()
-        dut_card.setFixedSize(300, 230)
-        dut_card.setStyleSheet("""
-            QFrame {
-                background-color: #252525;
-                border: 1px solid #3d3d3d;
-                border-radius: 10px;
-                padding: 10px;
-            }
-        """)
+        self.dut_card = QFrame()
+        self.dut_card.setFixedSize(300, 230)
+        self.dut_card.setStyleSheet(self._card_style)
 
-        dut_layout = QVBoxLayout(dut_card)
+        dut_layout = QVBoxLayout(self.dut_card)
 
         dut_layout.setSpacing(15)
 
@@ -182,18 +217,7 @@ class ModuleSelectionWindow(QMainWindow):
 
         self.dut_button.setFixedSize(140, 40)
 
-        self.dut_button.setStyleSheet("""
-            QPushButton {
-                background-color: #1a3a5c;
-                color: white;
-                border: 1px solid #2d5a8e;
-                border-radius: 6px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover  { background-color: #254e7a; }
-            QPushButton:pressed { background-color: #12263d; }
-        """)
+        self.dut_button.setStyleSheet(self._btn_open_style)
 
         self.dut_button.clicked.connect(
             self.open_dut_measurement_module
@@ -213,18 +237,11 @@ class ModuleSelectionWindow(QMainWindow):
 # Materials Card
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        materials_card = QFrame()
-        materials_card.setFixedSize(300, 230)
-        materials_card.setStyleSheet("""
-            QFrame {
-                background-color: #252525;
-                border: 1px solid #3d3d3d;
-                border-radius: 10px;
-                padding: 10px;
-            }
-        """)
+        self.materials_card = QFrame()
+        self.materials_card.setFixedSize(300, 230)
+        self.materials_card.setStyleSheet(self._card_style)
 
-        materials_layout = QVBoxLayout(materials_card)
+        materials_layout = QVBoxLayout(self.materials_card)
 
         materials_layout.setSpacing(15)
 
@@ -249,18 +266,7 @@ class ModuleSelectionWindow(QMainWindow):
 
         self.materials_button.setFixedSize(140, 40)
 
-        self.materials_button.setStyleSheet("""
-            QPushButton {
-                background-color: #1a3a5c;
-                color: white;
-                border: 1px solid #2d5a8e;
-                border-radius: 6px;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover  { background-color: #254e7a; }
-            QPushButton:pressed { background-color: #12263d; }
-        """)
+        self.materials_button.setStyleSheet(self._btn_open_style)
 
         self.materials_button.clicked.connect(
             self.open_material_characterization_module
@@ -280,8 +286,8 @@ class ModuleSelectionWindow(QMainWindow):
 # Add Cards
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        modules_layout.addWidget(dut_card)
-        modules_layout.addWidget(materials_card)
+        modules_layout.addWidget(self.dut_card)
+        modules_layout.addWidget(self.materials_card)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Preferences Button
@@ -289,19 +295,7 @@ class ModuleSelectionWindow(QMainWindow):
 
         self.preferences_button = QPushButton("⚙ Preferences")
         self.preferences_button.setFixedSize(180, 35)
-        self.preferences_button.setStyleSheet("""
-            QPushButton {
-                background-color: #1c2533;
-                color: #7ab3f5;
-                border: 1px solid #2d5a8e;
-                border-radius: 6px;
-                font-size: 13px;
-                font-weight: 500;
-                padding: 4px 12px;
-            }
-            QPushButton:hover  { background-color: #1a3a5c; color: #aacfff; border: 1px solid #4da6ff; }
-            QPushButton:pressed { background-color: #12263d; }
-        """)
+        self.preferences_button.setStyleSheet(self._btn_pref_style)
         self.preferences_button.clicked.connect(lambda: open_preferences_dialog(self))
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -326,6 +320,61 @@ class ModuleSelectionWindow(QMainWindow):
         )
 
         main_layout.addStretch()
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Live theme update
+# ------------------------------------------------------------------------------------------------------------------- #
+
+    def setStyleSheet(self, stylesheet: str) -> None:
+        super().setStyleSheet(stylesheet)
+        if not hasattr(self, "dut_card"):
+            return
+        # is_dark_mode=True when toggle_menu_dark_mode is about to apply dark
+        _going_dark = getattr(self, "is_dark_mode", False)
+        if _going_dark:
+            _card = (
+                "QFrame { background-color: #252538; border: 1px solid #383850;"
+                " border-radius: 10px; padding: 10px; }"
+            )
+            _btn_open = (
+                "QPushButton { background-color: #1a3a5c; color: white;"
+                " border: 1px solid #2d5a8e; border-radius: 6px;"
+                " font-size: 14px; font-weight: bold; }"
+                " QPushButton:hover { background-color: #254e7a; }"
+                " QPushButton:pressed { background-color: #12263d; }"
+            )
+            _btn_pref = (
+                "QPushButton { background-color: #1c2533; color: #7ab3f5;"
+                " border: 1px solid #2d5a8e; border-radius: 6px;"
+                " font-size: 13px; font-weight: 500; padding: 4px 12px; }"
+                " QPushButton:hover { background-color: #1a3a5c; color: #aacfff;"
+                " border: 1px solid #4da6ff; }"
+                " QPushButton:pressed { background-color: #12263d; }"
+            )
+        else:
+            _card = (
+                "QFrame { background-color: #e8e8f4; border: 1px solid #c4c4d8;"
+                " border-radius: 10px; padding: 10px; }"
+            )
+            _btn_open = (
+                "QPushButton { background-color: #2d5a8e; color: white;"
+                " border: 1px solid #a0bcd8; border-radius: 6px;"
+                " font-size: 14px; font-weight: bold; }"
+                " QPushButton:hover { background-color: #3a6fa8; }"
+                " QPushButton:pressed { background-color: #1a4a7a; }"
+            )
+            _btn_pref = (
+                "QPushButton { background-color: #e0e0f0; color: #1e1e2e;"
+                " border: 1px solid #c4c4d8; border-radius: 6px;"
+                " font-size: 13px; font-weight: 500; padding: 4px 12px; }"
+                " QPushButton:hover { background-color: #d0d0e8; }"
+                " QPushButton:pressed { background-color: #c0c0d8; }"
+            )
+        self.dut_card.setStyleSheet(_card)
+        self.materials_card.setStyleSheet(_card)
+        self.dut_button.setStyleSheet(_btn_open)
+        self.materials_button.setStyleSheet(_btn_open)
+        self.preferences_button.setStyleSheet(_btn_pref)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Open DUT Module

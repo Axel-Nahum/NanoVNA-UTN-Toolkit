@@ -166,12 +166,88 @@ def show_first_screen(self):
         pass
     self.next_button.clicked.connect(lambda: next_step(self))
 
-    _CARD = "QWidget#card { background-color: #252525; border: 1px solid #3d3d3d; border-radius: 10px; }"
+    _theme = get_settings(
+        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+        "shared/utils/dark_light_mode/dark_light_config.ini",
+        Path(__file__).resolve()
+    )
+    _is_dark = not _theme.value("Dark_Light/is_dark_mode", False, type=bool)
+    if _is_dark:
+        _CARD = "QWidget#card { background-color: #252538; border: 1px solid #383850; border-radius: 10px; }"
+        _sep_color = "#383850"
+        _sep_inner = "#2a2a3e"
+        _secondary_color = "#999999"
+        _muted_color = "#666666"
+        _spinbox_style = """
+            QSpinBox {
+                background-color: #252538;
+                color: white;
+                border-radius: 8px;
+                font-size: 14px;
+                min-height: 20px;
+                padding: 4px;
+            }
+            QSpinBox:hover { background-color: #363650; }
+            QSpinBox:focus { background-color: #363650; border: 2px solid #4CAF50; }
+            QSpinBox::up-button, QSpinBox::down-button {
+                background-color: #363650;
+                border: 1px solid #383850;
+                border-radius: 3px;
+                width: 16px;
+            }
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover { background-color: #5d5d69; }
+            QSpinBox::up-arrow {
+                image: none; border-left: 2px solid transparent;
+                border-right: 2px solid transparent;
+                border-bottom: 3px solid white; width: 0px; height: 0px;
+            }
+            QSpinBox::down-arrow {
+                image: none; border-left: 2px solid transparent;
+                border-right: 2px solid transparent;
+                border-top: 3px solid white; width: 0px; height: 0px;
+            }
+        """
+    else:
+        _CARD = "QWidget#card { background-color: #e8e8f4; border: 1px solid #c4c4d8; border-radius: 10px; }"
+        _sep_color = "#c4c4d8"
+        _sep_inner = "#dcdcf0"
+        _secondary_color = "#5a5a78"
+        _muted_color = "#8888aa"
+        _spinbox_style = """
+            QSpinBox {
+                background-color: #f8f8ff;
+                color: #1e1e2e;
+                border-radius: 8px;
+                font-size: 14px;
+                min-height: 20px;
+                padding: 4px;
+                border: 1px solid #c4c4d8;
+            }
+            QSpinBox:hover { background-color: #ebebf5; }
+            QSpinBox:focus { background-color: #eef0ff; border: 2px solid #4d90fe; }
+            QSpinBox::up-button, QSpinBox::down-button {
+                background-color: #e0e0f0;
+                border: 1px solid #c4c4d8;
+                border-radius: 3px;
+                width: 16px;
+            }
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover { background-color: #d0d0e8; }
+            QSpinBox::up-arrow {
+                image: none; border-left: 2px solid transparent;
+                border-right: 2px solid transparent;
+                border-bottom: 3px solid #1e1e1e; width: 0px; height: 0px;
+            }
+            QSpinBox::down-arrow {
+                image: none; border-left: 2px solid transparent;
+                border-right: 2px solid transparent;
+                border-top: 3px solid #1e1e1e; width: 0px; height: 0px;
+            }
+        """
 
-    def _hsep_line(color="#363636"):
+    def _hsep_line(color=None):
         line = QWidget()
         line.setFixedHeight(1)
-        line.setStyleSheet(f"background-color: {color}; border: none;")
+        line.setStyleSheet(f"background-color: {color or _sep_color}; border: none;")
         return line
 
     top_container = QVBoxLayout()
@@ -201,7 +277,7 @@ def show_first_screen(self):
         "They include techniques for reflection (S11) calibration and transmission (S21) calibration, "
         "allowing accurate compensation of system imperfections."
     )
-    methods_description.setStyleSheet("font-size: 13px; border: none; background: transparent; color: #999999;")
+    methods_description.setStyleSheet(f"font-size: 13px; border: none; background: transparent; color: {_secondary_color};")
     methods_description.setWordWrap(True)
     mcl.addWidget(methods_description)
     mcl.addSpacing(14)
@@ -238,11 +314,11 @@ def show_first_screen(self):
     mcl.addLayout(dropdown_layout)
     mcl.addSpacing(16)
 
-    mcl.addWidget(_hsep_line("#2d2d2d"))
+    mcl.addWidget(_hsep_line(_sep_inner))
     mcl.addSpacing(10)
 
     inner_ref_lbl = QLabel("Calibration Methods by Parameter")
-    inner_ref_lbl.setStyleSheet("font-size: 12px; color: #666666; background: transparent; border: none;")
+    inner_ref_lbl.setStyleSheet(f"font-size: 12px; color: {_muted_color}; background: transparent; border: none;")
     mcl.addWidget(inner_ref_lbl)
     mcl.addSpacing(14)
 
@@ -353,39 +429,7 @@ def show_first_screen(self):
     self.steps_input.setMinimum(1)
     self.steps_input.setMaximum(32000)
     self.steps_input.setValue(101)
-    self.steps_input.setStyleSheet("""
-        QSpinBox {
-            background-color: #2e2e2e;
-            color: white;
-            border-radius: 8px;
-            font-size: 14px;
-            min-height: 20px;
-            padding: 4px;
-        }
-        QSpinBox:hover { background-color: #4d4d4d; }
-        QSpinBox:focus { background-color: #4d4d4d; border: 2px solid #4CAF50; }
-        QSpinBox::up-button, QSpinBox::down-button {
-            background-color: #4d4d4d;
-            border: 1px solid #4a4a4a;
-            border-radius: 3px;
-            width: 16px;
-        }
-        QSpinBox::up-button:hover, QSpinBox::down-button:hover { background-color: #5d5d5d; }
-        QSpinBox::up-arrow {
-            image: none;
-            border-left: 2px solid transparent;
-            border-right: 2px solid transparent;
-            border-bottom: 3px solid white;
-            width: 0px; height: 0px;
-        }
-        QSpinBox::down-arrow {
-            image: none;
-            border-left: 2px solid transparent;
-            border-right: 2px solid transparent;
-            border-top: 3px solid white;
-            width: 0px; height: 0px;
-        }
-    """)
+    self.steps_input.setStyleSheet(_spinbox_style)
     label_steps = QLabel(f"{self.dut_wizard_ui_steps}")
     label_steps.setStyleSheet("border: none; background: transparent;")
     sweep_layout.addRow(label_steps, self.steps_input)
@@ -394,7 +438,7 @@ def show_first_screen(self):
         "Sweep settings define the frequency range and resolution used for all measurements. "
         "The selected values directly affect both reflection and transmission results."
     )
-    sweep_description.setStyleSheet("font-size: 13px; border: none; background: transparent; color: #999999;")
+    sweep_description.setStyleSheet(f"font-size: 13px; border: none; background: transparent; color: {_secondary_color};")
     sweep_description.setWordWrap(True)
     scl.addWidget(sweep_description)
     scl.addSpacing(16)
