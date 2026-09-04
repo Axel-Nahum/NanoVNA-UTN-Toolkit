@@ -32,7 +32,12 @@ def open_preferences_dialog(self):
 
     dialog.setWindowTitle("Preferences")
 
-    dialog.setFixedSize(340, 270)
+    # The Debug Mode row only appears when preferences.ini already says
+    # debug_mode=true: the INI is the master switch. It is editable when running
+    # from source, but not exposed anywhere in the installed (production) build.
+    show_debug = is_debug_enabled()
+
+    dialog.setFixedSize(340, 330 if show_debug else 270)
 
     dialog.setStyleSheet(self.styleSheet())
 
@@ -189,11 +194,6 @@ def open_preferences_dialog(self):
 
     debug_layout.addWidget(self.debug_mode_checkbox)
 
-    # Hidden — debug mode disabled; widgets kept for future re-enable
-    debug_label.setVisible(False)
-    self.debug_mode_checkbox.setVisible(False)
-    self.debug_mode_checkbox.setChecked(False)
-
 # ------------------------------------------------------------------------------------------------------------------- #
 # Add Settings Layouts
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -202,7 +202,14 @@ def open_preferences_dialog(self):
 
     preferences_layout.addLayout(language_layout)
 
-    # preferences_layout.addLayout(debug_layout)  # hidden
+    if show_debug:
+        preferences_layout.addLayout(debug_layout)
+    else:
+        # Row hidden: with debug_mode=false in the INI the checkbox does not
+        # exist for the user. Turning the INI value to true by hand re-enables
+        # everything (imports included) and makes this row reappear.
+        debug_label.setVisible(False)
+        self.debug_mode_checkbox.setVisible(False)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Buttons

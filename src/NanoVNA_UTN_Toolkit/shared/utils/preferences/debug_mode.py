@@ -36,8 +36,7 @@ def _settings():
 
 def is_debug_enabled() -> bool:
     """Return True when the user enabled Debug Mode in Preferences."""
-    return False  # Debug mode hidden — re-enable via preferences UI when needed
-    try:  # noqa: unreachable
+    try:
         return str(_settings().value(_KEY, "false")).strip().lower() in ("true", "1", "yes")
     except Exception:
         logger.exception("[debug_mode.is_debug_enabled] could not read the preference")
