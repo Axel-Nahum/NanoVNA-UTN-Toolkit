@@ -25,9 +25,10 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QMessageBox, QWidget, QCheckBox, QLineEdit, QComboBox,
     QFrame, QStylePainter, QStyleOptionComboBox, QFileDialog, QTextEdit,
+    QGridLayout,
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QTextCharFormat, QFont, QTextListFormat
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.patches import FancyBboxPatch
@@ -109,6 +110,105 @@ class _NoEnterButton(QPushButton):
             event.ignore()
         else:
             super().keyPressEvent(event)
+
+
+# --------------------------------------------------------------------------- #
+
+_DASH_STYLE = "dash"   # sentinel: no QTextList, insert "– " prefix
+
+
+class _NotesEdit(QTextEdit):
+    """QTextEdit with a custom placeholder that disappears when there is real content
+    (typed text OR an active list), and reappears when the editor is truly empty."""
+
+    def __init__(self, placeholder: str = "", parent=None):
+        super().__init__(parent)
+        self._placeholder = placeholder
+        self._saved_cursor = None
+
+    def focusOutEvent(self, event):
+        self._saved_cursor = self.textCursor()
+        super().focusOutEvent(event)
+
+    def _is_empty(self) -> bool:
+        cursor = self.textCursor()
+        cursor.select(cursor.SelectionType.Document)
+        doc = self.document()
+        # Has a list anywhere → not empty
+        block = doc.begin()
+        while block.isValid():
+            if block.textList():
+                return False
+            block = block.next()
+        # Has actual text → not empty
+        return doc.toPlainText().strip() == ""
+
+    def keyPressEvent(self, event):
+        cursor = self.textCursor()
+        was_on_list = cursor.currentList() is not None
+        super().keyPressEvent(event)
+        if was_on_list and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            new_cursor = self.textCursor()
+            if new_cursor.currentList() is not None and not new_cursor.block().text():
+                new_cursor.insertText("  ")
+                self.viewport().update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._is_empty():
+            return
+        from PySide6.QtGui import QPainter, QColor
+        p = QPainter(self.viewport())
+        p.setPen(QColor("#8888aa"))
+        p.setFont(self.font())
+        offset = int(self.document().documentMargin())
+        p.drawText(
+            self.viewport().rect().adjusted(offset, offset, -offset, -offset),
+            Qt.AlignTop | Qt.AlignLeft | Qt.TextWordWrap,
+            self._placeholder,
+        )
+        p.end()
+
+_LIST_STYLES = [
+    ("•",  "Disc",        QTextListFormat.ListDisc),
+    ("◦",  "Circle",      QTextListFormat.ListCircle),
+    ("▪",  "Square",      QTextListFormat.ListSquare),
+    ("–",  "Dash",        _DASH_STYLE),
+    ("1.", "Numbered",    QTextListFormat.ListDecimal),
+    ("a.", "Lower alpha", QTextListFormat.ListLowerAlpha),
+    ("A.", "Upper alpha", QTextListFormat.ListUpperAlpha),
+    ("i.", "Lower roman", QTextListFormat.ListLowerRoman),
+    ("I.", "Upper roman", QTextListFormat.ListUpperRoman),
+]
+_LIST_COLS = 3   # 3×3 grid
+
+
+class _ListPickerPopup(QFrame):
+    """2×5 grid popup for choosing bullet/list style."""
+    from PySide6.QtCore import Signal
+    styleChosen = Signal(object)
+
+    def __init__(self, parent=None):
+        super().__init__(parent, Qt.Popup | Qt.FramelessWindowHint)
+        self.setStyleSheet(
+            "QFrame { background-color: #2a2a3e; border: 1px solid #4a4a6a; border-radius: 6px; }"
+            " QPushButton { background: transparent; color: #ddddee; border: 1px solid transparent;"
+            " border-radius: 4px; font-size: 14px; min-width: 36px; max-width: 36px;"
+            " min-height: 32px; max-height: 32px; }"
+            " QPushButton:hover { background-color: #3a3a6a; border: 1px solid #6666aa; }"
+        )
+        grid = QGridLayout(self)
+        grid.setContentsMargins(6, 6, 6, 6)
+        grid.setSpacing(4)
+        for idx, (symbol, tooltip, style) in enumerate(_LIST_STYLES):
+            btn = QPushButton(symbol)
+            btn.setToolTip(tooltip)
+            btn.clicked.connect(lambda _=False, s=style: self._pick(s))
+            grid.addWidget(btn, idx // _LIST_COLS, idx % _LIST_COLS)
+
+    def _pick(self, style):
+        self.styleChosen.emit(style)
+        self.close()
 
 
 # --------------------------------------------------------------------------- #
@@ -253,9 +353,177 @@ class PermittivityPdfPreviewDialog(QDialog):
         notes_step_hint.setWordWrap(True)
         notes_step_layout.addWidget(notes_step_hint)
         notes_step_layout.addSpacing(6)
-        self.notes_edit = QTextEdit()
-        self.notes_edit.setPlaceholderText("Enter notes here…")
-        notes_step_layout.addWidget(self.notes_edit)
+
+        # Rich text editor: toolbar + text area inside a single styled frame
+        editor_frame = QFrame()
+        editor_frame.setStyleSheet(
+            "QFrame { background-color: #252538; border: 1px solid #383850; border-radius: 6px; }"
+        )
+        editor_frame_l = QVBoxLayout(editor_frame)
+        editor_frame_l.setContentsMargins(0, 0, 0, 0)
+        editor_frame_l.setSpacing(0)
+
+        # Toolbar row
+        toolbar_w = QWidget()
+        toolbar_w.setStyleSheet(
+            "QWidget { background-color: #2a2a3e; border-bottom: 1px solid #383850;"
+            " border-radius: 0px; }"
+        )
+        toolbar_l = QHBoxLayout(toolbar_w)
+        toolbar_l.setContentsMargins(6, 4, 6, 4)
+        toolbar_l.setSpacing(3)
+
+        _btn_base = (
+            "QPushButton { background-color: transparent; color: #cccccc;"
+            " border: 1px solid transparent; border-radius: 4px;"
+            " min-width: 28px; max-width: 28px; min-height: 24px; max-height: 24px;"
+            " font-size: 13px; }"
+            " QPushButton:hover { background-color: #383850; border: 1px solid #4a4a6a; }"
+            " QPushButton:checked { background-color: #3a3a6a; border: 1px solid #6666aa;"
+            " color: white; }"
+        )
+
+        def _vsep():
+            s = QFrame()
+            s.setFrameShape(QFrame.VLine)
+            s.setFixedHeight(18)
+            s.setStyleSheet("QFrame { border: none; background-color: #383850; min-width: 1px; max-width: 1px; }")
+            return s
+
+        # Paragraph style selector
+        _combo_ss_base = (
+            "QComboBox {{ background-color: {bg}; color: {fg}; border: 1px solid {bd};"
+            " border-radius: 4px; padding: 1px 4px; font-size: 11px; min-height: 22px; }}"
+            " QComboBox:hover:enabled {{ background-color: #383850; }}"
+            " QComboBox::drop-down {{ border: none; width: 14px; }}"
+            " QComboBox:disabled {{ background-color: #1e1e2e; color: #4a4a6a; border-color: #2a2a3e; }}"
+            " QComboBox QAbstractItemView {{ background-color: #2a2a3e; color: #cccccc;"
+            " selection-background-color: #3a3a6a; }}"
+        )
+        _combo_ss_on  = _combo_ss_base.format(bg="#2e2e42", fg="#cccccc", bd="#4a4a6a")
+        self._style_combo = QComboBox()
+        self._style_combo.setFocusPolicy(Qt.NoFocus)
+        self._style_combo.addItems(["Body", "Subsection", "Sub-subsection"])
+        self._style_combo.setFixedWidth(118)
+        self._style_combo.setToolTip(
+            "Paragraph style\n"
+            "Body — normal text\n"
+            "Subsection — \\subsection in PDF\n"
+            "Sub-subsection — \\subsubsection in PDF"
+        )
+        self._style_combo.setStyleSheet(_combo_ss_on)
+        self._style_combo.setEnabled(False)
+        self._style_combo.currentIndexChanged.connect(self._apply_paragraph_style)
+        toolbar_l.addWidget(self._style_combo)
+
+        # Checkbox: enable PDF heading structure
+        from PySide6.QtWidgets import QCheckBox as _QCheckBox
+        self._heading_chk = _QCheckBox()
+        self._heading_chk.setFocusPolicy(Qt.NoFocus)
+        self._heading_chk.setToolTip("Enable subsection / sub-subsection headings in PDF")
+        self._heading_chk.setStyleSheet(
+            "QCheckBox { spacing: 0px; }"
+            " QCheckBox::indicator { width: 15px; height: 15px;"
+            " border: 1px solid #4a4a6a; border-radius: 3px; background: #1e1e2e; }"
+            " QCheckBox::indicator:checked { background: #3a3a6a; border-color: #6666aa; }"
+            " QCheckBox::indicator:checked:hover { background: #4a4a8a; }"
+            " QCheckBox::indicator:hover { border-color: #6666aa; }"
+        )
+        self._heading_chk.toggled.connect(self._on_heading_mode_toggled)
+        toolbar_l.addSpacing(4)
+        toolbar_l.addWidget(self._heading_chk)
+
+        toolbar_l.addSpacing(4)
+        toolbar_l.addWidget(_vsep())
+        toolbar_l.addSpacing(4)
+
+        self._btn_bold = QPushButton("B")
+        self._btn_bold.setCheckable(True)
+        self._btn_bold.setFocusPolicy(Qt.NoFocus)
+        self._btn_bold.setStyleSheet(_btn_base + " QPushButton { font-weight: bold; }")
+        self._btn_bold.setToolTip("Bold (Ctrl+B)")
+        self._btn_bold.clicked.connect(lambda checked: self._apply_char_format("bold", checked))
+        toolbar_l.addWidget(self._btn_bold)
+
+        self._btn_italic = QPushButton("I")
+        self._btn_italic.setCheckable(True)
+        self._btn_italic.setFocusPolicy(Qt.NoFocus)
+        self._btn_italic.setStyleSheet(_btn_base + " QPushButton { font-style: italic; }")
+        self._btn_italic.setToolTip("Italic (Ctrl+I)")
+        self._btn_italic.clicked.connect(lambda checked: self._apply_char_format("italic", checked))
+        toolbar_l.addWidget(self._btn_italic)
+
+        self._btn_underline = QPushButton("U")
+        self._btn_underline.setCheckable(True)
+        self._btn_underline.setFocusPolicy(Qt.NoFocus)
+        self._btn_underline.setStyleSheet(_btn_base + " QPushButton { text-decoration: underline; }")
+        self._btn_underline.setToolTip("Underline (Ctrl+U)")
+        self._btn_underline.clicked.connect(lambda checked: self._apply_char_format("underline", checked))
+        toolbar_l.addWidget(self._btn_underline)
+
+        toolbar_l.addWidget(_vsep())
+
+        # List style button — opens 3×3 picker popup on click
+        self._current_list_style = QTextListFormat.ListDisc
+        self._btn_list = QPushButton("≡•")
+        self._btn_list.setCheckable(True)
+        self._btn_list.setFocusPolicy(Qt.NoFocus)
+        self._btn_list.setStyleSheet(_btn_base + " QPushButton { font-size: 11px; max-width: 34px; min-width: 34px; }")
+        self._btn_list.setToolTip("List style")
+        self._btn_list.clicked.connect(self._on_list_btn_clicked)
+        toolbar_l.addWidget(self._btn_list)
+
+        toolbar_l.addSpacing(6)
+        toolbar_l.addWidget(_vsep())
+        toolbar_l.addSpacing(6)
+
+        self._size_label = QLabel("Aa")
+        self._size_label.setStyleSheet("QLabel { color: #888888; font-size: 11px; background: transparent; border: none; }")
+        toolbar_l.addWidget(self._size_label)
+        toolbar_l.addSpacing(3)
+
+        self._size_combo = QComboBox()
+        self._size_combo.setFocusPolicy(Qt.NoFocus)
+        self._size_combo.setStyleSheet(
+            "QComboBox { background-color: #2e2e42; color: #cccccc; border: 1px solid #4a4a6a;"
+            " border-radius: 4px; padding: 1px 4px; font-size: 11px; min-height: 22px; }"
+            " QComboBox:hover:enabled { background-color: #383850; }"
+            " QComboBox::drop-down { border: none; width: 14px; }"
+            " QComboBox:disabled { background-color: #1e1e2e; color: #4a4a6a;"
+            " border-color: #2a2a3e; }"
+            " QComboBox QAbstractItemView { background-color: #2a2a3e; color: #cccccc;"
+            " selection-background-color: #3a3a6a; }"
+        )
+        for s in ["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28", "36"]:
+            self._size_combo.addItem(s)
+        self._size_combo.setCurrentText("10")
+        self._size_combo.setFixedWidth(56)
+        self._size_combo.currentTextChanged.connect(self._apply_font_size)
+        toolbar_l.addWidget(self._size_combo)
+
+        toolbar_l.addStretch()
+        editor_frame_l.addWidget(toolbar_w)
+
+        # Editor con placeholder custom (funciona también con listas)
+        self.notes_edit = _NotesEdit("Enter notes here…")
+        self.notes_edit.document().setIndentWidth(20)
+        self.notes_edit.setStyleSheet(
+            "QTextEdit { background-color: #1e1e2e; color: #e0e0f0;"
+            " border: none; border-radius: 0px; padding: 8px; }"
+        )
+        from PySide6.QtGui import QFont as _QFont
+        _default_font = _QFont()
+        _default_font.setPointSize(10)
+        self.notes_edit.document().setDefaultFont(_default_font)
+        self.notes_edit.currentCharFormatChanged.connect(self._sync_toolbar_state)
+        self.notes_edit.cursorPositionChanged.connect(self._sync_list_button)
+        self.notes_edit.cursorPositionChanged.connect(self._sync_style_combo)
+        self.notes_edit.cursorPositionChanged.connect(
+            lambda: setattr(self.notes_edit, '_saved_cursor', None)
+        )
+        editor_frame_l.addWidget(self.notes_edit)
+
+        notes_step_layout.addWidget(editor_frame)
         self.notes_step_widget.setVisible(False)
         main_layout.addWidget(self.notes_step_widget)
 
@@ -404,6 +672,198 @@ class PermittivityPdfPreviewDialog(QDialog):
             self.ax.set_xlim(-1.1, 1.1)
             self.ax.set_ylim(-1.1, 1.1)
         self.canvas.draw_idle()
+
+    # ------------------------------------------------------------------ #
+    # Rich text toolbar helpers
+    # ------------------------------------------------------------------ #
+
+    def _restore_editor_cursor(self):
+        """If the editor lost its selection (e.g. focus stolen by toolbar), restore it."""
+        edit = self.notes_edit
+        current = edit.textCursor()
+        if not current.hasSelection():
+            saved = edit._saved_cursor
+            if saved is not None and saved.hasSelection():
+                edit.setTextCursor(saved)
+        edit._saved_cursor = None
+        edit.setFocus()
+
+    def _apply_char_format(self, fmt, enabled):
+        from PySide6.QtGui import QTextCharFormat, QFont
+        self._restore_editor_cursor()
+        cf = QTextCharFormat()
+        if fmt == "bold":
+            cf.setFontWeight(QFont.Bold if enabled else QFont.Normal)
+        elif fmt == "italic":
+            cf.setFontItalic(enabled)
+        elif fmt == "underline":
+            cf.setFontUnderline(enabled)
+        self.notes_edit.mergeCurrentCharFormat(cf)
+
+    def _apply_font_size(self, size_str):
+        from PySide6.QtGui import QTextCharFormat
+        try:
+            size = float(size_str)
+        except ValueError:
+            return
+        self._restore_editor_cursor()
+        cf = QTextCharFormat()
+        cf.setFontPointSize(size)
+        self.notes_edit.mergeCurrentCharFormat(cf)
+
+    _STYLE_PREFIXES = ["", "## ", "### "]
+    _STYLE_SIZES    = [10,    14,     12]   # Body=10, Subsection=14, Sub-subsection=12
+
+    def _apply_paragraph_style(self, index):
+        from PySide6.QtGui import QTextCharFormat
+        prefix    = self._STYLE_PREFIXES[index] if 0 <= index < len(self._STYLE_PREFIXES) else ""
+        fixed_pt  = self._STYLE_SIZES[index]    if 0 <= index < len(self._STYLE_SIZES)    else 10
+        edit      = self.notes_edit
+        cursor    = edit.textCursor()
+        cursor.beginEditBlock()
+        # Replace prefix in block text
+        cursor.movePosition(cursor.MoveOperation.StartOfBlock)
+        cursor.movePosition(cursor.MoveOperation.EndOfBlock, cursor.MoveMode.KeepAnchor)
+        text = cursor.selectedText()
+        for p in ("### ", "## ", "# "):
+            if text.startswith(p):
+                text = text[len(p):]
+                break
+        cursor.insertText(prefix + text)
+        # Apply fixed font size to whole block
+        cursor.movePosition(cursor.MoveOperation.StartOfBlock)
+        cursor.movePosition(cursor.MoveOperation.EndOfBlock, cursor.MoveMode.KeepAnchor)
+        cf = QTextCharFormat()
+        cf.setFontPointSize(float(fixed_pt))
+        cursor.mergeCharFormat(cf)
+        cursor.endEditBlock()
+        self._update_size_combo_lock(index, fixed_pt)
+        edit.setFocus()
+
+    def _update_size_combo_lock(self, style_index, fixed_pt):
+        locked = self._heading_chk.isChecked()   # ALL styles locked when heading mode ON
+        self._size_combo.setEnabled(not locked)
+        self._size_combo.blockSignals(True)
+        self._size_combo.setCurrentText(str(fixed_pt))
+        self._size_combo.blockSignals(False)
+        label_color = "#4a4a6a" if locked else "#888888"
+        self._size_label.setStyleSheet(
+            f"QLabel {{ color: {label_color}; font-size: 11px; background: transparent; border: none; }}"
+        )
+
+    def _on_heading_mode_toggled(self, checked):
+        from PySide6.QtGui import QTextCursor, QTextCharFormat
+        self._style_combo.setEnabled(checked)
+        if not checked:
+            # Strip heading prefixes from all blocks and reset ALL to body size
+            edit      = self.notes_edit
+            doc       = edit.document()
+            cur       = edit.textCursor()
+            body_pt   = float(self._STYLE_SIZES[0])
+            cur.beginEditBlock()
+            block = doc.begin()
+            while block.isValid():
+                text = block.text()
+                bc   = QTextCursor(block)
+                bc.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+                bc.movePosition(QTextCursor.MoveOperation.EndOfBlock,
+                                QTextCursor.MoveMode.KeepAnchor)
+                for p in ("### ", "## "):
+                    if text.startswith(p):
+                        bc.insertText(text[len(p):])
+                        # re-select after insert
+                        bc.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+                        bc.movePosition(QTextCursor.MoveOperation.EndOfBlock,
+                                        QTextCursor.MoveMode.KeepAnchor)
+                        break
+                cf = QTextCharFormat()
+                cf.setFontPointSize(body_pt)
+                bc.mergeCharFormat(cf)
+                block = block.next()
+            cur.endEditBlock()
+            self._style_combo.blockSignals(True)
+            self._style_combo.setCurrentIndex(0)
+            self._style_combo.blockSignals(False)
+            self._update_size_combo_lock(0, self._STYLE_SIZES[0])
+        else:
+            self._sync_style_combo()
+
+    def _sync_style_combo(self):
+        if not self._style_combo.isEnabled():
+            return
+        text = self.notes_edit.textCursor().block().text()
+        if text.startswith("### "):
+            idx = 2
+        elif text.startswith("## "):
+            idx = 1
+        else:
+            idx = 0
+        self._style_combo.blockSignals(True)
+        self._style_combo.setCurrentIndex(idx)
+        self._style_combo.blockSignals(False)
+        self._update_size_combo_lock(idx, self._STYLE_SIZES[idx])
+
+    def _on_list_btn_clicked(self, checked):
+        if not checked:
+            from PySide6.QtGui import QTextBlockFormat
+            self.notes_edit.textCursor().setBlockFormat(QTextBlockFormat())
+            self.notes_edit.viewport().update()
+            self.notes_edit.setFocus()
+            return
+        # Mostrar picker
+        self._btn_list.setChecked(False)   # el picker decide el estado real
+        picker = _ListPickerPopup(self)
+        picker.styleChosen.connect(self._on_list_style_chosen)
+        btn_pos = self._btn_list.mapToGlobal(self._btn_list.rect().bottomLeft())
+        picker.move(btn_pos)
+        picker.show()
+
+    def _on_list_style_chosen(self, style):
+        if style is None:
+            from PySide6.QtGui import QTextBlockFormat
+            cursor = self.notes_edit.textCursor()
+            cursor.setBlockFormat(QTextBlockFormat())
+        elif style == _DASH_STYLE:
+            # Qt has no native dash list — remove any existing list and insert "– " prefix
+            from PySide6.QtGui import QTextBlockFormat
+            cursor = self.notes_edit.textCursor()
+            cursor.setBlockFormat(QTextBlockFormat())
+            if not cursor.block().text().startswith("– "):
+                cursor.movePosition(cursor.MoveOperation.StartOfBlock)
+                cursor.insertText("– ")
+            self.notes_edit.setTextCursor(cursor)
+        else:
+            self._current_list_style = style
+            cursor = self.notes_edit.textCursor()
+            fmt = QTextListFormat()
+            fmt.setStyle(style)
+            cursor.createList(fmt)
+            if not cursor.block().text():
+                cursor.insertText("  ")
+        self._sync_list_button()
+        self.notes_edit.viewport().update()   # force placeholder repaint
+        self.notes_edit.setFocus()
+
+    def _sync_toolbar_state(self, fmt):
+        for w in (self._btn_bold, self._btn_italic, self._btn_underline, self._size_combo):
+            w.blockSignals(True)
+        self._btn_bold.setChecked(fmt.fontWeight() >= QFont.Bold)
+        self._btn_italic.setChecked(fmt.fontItalic())
+        self._btn_underline.setChecked(fmt.fontUnderline())
+        pt = fmt.fontPointSize()
+        if pt <= 0:
+            pt = self.notes_edit.document().defaultFont().pointSize()
+        if pt > 0:
+            self._size_combo.setCurrentText(str(int(pt)))
+        for w in (self._btn_bold, self._btn_italic, self._btn_underline, self._size_combo):
+            w.blockSignals(False)
+
+    def _sync_list_button(self):
+        self._btn_list.blockSignals(True)
+        self._btn_list.setChecked(self.notes_edit.textCursor().currentList() is not None)
+        self._btn_list.blockSignals(False)
+
+    # ------------------------------------------------------------------ #
 
     def _on_marker_input_changed(self):
         self._update_markers(self.current_graph_index)
@@ -961,7 +1421,7 @@ class PermittivityPdfPreviewDialog(QDialog):
             QMessageBox.critical(self, "Export Failed", f"Could not render the plots:\n{exc}")
             return
 
-        notes_text = self.notes_edit.toPlainText().strip() if self.include_notes else ""
+        notes_doc = self.notes_edit.document() if self.include_notes else None
 
         def _compile():
             exporter.compile_pdf(
@@ -974,7 +1434,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                 output_path=output_path,
                 compiler_path=compiler_info[1],
                 include_steps=self.include_steps,
-                notes=notes_text,
+                notes_doc=notes_doc,
             )
 
         def _on_done(success, error_message):
