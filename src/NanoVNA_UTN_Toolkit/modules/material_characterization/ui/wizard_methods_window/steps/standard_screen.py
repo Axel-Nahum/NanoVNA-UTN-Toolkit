@@ -527,42 +527,33 @@ def build_standard_screen(wizard, descriptor, step_def):
             " border-radius: 4px; padding: 0 10px; }"
             " QPushButton:hover { background: #3a1a1a; }"
         )
-        _has_precal = standard.key in getattr(wizard, "_precal_originals", {})
+        _has_precal = (
+            standard.key in getattr(wizard, "_precal_originals", {})
+            or standard.key in getattr(wizard, "_precal_open", {})
+        )
         btn_delete_precal_top.setVisible(_has_precal)
         precal_row.addWidget(btn_delete_precal_top)
 
         def _on_precal_clicked():
-            if not wizard.perm_calibration.is_standard_measured(standard.key):
-                QMessageBox.information(
-                    wizard,
-                    std_texts.get("precal_no_liquid_title", "Sin datos"),
-                    std_texts.get(
-                        "precal_no_liquid_msg",
-                        "Primero medí, importá o seleccioná un preset del líquido "
-                        "antes de aplicar la normalización con OPEN.",
-                    ),
-                )
-                return
             _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_delete_precal_top)
 
         btn_precal.clicked.connect(_on_precal_clicked)
 
         def _delete_precal():
-            originals = getattr(wizard, "_precal_originals", {})
-            if standard.key not in originals:
-                return
-            freqs, s11_orig = originals.pop(standard.key)
             getattr(wizard, "_precal_open", {}).pop(standard.key, None)
-            _src = wizard.perm_calibration.get_source(standard.key) or "measured"
-            wizard.perm_calibration.set_measurement(standard.key, freqs, s11_orig, source=_src)
-            wizard.epsilon_result = None
-            state["show_raw"] = False
-            _raw_qt = state.get("raw_chk_qt")
-            if _raw_qt is not None:
-                _raw_qt.setChecked(False)
-                _raw_qt.setVisible(False)
-            _render(wizard, standard, name, color, std_texts, (freqs, s11_orig),
-                    state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
+            originals = getattr(wizard, "_precal_originals", {})
+            if standard.key in originals:
+                freqs, s11_orig = originals.pop(standard.key)
+                _src = wizard.perm_calibration.get_source(standard.key) or "measured"
+                wizard.perm_calibration.set_measurement(standard.key, freqs, s11_orig, source=_src)
+                wizard.epsilon_result = None
+                state["show_raw"] = False
+                _raw_qt = state.get("raw_chk_qt")
+                if _raw_qt is not None:
+                    _raw_qt.setChecked(False)
+                    _raw_qt.setVisible(False)
+                _render(wizard, standard, name, color, std_texts, (freqs, s11_orig),
+                        state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
             btn_delete_precal_top.setVisible(False)
 
         btn_delete_precal_top.clicked.connect(_delete_precal)
@@ -1856,31 +1847,34 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
 
     def _do_apply():
         freqs_open, s11_open = _open_data[0]
-        freqs_liq, s11_liq = wizard.perm_calibration.get_measurement(standard.key)
         if not hasattr(wizard, "_precal_open"):
             wizard._precal_open = {}
         if not hasattr(wizard, "_precal_originals"):
             wizard._precal_originals = {}
-        # Persist the OPEN so future measure/import/preset re-applies normalization.
+        # Always save the OPEN so future measure/import/preset auto-applies normalization.
         wizard._precal_open[standard.key] = (
             np.asarray(freqs_open, dtype=float).copy(),
             np.asarray(s11_open, dtype=complex).copy(),
         )
-        wizard._precal_originals[standard.key] = (
-            np.asarray(freqs_liq, dtype=float).copy(),
-            np.asarray(s11_liq, dtype=complex).copy(),
-        )
-        s11_norm = np.asarray(s11_liq, dtype=complex) / np.asarray(s11_open, dtype=complex)
-        _src = wizard.perm_calibration.get_source(standard.key) or "measured"
-        wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm, source=_src)
-        wizard.epsilon_result = None
-        state["show_raw"] = False
-        _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm),
-                state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
         btn_delete_precal.setVisible(True)
-        hook = getattr(wizard, "_on_precal_applied_hook", None)
-        if callable(hook):
-            hook()
+        _liq = wizard.perm_calibration.get_measurement(standard.key)
+        if _liq is not None:
+            # Liquid already measured — apply normalization immediately.
+            freqs_liq, s11_liq = _liq
+            wizard._precal_originals[standard.key] = (
+                np.asarray(freqs_liq, dtype=float).copy(),
+                np.asarray(s11_liq, dtype=complex).copy(),
+            )
+            s11_norm = np.asarray(s11_liq, dtype=complex) / np.asarray(s11_open, dtype=complex)
+            _src = wizard.perm_calibration.get_source(standard.key) or "measured"
+            wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm, source=_src)
+            wizard.epsilon_result = None
+            state["show_raw"] = False
+            _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm),
+                    state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
+            hook = getattr(wizard, "_on_precal_applied_hook", None)
+            if callable(hook):
+                hook()
         dlg.accept()
 
     _measure_open_btn.clicked.connect(_do_measure_open)
