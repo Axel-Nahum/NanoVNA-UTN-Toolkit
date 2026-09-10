@@ -11,8 +11,8 @@ import sys
 import logging
 from pathlib import Path
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
-    QLineEdit, QFileDialog, QTextEdit, QGroupBox, QMessageBox
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QLineEdit, QFileDialog, QTextEdit, QGroupBox, QMessageBox, QCheckBox
 )
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIcon, QPixmap
@@ -127,17 +127,69 @@ class LaTeXExportDialog(QDialog):
     def _setup_ui(self):
         """Set up the user interface."""
         layout = QVBoxLayout(self)
-        
+
         # LaTeX Status Group
         self._setup_latex_status_group(layout)
-        
+
         # Output Path Group
         self._setup_output_path_group(layout)
-        
+
+        # Options Group
+        self._setup_options_group(layout)
+
         # Buttons
         self._setup_buttons(layout)
-        
+
         layout.addStretch()
+
+    def _setup_options_group(self, parent_layout):
+        """Set up the export options group box."""
+        group = QGroupBox("Options")
+        layout = QVBoxLayout(group)
+
+        self.include_notes_checkbox = QCheckBox("Include notes / comments section")
+        self.include_notes_checkbox.setChecked(False)
+        layout.addWidget(self.include_notes_checkbox)
+
+        self.include_tables_checkbox = QCheckBox("Include value tables")
+        self.include_tables_checkbox.setChecked(False)
+        layout.addWidget(self.include_tables_checkbox)
+
+        self.include_cal_graphs_checkbox = QCheckBox("Include calibration graphs")
+        self.include_cal_graphs_checkbox.setChecked(False)
+
+        # Disable when no calibration was performed
+        try:
+            cal_settings = get_settings(
+                "INI/dut_measurement/calibration_config/calibration_config.ini",
+                "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
+                Path(__file__).resolve()
+            )
+            no_cal = cal_settings.value("Calibration/NoCalibration", False, type=bool)
+            is_dut = cal_settings.value("Calibration/DUT", False, type=bool)
+            if no_cal or is_dut:
+                self.include_cal_graphs_checkbox.setEnabled(False)
+                self.include_cal_graphs_checkbox.setToolTip(
+                    "Not available: no calibration was applied to this measurement."
+                )
+        except Exception:
+            pass
+
+        layout.addWidget(self.include_cal_graphs_checkbox)
+
+        parent_layout.addWidget(group)
+
+    def get_include_notes(self):
+        """Return whether the Include Notes checkbox is checked."""
+        return self.include_notes_checkbox.isChecked()
+
+    def get_include_tables(self):
+        """Return whether the Include value tables checkbox is checked."""
+        return self.include_tables_checkbox.isChecked()
+
+    def get_include_cal_graphs(self):
+        """Return whether the Include calibration graphs checkbox is checked."""
+        return self.include_cal_graphs_checkbox.isChecked()
     
     def _setup_latex_status_group(self, parent_layout):
         """Set up the LaTeX status group box."""
@@ -435,7 +487,10 @@ class LaTeXExportDialog(QDialog):
             freqs=freqs,
             s11_data=s11_data,
             s21_data=s21_data,
-            measurement_name=measurement_name
+            measurement_name=measurement_name,
+            include_notes=self.get_include_notes(),
+            include_tables=self.get_include_tables(),
+            include_cal_graphs=self.get_include_cal_graphs()
         )
         preview_dialog.exec()
 

@@ -230,7 +230,7 @@ class PermittivityPdfPreviewDialog(QDialog):
     def __init__(
         self, parent=None, freqs=None, s11_data=None, eps_selected=None,
         sample_name=None, output_path=None, wizard_window=None,
-        include_steps=False, include_notes=False,
+        include_steps=False, include_notes=False, include_tables=False,
     ):
         super().__init__(parent)
 
@@ -244,6 +244,7 @@ class PermittivityPdfPreviewDialog(QDialog):
         self.wizard_window = wizard_window
         self.include_steps = include_steps
         self.include_notes = include_notes
+        self.include_tables = include_tables
         self.TOTAL_GRAPHS = 3 if include_notes else 2
 
         self.current_graph_index = 0
@@ -1444,6 +1445,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                 compiler_path=compiler_info[1],
                 include_steps=self.include_steps,
                 notes_doc=notes_doc,
+                include_tables=self.include_tables,
             )
 
         def _on_done(success, error_message):

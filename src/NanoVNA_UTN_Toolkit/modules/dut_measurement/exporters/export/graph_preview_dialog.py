@@ -20,8 +20,8 @@ from pathlib import Path
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox, QWidget,
-    QCheckBox, QHBoxLayout, QLineEdit, QComboBox, QFrame,
-    QRadioButton, QButtonGroup, QStylePainter, QStyleOptionComboBox
+    QCheckBox, QHBoxLayout, QLineEdit, QComboBox, QFrame, QStackedWidget,
+    QRadioButton, QButtonGroup, QStylePainter, QStyleOptionComboBox, QTextEdit
 )
 from PySide6.QtCore import Qt, QLocale
 from PySide6.QtGui import QDoubleValidator, QGuiApplication
@@ -74,7 +74,8 @@ def _make_centered_combo(items):
 
 class GraphPreviewExportDialog(QDialog):
     def __init__(self, parent=None, freqs=None, s11_data=None, s21_data=None,
-             measurement_name=None, output_path=None):
+             measurement_name=None, output_path=None, include_notes=False,
+             include_tables=False, include_cal_graphs=False):
         super().__init__(parent)
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -108,11 +109,13 @@ class GraphPreviewExportDialog(QDialog):
         self.current_graph_index = 0
 
         self.saved_figures = []
-        self.current_figure = 0
 
         self.current_index = 0
         self.saved_graphs = []
-        self.total_graphs = 5
+        self.include_notes = include_notes
+        self.include_tables = include_tables
+        self.include_cal_graphs = include_cal_graphs
+        self.total_graphs = 6 if include_notes else 5
 
         # Track marker states for each graph separately
         self.graph_markers = {}  # key=index, value=[marker1_active, marker2_active]
@@ -328,7 +331,15 @@ class GraphPreviewExportDialog(QDialog):
         frame_layout.setSpacing(0)
         frame_layout.addWidget(self.canvas)
 
-        # --- Nav strip inside the white frame: Prev | stretch | dB/Linear | stretch | Next ---
+        # Stack: canvas view (index 0), notes view (index 1, only if include_notes)
+        self._view_stack = QStackedWidget()
+        self._view_stack.addWidget(canvas_frame)
+        if self.include_notes:
+            notes_page = self._build_notes_page()
+            self._view_stack.addWidget(notes_page)
+        main_layout.addWidget(self._view_stack, alignment=Qt.AlignCenter)
+
+        # --- Nav strip below the stack: Prev | stretch | dB/Linear | stretch | Next ---
         nav_strip = QHBoxLayout()
         nav_strip.setContentsMargins(8, 5, 8, 5)
         nav_strip.addWidget(self.prev_button)
@@ -338,14 +349,13 @@ class GraphPreviewExportDialog(QDialog):
         nav_strip.addWidget(self.rb_linear)
         nav_strip.addStretch(1)
         nav_strip.addWidget(self.next_button)
-        frame_layout.addLayout(nav_strip)
+        main_layout.addLayout(nav_strip)
 
-        main_layout.addWidget(canvas_frame, alignment=Qt.AlignCenter)
-
-        # --- Small spacing between canvas frame and markers ---
-        main_layout.addSpacing(6)
+        # --- Small spacing between nav and markers ---
+        main_layout.addSpacing(2)
 
         # --- Marker container centered below canvas ---
+        self._marker_container = marker_container
         main_layout.addWidget(marker_container, alignment=Qt.AlignCenter)
 
         main_layout.addSpacing(10)
@@ -378,11 +388,29 @@ class GraphPreviewExportDialog(QDialog):
         self.prev_button.clicked.connect(self._show_previous_graph)
         self.next_button.clicked.connect(self._show_next_graph)
 
-        # --- Initial plot ---
-        self._plot_graph(self.current_graph_index)
-        self._update_marker_checkboxes()
+        # --- Initial view ---
+        self._show_for_current_page()
         self._update_markers()
         self._update_nav_buttons()
+
+    def _graph_idx(self):
+        """Map current page index to actual graph index (0-4)."""
+        if self.include_notes:
+            return max(0, self.current_graph_index - 1)
+        return self.current_graph_index
+
+    def _show_for_current_page(self):
+        """Show the notes view or the canvas view depending on the current page."""
+        if self.include_notes and self.current_graph_index == 0:
+            self._view_stack.setCurrentIndex(1)
+            self._marker_container.setVisible(False)
+            self.rb_db.setVisible(False)
+            self.rb_linear.setVisible(False)
+        else:
+            self._view_stack.setCurrentIndex(0)
+            self._marker_container.setVisible(True)
+            self._plot_graph(self._graph_idx())
+            self._update_marker_checkboxes()
 
     def _on_canvas_resize(self, event):
         w = self.canvas.width()
@@ -424,7 +452,7 @@ class GraphPreviewExportDialog(QDialog):
 
     def _on_marker_input_changed(self):
         """Update markers for the current graph only, without changing graphs."""
-        self._update_markers(self.current_graph_index)
+        self._update_markers(self._graph_idx())
         self.canvas.draw_idle()
 
     # --- Update marker checkboxes + frequency edits
@@ -433,8 +461,8 @@ class GraphPreviewExportDialog(QDialog):
         while self.marker_layout.count():
             self.marker_layout.takeAt(0)
 
-        marker1, marker2 = self.marker_checkboxes[self.current_graph_index]
-        edit1, combo1, edit2, combo2 = self.marker_freq_edits[self.current_graph_index]
+        marker1, marker2 = self.marker_checkboxes[self._graph_idx()]
+        edit1, combo1, edit2, combo2 = self.marker_freq_edits[self._graph_idx()]
 
         # Detach widgets from any previous parent layout
         for w in (marker1, edit1, combo1, marker2, edit2, combo2):
@@ -665,36 +693,34 @@ class GraphPreviewExportDialog(QDialog):
 
         edit.setText(text)
 
+    def _save_graph_figure(self):
+        """Save the current matplotlib figure indexed by graph index (0-4), not page index."""
+        if self.include_notes and self.current_graph_index == 0:
+            return  # notes page — no matplotlib figure to save
+        gi = self._graph_idx()
+        fig_copy = copy.deepcopy(self.fig)
+        if gi >= len(self.saved_figures):
+            self.saved_figures.extend([None] * (gi - len(self.saved_figures) + 1))
+        self.saved_figures[gi] = fig_copy
+
     # --- Navigation ---
     def _show_next_graph(self):
-        fig_copy = copy.deepcopy(self.fig)
-        if len(self.saved_figures) <= self.current_figure:
-            self.saved_figures.append(fig_copy)
-        else:
-            self.saved_figures[self.current_figure] = fig_copy
+        self._save_graph_figure()
 
         if self.current_graph_index < self.total_graphs - 1:
             self.current_graph_index += 1
-            self.current_figure += 1  
-            self._plot_graph(self.current_graph_index)
+            self._show_for_current_page()
             self._update_nav_buttons()
-            self._update_marker_checkboxes()
 
         self.export_button.setEnabled(self.current_graph_index == self.total_graphs - 1)
 
     def _show_previous_graph(self):
-        fig_copy = copy.deepcopy(self.fig)
-        if len(self.saved_figures) <= self.current_figure:
-            self.saved_figures.append(fig_copy)
-        else:
-            self.saved_figures[self.current_figure] = fig_copy
+        self._save_graph_figure()
 
         if self.current_graph_index > 0:
             self.current_graph_index -= 1
-            self.current_figure -= 1 
-            self._plot_graph(self.current_graph_index)
+            self._show_for_current_page()
             self._update_nav_buttons()
-            self._update_marker_checkboxes()
 
         self.export_button.setEnabled(self.current_graph_index == self.total_graphs - 1)
 
@@ -706,7 +732,7 @@ class GraphPreviewExportDialog(QDialog):
     # --- Marker handling ---
     def _update_markers(self, graph_index=None):
         if graph_index is None:
-            graph_index = self.current_graph_index
+            graph_index = self._graph_idx()
 
         ax = self.ax
         freqs = self.freqs if self.freqs is not None else np.linspace(1e6, 1e8, 100)
@@ -1106,8 +1132,332 @@ class GraphPreviewExportDialog(QDialog):
     def _save_current_graph(self):
         if not hasattr(self, "saved_figures"):
             self.saved_figures = []
-        fig_copy = copy.deepcopy(self.fig)
-        self.saved_figures.append(fig_copy)
+        self._save_graph_figure()
+
+    # --- Notes page ---
+    def _build_notes_page(self):
+        """Build the notes editor widget (page 1 when include_notes=True)."""
+        from PySide6.QtGui import QTextCharFormat, QFont, QTextListFormat, QTextBlockFormat, QTextCursor
+
+        _STYLE_PREFIXES = ["", "## ", "### "]
+        _STYLE_SIZES    = [10, 14, 12]
+
+        page = QWidget()
+        page.setStyleSheet("background-color: #1e1e2e;")
+        vlay = QVBoxLayout(page)
+        vlay.setContentsMargins(8, 8, 8, 8)
+        vlay.setSpacing(6)
+
+        # --- Styled frame wrapping toolbar + editor ---
+        editor_frame = QFrame()
+        editor_frame.setStyleSheet(
+            "QFrame { background-color: #252538; border: 1px solid #383850; border-radius: 6px; }"
+        )
+        editor_frame_l = QVBoxLayout(editor_frame)
+        editor_frame_l.setContentsMargins(0, 0, 0, 0)
+        editor_frame_l.setSpacing(0)
+
+        # --- Toolbar ---
+        toolbar_w = QWidget()
+        toolbar_w.setStyleSheet(
+            "QWidget { background-color: #2a2a3e; border-bottom: 1px solid #383850;"
+            " border-radius: 0px; }"
+        )
+        tl = QHBoxLayout(toolbar_w)
+        tl.setContentsMargins(6, 4, 6, 4)
+        tl.setSpacing(3)
+
+        _btn_base = (
+            "QPushButton { background-color: transparent; color: #cccccc;"
+            " border: 1px solid transparent; border-radius: 4px;"
+            " min-width: 28px; max-width: 28px; min-height: 24px; max-height: 24px;"
+            " font-size: 13px; }"
+            " QPushButton:hover { background-color: #383850; border: 1px solid #4a4a6a; }"
+            " QPushButton:checked { background-color: #3a3a6a; border: 1px solid #6666aa;"
+            " color: white; }"
+        )
+
+        def _vsep():
+            s = QFrame()
+            s.setFrameShape(QFrame.VLine)
+            s.setFixedHeight(18)
+            s.setStyleSheet(
+                "QFrame { border: none; background-color: #383850;"
+                " min-width: 1px; max-width: 1px; }"
+            )
+            return s
+
+        # Style combo
+        _combo_ss = (
+            "QComboBox { background-color: #2e2e42; color: #cccccc; border: 1px solid #4a4a6a;"
+            " border-radius: 4px; padding: 1px 4px; font-size: 11px; min-height: 22px; }"
+            " QComboBox:hover:enabled { background-color: #383850; }"
+            " QComboBox::drop-down { border: none; width: 14px; }"
+            " QComboBox:disabled { background-color: #1e1e2e; color: #4a4a6a;"
+            " border-color: #2a2a3e; }"
+            " QComboBox QAbstractItemView { background-color: #2a2a3e; color: #cccccc;"
+            " selection-background-color: #3a3a6a; }"
+        )
+        style_combo = QComboBox()
+        style_combo.setFocusPolicy(Qt.NoFocus)
+        style_combo.addItems(["Body", "Subsection", "Sub-subsection"])
+        style_combo.setFixedWidth(118)
+        style_combo.setToolTip(
+            "Paragraph style\n"
+            "Body — normal text\n"
+            "Subsection — \\subsection in PDF\n"
+            "Sub-subsection — \\subsubsection in PDF"
+        )
+        style_combo.setStyleSheet(_combo_ss)
+        style_combo.setEnabled(False)
+        tl.addWidget(style_combo)
+
+        from PySide6.QtWidgets import QCheckBox as _QCB
+        heading_chk = _QCB()
+        heading_chk.setFocusPolicy(Qt.NoFocus)
+        heading_chk.setToolTip("Enable subsection / sub-subsection headings in PDF")
+        heading_chk.setStyleSheet(
+            "QCheckBox { spacing: 0px; }"
+            " QCheckBox::indicator { width: 15px; height: 15px;"
+            " border: 1px solid #4a4a6a; border-radius: 3px; background: #1e1e2e; }"
+            " QCheckBox::indicator:checked { background: #3a3a6a; border-color: #6666aa; }"
+            " QCheckBox::indicator:hover { border-color: #6666aa; }"
+        )
+        tl.addSpacing(4)
+        tl.addWidget(heading_chk)
+        tl.addSpacing(4)
+        tl.addWidget(_vsep())
+        tl.addSpacing(4)
+
+        btn_bold = QPushButton("B")
+        btn_bold.setCheckable(True)
+        btn_bold.setFocusPolicy(Qt.NoFocus)
+        btn_bold.setStyleSheet(_btn_base + " QPushButton { font-weight: bold; }")
+        btn_bold.setToolTip("Bold")
+        tl.addWidget(btn_bold)
+
+        btn_italic = QPushButton("I")
+        btn_italic.setCheckable(True)
+        btn_italic.setFocusPolicy(Qt.NoFocus)
+        btn_italic.setStyleSheet(_btn_base + " QPushButton { font-style: italic; }")
+        btn_italic.setToolTip("Italic")
+        tl.addWidget(btn_italic)
+
+        btn_under = QPushButton("U")
+        btn_under.setCheckable(True)
+        btn_under.setFocusPolicy(Qt.NoFocus)
+        btn_under.setStyleSheet(_btn_base + " QPushButton { text-decoration: underline; }")
+        btn_under.setToolTip("Underline")
+        tl.addWidget(btn_under)
+
+        tl.addWidget(_vsep())
+
+        btn_list = QPushButton("≡•")
+        btn_list.setCheckable(True)
+        btn_list.setFocusPolicy(Qt.NoFocus)
+        btn_list.setStyleSheet(
+            _btn_base + " QPushButton { font-size: 11px; max-width: 34px; min-width: 34px; }"
+        )
+        btn_list.setToolTip("Bullet list")
+        tl.addWidget(btn_list)
+
+        tl.addSpacing(6)
+        tl.addWidget(_vsep())
+        tl.addSpacing(6)
+
+        size_lbl = QLabel("Aa")
+        size_lbl.setStyleSheet(
+            "QLabel { color: #888888; font-size: 11px; background: transparent; border: none; }"
+        )
+        tl.addWidget(size_lbl)
+        tl.addSpacing(3)
+
+        size_combo = QComboBox()
+        size_combo.setFocusPolicy(Qt.NoFocus)
+        size_combo.addItems(["8", "9", "10", "11", "12", "14", "16", "18", "20", "24", "28", "36"])
+        size_combo.setCurrentText("10")
+        size_combo.setFixedWidth(56)
+        size_combo.setStyleSheet(
+            "QComboBox { background-color: #2e2e42; color: #cccccc; border: 1px solid #4a4a6a;"
+            " border-radius: 4px; padding: 1px 4px; font-size: 11px; min-height: 22px; }"
+            " QComboBox:hover:enabled { background-color: #383850; }"
+            " QComboBox::drop-down { border: none; width: 14px; }"
+            " QComboBox:disabled { background-color: #1e1e2e; color: #4a4a6a;"
+            " border-color: #2a2a3e; }"
+            " QComboBox QAbstractItemView { background-color: #2a2a3e; color: #cccccc;"
+            " selection-background-color: #3a3a6a; }"
+        )
+        tl.addWidget(size_combo)
+        tl.addStretch()
+        editor_frame_l.addWidget(toolbar_w)
+
+        # --- Editor ---
+        editor = QTextEdit()
+        editor.setPlaceholderText("Enter notes here…")
+        editor.document().setIndentWidth(20)
+        editor.setStyleSheet(
+            "QTextEdit { background-color: #1e1e2e; color: #e0e0f0;"
+            " border: none; border-radius: 0px; padding: 8px; }"
+        )
+        from PySide6.QtGui import QFont as _QF
+        _df = _QF()
+        _df.setPointSize(10)
+        editor.document().setDefaultFont(_df)
+        editor_frame_l.addWidget(editor)
+        vlay.addWidget(editor_frame)
+
+        self.notes_editor = editor
+
+        # --- Logic ---
+        def _update_size_lock(style_index, fixed_pt):
+            locked = heading_chk.isChecked()
+            size_combo.setEnabled(not locked)
+            size_combo.blockSignals(True)
+            size_combo.setCurrentText(str(fixed_pt))
+            size_combo.blockSignals(False)
+            lbl_color = "#4a4a6a" if locked else "#888888"
+            size_lbl.setStyleSheet(
+                f"QLabel {{ color: {lbl_color}; font-size: 11px;"
+                " background: transparent; border: none; }"
+            )
+
+        def _apply_paragraph_style(index):
+            prefix   = _STYLE_PREFIXES[index] if 0 <= index < len(_STYLE_PREFIXES) else ""
+            fixed_pt = _STYLE_SIZES[index]    if 0 <= index < len(_STYLE_SIZES)    else 10
+            cursor = editor.textCursor()
+            cursor.beginEditBlock()
+            cursor.movePosition(cursor.MoveOperation.StartOfBlock)
+            cursor.movePosition(cursor.MoveOperation.EndOfBlock,
+                                cursor.MoveMode.KeepAnchor)
+            text = cursor.selectedText()
+            for p in ("### ", "## ", "# "):
+                if text.startswith(p):
+                    text = text[len(p):]
+                    break
+            cursor.insertText(prefix + text)
+            cursor.movePosition(cursor.MoveOperation.StartOfBlock)
+            cursor.movePosition(cursor.MoveOperation.EndOfBlock,
+                                cursor.MoveMode.KeepAnchor)
+            cf = QTextCharFormat()
+            cf.setFontPointSize(float(fixed_pt))
+            cursor.mergeCharFormat(cf)
+            cursor.endEditBlock()
+            _update_size_lock(index, fixed_pt)
+            editor.setFocus()
+
+        def _sync_style_combo():
+            if not style_combo.isEnabled():
+                return
+            text = editor.textCursor().block().text()
+            idx = 2 if text.startswith("### ") else (1 if text.startswith("## ") else 0)
+            style_combo.blockSignals(True)
+            style_combo.setCurrentIndex(idx)
+            style_combo.blockSignals(False)
+            _update_size_lock(idx, _STYLE_SIZES[idx])
+
+        def _on_heading_toggled(checked):
+            style_combo.setEnabled(checked)
+            if not checked:
+                doc = editor.document()
+                cur = editor.textCursor()
+                body_pt = float(_STYLE_SIZES[0])
+                cur.beginEditBlock()
+                block = doc.begin()
+                while block.isValid():
+                    text = block.text()
+                    bc = QTextCursor(block)
+                    bc.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+                    bc.movePosition(QTextCursor.MoveOperation.EndOfBlock,
+                                    QTextCursor.MoveMode.KeepAnchor)
+                    for p in ("### ", "## "):
+                        if text.startswith(p):
+                            bc.insertText(text[len(p):])
+                            bc.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+                            bc.movePosition(QTextCursor.MoveOperation.EndOfBlock,
+                                            QTextCursor.MoveMode.KeepAnchor)
+                            break
+                    cf = QTextCharFormat()
+                    cf.setFontPointSize(body_pt)
+                    bc.mergeCharFormat(cf)
+                    block = block.next()
+                cur.endEditBlock()
+                style_combo.blockSignals(True)
+                style_combo.setCurrentIndex(0)
+                style_combo.blockSignals(False)
+                _update_size_lock(0, _STYLE_SIZES[0])
+            else:
+                _sync_style_combo()
+
+        def _apply_bold(checked):
+            editor.setFocus()
+            cf = QTextCharFormat()
+            cf.setFontWeight(QFont.Weight.Bold if checked else QFont.Weight.Normal)
+            editor.mergeCurrentCharFormat(cf)
+
+        def _apply_italic(checked):
+            editor.setFocus()
+            cf = QTextCharFormat()
+            cf.setFontItalic(checked)
+            editor.mergeCurrentCharFormat(cf)
+
+        def _apply_under(checked):
+            editor.setFocus()
+            cf = QTextCharFormat()
+            cf.setFontUnderline(checked)
+            editor.mergeCurrentCharFormat(cf)
+
+        def _apply_list(checked):
+            editor.setFocus()
+            cursor = editor.textCursor()
+            if checked:
+                lf = QTextListFormat()
+                lf.setStyle(QTextListFormat.Style.ListDisc)
+                cursor.createList(lf)
+            else:
+                cursor.setBlockFormat(QTextBlockFormat())
+            editor.viewport().update()
+
+        def _apply_size(text):
+            editor.setFocus()
+            try:
+                cf = QTextCharFormat()
+                cf.setFontPointSize(float(text))
+                editor.mergeCurrentCharFormat(cf)
+            except ValueError:
+                pass
+
+        def _sync():
+            fmt = editor.currentCharFormat()
+            for w in (btn_bold, btn_italic, btn_under, size_combo):
+                w.blockSignals(True)
+            btn_bold.setChecked(fmt.fontWeight() >= 600)
+            btn_italic.setChecked(fmt.fontItalic())
+            btn_under.setChecked(fmt.fontUnderline())
+            pt = fmt.fontPointSize()
+            if pt <= 0:
+                pt = editor.document().defaultFont().pointSize()
+            if pt > 0:
+                size_combo.setCurrentText(str(int(pt)))
+            for w in (btn_bold, btn_italic, btn_under, size_combo):
+                w.blockSignals(False)
+
+        def _sync_list_btn():
+            btn_list.blockSignals(True)
+            btn_list.setChecked(editor.textCursor().currentList() is not None)
+            btn_list.blockSignals(False)
+
+        heading_chk.toggled.connect(_on_heading_toggled)
+        style_combo.currentIndexChanged.connect(_apply_paragraph_style)
+        btn_bold.toggled.connect(_apply_bold)
+        btn_italic.toggled.connect(_apply_italic)
+        btn_under.toggled.connect(_apply_under)
+        btn_list.toggled.connect(_apply_list)
+        size_combo.currentTextChanged.connect(_apply_size)
+        editor.currentCharFormatChanged.connect(lambda _: _sync())
+        editor.cursorPositionChanged.connect(_sync_list_btn)
+        editor.cursorPositionChanged.connect(_sync_style_combo)
+
+        return page
 
     # --- PDF Export ---
     def _generate_pdf(self):
@@ -1138,6 +1488,7 @@ class GraphPreviewExportDialog(QDialog):
 
         output_path = self.output_path
         magnitude_unit = self._selected_unit()
+        notes_doc = self.notes_editor.document() if hasattr(self, 'notes_editor') else None
 
         busy = GeneratingButton(
             self.export_button,
@@ -1157,6 +1508,11 @@ class GraphPreviewExportDialog(QDialog):
             QMessageBox.critical(self, "Export Failed", f"Could not render the plots:\n{exc}")
             return
 
+        # Make raw arrays available to the table builder without changing more signatures
+        exporter._table_s11 = self.s11_data
+        exporter._table_s21 = self.s21_data
+        exporter._table_mag_unit = magnitude_unit
+
         def _compile():
             exporter.compile_document(
                 freqs=self.freqs,
@@ -1166,6 +1522,9 @@ class GraphPreviewExportDialog(QDialog):
                 measurement_name=self.measurement_name,
                 compiler_path=compiler_info[1],
                 magnitude_unit=magnitude_unit,
+                notes_doc=notes_doc,
+                include_tables=self.include_tables,
+                include_cal_graphs=self.include_cal_graphs,
             )
 
         def _on_done(success, error_message):

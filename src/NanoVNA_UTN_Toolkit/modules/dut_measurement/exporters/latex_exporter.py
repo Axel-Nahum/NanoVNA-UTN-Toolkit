@@ -26,8 +26,103 @@ from pylatex.utils import NoEscape
 logger = logging.getLogger(__name__)
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
+get_calibration_path = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils", "get_calibration_path")
 
 # ------------------------------------------------------------------------------------------------------------------------ #
+
+def _document_to_latex(qt_document) -> str:
+    """Convert a QTextDocument to LaTeX, preserving bold/italic/underline,
+    font sizes, bullet/numbered lists, and ## / ### heading prefixes."""
+    from PySide6.QtGui import QTextListFormat
+
+    _GREEK_MAP = {
+        'α': r'$\alpha$', 'β': r'$\beta$', 'γ': r'$\gamma$',
+        'δ': r'$\delta$', 'ε': r'$\varepsilon$', 'ζ': r'$\zeta$',
+        'η': r'$\eta$', 'θ': r'$\theta$', 'λ': r'$\lambda$',
+        'μ': r'$\mu$', 'π': r'$\pi$', 'σ': r'$\sigma$',
+        'τ': r'$\tau$', 'φ': r'$\phi$', 'ω': r'$\omega$',
+        'Γ': r'$\Gamma$', 'Δ': r'$\Delta$', 'Θ': r'$\Theta$',
+        'Λ': r'$\Lambda$', 'Σ': r'$\Sigma$', 'Φ': r'$\Phi$',
+        'Ω': r'$\Omega$',
+        '°': r'$^{\circ}$', '±': r'$\pm$', '×': r'$\times$',
+    }
+
+    def _esc(text):
+        for ch, repl in [("\\", r"\textbackslash{}"), ("{", r"\{"), ("}", r"\}"),
+                          ("&", r"\&"), ("%", r"\%"), ("$", r"\$"),
+                          ("#", r"\#"), ("_", r"\_"),
+                          ("^", r"\textasciicircum{}"), ("~", r"\textasciitilde{}")]:
+            text = text.replace(ch, repl)
+        for ch, repl in _GREEK_MAP.items():
+            text = text.replace(ch, repl)
+        return text
+
+    _DEFAULT_PT = 10
+
+    def _fragments(block):
+        line = []
+        it = block.begin()
+        while not it.atEnd():
+            frag = it.fragment()
+            t = _esc(frag.text())
+            fmt = frag.charFormat()
+            if fmt.fontUnderline():
+                t = f'\\underline{{{t}}}'
+            if fmt.fontItalic():
+                t = f'\\textit{{{t}}}'
+            if fmt.fontWeight() >= 600:
+                t = f'\\textbf{{{t}}}'
+            pt = fmt.fontPointSize()
+            if pt > 0 and abs(pt - _DEFAULT_PT) > 0.5:
+                t = f'{{\\fontsize{{{pt:.0f}pt}}{{{pt * 1.2:.1f}pt}}\\selectfont {t}}}'
+            line.append(t)
+            it += 1
+        return ''.join(line)
+
+    _BULLET_STYLES = {
+        QTextListFormat.Style.ListDisc,
+        QTextListFormat.Style.ListCircle,
+        QTextListFormat.Style.ListSquare,
+    }
+
+    parts = []
+    current_list = None
+    current_env = None
+
+    block = qt_document.begin()
+    while block.isValid():
+        tlist = block.textList()
+        if tlist is not None:
+            if tlist is not current_list:
+                if current_list is not None:
+                    parts.append(f'\\end{{{current_env}}}\n')
+                fmt = tlist.format()
+                current_env = "itemize" if fmt.style() in _BULLET_STYLES else "enumerate"
+                parts.append(f'\\begin{{{current_env}}}\n')
+                current_list = tlist
+            parts.append(f'  \\item {_fragments(block)}\n')
+        else:
+            if current_list is not None:
+                parts.append(f'\\end{{{current_env}}}\n\n')
+                current_list = None
+                current_env = None
+            text = block.text()
+            if not text.strip():
+                parts.append('\n')
+            elif text.startswith("### "):
+                parts.append(f'\\subsubsection{{{_esc(text[4:].strip())}}}\n')
+            elif text.startswith("## "):
+                parts.append(f'\\subsection{{{_esc(text[3:].strip())}}}\n')
+            else:
+                content = _fragments(block)
+                parts.append(content + '\n\n' if content.strip() else '\n')
+        block = block.next()
+
+    if current_list is not None:
+        parts.append(f'\\end{{{current_env}}}\n')
+
+    return ''.join(parts).strip()
+
 
 def _find_latex_compiler():
     """
@@ -237,7 +332,8 @@ class LatexExporter:
         return self._generate_plots(freqs, s11_data, s21_data, output_dir)
 
     def compile_document(self, freqs, image_files, output_path, tmpdirname,
-                         measurement_name, compiler_path, magnitude_unit="dB"):
+                         measurement_name, compiler_path, magnitude_unit="dB",
+                         notes_doc=None, include_tables=False, include_cal_graphs=False):
         """Build the .tex from already-rendered images and run LaTeX.
 
         Blocking and Qt-free, so it can be handed to a worker thread. Raises on
@@ -252,6 +348,9 @@ class LatexExporter:
             vna_name="NanoVNA",
             specific_compiler_path=compiler_path,
             magnitude_unit=magnitude_unit,
+            notes_doc=notes_doc,
+            include_tables=include_tables,
+            include_cal_graphs=include_cal_graphs,
         )
 
     def export_to_pdf_with_dialog(self, freqs, s11_data, s21_data, measurement_name=None):
@@ -528,7 +627,7 @@ class LatexExporter:
         except Exception as e:
             raise Exception(f"Failed to generate PDF with {compiler_name}: {str(e)}. Please check your LaTeX installation and ensure all required packages are installed.")
     
-    def _create_latex_document_with_compiler(self, freqs, image_files, file_path, tmpdirname, measurement_name, vna_name, specific_compiler_path, magnitude_unit="dB"):
+    def _create_latex_document_with_compiler(self, freqs, image_files, file_path, tmpdirname, measurement_name, vna_name, specific_compiler_path, magnitude_unit="dB", notes_doc=None, include_tables=False, include_cal_graphs=False):
         """
         Create the LaTeX document with cover page and all images using a specific compiler.
 
@@ -548,6 +647,14 @@ class LatexExporter:
         )
         doc.preamble.append(Command('usepackage', 'graphicx'))
         doc.preamble.append(Command('usepackage', 'float'))
+        doc.preamble.append(Command('usepackage', 'inputenc', options='utf8'))
+        doc.preamble.append(Command('usepackage', 'longtable'))
+        doc.preamble.append(Command('usepackage', 'booktabs'))
+        doc.preamble.append(Command('usepackage', 'array'))
+        doc.preamble.append(NoEscape(
+            r"\usepackage[colorlinks=true,linkcolor=black,urlcolor=blue,"
+            r"bookmarks=true,bookmarksopen=true]{hyperref}"
+        ))
 
         current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         calibration_method, calibrated_parameter, measurement_number = self._get_calibration_info(measurement_name)
@@ -570,6 +677,20 @@ class LatexExporter:
             NoEscape(title_s21),
             NoEscape(r'Phase $\angle S_{21}$ (degrees)'),
         ]
+
+        # --- Table of contents ---
+        doc.append(NewPage())
+        doc.append(NoEscape(r"\tableofcontents"))
+        doc.append(NewPage())
+
+        # --- Notes section (before graphs, if provided) ---
+        if notes_doc is not None:
+            latex_notes = _document_to_latex(notes_doc)
+            if latex_notes.strip():
+                doc.append(NewPage())
+                with doc.create(Section("Notes")):
+                    doc.append(NoEscape(r"\setlength{\parindent}{0pt}\setlength{\parskip}{0.9em}"))
+                    doc.append(NoEscape(latex_notes))
 
         # --- PAGES WITH IMAGES ---
         doc.append(NewPage())
@@ -605,13 +726,30 @@ class LatexExporter:
                 doc.append(NewPage())
 
 
+        # --- VALUE TABLES SECTION (optional) ---
+        if include_tables and freqs is not None:
+            self._add_value_tables_section(doc, freqs, image_files)
+
+        # --- CALIBRATION SECTION (optional) ---
+        if include_cal_graphs:
+            self._add_calibration_section(doc, tmpdirname, include_tables=include_tables)
+
         # --- GENERATE PDF USING SPECIFIC COMPILER ---
+        import subprocess as _sp
         compiler_name = os.path.basename(specific_compiler_path).replace('.exe', '')
         original_path = os.environ.get('PATH', '')
         os.environ['PATH'] = os.path.dirname(specific_compiler_path) + os.pathsep + original_path
         try:
             logger.info(f"Generating PDF using specific compiler: {compiler_name}")
             doc.generate_pdf(str(file_path), compiler=compiler_name, clean_tex=False)
+            # Second pass so LaTeX writes the TOC entries from the .toc file
+            tex_file = str(file_path) + '.tex'
+            out_dir = str(Path(file_path).parent)
+            _sp.run(
+                [specific_compiler_path, '-interaction=nonstopmode',
+                 f'-output-directory={out_dir}', tex_file],
+                capture_output=True,
+            )
         finally:
             os.environ['PATH'] = original_path
     
@@ -888,8 +1026,316 @@ class LatexExporter:
             dict: mapping keys to file paths
         """
         image_files = {}
-        for i, fig in enumerate(figures):
-            path = os.path.join(output_dir, f"figure_{i}.png")
+        j = 0
+        for fig in figures:
+            if fig is None:
+                continue
+            path = os.path.join(output_dir, f"figure_{j}.png")
             fig.savefig(path, dpi=300)
-            image_files[f"fig_{i}"] = path
+            image_files[f"fig_{j}"] = path
+            j += 1
         return image_files
+
+    # ------------------------------------------------------------------
+    # Value tables section
+    # ------------------------------------------------------------------
+
+    def _add_value_tables_section(self, doc, freqs, image_files):
+        """Add a 'Measurement Values' section with S11 and S21 numeric tables."""
+        from pylatex import Subsection as _Subsection
+
+        # Retrieve the saved figures to extract data from them.
+        # self.saved_figures list: [0]=Smith(S11), [1]=|S11|, [2]=∠S11, [3]=|S21|, [4]=∠S21
+        # We need raw data; fall back to reconstructing from freq array.
+        # The saved_figures axes hold the plotted y-data lines.
+
+        def _extract_xy(fig_index):
+            """Return (x_array, y_array) from the first line of saved figure, or None."""
+            if not hasattr(self, '_last_s11') and not hasattr(self, '_last_s21'):
+                return None, None
+            return None, None
+
+        freqs_mhz = freqs / 1e6
+
+        # We'll build the tables from the exporter's own data attributes if available,
+        # otherwise skip gracefully.
+        s11 = getattr(self, '_table_s11', None)
+        s21 = getattr(self, '_table_s21', None)
+        mag_unit = getattr(self, '_table_mag_unit', 'dB')
+
+        doc.append(NewPage())
+        with doc.create(Section("Measurement Values")):
+            if s11 is not None:
+                mag_s11, _, _ = self._magnitude_curve(s11, "S11", mag_unit)
+                phase_s11 = np.angle(s11, deg=True)
+                doc.append(NoEscape(r"\noindent"))
+                with doc.create(Subsection(NoEscape(r"S\textsubscript{11}"))):
+                    self._build_sparam_table(doc, freqs_mhz, mag_s11, phase_s11,
+                                             mag_unit, NoEscape)
+
+            if s21 is not None:
+                mag_s21, _, _ = self._magnitude_curve(s21, "S21", mag_unit)
+                phase_s21 = np.angle(s21, deg=True)
+                doc.append(NewPage())
+                with doc.create(Subsection(NoEscape(r"S\textsubscript{21}"))):
+                    self._build_sparam_table(doc, freqs_mhz, mag_s21, phase_s21,
+                                             mag_unit, NoEscape)
+
+    def _build_sparam_table(self, doc, freqs_mhz, magnitude, phase, mag_unit, NoEscape):
+        """Emit a longtable with freq / magnitude / phase rows, max 100 evenly-spaced rows."""
+        n = len(freqs_mhz)
+        step = max(1, n // 100)
+        indices = range(0, n, step)
+
+        unit_label = mag_unit if mag_unit in ("dB", "Power ratio") else "Linear"
+        mag_col = rf"|S| ({unit_label})"
+
+        header = (
+            r"\begin{longtable}{>{\centering\arraybackslash}p{3.5cm}"
+            r">{\centering\arraybackslash}p{3.5cm}"
+            r">{\centering\arraybackslash}p{3.5cm}}"
+            r"\toprule"
+            r"\textbf{Frequency (MHz)} & \textbf{" + mag_col + r"} & \textbf{Phase (deg)} \\"
+            r"\midrule \endfirsthead"
+            r"\toprule"
+            r"\textbf{Frequency (MHz)} & \textbf{" + mag_col + r"} & \textbf{Phase (deg)} \\"
+            r"\midrule \endhead"
+            r"\bottomrule \endfoot"
+        )
+        doc.append(NoEscape(header))
+        for i in indices:
+            f = f"{freqs_mhz[i]:.4f}"
+            m = f"{magnitude[i]:.4f}" if magnitude is not None else "---"
+            p = f"{phase[i]:.2f}"
+            doc.append(NoEscape(rf"{f} & {m} & {p} \\"))
+        doc.append(NoEscape(r"\end{longtable}"))
+
+    # ------------------------------------------------------------------
+    # Calibration section helpers
+    # ------------------------------------------------------------------
+
+    # Error-file directories per wizard method
+    _WIZARD_ERROR_DIRS = {
+        "OSM (Open - Short - Match)": (
+            "modules/dut_measurement/calibration/osm_results",
+            "osm_errors",
+        ),
+        "Thru Normalization": (
+            "modules/dut_measurement/calibration/thru_results",
+            "normalization_errors",
+        ),
+        "Open/Short Normalization": (
+            "modules/dut_measurement/calibration/open_short_results",
+            "open_short_normalization_errors",
+        ),
+        "1-Port+N": (
+            "modules/dut_measurement/calibration/thru_results",
+            "1-Port+N_errors",
+        ),
+        "Enhanced-Response": (
+            "modules/dut_measurement/calibration/thru_results",
+            "enhanced_response_errors",
+        ),
+    }
+
+    # Files expected per method: list of (filename, label, is_s2p)
+    _WIZARD_ERROR_FILES = {
+        "OSM (Open - Short - Match)": [
+            ("directivity.s1p",         "Directivity",         False),
+            ("source_match.s1p",        "Source Match",        False),
+            ("reflection_tracking.s1p", "Reflection Tracking", False),
+        ],
+        "Thru Normalization": [
+            ("transmission_tracking.s2p", "Transmission Tracking", True),
+        ],
+        "Open/Short Normalization": [
+            ("reflection_tracking.s1p", "Reflection Tracking", False),
+        ],
+        "1-Port+N": [
+            ("directivity.s1p",           "Directivity",           False),
+            ("source_match.s1p",          "Source Match",          False),
+            ("reflection_tracking.s1p",   "Reflection Tracking",   False),
+            ("transmission_tracking.s2p", "Transmission Tracking", True),
+        ],
+        "Enhanced-Response": [
+            ("directivity.s1p",           "Directivity",           False),
+            ("source_match.s1p",          "Source Match",          False),
+            ("reflection_tracking.s1p",   "Reflection Tracking",   False),
+            ("transmission_tracking.s2p", "Transmission Tracking", True),
+            ("load_match.s2p",            "Load Match",            True),
+        ],
+    }
+
+    def _add_calibration_section(self, doc, tmpdirname, include_tables=False):
+        """Append a 'Calibration Error Terms' section with plots (and optional tables)."""
+        settings = get_settings(
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
+            "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
+            Path(__file__).resolve()
+        )
+
+        kits_ok       = settings.value("Calibration/Kits",          False, type=bool)
+        no_calibration= settings.value("Calibration/NoCalibration",  False, type=bool)
+        is_import_dut = settings.value("Calibration/DUT",            False, type=bool)
+        cal_method    = settings.value("Calibration/Method",         "---")
+
+        if no_calibration or is_import_dut:
+            return
+
+        # Build list of (label, error_dir, fname, is_s2p)
+        entries = []
+        try:
+            if kits_ok:
+                entries = self._cal_kit_entries(settings, cal_method)
+            else:
+                entries = self._cal_wizard_entries(cal_method)
+        except Exception as e:
+            logger.warning(f"Could not resolve calibration error entries: {e}")
+            return
+
+        if not entries:
+            return
+
+        doc.append(NewPage())
+        method_label = (settings.value("Calibration/Name", cal_method)
+                        if kits_ok else cal_method)
+        with doc.create(Section("Calibration Error Terms")):
+            doc.append(NoEscape(
+                r"\noindent\textbf{Method:} "
+                + str(method_label).replace("_", r"\_")
+                + r"\par\vspace{0.4cm}"
+            ))
+            for label, err_dir, fname, is_s2p in entries:
+                fpath = os.path.join(err_dir, fname)
+                if not os.path.isfile(fpath):
+                    logger.warning(f"Calibration error file not found: {fpath}")
+                    continue
+                try:
+                    ntw = rf.Network(fpath)
+                    with doc.create(Subsection(label)):
+                        self._cal_emit_plots(doc, tmpdirname, ntw, fname, label, is_s2p)
+                        if include_tables:
+                            self._cal_emit_table(doc, ntw, is_s2p)
+                    doc.append(NewPage())
+                except Exception as e:
+                    logger.warning(f"Could not process {fpath}: {e}")
+
+    # ------------------------------------------------------------------ #
+
+    def _cal_wizard_entries(self, cal_method):
+        """Return list of (label, error_dir_path, fname, is_s2p) for wizard methods."""
+        if cal_method not in self._WIZARD_ERROR_DIRS:
+            return []
+        base_rel, subfolder = self._WIZARD_ERROR_DIRS[cal_method]
+        base_dir = get_calibration_path(base_rel, base_rel, Path(__file__).resolve())
+        err_dir  = os.path.join(base_dir, subfolder)
+        return [
+            (label, err_dir, fname, is_s2p)
+            for fname, label, is_s2p in self._WIZARD_ERROR_FILES.get(cal_method, [])
+        ]
+
+    def _cal_kit_entries(self, settings, cal_method):
+        """Return list of (label, kit_path, fname, is_s2p) for kit-based methods."""
+        kit_name_full = settings.value("Calibration/Name", "")
+        kit_folder    = kit_name_full.rsplit("_", 1)[0] if "_" in kit_name_full else kit_name_full
+        kits_dir = get_calibration_path(
+            "modules/dut_measurement/calibration/kits",
+            "modules/dut_measurement/calibration/kits",
+            Path(__file__).resolve()
+        )
+        kit_path = os.path.join(kits_dir, kit_folder)
+        if not os.path.isdir(kit_path):
+            logger.warning(f"Kit folder not found: {kit_path}")
+            return []
+        return [
+            (label, kit_path, fname, is_s2p)
+            for fname, label, is_s2p in self._WIZARD_ERROR_FILES.get(cal_method, [])
+        ]
+
+    def _cal_emit_plots(self, doc, tmpdirname, ntw, fname, label, is_s2p):
+        """Render plot(s) for one error file and add them to doc."""
+        base = fname.replace(".", "_")
+        if not is_s2p:
+            # S1P → Smith chart
+            out = os.path.join(tmpdirname, f"cal_{base}_smith.png")
+            fig, ax = plt.subplots(figsize=(7, 7))
+            fig.patch.set_facecolor("white")
+            ax.set_facecolor("white")
+            ntw.plot_s_smith(ax=ax, draw_labels=True)
+            ax.set_title(f"{label} — Smith Chart")
+            fig.savefig(out, dpi=200, bbox_inches="tight")
+            plt.close(fig)
+            with doc.create(Figure(position='H')) as fig_l:
+                fig_l.add_image(out.replace("\\", "/"),
+                                width=NoEscape(r'0.7\linewidth'))
+                fig_l.add_caption(f"{label} — Smith Chart")
+        else:
+            # S2P → magnitude + phase stacked
+            freqs_mhz = ntw.f / 1e6
+            mag_db    = 20 * np.log10(np.abs(ntw.s[:, 1, 0]) + 1e-30)
+            phase_deg = np.angle(ntw.s[:, 1, 0], deg=True)
+
+            mag_path   = os.path.join(tmpdirname, f"cal_{base}_mag.png")
+            phase_path = os.path.join(tmpdirname, f"cal_{base}_phase.png")
+
+            for data, ylabel, title, path, color in [
+                (mag_db,    "|S21| (dB)",      f"{label} — Magnitude",  mag_path,   "red"),
+                (phase_deg, "Phase S21 (deg)", f"{label} — Phase S21",  phase_path, "red"),
+            ]:
+                f2, ax2 = plt.subplots(figsize=(8, 3))
+                f2.patch.set_facecolor("white")
+                ax2.set_facecolor("white")
+                ax2.plot(freqs_mhz, data, color=color)
+                ax2.set_xlabel("Frequency [MHz]")
+                ax2.set_ylabel(ylabel)
+                ax2.set_title(title)
+                ax2.grid(True, linestyle="--", alpha=0.5)
+                f2.tight_layout()
+                f2.savefig(path, dpi=200, bbox_inches="tight")
+                plt.close(f2)
+
+            for path, caption in [(mag_path, f"{label} — Magnitude"),
+                                   (phase_path, f"{label} — Phase S21")]:
+                with doc.create(Figure(position='H')) as fig_l:
+                    fig_l.add_image(path.replace("\\", "/"),
+                                    width=NoEscape(r'0.82\linewidth'))
+                    fig_l.add_caption(caption)
+
+    def _cal_emit_table(self, doc, ntw, is_s2p):
+        """Emit a longtable with numeric error values below the plot."""
+        freqs_mhz = ntw.f / 1e6
+        if is_s2p:
+            s_vec = ntw.s[:, 1, 0]
+            col2_hdr = "|S21| (dB)"
+            col3_hdr = "Phase S21 (deg)"
+        else:
+            s_vec = ntw.s[:, 0, 0]
+            col2_hdr = "|S11| (dB)"
+            col3_hdr = "Phase S11 (deg)"
+
+        mag_db    = 20 * np.log10(np.abs(s_vec) + 1e-30)
+        phase_deg = np.angle(s_vec, deg=True)
+
+        n    = len(freqs_mhz)
+        step = max(1, n // 80)
+        idxs = range(0, n, step)
+
+        hdr = (
+            r"\vspace{0.6em}"
+            r"\begin{longtable}{>{\centering\arraybackslash}p{3.5cm}"
+            r">{\centering\arraybackslash}p{3.5cm}"
+            r">{\centering\arraybackslash}p{3.5cm}}"
+            r"\toprule"
+            r"\textbf{Frequency (MHz)} & \textbf{" + col2_hdr + r"} & \textbf{" + col3_hdr + r"} \\"
+            r"\midrule \endfirsthead"
+            r"\toprule"
+            r"\textbf{Frequency (MHz)} & \textbf{" + col2_hdr + r"} & \textbf{" + col3_hdr + r"} \\"
+            r"\midrule \endhead"
+            r"\bottomrule \endfoot"
+        )
+        doc.append(NoEscape(hdr))
+        for i in idxs:
+            doc.append(NoEscape(
+                rf"{freqs_mhz[i]:.4f} & {mag_db[i]:.4f} & {phase_deg[i]:.2f} \\"
+            ))
+        doc.append(NoEscape(r"\end{longtable}"))

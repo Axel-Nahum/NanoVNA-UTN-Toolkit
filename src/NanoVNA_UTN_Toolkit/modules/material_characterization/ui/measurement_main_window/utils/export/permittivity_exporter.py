@@ -466,7 +466,7 @@ class PermittivityExporter:
     def compile_pdf(
         self, freqs, eps_selected, image_files, sample_name,
         wizard_window, output_path, compiler_path, include_steps=False, notes="",
-        s11_data=None, notes_doc=None,
+        s11_data=None, notes_doc=None, include_tables=False,
     ):
         """Build the .tex from already-rendered images and run LaTeX.
 
@@ -483,6 +483,7 @@ class PermittivityExporter:
             wizard_window=wizard_window,
             compiler_path=compiler_path,
             include_steps=include_steps,
+            include_tables=include_tables,
             notes=notes,
             notes_doc=notes_doc,
         )
@@ -656,7 +657,7 @@ class PermittivityExporter:
     def _create_latex_document(
         self, freqs, eps_selected, image_files, file_path,
         sample_name, wizard_window, compiler_path, include_steps=False, notes="",
-        s11_data=None, notes_doc=None,
+        s11_data=None, notes_doc=None, include_tables=False,
     ):
         try:
             from pylatex import Document, Section, Subsection, Command, Figure, NewPage
@@ -716,7 +717,7 @@ class PermittivityExporter:
                             image_files["permittivity"].replace("\\", "/"),
                             width=NoEscape(r"0.78\linewidth"),
                         )
-                if freqs is not None and eps_selected is not None:
+                if include_tables and freqs is not None and eps_selected is not None:
                     doc.append(NoEscape(r"\vspace{1.2em}"))
                     self._build_permittivity_mini_table(doc, freqs, eps_selected, NoEscape)
 
@@ -729,7 +730,7 @@ class PermittivityExporter:
                             image_files["smith"].replace("\\", "/"),
                             width=NoEscape(r"0.55\linewidth"),
                         )
-                if freqs is not None and s11_data is not None:
+                if include_tables and freqs is not None and s11_data is not None:
                     doc.append(NoEscape(r"\vspace{1.2em}"))
                     self._build_s11_mini_table(doc, freqs, s11_data, NoEscape)
 

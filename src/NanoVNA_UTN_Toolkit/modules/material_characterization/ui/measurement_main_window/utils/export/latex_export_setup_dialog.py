@@ -143,14 +143,17 @@ class PermittivityLatexSetupDialog(QDialog):
     def _setup_options_group(self, parent_layout):
         group = QGroupBox("Report Options")
         layout = QVBoxLayout(group)
+        self.include_notes_chk = QCheckBox("Include notes / comments section")
+        self.include_notes_chk.setChecked(False)
+        layout.addWidget(self.include_notes_chk)
+        self.include_tables_chk = QCheckBox("Include value tables")
+        self.include_tables_chk.setChecked(False)
+        layout.addWidget(self.include_tables_chk)
         self.include_steps_chk = QCheckBox(
             "Include calibration standard measurements (S11 chart + table per step)"
         )
         self.include_steps_chk.setChecked(False)
         layout.addWidget(self.include_steps_chk)
-        self.include_notes_chk = QCheckBox("Include notes / comments section")
-        self.include_notes_chk.setChecked(False)
-        layout.addWidget(self.include_notes_chk)
         parent_layout.addWidget(group)
 
     def _setup_buttons(self, parent_layout):
@@ -305,6 +308,7 @@ class PermittivityLatexSetupDialog(QDialog):
             wizard_window=main_window.wizard_window,
             include_steps=self.include_steps_chk.isChecked(),
             include_notes=self.include_notes_chk.isChecked(),
+            include_tables=self.include_tables_chk.isChecked(),
         )
         preview.exec()
         self.reject()
