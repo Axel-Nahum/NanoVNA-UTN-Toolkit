@@ -1404,6 +1404,15 @@ class PermittivityPdfPreviewDialog(QDialog):
             if not output_path:
                 return
 
+        # Derive display name from chosen filename:
+        # strip folder + extension, then strip "characterization_" prefix if present
+        import os as _os
+        _stem = _os.path.splitext(_os.path.basename(output_path))[0]
+        _PREFIX = "characterization_"
+        if _stem.lower().startswith(_PREFIX):
+            _stem = _stem[len(_PREFIX):]
+        display_sample_name = _stem.capitalize() if _stem else self.sample_name
+
         busy = GeneratingButton(self.export_button, "Generating report…")
         busy.begin()
 
@@ -1429,7 +1438,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                 eps_selected=self.eps_selected,
                 s11_data=self.s11_data,
                 image_files=image_files,
-                sample_name=self.sample_name,
+                sample_name=display_sample_name,
                 wizard_window=self.wizard_window,
                 output_path=output_path,
                 compiler_path=compiler_info[1],

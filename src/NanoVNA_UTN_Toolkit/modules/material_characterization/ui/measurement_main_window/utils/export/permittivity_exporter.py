@@ -317,6 +317,8 @@ def _document_to_latex(qt_document) -> str:
 
     from PySide6.QtGui import QTextListFormat
 
+    _DEFAULT_PT = 10  # matches document().defaultFont() set in the dialog
+
     def _fragments(block):
         line = []
         it = block.begin()
@@ -330,6 +332,10 @@ def _document_to_latex(qt_document) -> str:
                 t = f'\\textit{{{t}}}'
             if fmt.fontWeight() >= 600:
                 t = f'\\textbf{{{t}}}'
+            pt = fmt.fontPointSize()
+            if pt > 0 and abs(pt - _DEFAULT_PT) > 0.5:
+                baseline = pt * 1.2
+                t = f'{{\\fontsize{{{pt:.0f}pt}}{{{baseline:.1f}pt}}\\selectfont {t}}}'
             line.append(t)
             it += 1
         return ''.join(line)
@@ -670,6 +676,10 @@ class PermittivityExporter:
         doc.preamble.append(Command("usepackage", "longtable"))
         doc.preamble.append(Command("usepackage", "booktabs"))
         doc.preamble.append(Command("usepackage", "array"))
+        doc.preamble.append(NoEscape(
+            r"\usepackage[colorlinks=true,linkcolor=black,urlcolor=blue,"
+            r"bookmarks=true,bookmarksopen=true]{hyperref}"
+        ))
 
         current_dt = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self._create_cover_page(doc, freqs, sample_name, wizard_window, current_dt)
@@ -1027,18 +1037,20 @@ class PermittivityExporter:
         doc.append(NoEscape(rf"\item \textbf{{Reference Liquids:}} {_esc(refs_text)}"))
         doc.append(NoEscape(rf"\item \textbf{{Frequency Range:}} {_esc(freq_str)}"))
 
-        # Data sources per standard
+        # Data sources per standard — one sub-item per source
         if cal is not None:
             _LABELS = {"open": "Open", "short": "Short", "ref1": "Ref 1", "ref2": "Ref 2", "dut": "DUT"}
             src_parts = []
             for key, label in _LABELS.items():
                 src = cal.get_source(key)
                 if src is not None:
-                    src_parts.append(f"{label}: {src}")
+                    src_parts.append((label, src))
             if src_parts:
-                doc.append(NoEscape(
-                    rf"\item \textbf{{Data sources:}} {_esc(', '.join(src_parts))}"
-                ))
+                doc.append(NoEscape(r"\item \textbf{Data sources:}"))
+                doc.append(NoEscape(r"\begin{itemize}"))
+                for label, src in src_parts:
+                    doc.append(NoEscape(rf"\item \textbf{{{_esc(label)}:}} {_esc(src)}"))
+                doc.append(NoEscape(r"\end{itemize}"))
 
         doc.append(NoEscape(r"\end{itemize}"))
         doc.append(NoEscape(r"\end{flushleft}"))
