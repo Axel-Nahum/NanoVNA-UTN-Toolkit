@@ -472,6 +472,7 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     standard = step_def.standard
     is_reference = standard.kind is StandardKind.REFERENCE_LIQUID
+    is_precalibrable = is_reference or standard.key in ("short", "dut")
     total = len(descriptor.steps)
     name, instruction_html, is_rich = _resolve_strings(wizard, std_texts, liquids, standard)
     color = SMITH_COLOR_MAP.get(standard.key, "blue")
@@ -499,8 +500,8 @@ def build_standard_screen(wizard, descriptor, step_def):
     mid.setSpacing(0)
     mid.setContentsMargins(10, 8, 10, 6)
 
-    # ── Pre-calibrate bar — solo en pasos de líquido de referencia ──────── #
-    if is_reference:
+    # ── Pre-calibrate bar — líquidos de referencia, short y DUT ─────────── #
+    if is_precalibrable:
         precal_row = QHBoxLayout()
         precal_row.setContentsMargins(0, 0, 0, 0)
         precal_row.setSpacing(8)
