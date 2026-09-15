@@ -538,7 +538,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         """Import a .charpkg file and jump directly to the DUT measurement step."""
         zip_path, _ = QFileDialog.getOpenFileName(
             self, "Import characterization kit", str(Path.home()),
-            "Characterization package (*.charpkg);;All files (*)",
+            "Characterization package (*.charpkg *.zip);;All files (*)",
         )
         if not zip_path:
             return
