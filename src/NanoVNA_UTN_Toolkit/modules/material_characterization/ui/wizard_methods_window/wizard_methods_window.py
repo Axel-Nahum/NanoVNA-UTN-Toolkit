@@ -55,8 +55,8 @@ class CharacterizationWizard(QMainWindow):
             _W = min(1440, max(1060, int(screen.width()  * 0.94)))
             _H = min(860,  max(700, int(screen.height() * 0.94)))
         else:
-            _W = min(1220, max(920, int(screen.width()  * 0.84)))
-            _H = min(720,  max(600, int(screen.height() * 0.84)))
+            _W = min(1220, max(920, int(screen.width()  * 0.80)))
+            _H = min(720,  max(600, int(screen.height() * 0.80)))
         self._wiz_w = _W
         self._wiz_h = _H
         self.setGeometry(200, 200, _W, _H)
