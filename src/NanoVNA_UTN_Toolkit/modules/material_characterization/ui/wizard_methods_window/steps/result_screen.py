@@ -410,8 +410,38 @@ def _build_sources(wizard, layout, rtexts):
     layout.addWidget(btn)
 
 
+def _detect_branch_jumps(result, threshold=0.50):
+    """Return warning strings for relative jumps > threshold in Re(εr) between adjacent points."""
+    try:
+        eps = result.eps_selected
+        f_hz = result.f_hz
+        re = np.real(eps)
+        valid = np.isfinite(re) & (re > 0)
+        if valid.sum() < 2:
+            return []
+        idx = np.where(valid)[0]
+        re_v = re[idx]
+        jumps = np.abs(np.diff(re_v)) / np.maximum(np.abs(re_v[:-1]), 1e-12)
+        bad = np.where(jumps > threshold)[0]
+        if len(bad) == 0:
+            return []
+        msgs = []
+        for i in bad[:3]:
+            f_mhz = f_hz[idx[i]] / 1e6
+            msgs.append(
+                f"Branch jump >{int(threshold*100)}% at {f_mhz:.1f} MHz "
+                f"(Re εr: {re_v[i]:.2f} → {re_v[i+1]:.2f}) — possible wrong branch"
+            )
+        if len(bad) > 3:
+            msgs.append(f"…and {len(bad)-3} more branch jumps")
+        return msgs
+    except Exception:
+        return []
+
+
 def _build_warnings(wizard, layout, result, rtexts):
     warns = list(result.warnings) + list(getattr(wizard, "temperature_warnings", []) or [])
+    warns += _detect_branch_jumps(result)
     if not warns:
         return
 
