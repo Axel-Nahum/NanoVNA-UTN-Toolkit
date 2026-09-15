@@ -14,10 +14,9 @@ from pathlib import Path
 import numpy as np
 from PySide6.QtWidgets import (
     QCheckBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QFileDialog, QTextEdit, QGroupBox, QMessageBox, QToolButton,
+    QLineEdit, QFileDialog, QTextEdit, QGroupBox, QMessageBox,
 )
 from PySide6.QtCore import Qt, QThread, Signal
-from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.permittivity_exporter import (
     _find_latex_compiler, _test_latex_compiler,
@@ -73,9 +72,6 @@ class PermittivityLatexSetupDialog(QDialog):
         self.default_filename = default_filename
         self.manual_compiler_path = None
         self.checker_thread = None
-
-        _texts = load_text("characterization_measurement_main.json")
-        self._options_help = _texts.get("pdf_options_help", {})
 
         self._setup_ui()
         self._start_latex_check()
@@ -144,55 +140,23 @@ class PermittivityLatexSetupDialog(QDialog):
 
         parent_layout.addWidget(group)
 
-    def _make_help_row(self, checkbox, title, body):
-        row = QHBoxLayout()
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(4)
-        row.addWidget(checkbox)
-        btn = QToolButton()
-        btn.setText("?")
-        btn.setFixedSize(18, 18)
-        btn.setStyleSheet(
-            "QToolButton { border: 1px solid #555566; border-radius: 9px;"
-            " color: #8888aa; font-size: 10px; font-weight: bold; }"
-            " QToolButton:hover { border-color: #8888cc; color: #bbbbff; }"
-        )
-        btn.setToolTip(f"<b>{title}</b><br><br>{body.replace(chr(10), '<br>')}")
-        btn.clicked.connect(lambda: QMessageBox.information(self, title, body))
-        row.addWidget(btn)
-        row.addStretch()
-        return row
-
     def _setup_options_group(self, parent_layout):
-        help = self._options_help
         group = QGroupBox("Report Options")
         layout = QVBoxLayout(group)
 
         self.include_notes_chk = QCheckBox("Include notes / comments section")
         self.include_notes_chk.setChecked(False)
-        layout.addLayout(self._make_help_row(
-            self.include_notes_chk,
-            help.get("notes_title", "Notes / Comments Section"),
-            help.get("notes_body", "Adds a notes page to the PDF."),
-        ))
+        layout.addWidget(self.include_notes_chk)
 
         self.include_tables_chk = QCheckBox("Include value tables")
         self.include_tables_chk.setChecked(False)
-        layout.addLayout(self._make_help_row(
-            self.include_tables_chk,
-            help.get("tables_title", "Value Tables"),
-            help.get("tables_body", "Includes numeric data tables in the PDF."),
-        ))
+        layout.addWidget(self.include_tables_chk)
 
         self.include_steps_chk = QCheckBox(
             "Include calibration standard measurements (S11 chart + table per step)"
         )
         self.include_steps_chk.setChecked(False)
-        layout.addLayout(self._make_help_row(
-            self.include_steps_chk,
-            help.get("cal_steps_title", "Calibration Standard Measurements"),
-            help.get("cal_steps_body", "Adds S11 charts per calibration standard."),
-        ))
+        layout.addWidget(self.include_steps_chk)
 
         parent_layout.addWidget(group)
 

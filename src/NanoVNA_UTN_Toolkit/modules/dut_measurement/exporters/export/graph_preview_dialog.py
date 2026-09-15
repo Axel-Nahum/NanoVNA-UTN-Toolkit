@@ -364,7 +364,7 @@ class GraphPreviewExportDialog(QDialog):
         marker_container_layout.addStretch()
 
         # --- Magnitude unit selector (created here so nav_strip can reference them) ---
-        rb_style = "QRadioButton { color: #333333; font-size: 14px; background-color: transparent; } QRadioButton::indicator { width: 14px; height: 14px; }"
+        rb_style = "QRadioButton { color: #e0e0f0; font-size: 14px; background-color: transparent; } QRadioButton::indicator { width: 14px; height: 14px; }"
         self.rb_db = QRadioButton("dB")
         self.rb_db.setChecked(True)
         self.rb_db.setFocusPolicy(Qt.NoFocus)
