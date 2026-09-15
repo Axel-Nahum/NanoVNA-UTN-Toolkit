@@ -179,29 +179,31 @@ def show_first_screen(self):
         _secondary_color = "#999999"
         _muted_color = "#666666"
         _spinbox_style = """
-            QSpinBox {
+            QSpinBox, QDoubleSpinBox {
                 background-color: #252538;
                 color: white;
                 border-radius: 8px;
-                font-size: 14px;
+                font-size: 12px;
                 min-height: 20px;
                 padding: 4px;
             }
-            QSpinBox:hover { background-color: #363650; }
-            QSpinBox:focus { background-color: #363650; border: 2px solid #4CAF50; }
-            QSpinBox::up-button, QSpinBox::down-button {
+            QSpinBox:hover, QDoubleSpinBox:hover { background-color: #363650; }
+            QSpinBox:focus, QDoubleSpinBox:focus { background-color: #363650; border: 2px solid #4CAF50; }
+            QSpinBox::up-button, QSpinBox::down-button,
+            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
                 background-color: #363650;
                 border: 1px solid #383850;
                 border-radius: 3px;
                 width: 16px;
             }
-            QSpinBox::up-button:hover, QSpinBox::down-button:hover { background-color: #5d5d69; }
-            QSpinBox::up-arrow {
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover,
+            QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover { background-color: #5d5d69; }
+            QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
                 image: none; border-left: 2px solid transparent;
                 border-right: 2px solid transparent;
                 border-bottom: 3px solid white; width: 0px; height: 0px;
             }
-            QSpinBox::down-arrow {
+            QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
                 image: none; border-left: 2px solid transparent;
                 border-right: 2px solid transparent;
                 border-top: 3px solid white; width: 0px; height: 0px;
@@ -214,30 +216,32 @@ def show_first_screen(self):
         _secondary_color = "#5a5a78"
         _muted_color = "#8888aa"
         _spinbox_style = """
-            QSpinBox {
+            QSpinBox, QDoubleSpinBox {
                 background-color: #f8f8ff;
                 color: #1e1e2e;
                 border-radius: 8px;
-                font-size: 14px;
+                font-size: 12px;
                 min-height: 20px;
                 padding: 4px;
                 border: 1px solid #c4c4d8;
             }
-            QSpinBox:hover { background-color: #ebebf5; }
-            QSpinBox:focus { background-color: #eef0ff; border: 2px solid #4d90fe; }
-            QSpinBox::up-button, QSpinBox::down-button {
+            QSpinBox:hover, QDoubleSpinBox:hover { background-color: #ebebf5; }
+            QSpinBox:focus, QDoubleSpinBox:focus { background-color: #eef0ff; border: 2px solid #4d90fe; }
+            QSpinBox::up-button, QSpinBox::down-button,
+            QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {
                 background-color: #e0e0f0;
                 border: 1px solid #c4c4d8;
                 border-radius: 3px;
                 width: 16px;
             }
-            QSpinBox::up-button:hover, QSpinBox::down-button:hover { background-color: #d0d0e8; }
-            QSpinBox::up-arrow {
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover,
+            QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover { background-color: #d0d0e8; }
+            QSpinBox::up-arrow, QDoubleSpinBox::up-arrow {
                 image: none; border-left: 2px solid transparent;
                 border-right: 2px solid transparent;
                 border-bottom: 3px solid #1e1e1e; width: 0px; height: 0px;
             }
-            QSpinBox::down-arrow {
+            QSpinBox::down-arrow, QDoubleSpinBox::down-arrow {
                 image: none; border-left: 2px solid transparent;
                 border-right: 2px solid transparent;
                 border-top: 3px solid #1e1e1e; width: 0px; height: 0px;
@@ -399,6 +403,7 @@ def show_first_screen(self):
     start_freq_layout.setSpacing(10)
     self.start_freq_input = QDoubleSpinBox()
     self.start_freq_input.setDecimals(4)
+    self.start_freq_input.setStyleSheet(_spinbox_style)
     self.start_freq_input.setValue(50)
     start_freq_layout.addWidget(self.start_freq_input)
     self.start_freq_unit = QComboBox()
@@ -414,6 +419,7 @@ def show_first_screen(self):
     stop_freq_layout.setSpacing(10)
     self.stop_freq_input = QDoubleSpinBox()
     self.stop_freq_input.setDecimals(4)
+    self.stop_freq_input.setStyleSheet(_spinbox_style)
     self.stop_freq_input.setValue(1.5)
     stop_freq_layout.addWidget(self.stop_freq_input)
     self.stop_freq_unit = QComboBox()
@@ -434,9 +440,14 @@ def show_first_screen(self):
     label_steps.setStyleSheet("border: none; background: transparent;")
     sweep_layout.addRow(label_steps, self.steps_input)
 
+    update_spinbox_range(self, self.start_freq_input, self.start_freq_unit.currentText())
+    update_spinbox_range(self, self.stop_freq_input, self.stop_freq_unit.currentText())
+
     self.start_freq_input.valueChanged.connect(lambda: on_frequency_changed_range(self))
+    self.start_freq_unit.currentTextChanged.connect(lambda unit: update_spinbox_range(self, self.start_freq_input, unit))
     self.start_freq_unit.currentTextChanged.connect(lambda: on_frequency_changed_range(self))
     self.stop_freq_input.valueChanged.connect(lambda: on_frequency_changed_range(self))
+    self.stop_freq_unit.currentTextChanged.connect(lambda unit: update_spinbox_range(self, self.stop_freq_input, unit))
     self.stop_freq_unit.currentTextChanged.connect(lambda: on_frequency_changed_range(self))
     self.steps_input.valueChanged.connect(lambda: update_sweep_config(self))
 
