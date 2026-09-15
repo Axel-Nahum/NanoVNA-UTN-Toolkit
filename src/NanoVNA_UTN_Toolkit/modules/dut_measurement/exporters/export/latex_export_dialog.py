@@ -12,7 +12,7 @@ import logging
 from pathlib import Path
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QLineEdit, QFileDialog, QTextEdit, QGroupBox, QMessageBox, QCheckBox
+    QLineEdit, QFileDialog, QTextEdit, QGroupBox, QMessageBox, QCheckBox, QToolButton
 )
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIcon, QPixmap
@@ -142,18 +142,47 @@ class LaTeXExportDialog(QDialog):
 
         layout.addStretch()
 
+    def _make_help_row(self, checkbox, title, body):
+        """Return an QHBoxLayout with the checkbox and a ? help button."""
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(4)
+        row.addWidget(checkbox)
+        btn = QToolButton()
+        btn.setText("?")
+        btn.setFixedSize(18, 18)
+        btn.setStyleSheet(
+            "QToolButton { border: 1px solid #555566; border-radius: 9px;"
+            " color: #8888aa; font-size: 10px; font-weight: bold; }"
+            " QToolButton:hover { border-color: #8888cc; color: #bbbbff; }"
+        )
+        btn.setToolTip(f"<b>{title}</b><br><br>{body.replace(chr(10), '<br>')}")
+        btn.clicked.connect(lambda: QMessageBox.information(self, title, body))
+        row.addWidget(btn)
+        row.addStretch()
+        return row
+
     def _setup_options_group(self, parent_layout):
         """Set up the export options group box."""
+        help = getattr(self, '_options_help', {})
         group = QGroupBox("Options")
         layout = QVBoxLayout(group)
 
         self.include_notes_checkbox = QCheckBox("Include notes / comments section")
         self.include_notes_checkbox.setChecked(False)
-        layout.addWidget(self.include_notes_checkbox)
+        layout.addLayout(self._make_help_row(
+            self.include_notes_checkbox,
+            help.get("notes_title", "Notes / Comments Section"),
+            help.get("notes_body", "Adds a notes page to the PDF."),
+        ))
 
         self.include_tables_checkbox = QCheckBox("Include value tables")
         self.include_tables_checkbox.setChecked(False)
-        layout.addWidget(self.include_tables_checkbox)
+        layout.addLayout(self._make_help_row(
+            self.include_tables_checkbox,
+            help.get("tables_title", "Value Tables"),
+            help.get("tables_body", "Includes numeric data tables in the PDF."),
+        ))
 
         self.include_cal_graphs_checkbox = QCheckBox("Include calibration graphs")
         self.include_cal_graphs_checkbox.setChecked(False)
@@ -175,7 +204,11 @@ class LaTeXExportDialog(QDialog):
         except Exception:
             pass
 
-        layout.addWidget(self.include_cal_graphs_checkbox)
+        layout.addLayout(self._make_help_row(
+            self.include_cal_graphs_checkbox,
+            help.get("cal_graphs_title", "Calibration Graphs"),
+            help.get("cal_graphs_body", "Adds calibration error terms to the PDF."),
+        ))
 
         parent_layout.addWidget(group)
 

@@ -14,6 +14,16 @@
     "eps_imag": "ε″",
     "loss_tangent": "tan δ"
   },
+  "pdf_options_help": {
+    "style_help_title": "Paragraph Style",
+    "style_help_body": "Body — normal text in the PDF.\nSubsection — section heading (\\subsection).\nSub-subsection — sub-heading (\\subsubsection).\n\nEnable the checkbox to use headings.",
+    "notes_title": "Notes / Comments Section",
+    "notes_body": "Adds a dedicated page to the PDF where you can write free-text notes or comments about this characterization.\n\nYou will be able to type, format (bold, italic, bullet lists), and preview the text before generating the report.",
+    "tables_title": "Value Tables",
+    "tables_body": "Includes numeric data tables in the PDF with frequency and permittivity (ε′, ε″) values.\n\nUp to 100 evenly-spaced rows are shown.",
+    "cal_steps_title": "Calibration Standard Measurements",
+    "cal_steps_body": "Adds a section showing the S11 chart and value table for each calibration standard measured during the wizard (Open, Short, reference liquids).\n\nUseful for reviewing the calibration quality."
+  },
   "no_result": "No permittivity result is available. Please complete the wizard.",
   "export": {
     "epsilon_title": "εr — {sample}",

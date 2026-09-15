@@ -14,6 +14,16 @@
     "eps_imag": "ε″",
     "loss_tangent": "tan δ"
   },
+  "pdf_options_help": {
+    "style_help_title": "Estilo de Párrafo",
+    "style_help_body": "Body — texto normal en el PDF.\nSubsection — título de sección (\\subsection).\nSub-subsection — subtítulo (\\subsubsection).\n\nActivá el checkbox para habilitar los títulos.",
+    "notes_title": "Sección de Notas / Comentarios",
+    "notes_body": "Agrega una página al PDF donde podés escribir notas o comentarios sobre esta caracterización.\n\nPodrás escribir, dar formato (negrita, cursiva, listas) y previsualizar el texto antes de generar el reporte.",
+    "tables_title": "Tablas de Valores",
+    "tables_body": "Incluye tablas numéricas en el PDF con frecuencia y permitividad (ε′, ε″).\n\nSe muestran hasta 100 filas distribuidas uniformemente.",
+    "cal_steps_title": "Mediciones de Estándares de Calibración",
+    "cal_steps_body": "Agrega una sección con el gráfico S11 y la tabla de valores de cada estándar medido en el asistente (Open, Short, líquidos de referencia).\n\nÚtil para revisar la calidad de la calibración."
+  },
   "no_result": "No hay un resultado de permitividad disponible. Complete el asistente.",
   "export": {
     "epsilon_title": "εr — {sample}",

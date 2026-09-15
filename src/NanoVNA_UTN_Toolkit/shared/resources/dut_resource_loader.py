@@ -564,6 +564,12 @@ class DutResourceLoader:
         self.window.pdf_preview_s21_phase_x_axis = s21_phase.get("x_axis", "")
         self.window.pdf_preview_s21_phase_y_axis = s21_phase.get("y_axis", "")
 
+        # ---------------------------------------------------------------- #
+        # Options Help
+        # ---------------------------------------------------------------- #
+
+        self.window._options_help = pdf_export.get("options_help", {})
+
     def load_export_touchstone_resources(self):
 
         raw_data = self._load_json()

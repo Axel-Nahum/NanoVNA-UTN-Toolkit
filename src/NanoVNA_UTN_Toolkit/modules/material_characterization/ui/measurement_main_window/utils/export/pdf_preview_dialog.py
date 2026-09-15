@@ -55,6 +55,62 @@ _GRAPH_MARKER_COUNT = {0: 2, 1: 1}
 # --------------------------------------------------------------------------- #
 
 
+class _HoverHelpButton(QPushButton):
+    """Round ? button that shows a styled popup on mouse hover."""
+
+    _POPUP_SS = (
+        "QLabel { background: #1e1e32; border: 1px solid #5555aa;"
+        " border-radius: 10px; padding: 10px 13px;"
+        " color: #ccccdd; font-size: 11px; }"
+    )
+
+    def __init__(self, title, body, parent=None):
+        super().__init__("?", parent)
+        self._title = title
+        self._body = body
+        self._popup = None
+        self.setFocusPolicy(Qt.NoFocus)
+        self.setFixedSize(18, 18)
+        self.setStyleSheet(
+            "QPushButton { border: 1px solid #555577; border-radius: 9px;"
+            " color: #8888aa; font-size: 10px; font-weight: bold;"
+            " background: transparent; padding: 0; }"
+            " QPushButton:hover { border-color: #8888cc; color: #bbbbff; }"
+        )
+
+    def enterEvent(self, event):
+        self._show_popup()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._close_popup()
+        super().leaveEvent(event)
+
+    def hideEvent(self, event):
+        self._close_popup()
+        super().hideEvent(event)
+
+    def _show_popup(self):
+        if self._popup is not None:
+            return
+        html = f"<b style='font-size:12px;color:#aaaaff'>{self._title}</b><br><br>{self._body.replace(chr(10), '<br>')}"
+        popup = QLabel(html)
+        popup.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
+        popup.setStyleSheet(self._POPUP_SS)
+        popup.setWordWrap(True)
+        popup.setMaximumWidth(280)
+        popup.adjustSize()
+        pos = self.mapToGlobal(self.rect().bottomLeft())
+        popup.move(pos)
+        popup.show()
+        self._popup = popup
+
+    def _close_popup(self):
+        if self._popup is not None:
+            self._popup.close()
+            self._popup = None
+
+
 def _fill_nans(y: np.ndarray) -> np.ndarray:
     finite = np.isfinite(y)
     if finite.all() or not finite.any():
@@ -275,6 +331,9 @@ class PermittivityPdfPreviewDialog(QDialog):
         self._freq_div, self._freq_unit = _freq_scale(self.freqs)
         self._scaled_freqs = self.freqs / self._freq_div
 
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text as _lt
+        self._options_help = _lt("characterization_measurement_main.json").get("pdf_options_help", {})
+
         self.setWindowTitle("Export Preview — Characterization")
         self.setModal(True)
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -433,6 +492,19 @@ class PermittivityPdfPreviewDialog(QDialog):
         self._heading_chk.toggled.connect(self._on_heading_mode_toggled)
         toolbar_l.addSpacing(4)
         toolbar_l.addWidget(self._heading_chk)
+        toolbar_l.addSpacing(5)
+
+        _sh = getattr(self, '_options_help', {})
+        _btn_style_help = _HoverHelpButton(
+            _sh.get("style_help_title", "Paragraph Style"),
+            _sh.get("style_help_body",
+                    "Body — normal text in the PDF.\n"
+                    "Subsection — section heading (\\subsection).\n"
+                    "Sub-subsection — sub-heading (\\subsubsection).\n\n"
+                    "Enable the checkbox to use headings."),
+        )
+        toolbar_l.addWidget(_btn_style_help)
+        toolbar_l.addSpacing(5)
 
         toolbar_l.addSpacing(4)
         toolbar_l.addWidget(_vsep())

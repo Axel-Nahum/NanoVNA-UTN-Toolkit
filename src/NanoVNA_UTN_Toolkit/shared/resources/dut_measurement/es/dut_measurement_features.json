@@ -26,6 +26,17 @@
       }
     },
 
+    "options_help": {
+      "style_help_title": "Estilo de Párrafo",
+      "style_help_body": "Body — texto normal en el PDF.\nSubsection — título de sección (\\subsection).\nSub-subsection — subtítulo (\\subsubsection).\n\nActivá el checkbox para habilitar los títulos.",
+      "notes_title": "Sección de Notas / Comentarios",
+      "notes_body": "Agrega una página al PDF donde podés escribir notas o comentarios sobre esta medición.\n\nPodrás escribir, dar formato (negrita, cursiva, listas) y previsualizar el texto antes de generar el reporte.",
+      "tables_title": "Tablas de Valores",
+      "tables_body": "Incluye tablas numéricas en el PDF con frecuencia, módulo y fase para cada S-parámetro medido.\n\nSe muestran hasta 100 filas distribuidas uniformemente por parámetro.",
+      "cal_graphs_title": "Gráficos de Calibración",
+      "cal_graphs_body": "Agrega una sección con los términos de error de calibración (directividad, source match, reflection tracking, etc.) calculados durante el procedimiento de calibración.\n\nSolo disponible cuando se aplicó una calibración a esta medición."
+    },
+
     "graph_preview": {
 
       "window_title": "Vista Previa de Exportación de Gráfico",

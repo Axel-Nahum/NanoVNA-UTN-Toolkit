@@ -26,6 +26,17 @@
       }
     },
 
+    "options_help": {
+      "style_help_title": "Paragraph Style",
+      "style_help_body": "Body — normal text in the PDF.\nSubsection — section heading (\\subsection).\nSub-subsection — sub-heading (\\subsubsection).\n\nEnable the checkbox to use headings.",
+      "notes_title": "Notes / Comments Section",
+      "notes_body": "Adds a dedicated page to the PDF where you can write free-text notes or comments about this measurement.\n\nYou will be able to type, format (bold, italic, bullet lists), and preview the text before generating the report.",
+      "tables_title": "Value Tables",
+      "tables_body": "Includes numeric data tables in the PDF with frequency, magnitude and phase values for each measured S-parameter.\n\nUp to 100 evenly-spaced rows are shown per parameter.",
+      "cal_graphs_title": "Calibration Graphs",
+      "cal_graphs_body": "Adds a section showing the calibration error terms (directivity, source match, reflection tracking, etc.) computed during the calibration procedure.\n\nOnly available when a calibration was applied to this measurement."
+    },
+
     "graph_preview": {
 
       "window_title": "Export Graph Preview",

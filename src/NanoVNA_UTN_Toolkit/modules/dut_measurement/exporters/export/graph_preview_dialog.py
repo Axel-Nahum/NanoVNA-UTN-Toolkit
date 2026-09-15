@@ -42,6 +42,62 @@ DutResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.dut_resour
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
+class _HoverHelpButton(QPushButton):
+    """Round ? button that shows a styled popup on mouse hover."""
+
+    _POPUP_SS = (
+        "QLabel { background: #1e1e32; border: 1px solid #5555aa;"
+        " border-radius: 10px; padding: 10px 13px;"
+        " color: #ccccdd; font-size: 11px; }"
+    )
+
+    def __init__(self, title, body, parent=None):
+        super().__init__("?", parent)
+        self._title = title
+        self._body = body
+        self._popup = None
+        self.setFocusPolicy(Qt.NoFocus)
+        self.setFixedSize(18, 18)
+        self.setStyleSheet(
+            "QPushButton { border: 1px solid #555577; border-radius: 9px;"
+            " color: #8888aa; font-size: 10px; font-weight: bold;"
+            " background: transparent; padding: 0; }"
+            " QPushButton:hover { border-color: #8888cc; color: #bbbbff; }"
+        )
+
+    def enterEvent(self, event):
+        self._show_popup()
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._close_popup()
+        super().leaveEvent(event)
+
+    def hideEvent(self, event):
+        self._close_popup()
+        super().hideEvent(event)
+
+    def _show_popup(self):
+        if self._popup is not None:
+            return
+        html = f"<b style='font-size:12px;color:#aaaaff'>{self._title}</b><br><br>{self._body.replace(chr(10), '<br>')}"
+        popup = QLabel(html)
+        popup.setWindowFlags(Qt.ToolTip | Qt.FramelessWindowHint)
+        popup.setStyleSheet(self._POPUP_SS)
+        popup.setWordWrap(True)
+        popup.setMaximumWidth(280)
+        popup.adjustSize()
+        pos = self.mapToGlobal(self.rect().bottomLeft())
+        popup.move(pos)
+        popup.show()
+        self._popup = popup
+
+    def _close_popup(self):
+        if self._popup is not None:
+            self._popup.close()
+            self._popup = None
+
+
 class _CenteredComboBox(QComboBox):
     """QComboBox that draws its selected text centered."""
     def paintEvent(self, event):
@@ -1202,12 +1258,6 @@ class GraphPreviewExportDialog(QDialog):
         style_combo.setFocusPolicy(Qt.NoFocus)
         style_combo.addItems(["Body", "Subsection", "Sub-subsection"])
         style_combo.setFixedWidth(118)
-        style_combo.setToolTip(
-            "Paragraph style\n"
-            "Body — normal text\n"
-            "Subsection — \\subsection in PDF\n"
-            "Sub-subsection — \\subsubsection in PDF"
-        )
         style_combo.setStyleSheet(_combo_ss)
         style_combo.setEnabled(False)
         tl.addWidget(style_combo)
@@ -1215,7 +1265,6 @@ class GraphPreviewExportDialog(QDialog):
         from PySide6.QtWidgets import QCheckBox as _QCB
         heading_chk = _QCB()
         heading_chk.setFocusPolicy(Qt.NoFocus)
-        heading_chk.setToolTip("Enable subsection / sub-subsection headings in PDF")
         heading_chk.setStyleSheet(
             "QCheckBox { spacing: 0px; }"
             " QCheckBox::indicator { width: 15px; height: 15px;"
@@ -1225,6 +1274,19 @@ class GraphPreviewExportDialog(QDialog):
         )
         tl.addSpacing(4)
         tl.addWidget(heading_chk)
+        tl.addSpacing(5)
+
+        _sh = getattr(self, '_options_help', {})
+        btn_style_help = _HoverHelpButton(
+            _sh.get("style_help_title", "Paragraph Style"),
+            _sh.get("style_help_body",
+                    "Body — normal text in the PDF.\n"
+                    "Subsection — section heading (\\subsection).\n"
+                    "Sub-subsection — sub-heading (\\subsubsection).\n\n"
+                    "Enable the checkbox to use headings."),
+        )
+        tl.addWidget(btn_style_help)
+        tl.addSpacing(5)
         tl.addSpacing(4)
         tl.addWidget(_vsep())
         tl.addSpacing(4)
