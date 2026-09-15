@@ -4,7 +4,7 @@ import sys
 
 from PySide6.QtWidgets import QToolTip
 
-update_spinbox_range, unit_multiplier = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.sweep_cal", "update_spinbox_range", "unit_multiplier")
+update_spinbox_range, unit_multiplier, update_sweep_config = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_cal_utils.sweep_cal", "update_spinbox_range", "unit_multiplier", "update_sweep_config")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
@@ -67,9 +67,6 @@ def on_frequency_changed_range(self):
     start_val_hz = self.start_freq_input.value() * unit_multiplier(self, self.start_freq_unit.currentText())
     stop_val_hz  = self.stop_freq_input.value()  * unit_multiplier(self, self.stop_freq_unit.currentText())
 
-    print(f"{self.dut_wizard_ui_start_freq} {self.start_freq_input.value()}")
-    print(f"{self.dut_wizard_ui_stop_freq} {self.stop_freq_input.value()}")
-
     # Use device limits if available, otherwise fallback to defaults
     if hasattr(self, 'freq_min_hz') and hasattr(self, 'freq_max_hz'):
         # Create dynamic frequency range strings for tooltips
@@ -130,3 +127,5 @@ def on_frequency_changed_range(self):
             )
         else:
             self.last_stop_value = self.stop_freq_input.value()
+
+    update_sweep_config(self)

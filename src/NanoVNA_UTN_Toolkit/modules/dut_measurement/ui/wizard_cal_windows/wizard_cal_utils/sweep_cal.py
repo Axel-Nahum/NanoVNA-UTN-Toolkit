@@ -201,7 +201,6 @@ def update_sweep_config(self):
         
         # Calculate stop frequency in Hz
         stop_value = self.stop_freq_input.value()
-        print(f"esto vale siempre: {stop_value}")
         stop_unit = self.stop_freq_unit.currentText()
         self.sweep_stop_freq = int(stop_value * multipliers[stop_unit])
         

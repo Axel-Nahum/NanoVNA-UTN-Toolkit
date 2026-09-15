@@ -434,6 +434,12 @@ def show_first_screen(self):
     label_steps.setStyleSheet("border: none; background: transparent;")
     sweep_layout.addRow(label_steps, self.steps_input)
 
+    self.start_freq_input.valueChanged.connect(lambda: on_frequency_changed_range(self))
+    self.start_freq_unit.currentTextChanged.connect(lambda: on_frequency_changed_range(self))
+    self.stop_freq_input.valueChanged.connect(lambda: on_frequency_changed_range(self))
+    self.stop_freq_unit.currentTextChanged.connect(lambda: on_frequency_changed_range(self))
+    self.steps_input.valueChanged.connect(lambda: update_sweep_config(self))
+
     sweep_description = QLabel(
         "Sweep settings define the frequency range and resolution used for all measurements. "
         "The selected values directly affect both reflection and transmission results."
