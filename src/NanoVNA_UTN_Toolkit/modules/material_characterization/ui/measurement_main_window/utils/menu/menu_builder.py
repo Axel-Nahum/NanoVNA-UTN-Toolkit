@@ -114,10 +114,17 @@ def build_menu(main_window) -> None:
         help_menu.addSeparator()
 
     if show_about_dialog:
-        about_en = QAction(menu.get("about_en", "Documentation (English)"), main_window)
-        about_en.triggered.connect(lambda: show_about_dialog(main_window, "en"))
-        help_menu.addAction(about_en)
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import (
+            get_current_language,
+        )
 
-        about_es = QAction(menu.get("about_es", "Documentation (Español)"), main_window)
-        about_es.triggered.connect(lambda: show_about_dialog(main_window, "es"))
-        help_menu.addAction(about_es)
+        def _open_docs():
+            show_about_dialog(main_window, get_current_language())
+
+        _doc_label = menu.get(
+            "documentation",
+            "Documentación" if get_current_language() == "es" else "Documentation",
+        )
+        docs_action = QAction(_doc_label, main_window)
+        docs_action.triggered.connect(_open_docs)
+        help_menu.addAction(docs_action)

@@ -327,11 +327,18 @@ class NanoVNAGraphics(QMainWindow):
             app_about_action.triggered.connect(lambda: show_app_about(self))
             help_menu.addSeparator()
 
-        about_en_action = help_menu.addAction(f"{self.measurement_menu_about_en}")
-        about_en_action.triggered.connect(lambda: show_about_dialog(self, 'en'))
+        def _open_docs():
+            _s = get_settings(
+                "INI/dut_measurement/preferences/preferences.ini",
+                "shared/utils/preferences/preferences.ini",
+                Path(__file__).resolve(),
+            )
+            _lang = _s.value("Preferences/language", "en") if _s else "en"
+            show_about_dialog(self, _lang)
 
-        about_es_action = help_menu.addAction(f"{self.measurement_menu_about_es}")
-        about_es_action.triggered.connect(lambda: show_about_dialog(self, 'es'))
+        _doc_label = "Documentación" if current_lang == "es" else "Documentation"
+        docs_action = help_menu.addAction(_doc_label)
+        docs_action.triggered.connect(_open_docs)
 
 #-------- Lock Markers ----------------------------------------------------------------------------#
 
