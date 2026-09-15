@@ -852,9 +852,37 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     _update_tabs(_initial_mode)
 
+    # ── Chart option checkboxes (reference liquid steps only) ──────────── #
+    _CHK_STYLE = (
+        "QCheckBox { color: #888888; font-size: 10px; }"
+        "QCheckBox::indicator { width: 12px; height: 12px; }"
+    )
+    _chk_indicative_qt = None
+    _chk_raw_qt = None
+    if is_reference:
+        _chk_indicative_qt = QCheckBox(
+            std_texts.get("show_indicative", "Show ideal reference")
+        )
+        _chk_indicative_qt.setChecked(False)
+        _chk_indicative_qt.setStyleSheet(_CHK_STYLE)
+        _chk_indicative_qt.setToolTip("Show theoretical S11 for the reference liquid")
+
+        _chk_raw_qt = QCheckBox(
+            std_texts.get("show_raw", "Show without pre-cal")
+        )
+        _chk_raw_qt.setChecked(False)
+        _chk_raw_qt.setStyleSheet(_CHK_STYLE)
+        _chk_raw_qt.setVisible(False)
+        state["raw_chk_qt"] = _chk_raw_qt
+
     tab_row = QHBoxLayout()
     tab_row.setContentsMargins(0, 2, 0, 4)
     tab_row.setSpacing(6)
+    if _chk_indicative_qt is not None:
+        tab_row.addWidget(_chk_indicative_qt)
+        tab_row.addSpacing(4)
+    if _chk_raw_qt is not None:
+        tab_row.addWidget(_chk_raw_qt)
     tab_row.addStretch(1)
     tab_row.addWidget(_btn_reimag)
     tab_row.addWidget(_btn_dbphase)
@@ -914,58 +942,8 @@ def build_standard_screen(wizard, descriptor, step_def):
     _canvas_rf = _CanvasResizeFilter(canvas)
     canvas.installEventFilter(_canvas_rf)
 
-    # ── Qt checkboxes overlaid on canvas (reference liquid steps only) ──── #
-    _CHK_STYLE = (
-        "QCheckBox { background-color: rgba(255,255,255,190); color: #444444;"
-        " padding: 2px 6px; border-radius: 3px; font-size: 9px; }"
-        "QCheckBox::indicator { width: 12px; height: 12px; }"
-    )
-    _chk_indicative_qt = None
-    _chk_raw_qt = None
+    # ── Checkbox signal connections (reference liquid steps only) ────────── #
     if is_reference:
-        _chk_indicative_qt = QCheckBox(
-            std_texts.get("show_indicative", "Show ideal reference"), canvas
-        )
-        _chk_indicative_qt.setChecked(False)
-        _chk_indicative_qt.setStyleSheet(_CHK_STYLE)
-        _chk_indicative_qt.setToolTip("Show theoretical S11 for the reference liquid")
-        _chk_indicative_qt.raise_()
-
-        _chk_raw_qt = QCheckBox(
-            std_texts.get("show_raw", "Show without pre-cal"), canvas
-        )
-        _chk_raw_qt.setChecked(False)
-        _chk_raw_qt.setStyleSheet(_CHK_STYLE)
-        _chk_raw_qt.setVisible(False)
-        _chk_raw_qt.raise_()
-        state["raw_chk_qt"] = _chk_raw_qt
-
-        def _position_chk_boxes():
-            try:
-                ch = _chk_indicative_qt.sizeHint().height() + 2
-                y1 = canvas.height() - ch - 6
-                y2 = y1 - ch - 2
-                _chk_indicative_qt.adjustSize()
-                _chk_raw_qt.adjustSize()
-                _chk_indicative_qt.move(6, y1)
-                _chk_raw_qt.move(6, y2)
-            except RuntimeError:
-                pass
-
-        QTimer.singleShot(400, _position_chk_boxes)
-
-        class _ChkResizeFilter(QObject):
-            def eventFilter(self_, obj, event):
-                if event.type() == QEvent.Type.Resize:
-                    try:
-                        _position_chk_boxes()
-                    except RuntimeError:
-                        pass
-                return False
-
-        _chk_rf = _ChkResizeFilter(canvas)
-        canvas.installEventFilter(_chk_rf)
-
         if standard.key in getattr(wizard, "_precal_originals", {}):
             _chk_raw_qt.setVisible(True)
 
