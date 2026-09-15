@@ -507,21 +507,28 @@ class NanoVNAGraphics(QMainWindow):
         return datetime.now().strftime("%Y%m%d_%H%M%S")
     
     def return_to_menu_window(self):
-
         from NanoVNA_UTN_Toolkit.modules.menu_window import ModuleSelectionWindow
+        from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import stop_realtime
+        try:
+            stop_realtime(self)
+        except Exception:
+            pass
 
         if self.vna_device:
-            self.menu_windows = (
-                ModuleSelectionWindow(vna_device=self.vna_device)
-            )
+            self.menu_windows = ModuleSelectionWindow(vna_device=self.vna_device)
         else:
-            self.menu_windows = (
-                ModuleSelectionWindow()
-            )
+            self.menu_windows = ModuleSelectionWindow()
 
         self.menu_windows.show()
-
         self.close()
+
+    def closeEvent(self, event):
+        from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import stop_realtime
+        try:
+            stop_realtime(self)
+        except Exception:
+            pass
+        super().closeEvent(event)
 
     def reload_graphics_resources(self):
 

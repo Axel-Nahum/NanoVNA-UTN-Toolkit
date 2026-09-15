@@ -32,12 +32,6 @@ def build_menu(main_window) -> None:
     # ------------------------------------------------------------------ #
     file_menu = menubar.addMenu(menu.get("file", "File"))
 
-    back_action = QAction(menu.get("back_to_menu", "Back to menu"), main_window)
-    back_action.triggered.connect(main_window.return_to_menu_window)
-    file_menu.addAction(back_action)
-
-    file_menu.addSeparator()
-
     export_s11_action = QAction(menu.get("export_s11_touchstone", "Export Touchstone S11…"), main_window)
     export_s11_action.triggered.connect(main_window._export_s11_touchstone)
     file_menu.addAction(export_s11_action)
@@ -51,6 +45,12 @@ def build_menu(main_window) -> None:
     pref_action = QAction("⚙  Preferences…", main_window)
     pref_action.triggered.connect(lambda: open_preferences_dialog(main_window))
     file_menu.addAction(pref_action)
+
+    file_menu.addSeparator()
+
+    back_action = QAction(menu.get("back_to_menu", "Back to menu"), main_window)
+    back_action.triggered.connect(main_window.return_to_menu_window)
+    file_menu.addAction(back_action)
 
     # ------------------------------------------------------------------ #
     # Plots

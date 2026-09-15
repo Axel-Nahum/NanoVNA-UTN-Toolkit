@@ -1292,6 +1292,11 @@ class MeasurementMainWindow(QMainWindow):
         export_s11_touchstone(self)
 
     def return_to_menu_window(self):
+        try:
+            import matplotlib.pyplot as plt
+            plt.close("all")
+        except Exception:
+            pass
         if self.vna:
             self.menu_windows = ModuleSelectionWindow(vna_device=self.vna)
         else:
