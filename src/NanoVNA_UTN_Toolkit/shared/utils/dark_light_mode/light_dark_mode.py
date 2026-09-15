@@ -3,7 +3,6 @@ import sys
 import logging
 from turtle import color
 
-logging.basicConfig(level=logging.INFO)
 
 from pathlib import Path
 
