@@ -701,6 +701,9 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
     selector.currentIndexChanged.connect(render)
     render(selector.currentIndex())
 
+    # --- Gn(f) quality chart ---
+    _build_gn_chart(layout, result, rtexts)
+
     # --- Branch override ---
     if manager is None or ax is None or canvas is None:
         return
@@ -775,6 +778,64 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
     )
     if cc_chk is not None:
         cc_chk.toggled.connect(lambda _c: _redraw())
+
+
+def _build_gn_chart(layout, result, rtexts):
+    """Mini Gn(f) chart — calibration quality diagnostic for the full method."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+
+    gn = result.gn
+    f_mhz = result.f_hz / 1e6
+    gn_abs = np.abs(gn)
+
+    layout.addSpacing(8)
+    hdr_row = QHBoxLayout()
+    title_lbl = QLabel(rtexts.get("gn_title", "Calibration quality — |Gn(f)|"))
+    title_lbl.setStyleSheet("font-weight: bold; font-size: 12px;")
+    hdr_row.addWidget(title_lbl)
+    hdr_row.addStretch()
+    hint_lbl = QLabel(rtexts.get(
+        "gn_hint",
+        "Smooth curve → good calibration.  Peaks → suspect standard (typically ref2).",
+    ))
+    hint_lbl.setStyleSheet("font-size: 10px; color: #888888;")
+    hint_lbl.setWordWrap(True)
+    layout.addLayout(hdr_row)
+    layout.addWidget(hint_lbl)
+
+    fig, ax_gn = plt.subplots(figsize=(4.0, 1.2))
+    fig.patch.set_facecolor("#1a1a2e")
+    ax_gn.set_facecolor("#12122a")
+
+    valid = np.isfinite(gn_abs)
+    if np.any(valid):
+        ax_gn.plot(f_mhz[valid], gn_abs[valid], color="#7ab3f5", linewidth=1.2)
+
+        # Smoothness threshold: warn if any point exceeds 3× median
+        median_gn = float(np.nanmedian(gn_abs[valid]))
+        threshold = 3.0 * median_gn
+        peaks = valid & (gn_abs > threshold)
+        if np.any(peaks):
+            ax_gn.scatter(f_mhz[peaks], gn_abs[peaks], color="#e05050",
+                          s=12, zorder=5, label=rtexts.get("gn_peak_label", "peak"))
+            ax_gn.axhline(threshold, color="#e05050", linewidth=0.7,
+                          linestyle="--", alpha=0.6)
+
+    ax_gn.set_xlabel("f (MHz)", fontsize=6, color="#aaaaaa")
+    ax_gn.set_ylabel("|Gn|", fontsize=6, color="#aaaaaa")
+    ax_gn.tick_params(colors="#888888", labelsize=5)
+    for spine in ax_gn.spines.values():
+        spine.set_edgecolor("#333355")
+    fig.tight_layout(pad=0.2)
+    fig.subplots_adjust(left=0.10, right=0.98, top=0.95, bottom=0.22)
+
+    canvas_gn = FigureCanvas(fig)
+    canvas_gn.setFixedHeight(150)
+    layout.addWidget(canvas_gn)
+    plt.close(fig)
 
 
 def _format_equation(result, i, rtexts):
