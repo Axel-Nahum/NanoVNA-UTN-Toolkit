@@ -583,6 +583,14 @@ class PermittivityPdfPreviewDialog(QDialog):
         self.notes_edit.setStyleSheet(
             "QTextEdit { background-color: #1e1e2e; color: #e0e0f0;"
             " border: none; border-radius: 0px; padding: 8px; }"
+            "QScrollBar:vertical { background: #1e1e2e; width: 8px; margin: 0; }"
+            "QScrollBar::handle:vertical { background: #44446a; border-radius: 4px; min-height: 20px; }"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
+            "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }"
+            "QScrollBar:horizontal { background: #1e1e2e; height: 8px; margin: 0; }"
+            "QScrollBar::handle:horizontal { background: #44446a; border-radius: 4px; min-width: 20px; }"
+            "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }"
+            "QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background: none; }"
         )
         from PySide6.QtGui import QFont as _QFont
         _default_font = _QFont()

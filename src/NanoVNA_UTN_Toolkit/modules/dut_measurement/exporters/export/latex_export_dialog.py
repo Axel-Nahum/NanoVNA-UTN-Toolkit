@@ -236,7 +236,7 @@ class LaTeXExportDialog(QDialog):
         
         # Details text area
         self.details_text = QTextEdit()
-        self.details_text.setMaximumHeight(100)
+        self.details_text.setMaximumHeight(52)
         self.details_text.setReadOnly(True)
         self.details_text.setText(f"{self.pdf_export_scanning_system}")
         layout.addWidget(self.details_text)
