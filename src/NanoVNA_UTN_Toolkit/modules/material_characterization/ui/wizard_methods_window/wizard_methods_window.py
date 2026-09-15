@@ -247,6 +247,8 @@ class CharacterizationWizard(QMainWindow):
 
                 self.clear_layout(item.layout())
 
+        layout.deleteLater()
+
 # ------------------------------------------------------------------------------------------------------------------- #
 
     def go_to_next_step(self):
