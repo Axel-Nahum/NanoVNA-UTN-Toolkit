@@ -1331,6 +1331,32 @@ def _do_save_measurement(wizard, descriptor, standard, std_texts):
                           "No measurement to save. Measure or import first."))
         return
 
+    # M7: warn if data comes from a preset tagged with a different liquid
+    if standard.kind is StandardKind.REFERENCE_LIQUID:
+        _step_liq = selected_liquid_key(wizard, standard) or ""
+        _src = wizard.perm_calibration.get_source(standard.key) or ""
+        if _src.startswith("preset:"):
+            _preset_name_src = _src[len("preset:"):]
+            try:
+                _, _, _src_meta = preset_store.load_preset(_preset_name_src)
+                _src_liq = getattr(_src_meta, "liquid_key", "") or ""
+                if _src_liq and _step_liq and _src_liq != _step_liq:
+                    answer = QMessageBox.warning(
+                        wizard,
+                        std_texts.get("preset_liquid_mismatch_title", "Liquid mismatch"),
+                        std_texts.get(
+                            "preset_liquid_mismatch_msg",
+                            "The loaded data comes from a \"{src}\" preset, "
+                            "but this step is configured for \"{step}\".\n\n"
+                            "The saved preset will be tagged as \"{step}\". Continue?"
+                        ).format(src=_src_liq, step=_step_liq),
+                        QMessageBox.Yes | QMessageBox.No,
+                    )
+                    if answer != QMessageBox.Yes:
+                        return
+            except Exception:
+                pass
+
     preset_name, ok = QInputDialog.getText(
         wizard,
         std_texts.get("preset_save_title", "Save preset"),
