@@ -113,7 +113,7 @@ def build_config_screen(wizard, descriptor, step_def):
     left_half_layout.addWidget(build_step_sidebar(wizard, descriptor, texts), stretch=0)
 
     root = QVBoxLayout()
-    root.setSpacing(14)
+    root.setSpacing(20)
 
     # --- Connected device info ------------------------------------------- #
     if dev_name:
