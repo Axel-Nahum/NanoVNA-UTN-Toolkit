@@ -49,7 +49,7 @@
     "cal_save_kit": "Save Calibration…",
     "cal_delete_kit": "Delete Calibration…",
     "help": "Help",
-    "about_en": "About (EN)",
-    "about_es": "About (ES)"
+    "about_en": "Documentation (English)",
+    "about_es": "Documentation (Español)"
   }
 }

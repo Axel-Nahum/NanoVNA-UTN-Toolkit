@@ -130,8 +130,8 @@
     },
     "help_menu": {
       "report": "Report",
-      "import Touchstone_dut": "About [EN]",
-      "export_PDF": "About [ES]"
+      "about_en": "Documentation (English)",
+      "about_es": "Documentation (Español)"
     }
   }
 }

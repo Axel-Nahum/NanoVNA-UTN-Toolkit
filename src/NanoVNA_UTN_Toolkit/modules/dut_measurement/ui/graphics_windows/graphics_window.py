@@ -86,6 +86,7 @@ open_signal_filters = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.u
 open_sweep_options = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.sweep_menu.sweep_menu", "open_sweep_options")
 
 show_about_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu", "show_about_dialog")
+show_app_about = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu", "show_app_about")
 
 handle_contextMenuEvent = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.context_menu", "handle_contextMenuEvent")
 
@@ -320,6 +321,11 @@ class NanoVNAGraphics(QMainWindow):
         signal_filter.triggered.connect(lambda: open_signal_filters(self))
 
         # --- Help menu actions ---
+
+        if show_app_about:
+            app_about_action = help_menu.addAction("About NanoVNA UTN Toolkit")
+            app_about_action.triggered.connect(lambda: show_app_about(self))
+            help_menu.addSeparator()
 
         about_en_action = help_menu.addAction(f"{self.measurement_menu_about_en}")
         about_en_action.triggered.connect(lambda: show_about_dialog(self, 'en'))

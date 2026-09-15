@@ -19,6 +19,10 @@ show_about_dialog = safe_import(
     "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu",
     "show_about_dialog",
 )
+show_app_about = safe_import(
+    "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu",
+    "show_app_about",
+)
 
 
 
@@ -103,11 +107,17 @@ def build_menu(main_window) -> None:
     # ------------------------------------------------------------------ #
     help_menu = menubar.addMenu(menu.get("help", "Help"))
 
+    if show_app_about:
+        app_about_action = QAction("About NanoVNA UTN Toolkit", main_window)
+        app_about_action.triggered.connect(lambda: show_app_about(main_window))
+        help_menu.addAction(app_about_action)
+        help_menu.addSeparator()
+
     if show_about_dialog:
-        about_en = QAction(menu.get("about_en", "About (EN)"), main_window)
+        about_en = QAction(menu.get("about_en", "Documentation (English)"), main_window)
         about_en.triggered.connect(lambda: show_about_dialog(main_window, "en"))
         help_menu.addAction(about_en)
 
-        about_es = QAction(menu.get("about_es", "About (ES)"), main_window)
+        about_es = QAction(menu.get("about_es", "Documentation (Español)"), main_window)
         about_es.triggered.connect(lambda: show_about_dialog(main_window, "es"))
         help_menu.addAction(about_es)

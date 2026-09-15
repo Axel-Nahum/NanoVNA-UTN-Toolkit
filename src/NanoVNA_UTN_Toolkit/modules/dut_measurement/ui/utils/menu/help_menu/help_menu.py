@@ -197,6 +197,67 @@ def open_report_url(self):
             "to report bugs or request features."
         )
 
+def show_app_about(parent=None):
+    """Small About dialog showing app name, version and copyright."""
+    from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
+    from PySide6.QtCore import Qt
+
+    dlg = QDialog(parent)
+    dlg.setWindowTitle("About NanoVNA UTN Toolkit")
+    dlg.setModal(True)
+    dlg.setFixedSize(340, 200)
+
+    is_dark = True
+    if parent is not None:
+        is_dark = parent.palette().window().color().lightness() < 128
+
+    if is_dark:
+        bg, fg, sub, btn_fg, btn_bd = "#1a1a2e", "#e8e8f0", "#8888aa", "#7ab3f5", "#2d5a8e"
+    else:
+        bg, fg, sub, btn_fg, btn_bd = "#f4f6fb", "#1a1a2e", "#556080", "#1a3a5c", "#9bbcd8"
+
+    dlg.setStyleSheet(f"QDialog {{ background: {bg}; }}")
+
+    layout = QVBoxLayout(dlg)
+    layout.setContentsMargins(28, 24, 28, 20)
+    layout.setSpacing(6)
+
+    title = QLabel("NanoVNA UTN Toolkit")
+    title.setAlignment(Qt.AlignCenter)
+    title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {fg}; background: transparent;")
+    layout.addWidget(title)
+
+    version = QLabel("Version 2.3.1")
+    version.setAlignment(Qt.AlignCenter)
+    version.setStyleSheet(f"font-size: 13px; color: {sub}; background: transparent;")
+    layout.addWidget(version)
+
+    layout.addSpacing(8)
+
+    copy_lbl = QLabel("© UTN FRBA")
+    copy_lbl.setAlignment(Qt.AlignCenter)
+    copy_lbl.setStyleSheet(f"font-size: 12px; color: {sub}; background: transparent;")
+    layout.addWidget(copy_lbl)
+
+    layout.addStretch()
+
+    btn_row = QHBoxLayout()
+    btn_row.addStretch()
+    close_btn = QPushButton("OK")
+    close_btn.setFixedWidth(90)
+    close_btn.setStyleSheet(
+        f"QPushButton {{ color: {btn_fg}; border: 1px solid {btn_bd};"
+        f" border-radius: 4px; padding: 5px 12px; background: transparent; }}"
+        f" QPushButton:hover {{ background: {btn_bd}33; }}"
+    )
+    close_btn.clicked.connect(dlg.accept)
+    btn_row.addWidget(close_btn)
+    btn_row.addStretch()
+    layout.addLayout(btn_row)
+
+    dlg.exec()
+
+
 def show_about_dialog(self, language='en'):
     """
     Show the About dialog with the project README.

@@ -289,8 +289,8 @@ class DutResourceLoader:
         # ---------------------------------------------------------------- #
 
         self.window.measurement_menu_report = help_menu.get("report", "")
-        self.window.measurement_menu_about_en = help_menu.get("import Touchstone_dut", "")
-        self.window.measurement_menu_about_es = help_menu.get("export_PDF", "")
+        self.window.measurement_menu_about_en = help_menu.get("about_en", "Documentation (English)")
+        self.window.measurement_menu_about_es = help_menu.get("about_es", "Documentation (Español)")
 
     def load_view_edit_ui_resources(self):
 
