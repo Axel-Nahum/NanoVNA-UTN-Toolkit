@@ -239,7 +239,7 @@ def show_app_about(parent=None):
     copy_lbl.setStyleSheet(f"font-size: 12px; color: {sub}; background: transparent;")
     layout.addWidget(copy_lbl)
 
-    layout.addStretch()
+    layout.addSpacing(10)
 
     btn_row = QHBoxLayout()
     btn_row.addStretch()

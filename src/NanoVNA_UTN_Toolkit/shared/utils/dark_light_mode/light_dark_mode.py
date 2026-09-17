@@ -719,11 +719,60 @@ def dark_light_config(self):
 
         /* QSpinBox */
         QSpinBox {{
-            color: black;
-            background-color: white;
-            border: 1px solid gray;
-            border-radius: 2px;
-            padding: 0px 2px;
+            background-color: {spinbox_bg};
+            color: {spinbox_color};
+            border: {spinbox_border};
+            border-radius: {spinbox_border_radius};
+            padding: 4px;
+            min-height: 20px;
+        }}
+
+        QSpinBox:hover {{
+            background-color: {spinbox_bg};
+        }}
+
+        QSpinBox:focus {{
+            background-color: {spinbox_bg};
+            border: {spinbox_border};
+        }}
+
+        QSpinBox::up-button {{
+            background-color: {spinbox_bg};
+            border: {spinbox_border};
+            border-radius: 3px;
+            width: 18px;
+            min-height: 12px;
+        }}
+
+        QSpinBox::down-button {{
+            background-color: {spinbox_bg};
+            border: {spinbox_border};
+            border-radius: 3px;
+            width: 18px;
+            min-height: 12px;
+        }}
+
+        QSpinBox::up-button:hover,
+        QSpinBox::down-button:hover {{
+            background-color: {pushbutton_hover_bg};
+        }}
+
+        QSpinBox::up-arrow {{
+            image: none;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-bottom: 6px solid {spinbox_color};
+            width: 0px;
+            height: 0px;
+        }}
+
+        QSpinBox::down-arrow {{
+            image: none;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+            border-top: 6px solid {spinbox_color};
+            width: 0px;
+            height: 0px;
         }}
         
 
@@ -769,20 +818,44 @@ def dark_light_config(self):
 
         QDoubleSpinBox::up-arrow {{
             image: none;
-            border-left: 2px solid transparent;
-            border-right: 2px solid transparent;
-            border-bottom: 3px solid {spinbox_color};
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-bottom: 5px solid {spinbox_color};
             width: 0px;
             height: 0px;
         }}
 
         QDoubleSpinBox::down-arrow {{
             image: none;
-            border-left: 2px solid transparent;
-            border-right: 2px solid transparent;
-            border-top: 3px solid {spinbox_color};
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            border-top: 5px solid {spinbox_color};
             width: 0px;
             height: 0px;
+        }}
+
+        /* Spinbox container (QFrame wrapping any spinbox + arrow buttons) */
+        QFrame#spinboxContainer {{
+            background-color: {spinbox_bg};
+            border: {spinbox_border};
+            border-radius: {spinbox_border_radius};
+        }}
+
+        QPushButton#spinboxUpBtn, QPushButton#spinboxDownBtn {{
+            border: {spinbox_border};
+            background-color: {spinbox_bg};
+            color: {spinbox_color};
+            font-size: 6px;
+            padding: 0px;
+            min-width: 18px;
+            max-width: 18px;
+            min-height: 11px;
+            max-height: 12px;
+            border-radius: 3px;
+        }}
+
+        QPushButton#spinboxUpBtn:hover, QPushButton#spinboxDownBtn:hover {{
+            background-color: {pushbutton_hover_bg};
         }}
 
         /* QComboBox */

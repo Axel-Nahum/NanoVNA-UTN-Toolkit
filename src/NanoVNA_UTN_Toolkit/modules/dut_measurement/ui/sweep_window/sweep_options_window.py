@@ -6,12 +6,13 @@ from NanoVNA_UTN_Toolkit.utils import safe_import
 import os
 import sys
 import logging
-from PySide6.QtCore import QSettings
+from PySide6.QtCore import QSettings, Qt
 from PySide6.QtWidgets import (
     QLabel, QMainWindow, QVBoxLayout, QWidget,
-    QPushButton, QHBoxLayout, QGroupBox, 
+    QPushButton, QHBoxLayout, QGroupBox,
     QSpinBox, QDoubleSpinBox, QFormLayout,
-    QApplication, QMessageBox, QComboBox, QToolTip
+    QApplication, QMessageBox, QComboBox, QToolTip,
+    QAbstractButton, QFrame,
 )
 from PySide6.QtGui import QIcon, QValidator
 
@@ -364,58 +365,112 @@ class SweepOptionsWindow(QMainWindow):
         
         # Start Frequency with unit selector
         start_freq_layout = QHBoxLayout()
+
+        start_container = QFrame()
+        start_container.setObjectName("spinboxContainer")
+        start_cl = QHBoxLayout(start_container)
+        start_cl.setContentsMargins(4, 0, 0, 0)
+        start_cl.setSpacing(0)
+
         self.start_freq_edit = QDoubleSpinBox()
-        self.start_freq_edit.setRange(50, 1500000000) 
+        self.start_freq_edit.setRange(50, 1500000000)
         self.start_freq_edit.setDecimals(3)
+        self.start_freq_edit.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.start_freq_edit.setStyleSheet("QDoubleSpinBox { border: none; background: transparent; }")
         self.start_freq_edit.valueChanged.connect(self.on_frequency_changed)
-    
+
+        s_up = QPushButton("▲"); s_up.setObjectName("spinboxUpBtn"); s_up.setFixedSize(18, 12); s_up.clicked.connect(self.start_freq_edit.stepUp)
+        s_dn = QPushButton("▼"); s_dn.setObjectName("spinboxDownBtn"); s_dn.setFixedSize(18, 12); s_dn.clicked.connect(self.start_freq_edit.stepDown)
+        s_col = QVBoxLayout(); s_col.setSpacing(1); s_col.setContentsMargins(3,0,0,0); s_col.addWidget(s_up); s_col.addWidget(s_dn)
+
+        start_cl.addWidget(self.start_freq_edit, 1)
+        start_cl.addLayout(s_col)
+
         self.start_freq_unit = QComboBox()
         self.start_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
         self.start_freq_unit.setCurrentText("kHz")
         self.start_freq_unit.currentTextChanged.connect(self.on_frequency_changed)
-
         self.start_freq_unit.currentTextChanged.connect(
             lambda unit: self.update_spinbox_range(self.start_freq_edit, unit)
         )
-
         self.update_spinbox_range(self.start_freq_edit, self.start_freq_unit.currentText())
 
-        start_freq_layout.addWidget(self.start_freq_edit)
-        start_freq_layout.addWidget(self.start_freq_unit)
+        start_freq_layout.addWidget(start_container, 1)
+        start_freq_layout.addWidget(self.start_freq_unit, 1)
         freq_layout.addRow("Start Frequency:", start_freq_layout)
-        
+
         # Stop Frequency with unit selector and max frequency validation
         stop_freq_layout = QHBoxLayout()
+
+        stop_container = QFrame()
+        stop_container.setObjectName("spinboxContainer")
+        stop_cl = QHBoxLayout(stop_container)
+        stop_cl.setContentsMargins(4, 0, 0, 0)
+        stop_cl.setSpacing(0)
+
         self.stop_freq_edit = QDoubleSpinBox()
-        self.stop_freq_edit.setRange(50, 1500000000) 
+        self.stop_freq_edit.setRange(50, 1500000000)
         self.stop_freq_edit.setDecimals(3)
+        self.stop_freq_edit.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+        self.stop_freq_edit.setStyleSheet("QDoubleSpinBox { border: none; background: transparent; }")
         self.stop_freq_edit.valueChanged.connect(self.on_frequency_changed)
+
+        e_up = QPushButton("▲"); e_up.setObjectName("spinboxUpBtn"); e_up.setFixedSize(18, 12); e_up.clicked.connect(self.stop_freq_edit.stepUp)
+        e_dn = QPushButton("▼"); e_dn.setObjectName("spinboxDownBtn"); e_dn.setFixedSize(18, 12); e_dn.clicked.connect(self.stop_freq_edit.stepDown)
+        e_col = QVBoxLayout(); e_col.setSpacing(1); e_col.setContentsMargins(3,0,0,0); e_col.addWidget(e_up); e_col.addWidget(e_dn)
+
+        stop_cl.addWidget(self.stop_freq_edit, 1)
+        stop_cl.addLayout(e_col)
 
         self.stop_freq_unit = QComboBox()
         self.stop_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
         self.stop_freq_unit.setCurrentText("GHz")
         self.stop_freq_unit.currentTextChanged.connect(self.on_frequency_changed)
-
         self.stop_freq_unit.currentTextChanged.connect(
             lambda unit: self.update_spinbox_range(self.stop_freq_edit, unit)
         )
-
         self.update_spinbox_range(self.stop_freq_edit, self.stop_freq_unit.currentText())
-        
-        stop_freq_layout.addWidget(self.stop_freq_edit)
-        stop_freq_layout.addWidget(self.stop_freq_unit)
+
+        stop_freq_layout.addWidget(stop_container, 1)
+        stop_freq_layout.addWidget(self.stop_freq_unit, 1)
         freq_layout.addRow("Stop Frequency:", stop_freq_layout)
         
         # Steps (now just called "Steps") with device limits
         steps_layout = QVBoxLayout()
-        
-        # Steps input with limits from device
-        steps_input_layout = QHBoxLayout()
+
+        # Container styled like an input field — spinbox + arrow buttons inside
+        steps_container = QFrame()
+        steps_container.setObjectName("spinboxContainer")
+        container_layout = QHBoxLayout(steps_container)
+        container_layout.setContentsMargins(4, 0, 0, 0)
+        container_layout.setSpacing(0)
+
         self.segments_spinbox = SmartDatapointsSpinBox()
         self.segments_spinbox.setRange(self.sweep_points_min, self.sweep_points_max)
         self.segments_spinbox.valueChanged.connect(self.on_segments_changed)
         self.segments_spinbox.setSuffix(" steps")
-        
+        self.segments_spinbox.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+        self.segments_spinbox.setStyleSheet("QSpinBox { border: none; background: transparent; }")
+
+        btn_up = QPushButton("▲")
+        btn_up.setObjectName("spinboxUpBtn")
+        btn_up.setFixedSize(18, 12)
+        btn_up.clicked.connect(self.segments_spinbox.stepUp)
+
+        btn_down = QPushButton("▼")
+        btn_down.setObjectName("spinboxDownBtn")
+        btn_down.setFixedSize(18, 12)
+        btn_down.clicked.connect(self.segments_spinbox.stepDown)
+
+        btn_col = QVBoxLayout()
+        btn_col.setSpacing(1)
+        btn_col.setContentsMargins(3, 0, 0, 0)
+        btn_col.addWidget(btn_up)
+        btn_col.addWidget(btn_down)
+
+        container_layout.addWidget(self.segments_spinbox, 1)
+        container_layout.addLayout(btn_col)
+
         # Configure the smart spinbox with device-specific valid datapoints
         if self.vna_device and hasattr(self.vna_device, 'valid_datapoints'):
             self.segments_spinbox.set_valid_datapoints(self.vna_device.valid_datapoints)
@@ -425,9 +480,8 @@ class SweepOptionsWindow(QMainWindow):
             default_points = [11, 51, 101, 201, 301, 501, 1023]
             self.segments_spinbox.set_valid_datapoints(default_points)
             logging.info(f"[sweep_options_window] Configured smart spinbox with default datapoints: {default_points}")
-        
-        steps_input_layout.addWidget(self.segments_spinbox)
-        steps_layout.addLayout(steps_input_layout)
+
+        steps_layout.addWidget(steps_container)
         
         # Device info label
         device_info_label = QLabel()
