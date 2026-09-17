@@ -196,6 +196,23 @@ Test
         return False
 
 
+_LATEX_AUX_EXTENSIONS = {
+    '.aux', '.log', '.out', '.toc', '.fls', '.fdb_latexmk',
+    '.synctex.gz', '.bbl', '.blg', '.lof', '.lot',
+}
+
+
+def _cleanup_latex_aux(folder: Path, stem: str):
+    """Delete LaTeX auxiliary files from folder, leaving only .tex and .pdf."""
+    for ext in _LATEX_AUX_EXTENSIONS:
+        p = folder / (stem + ext)
+        if p.exists():
+            try:
+                p.unlink()
+            except Exception:
+                pass
+
+
 class LatexExporter:
     """
     Exports NanoVNA measurement data to PDF using LaTeX.
@@ -640,6 +657,14 @@ class LatexExporter:
             vna_name: VNA device name
             specific_compiler_path: Full path to the LaTeX compiler to use
         """
+        # Create a named export folder so only .tex and .pdf are visible to the user
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        folder_name = f"NanoVNA_Report_{file_path.stem}_{ts}"
+        export_folder = file_path.parent / folder_name
+        export_folder.mkdir(parents=True, exist_ok=True)
+        file_path = export_folder / file_path.stem
+        self._last_export_folder = export_folder
+
         doc = Document(
             documentclass='article',
             document_options='12pt',
@@ -750,6 +775,8 @@ class LatexExporter:
                  f'-output-directory={out_dir}', tex_file],
                 capture_output=True,
             )
+            # Remove auxiliary files — keep only .tex and .pdf
+            _cleanup_latex_aux(export_folder, file_path.stem)
         finally:
             os.environ['PATH'] = original_path
     

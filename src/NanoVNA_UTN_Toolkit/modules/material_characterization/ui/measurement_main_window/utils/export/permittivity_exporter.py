@@ -420,6 +420,23 @@ def _freq_scale(freqs):
 
 # --------------------------------------------------------------------------- #
 
+_LATEX_AUX_EXTENSIONS = {
+    '.aux', '.log', '.out', '.toc', '.fls', '.fdb_latexmk',
+    '.synctex.gz', '.bbl', '.blg', '.lof', '.lot',
+}
+
+
+def _cleanup_latex_aux(folder: Path, stem: str):
+    """Delete LaTeX auxiliary files from folder, leaving only .tex and .pdf."""
+    for ext in _LATEX_AUX_EXTENSIONS:
+        p = folder / (stem + ext)
+        if p.exists():
+            try:
+                p.unlink()
+            except Exception:
+                pass
+
+
 class PermittivityExporter:
     """Exports characterization results (S11 Smith + permittivity) to PDF via LaTeX."""
 
@@ -665,6 +682,15 @@ class PermittivityExporter:
         except ImportError as exc:
             raise RuntimeError("pylatex is required for PDF export.") from exc
 
+        # Create a named export folder so only .tex and .pdf are visible to the user
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_name = (sample_name or "report").replace(" ", "_")[:25]
+        folder_name = f"Characterization_Report_{safe_name}_{ts}"
+        export_folder = file_path.parent / folder_name
+        export_folder.mkdir(parents=True, exist_ok=True)
+        file_path = export_folder / file_path.stem
+        self._last_export_folder = export_folder
+
         doc = Document(
             documentclass="article",
             document_options="12pt",
@@ -767,6 +793,9 @@ class PermittivityExporter:
                                if l.startswith("!") or l.startswith("l.")]
                 _log.error("[PDF] pdflatex errors:\n%s", "\n".join(error_lines) or output[-2000:])
                 raise subprocess.CalledProcessError(result.returncode, cmd)
+
+            # Remove auxiliary files — keep only .tex and .pdf
+            _cleanup_latex_aux(export_folder, file_path.stem)
         finally:
             os.environ["PATH"] = original_path
 

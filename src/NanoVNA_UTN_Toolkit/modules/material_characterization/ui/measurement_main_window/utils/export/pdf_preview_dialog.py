@@ -1272,9 +1272,11 @@ class PermittivityPdfPreviewDialog(QDialog):
             busy.end()
             self._pdf_task = None
             if success:
+                export_folder = getattr(exporter, '_last_export_folder', None)
+                location = str(export_folder) if export_folder else output_path
                 QMessageBox.information(
                     self, "Export Complete",
-                    f"PDF successfully created at:\n{output_path}",
+                    f"PDF successfully created in:\n{location}",
                 )
                 self.accept()
             else:
