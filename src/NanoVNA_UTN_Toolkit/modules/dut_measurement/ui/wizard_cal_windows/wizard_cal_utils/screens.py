@@ -5,8 +5,8 @@ import sys
 from pathlib import Path
 
 from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QLabel, QComboBox, 
-    QMessageBox,QGroupBox, QFormLayout, QDoubleSpinBox, 
+    QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
+    QMessageBox, QGroupBox, QFormLayout, QDoubleSpinBox, QSpinBox,
     QWidget, QPushButton, QFrame, QStyledItemDelegate
 )
 from PySide6.QtGui import QColor
@@ -178,6 +178,7 @@ def show_first_screen(self):
         _sep_inner = "#2a2a3e"
         _secondary_color = "#999999"
         _muted_color = "#666666"
+        _sb_bg = "#252538"; _sb_border = "1px solid #383850"; _sb_color = "white"; _sb_btn_bg = "#363650"
         _spinbox_style = """
             QSpinBox, QDoubleSpinBox {
                 background-color: #252538;
@@ -215,6 +216,7 @@ def show_first_screen(self):
         _sep_inner = "#dcdcf0"
         _secondary_color = "#5a5a78"
         _muted_color = "#8888aa"
+        _sb_bg = "#f8f8ff"; _sb_border = "1px solid #c4c4d8"; _sb_color = "#1e1e2e"; _sb_btn_bg = "#e0e0f0"
         _spinbox_style = """
             QSpinBox, QDoubleSpinBox {
                 background-color: #f8f8ff;
@@ -399,18 +401,33 @@ def show_first_screen(self):
     sweep_layout.setVerticalSpacing(12)
     sweep_layout.setHorizontalSpacing(16)
 
+    _container_ss = f"QFrame {{ background-color: {_sb_bg}; border: {_sb_border}; border-radius: 8px; }}"
+    _inner_ss = "QDoubleSpinBox { border: none; background: transparent; color: %s; font-size: 12px; padding: 4px; }" % _sb_color
+    _inner_spin_ss = "QSpinBox { border: none; background: transparent; color: %s; font-size: 12px; padding: 4px; }" % _sb_color
+    _btn_ss = f"QPushButton {{ border: {_sb_border}; background-color: {_sb_btn_bg}; color: {_sb_color}; font-size: 6px; padding: 0px; min-width: 16px; max-width: 16px; min-height: 10px; max-height: 11px; border-radius: 3px; }} QPushButton:hover {{ background-color: {_sep_color}; }}"
+
+    def _sb_container(spinbox, inner_ss):
+        c = QFrame(); c.setStyleSheet(_container_ss)
+        cl = QHBoxLayout(c); cl.setContentsMargins(4, 0, 0, 0); cl.setSpacing(0)
+        spinbox.setStyleSheet(inner_ss)
+        u = QPushButton("▲"); u.setFixedSize(16, 11); u.setStyleSheet(_btn_ss); u.clicked.connect(spinbox.stepUp)
+        d = QPushButton("▼"); d.setFixedSize(16, 11); d.setStyleSheet(_btn_ss); d.clicked.connect(spinbox.stepDown)
+        col = QVBoxLayout(); col.setSpacing(1); col.setContentsMargins(3, 0, 0, 0); col.addWidget(u); col.addWidget(d)
+        cl.addWidget(spinbox, 1); cl.addLayout(col)
+        return c
+
     start_freq_layout = QHBoxLayout()
     start_freq_layout.setSpacing(10)
     self.start_freq_input = QDoubleSpinBox()
     self.start_freq_input.setDecimals(4)
-    self.start_freq_input.setStyleSheet(_spinbox_style)
+    self.start_freq_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
     self.start_freq_input.setValue(50)
-    start_freq_layout.addWidget(self.start_freq_input)
+    start_freq_layout.addWidget(_sb_container(self.start_freq_input, _inner_ss), 1)
     self.start_freq_unit = QComboBox()
     self.start_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
     self.start_freq_unit.setCurrentText("kHz")
     self.start_freq_unit.setItemDelegate(CenterDelegate(self.start_freq_unit))
-    start_freq_layout.addWidget(self.start_freq_unit)
+    start_freq_layout.addWidget(self.start_freq_unit, 1)
     label_start_freq = QLabel(f"{self.dut_wizard_ui_start_freq}")
     label_start_freq.setStyleSheet("border: none; background: transparent;")
     sweep_layout.addRow(label_start_freq, start_freq_layout)
@@ -419,14 +436,14 @@ def show_first_screen(self):
     stop_freq_layout.setSpacing(10)
     self.stop_freq_input = QDoubleSpinBox()
     self.stop_freq_input.setDecimals(4)
-    self.stop_freq_input.setStyleSheet(_spinbox_style)
+    self.stop_freq_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
     self.stop_freq_input.setValue(1.5)
-    stop_freq_layout.addWidget(self.stop_freq_input)
+    stop_freq_layout.addWidget(_sb_container(self.stop_freq_input, _inner_ss), 1)
     self.stop_freq_unit = QComboBox()
     self.stop_freq_unit.addItems(["Hz", "kHz", "MHz", "GHz"])
     self.stop_freq_unit.setCurrentText("GHz")
     self.stop_freq_unit.setItemDelegate(CenterDelegate(self.stop_freq_unit))
-    stop_freq_layout.addWidget(self.stop_freq_unit)
+    stop_freq_layout.addWidget(self.stop_freq_unit, 1)
     label_stop_freq = QLabel(f"{self.dut_wizard_ui_stop_freq}")
     label_stop_freq.setStyleSheet("border: none; background: transparent;")
     sweep_layout.addRow(label_stop_freq, stop_freq_layout)
@@ -435,10 +452,10 @@ def show_first_screen(self):
     self.steps_input.setMinimum(1)
     self.steps_input.setMaximum(32000)
     self.steps_input.setValue(101)
-    self.steps_input.setStyleSheet(_spinbox_style)
+    self.steps_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
     label_steps = QLabel(f"{self.dut_wizard_ui_steps}")
     label_steps.setStyleSheet("border: none; background: transparent;")
-    sweep_layout.addRow(label_steps, self.steps_input)
+    sweep_layout.addRow(label_steps, _sb_container(self.steps_input, _inner_spin_ss))
 
     update_spinbox_range(self, self.start_freq_input, self.start_freq_unit.currentText())
     update_spinbox_range(self, self.stop_freq_input, self.stop_freq_unit.currentText())
