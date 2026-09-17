@@ -39,8 +39,7 @@ def open_calibration_wizard(self):
         stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
 
         stop_realtime(self)
-        _trigger(self)
-        
+
         if self.vna_device:
             self.welcome_windows = CalibrationWizard(self.vna_device, parent = self, caller="graphics")
         else:
