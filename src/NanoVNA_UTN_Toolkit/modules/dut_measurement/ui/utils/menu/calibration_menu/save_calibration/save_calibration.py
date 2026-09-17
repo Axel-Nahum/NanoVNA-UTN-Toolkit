@@ -176,11 +176,22 @@ def save_kit_dialog(self):
             current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
             # --- Save data ---
+            sweep_settings = get_settings(
+                "INI/dut_measurement/sweep_config/sweep_config.ini",
+                "modules/dut_measurement/ui/sweep_window/sweep_config/sweep_config.ini",
+                Path(__file__).resolve()
+            )
+
             settings_calibration.beginGroup(calibration_entry_name)
             settings_calibration.setValue("kit_name", name)
             settings_calibration.setValue("method", selected_method)
             settings_calibration.setValue("id", next_id)
             settings_calibration.setValue("DateTime_Kits", current_datetime)
+            settings_calibration.setValue("StartFreqHz", sweep_settings.value("Frequency/StartFreqHz", 0, type=int))
+            settings_calibration.setValue("StopFreqHz", sweep_settings.value("Frequency/StopFreqHz", 0, type=int))
+            settings_calibration.setValue("Segments", sweep_settings.value("Frequency/Segments", 101, type=int))
+            settings_calibration.setValue("StartUnit", sweep_settings.value("Frequency/StartUnit", "MHz"))
+            settings_calibration.setValue("StopUnit", sweep_settings.value("Frequency/StopUnit", "MHz"))
             settings_calibration.endGroup()
 
             # --- Update active calibration reference ---

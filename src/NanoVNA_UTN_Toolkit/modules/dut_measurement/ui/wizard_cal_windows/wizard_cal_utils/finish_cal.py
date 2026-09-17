@@ -245,6 +245,8 @@ def finish_wizard(self, parent = None):
     settings.setValue("Frequency/StartFreqHz", get_sweep_start_frequency(self))
     settings.setValue("Frequency/StopFreqHz", get_sweep_stop_frequency(self))
     settings.setValue("Frequency/Segments", get_sweep_steps(self))
+    settings.setValue("Frequency/StartUnit", getattr(self, 'sweep_start_unit', 'MHz'))
+    settings.setValue("Frequency/StopUnit", getattr(self, 'sweep_stop_unit', 'MHz'))
     settings.sync()
 
     # Open graphics window

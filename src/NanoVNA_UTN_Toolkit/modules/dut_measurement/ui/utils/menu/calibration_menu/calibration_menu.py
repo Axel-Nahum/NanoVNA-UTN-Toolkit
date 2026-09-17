@@ -10,7 +10,7 @@ from PySide6.QtWidgets import (
     QLabel, QPushButton, QWidget, QScrollArea, QApplication
 )
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QIcon
 from PySide6 import QtCore
 
@@ -122,10 +122,11 @@ def select_kit_dialog(self):
                 item = QListWidgetItem(name)
                 item.setData(Qt.UserRole, g)
                 list_widget.addItem(item)
-                kits_info[name] = {"id": kit_id, "method": method, "DateTime_Kits": date_time_kits}
+                kits_info[name] = {"id": kit_id, "method": method, "DateTime_Kits": date_time_kits, "group": g}
 
     # --- Selected tag area (solo uno) ---
     selected_name = [None]  # lista de un elemento para mutabilidad
+    _should_reopen = [False]
     selected_area = QHBoxLayout()
     selected_container = QWidget()
     selected_container.setLayout(selected_area)
@@ -204,10 +205,33 @@ def select_kit_dialog(self):
         settings.endGroup()
         settings.sync()
 
-        dialog.accept()
+        # Restore kit's sweep range if it was stored with the kit
+        group = kit_info.get("group")
+        if group:
+            start_hz = settings.value(f"{group}/StartFreqHz", None, type=int)
+            stop_hz = settings.value(f"{group}/StopFreqHz", None, type=int)
+            segs = settings.value(f"{group}/Segments", None, type=int)
+            start_unit = settings.value(f"{group}/StartUnit", None)
+            stop_unit = settings.value(f"{group}/StopUnit", None)
 
-        # Solo actualizar el label, sin recrear la ventana
-        update_calibration_label_from_method(self)
+            if start_hz and stop_hz:
+                sweep_settings = get_settings(
+                    "INI/dut_measurement/sweep_config/sweep_config.ini",
+                    "modules/dut_measurement/ui/sweep_window/sweep_config/sweep_config.ini",
+                    Path(__file__).resolve()
+                )
+                sweep_settings.setValue("Frequency/StartFreqHz", start_hz)
+                sweep_settings.setValue("Frequency/StopFreqHz", stop_hz)
+                if segs:
+                    sweep_settings.setValue("Frequency/Segments", segs)
+                if start_unit:
+                    sweep_settings.setValue("Frequency/StartUnit", start_unit)
+                if stop_unit:
+                    sweep_settings.setValue("Frequency/StopUnit", stop_unit)
+                sweep_settings.sync()
+
+        _should_reopen[0] = True
+        dialog.accept()
         
     # --- Buttons ---
     btn_layout = QHBoxLayout()
@@ -220,9 +244,18 @@ def select_kit_dialog(self):
     # --- Connect signals ---
     list_widget.itemClicked.connect(add_selected)
     btn_cancel.clicked.connect(dialog.reject)
-    btn_select.clicked.connect(select_kit)  
+    btn_select.clicked.connect(select_kit)
 
     dialog.exec()
+
+    if _should_reopen[0]:
+        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_window import NanoVNAGraphics
+        if self.vna_device:
+            new_window = NanoVNAGraphics(vna_device=self.vna_device)
+        else:
+            new_window = NanoVNAGraphics()
+        new_window.show()
+        self.close()
 
 def handle_save_calibration(self):
 

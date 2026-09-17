@@ -198,11 +198,13 @@ def update_sweep_config(self):
         start_unit = self.start_freq_unit.currentText()
         multipliers = {"Hz": 1, "kHz": 1e3, "MHz": 1e6, "GHz": 1e9}
         self.sweep_start_freq = int(start_value * multipliers[start_unit])
-        
+        self.sweep_start_unit = start_unit
+
         # Calculate stop frequency in Hz
         stop_value = self.stop_freq_input.value()
         stop_unit = self.stop_freq_unit.currentText()
         self.sweep_stop_freq = int(stop_value * multipliers[stop_unit])
+        self.sweep_stop_unit = stop_unit
         
         # Get number of steps
         self.sweep_steps = self.steps_input.value()

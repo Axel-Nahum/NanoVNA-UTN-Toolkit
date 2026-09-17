@@ -60,10 +60,17 @@ class SweepWorker(QObject):
         self.stop_freq = stop_freq
         self.segments = segments
         self.parent = parent
+        self._abort = False
+
+    def abort(self):
+        self._abort = True
 
     def run(self):
         try:
             self.progress.emit(10)
+
+            if self._abort:
+                return
 
             if not self.vna_device:
                 raise RuntimeError("No VNA device")
@@ -75,9 +82,15 @@ class SweepWorker(QObject):
 
             self.progress.emit(25)
 
+            if self._abort:
+                return
+
             self.vna_device.resetSweep(self.start_freq, self.stop_freq)
 
             self.progress.emit(50)
+
+            if self._abort:
+                return
 
             self.vna_device.setSweep(self.start_freq, self.stop_freq)
 
@@ -85,10 +98,16 @@ class SweepWorker(QObject):
 
             self.progress.emit(75)
 
+            if self._abort:
+                return
+
             s11 = np.array(self.vna_device.readValues("data 0"))
             s21 = np.array(self.vna_device.readValues("data 1"))
 
             self.progress.emit(100)
+
+            if self._abort:
+                return
 
             self.finished.emit({
                 "freqs": freqs,
@@ -115,13 +134,22 @@ class _SweepController(QObject):
     def __init__(self, window):
         super().__init__()  # created on the GUI thread (run_sweep runs there)
         self._window = window
+        self._aborted = False
+
+    def abort(self):
+        self._aborted = True
+        self._window = None
 
     def on_finished(self, result):  # runs on the GUI thread
         log_thread_checkpoint("graphics_refresh: sweep finished handler (expected GUI)")
+        if self._aborted or self._window is None:
+            return
         on_sweep_finished(self._window, result)
 
     def on_error(self, msg):  # runs on the GUI thread
         log_thread_checkpoint("graphics_refresh: sweep error handler (expected GUI)")
+        if self._aborted or self._window is None:
+            return
         on_sweep_error(self._window, msg)
 
     def on_thread_finished(self):  # teardown point
@@ -203,6 +231,34 @@ def run_sweep(self):
     self.thread.finished.connect(self._sweep_controller.deleteLater)
     self.thread.start()
     log_thread_checkpoint("graphics_refresh.run_sweep: worker thread started", target_thread=self.thread)
+
+
+def stop_sweep(self):
+    controller = getattr(self, '_sweep_controller', None)
+    worker = getattr(self, 'worker', None)
+    thread = getattr(self, 'thread', None)
+
+    if controller:
+        try:
+            controller.abort()
+        except RuntimeError:
+            pass
+
+    if worker:
+        try:
+            worker.abort()
+        except RuntimeError:
+            pass
+
+    if thread is not None:
+        try:
+            thread.quit()
+        except RuntimeError:
+            pass
+
+    self.worker = None
+    self.thread = None
+    self._sweep_controller = None
 
 
 def on_sweep_finished(self, result):

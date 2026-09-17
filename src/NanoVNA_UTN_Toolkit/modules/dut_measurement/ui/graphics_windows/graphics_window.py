@@ -537,8 +537,13 @@ class NanoVNAGraphics(QMainWindow):
 
     def closeEvent(self, event):
         from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import stop_realtime
+        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh_thread import stop_sweep
         try:
             stop_realtime(self)
+        except Exception:
+            pass
+        try:
+            stop_sweep(self)
         except Exception:
             pass
         super().closeEvent(event)
