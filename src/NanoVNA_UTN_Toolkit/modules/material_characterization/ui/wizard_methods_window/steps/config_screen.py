@@ -29,7 +29,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QComboBox, QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
-    QFormLayout, QGroupBox, QPushButton, QVBoxLayout, QWidget,
+    QFormLayout, QGroupBox, QPushButton, QVBoxLayout, QWidget, QFrame,
 )
 
 from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_enabled
@@ -197,7 +197,7 @@ def build_config_screen(wizard, descriptor, step_def):
     wizard.temperature_input.setDecimals(1)
     wizard.temperature_input.setRange(-50.0, 200.0)
     wizard.temperature_input.setSuffix(" °C")
-    sample_form.addRow(cfg.get("temperature", "Measurement temperature:"), wizard.temperature_input)
+    sample_form.addRow(cfg.get("temperature", "Measurement temperature:"), _spinbox_container(wizard.temperature_input))
 
     temp_help = QLabel(cfg.get(
         "temperature_help",
@@ -474,12 +474,28 @@ def _fmt_hz(hz):
     return f"{hz:.0f} Hz"
 
 
+def _spinbox_container(spin):
+    """Wrap a spinbox in a themed QFrame with ▲▼ external buttons."""
+    spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+    spin.setStyleSheet(
+        "QDoubleSpinBox { border: none; background: transparent; }"
+        "QSpinBox { border: none; background: transparent; }"
+    )
+    c = QFrame(); c.setObjectName("spinboxContainer")
+    cl = QHBoxLayout(c); cl.setContentsMargins(4, 0, 0, 0); cl.setSpacing(0)
+    u = QPushButton("▲"); u.setObjectName("spinboxUpBtn"); u.setFixedSize(18, 12); u.clicked.connect(spin.stepUp)
+    d = QPushButton("▼"); d.setObjectName("spinboxDownBtn"); d.setFixedSize(18, 12); d.clicked.connect(spin.stepDown)
+    col = QVBoxLayout(); col.setSpacing(1); col.setContentsMargins(3, 0, 0, 0); col.addWidget(u); col.addWidget(d)
+    cl.addWidget(spin, 1); cl.addLayout(col)
+    return c
+
+
 def _freq_row(spin, unit_combo):
     row = QWidget()
     h = QHBoxLayout(row)
     h.setContentsMargins(0, 0, 0, 0)
-    h.addWidget(spin)
-    h.addWidget(unit_combo)
+    h.addWidget(_spinbox_container(spin), 1)
+    h.addWidget(unit_combo, 1)
     return row
 
 
