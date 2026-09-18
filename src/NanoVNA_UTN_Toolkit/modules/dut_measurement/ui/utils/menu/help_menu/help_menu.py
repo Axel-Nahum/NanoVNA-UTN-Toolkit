@@ -45,10 +45,7 @@ class AboutDialog(QDialog):
         self.text_widget = QTextEdit()
         self.text_widget.setReadOnly(True)
 
-        palette = self.text_widget.palette()
-        palette.setColor(QPalette.ColorRole.Link, QColor("#58a6ff"))
-        palette.setColor(QPalette.ColorRole.LinkVisited, QColor("#58a6ff"))
-        self.text_widget.setPalette(palette)
+        self.text_widget.document().setDefaultStyleSheet("a { color: #58a6ff !important; }")
         
         # Configure scrolling: vertical only, no horizontal scroll
         self.text_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
@@ -89,8 +86,6 @@ class AboutDialog(QDialog):
         """
         self.text_widget.setStyleSheet(css_style)
         
-        # Enable markdown rendering
-        self.text_widget.setMarkdown("")
         
         layout.addWidget(self.text_widget)
     
@@ -132,6 +127,7 @@ class AboutDialog(QDialog):
                 
                 # Process content to ensure code blocks wrap properly
                 processed_content = self._process_content_for_wrapping(readme_content)
+                self.text_widget.document().setDefaultStyleSheet("a { color: #58a6ff; }")
                 self.text_widget.setMarkdown(processed_content)
             else:
                 self.text_widget.setPlainText(fallback_text)
