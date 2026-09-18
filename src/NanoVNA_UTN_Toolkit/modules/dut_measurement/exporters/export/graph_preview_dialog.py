@@ -21,10 +21,10 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QPushButton, QMessageBox, QWidget,
     QCheckBox, QHBoxLayout, QLineEdit, QComboBox, QFrame, QStackedWidget,
-    QRadioButton, QButtonGroup, QTextEdit
+    QRadioButton, QButtonGroup, QTextEdit, QGridLayout
 )
 from PySide6.QtCore import Qt, QLocale
-from PySide6.QtGui import QDoubleValidator, QGuiApplication
+from PySide6.QtGui import QDoubleValidator, QGuiApplication, QTextListFormat, QTextBlockFormat
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.patches import FancyBboxPatch
@@ -49,6 +49,99 @@ from NanoVNA_UTN_Toolkit.shared.ui.pdf_export_widgets import (
     NoEnterButton,
     enable_drag_annotations as _enable_drag_annotations_shared,
 )
+
+
+_DASH_STYLE = "dash"
+
+_LIST_STYLES = [
+    ("•",  "Disc",        QTextListFormat.ListDisc),
+    ("◦",  "Circle",      QTextListFormat.ListCircle),
+    ("▪",  "Square",      QTextListFormat.ListSquare),
+    ("–",  "Dash",        _DASH_STYLE),
+    ("1.", "Numbered",    QTextListFormat.ListDecimal),
+    ("a.", "Lower alpha", QTextListFormat.ListLowerAlpha),
+    ("A.", "Upper alpha", QTextListFormat.ListUpperAlpha),
+    ("i.", "Lower roman", QTextListFormat.ListLowerRoman),
+    ("I.", "Upper roman", QTextListFormat.ListUpperRoman),
+]
+_LIST_COLS = 3
+
+
+class _NotesEdit(QTextEdit):
+    """QTextEdit with a custom placeholder that disappears when there is real content
+    (typed text OR an active list), and reappears when the editor is truly empty."""
+
+    def __init__(self, placeholder: str = "", parent=None):
+        super().__init__(parent)
+        self._placeholder = placeholder
+        self._saved_cursor = None
+
+    def focusOutEvent(self, event):
+        self._saved_cursor = self.textCursor()
+        super().focusOutEvent(event)
+
+    def _is_empty(self) -> bool:
+        doc = self.document()
+        block = doc.begin()
+        while block.isValid():
+            if block.textList():
+                return False
+            block = block.next()
+        return doc.toPlainText().strip() == ""
+
+    def keyPressEvent(self, event):
+        cursor = self.textCursor()
+        was_on_list = cursor.currentList() is not None
+        super().keyPressEvent(event)
+        if was_on_list and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            new_cursor = self.textCursor()
+            if new_cursor.currentList() is not None and not new_cursor.block().text():
+                new_cursor.insertText("  ")
+                self.viewport().update()
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        if not self._is_empty():
+            return
+        from PySide6.QtGui import QPainter, QColor
+        p = QPainter(self.viewport())
+        p.setPen(QColor("#8888aa"))
+        p.setFont(self.font())
+        offset = int(self.document().documentMargin())
+        p.drawText(
+            self.viewport().rect().adjusted(offset, offset, -offset, -offset),
+            Qt.AlignTop | Qt.AlignLeft | Qt.TextWordWrap,
+            self._placeholder,
+        )
+        p.end()
+
+
+class _ListPickerPopup(QFrame):
+    """3×3 grid popup for choosing bullet/list style."""
+    from PySide6.QtCore import Signal
+    styleChosen = Signal(object)
+
+    def __init__(self, parent=None):
+        super().__init__(parent, Qt.Popup | Qt.FramelessWindowHint)
+        self.setStyleSheet(
+            "QFrame { background-color: #2a2a3e; border: 1px solid #4a4a6a; border-radius: 6px; }"
+            " QPushButton { background: transparent; color: #ddddee; border: 1px solid transparent;"
+            " border-radius: 4px; font-size: 14px; min-width: 36px; max-width: 36px;"
+            " min-height: 32px; max-height: 32px; }"
+            " QPushButton:hover { background-color: #3a3a6a; border: 1px solid #6666aa; }"
+        )
+        grid = QGridLayout(self)
+        grid.setContentsMargins(6, 6, 6, 6)
+        grid.setSpacing(4)
+        for idx, (symbol, tooltip, style) in enumerate(_LIST_STYLES):
+            btn = QPushButton(symbol)
+            btn.setToolTip(tooltip)
+            btn.clicked.connect(lambda _=False, s=style: self._pick(s))
+            grid.addWidget(btn, idx // _LIST_COLS, idx % _LIST_COLS)
+
+    def _pick(self, style):
+        self.styleChosen.emit(style)
+        self.close()
 
 
 class GraphPreviewExportDialog(QDialog):
@@ -106,6 +199,22 @@ class GraphPreviewExportDialog(QDialog):
 
         self.setWindowTitle("Export Graph Preview")
         self.setModal(True)
+        _theme = get_settings(
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+            "shared/utils/dark_light_mode/dark_light_config.ini",
+            Path(__file__).resolve()
+        )
+        self._is_dark = not _theme.value("Dark_Light/is_dark_mode", False, type=bool)
+        if self._is_dark:
+            _cb_bg, _cb_border = "#252538", "1px solid #383850"
+        else:
+            _cb_bg, _cb_border = "#f8f8ff", "1px solid #c4c4d8"
+        self._cb_indicator_ss = (
+            " QCheckBox::indicator { width: 14px; height: 14px; }"
+            f" QCheckBox::indicator:unchecked {{ background-color: {_cb_bg}; border: {_cb_border}; border-radius: 3px; }}"
+            " QCheckBox::indicator:checked { background-color: #4d90fe; border: 1px solid #4d90fe; border-radius: 3px; }"
+            " QCheckBox::indicator:hover { border: 1px solid #6aa2ff; }"
+        )
         screen = QGuiApplication.primaryScreen()
         geometry = screen.availableGeometry()
         screen_height = geometry.height()
@@ -205,9 +314,9 @@ class GraphPreviewExportDialog(QDialog):
 
             # --- Marker checkboxes ---
             marker1 = QCheckBox(f"{self.pdf_preview_marker_1}")
-            marker1.setStyleSheet(f"color: {_marker_color1}; font-weight: bold; font-size: 12pt;")
+            marker1.setStyleSheet(f"QCheckBox {{ color: {_marker_color1}; font-weight: bold; font-size: 12pt; }} " + self._cb_indicator_ss)
             marker2 = QCheckBox(f"{self.pdf_preview_marker_2}")
-            marker2.setStyleSheet(f"color: {_marker_color2}; font-weight: bold; font-size: 12pt;")
+            marker2.setStyleSheet(f"QCheckBox {{ color: {_marker_color2}; font-weight: bold; font-size: 12pt; }} " + self._cb_indicator_ss)
             marker1.stateChanged.connect(lambda _, idx=i: self._update_markers(idx))
             marker2.stateChanged.connect(lambda _, idx=i: self._update_markers(idx))
             self.marker_checkboxes[i] = (marker1, marker2)
@@ -996,13 +1105,7 @@ class GraphPreviewExportDialog(QDialog):
         from PySide6.QtWidgets import QCheckBox as _QCB
         heading_chk = _QCB()
         heading_chk.setFocusPolicy(Qt.NoFocus)
-        heading_chk.setStyleSheet(
-            "QCheckBox { spacing: 0px; }"
-            " QCheckBox::indicator { width: 15px; height: 15px;"
-            " border: 1px solid #4a4a6a; border-radius: 3px; background: #1e1e2e; }"
-            " QCheckBox::indicator:checked { background: #3a3a6a; border-color: #6666aa; }"
-            " QCheckBox::indicator:hover { border-color: #6666aa; }"
-        )
+        heading_chk.setStyleSheet("QCheckBox { spacing: 0px; } " + self._cb_indicator_ss)
         tl.addSpacing(4)
         tl.addWidget(heading_chk)
         tl.addSpacing(5)
@@ -1051,8 +1154,9 @@ class GraphPreviewExportDialog(QDialog):
         btn_list.setStyleSheet(
             _btn_base + " QPushButton { font-size: 11px; max-width: 34px; min-width: 34px; }"
         )
-        btn_list.setToolTip("Bullet list")
+        btn_list.setToolTip("List style")
         tl.addWidget(btn_list)
+        _current_list_style = [QTextListFormat.ListDisc]
 
         tl.addSpacing(6)
         tl.addWidget(_vsep())
@@ -1085,8 +1189,7 @@ class GraphPreviewExportDialog(QDialog):
         editor_frame_l.addWidget(toolbar_w)
 
         # --- Editor ---
-        editor = QTextEdit()
-        editor.setPlaceholderText("Enter notes here…")
+        editor = _NotesEdit("Enter notes here…")
         editor.document().setIndentWidth(20)
         _theme = get_settings(
             "INI/dut_measurement/dark_light_config/dark_light_config.ini",
@@ -1221,16 +1324,40 @@ class GraphPreviewExportDialog(QDialog):
             cf.setFontUnderline(checked)
             editor.mergeCurrentCharFormat(cf)
 
-        def _apply_list(checked):
-            editor.setFocus()
-            cursor = editor.textCursor()
-            if checked:
-                lf = QTextListFormat()
-                lf.setStyle(QTextListFormat.Style.ListDisc)
-                cursor.createList(lf)
-            else:
+        def _on_list_btn_clicked(checked):
+            if not checked:
+                editor.textCursor().setBlockFormat(QTextBlockFormat())
+                editor.viewport().update()
+                editor.setFocus()
+                return
+            btn_list.setChecked(False)
+            picker = _ListPickerPopup(btn_list)
+            picker.styleChosen.connect(_on_list_style_chosen)
+            picker.move(btn_list.mapToGlobal(btn_list.rect().bottomLeft()))
+            picker.show()
+
+        def _on_list_style_chosen(style):
+            if style is None:
+                cursor = editor.textCursor()
                 cursor.setBlockFormat(QTextBlockFormat())
+            elif style == _DASH_STYLE:
+                cursor = editor.textCursor()
+                cursor.setBlockFormat(QTextBlockFormat())
+                if not cursor.block().text().startswith("– "):
+                    cursor.movePosition(cursor.MoveOperation.StartOfBlock)
+                    cursor.insertText("– ")
+                editor.setTextCursor(cursor)
+            else:
+                _current_list_style[0] = style
+                cursor = editor.textCursor()
+                fmt = QTextListFormat()
+                fmt.setStyle(style)
+                cursor.createList(fmt)
+                if not cursor.block().text():
+                    cursor.insertText("  ")
+            _sync_list_btn()
             editor.viewport().update()
+            editor.setFocus()
 
         def _apply_size(text):
             editor.setFocus()
@@ -1266,7 +1393,7 @@ class GraphPreviewExportDialog(QDialog):
         btn_bold.toggled.connect(_apply_bold)
         btn_italic.toggled.connect(_apply_italic)
         btn_under.toggled.connect(_apply_under)
-        btn_list.toggled.connect(_apply_list)
+        btn_list.toggled.connect(_on_list_btn_clicked)
         size_combo.currentTextChanged.connect(_apply_size)
         editor.currentCharFormatChanged.connect(lambda _: _sync())
         editor.cursorPositionChanged.connect(_sync_list_btn)

@@ -127,8 +127,9 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
         self.kalman_label = QLabel(
             f"Kalman Filter: {preset} - Q = {q:.3f} · R = {r:.3f}"
         )
-    self.kalman_label.setStyleSheet("font-size: 12px; margin-left: 12px;")
-    top_grid.addWidget(self.kalman_label, 1, 2, Qt.AlignVCenter)
+    self.kalman_label.setStyleSheet("font-size: 12px;")
+    self.kalman_label.setAlignment(Qt.AlignHCenter | Qt.AlignVCenter)
+    top_grid.addWidget(self.kalman_label, 1, 2, Qt.AlignHCenter | Qt.AlignVCenter)
 
     # columnas
     top_grid.setColumnMinimumWidth(0, 80)

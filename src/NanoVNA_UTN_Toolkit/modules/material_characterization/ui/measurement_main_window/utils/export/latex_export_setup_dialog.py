@@ -11,6 +11,8 @@ from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 from pathlib import Path
 
+get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
+
 import numpy as np
 from PySide6.QtWidgets import (
     QCheckBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -66,6 +68,19 @@ class PermittivityLatexSetupDialog(QDialog):
         self.setWindowTitle("Export PDF Report — Setup")
         self.setModal(True)
         self.setMinimumSize(500, 360)
+        _theme = get_settings(
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+            "shared/utils/dark_light_mode/dark_light_config.ini",
+            Path(__file__).resolve()
+        )
+        _is_dark = not _theme.value("Dark_Light/is_dark_mode", False, type=bool)
+        _cb_bg, _cb_border = ("#252538", "1px solid #383850") if _is_dark else ("#f8f8ff", "1px solid #c4c4d8")
+        self._cb_indicator_ss = (
+            " QCheckBox::indicator { width: 14px; height: 14px; }"
+            f" QCheckBox::indicator:unchecked {{ background-color: {_cb_bg}; border: {_cb_border}; border-radius: 3px; }}"
+            " QCheckBox::indicator:checked { background-color: #4d90fe; border: 1px solid #4d90fe; border-radius: 3px; }"
+            " QCheckBox::indicator:hover { border: 1px solid #6aa2ff; }"
+        )
 
         self.latex_available = False
         self.output_path = ""
@@ -146,16 +161,19 @@ class PermittivityLatexSetupDialog(QDialog):
 
         self.include_notes_chk = QCheckBox("Include notes / comments section")
         self.include_notes_chk.setChecked(False)
+        self.include_notes_chk.setStyleSheet(self._cb_indicator_ss)
         layout.addWidget(self.include_notes_chk)
 
         self.include_tables_chk = QCheckBox("Include value tables")
         self.include_tables_chk.setChecked(False)
+        self.include_tables_chk.setStyleSheet(self._cb_indicator_ss)
         layout.addWidget(self.include_tables_chk)
 
         self.include_steps_chk = QCheckBox(
             "Include calibration standard measurements (S11 chart + table per step)"
         )
         self.include_steps_chk.setChecked(False)
+        self.include_steps_chk.setStyleSheet(self._cb_indicator_ss)
         layout.addWidget(self.include_steps_chk)
 
         parent_layout.addWidget(group)

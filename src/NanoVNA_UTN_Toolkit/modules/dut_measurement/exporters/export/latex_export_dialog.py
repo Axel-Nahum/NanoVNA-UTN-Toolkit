@@ -112,7 +112,20 @@ class LaTeXExportDialog(QDialog):
         self.setWindowTitle(f"{self.pdf_export_window_title}")
         self.setModal(True)
         self.setMinimumSize(500, 360)
-        
+        _theme = get_settings(
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+            "shared/utils/dark_light_mode/dark_light_config.ini",
+            Path(__file__).resolve()
+        )
+        _is_dark = not _theme.value("Dark_Light/is_dark_mode", False, type=bool)
+        _cb_bg, _cb_border = ("#252538", "1px solid #383850") if _is_dark else ("#f8f8ff", "1px solid #c4c4d8")
+        self._cb_indicator_ss = (
+            " QCheckBox::indicator { width: 14px; height: 14px; }"
+            f" QCheckBox::indicator:unchecked {{ background-color: {_cb_bg}; border: {_cb_border}; border-radius: 3px; }}"
+            " QCheckBox::indicator:checked { background-color: #4d90fe; border: 1px solid #4d90fe; border-radius: 3px; }"
+            " QCheckBox::indicator:hover { border: 1px solid #6aa2ff; }"
+        )
+
         self.latex_available = False
         self.output_path = ""
         self.default_filename = default_filename
@@ -149,14 +162,17 @@ class LaTeXExportDialog(QDialog):
 
         self.include_notes_checkbox = QCheckBox("Include notes / comments section")
         self.include_notes_checkbox.setChecked(False)
+        self.include_notes_checkbox.setStyleSheet(self._cb_indicator_ss)
         layout.addWidget(self.include_notes_checkbox)
 
         self.include_tables_checkbox = QCheckBox("Include value tables")
         self.include_tables_checkbox.setChecked(False)
+        self.include_tables_checkbox.setStyleSheet(self._cb_indicator_ss)
         layout.addWidget(self.include_tables_checkbox)
 
         self.include_cal_graphs_checkbox = QCheckBox("Include calibration graphs")
         self.include_cal_graphs_checkbox.setChecked(False)
+        self.include_cal_graphs_checkbox.setStyleSheet(self._cb_indicator_ss)
         try:
             cal_settings = get_settings(
                 "INI/dut_measurement/calibration_config/calibration_config.ini",
@@ -167,7 +183,7 @@ class LaTeXExportDialog(QDialog):
             if no_cal:
                 self.include_cal_graphs_checkbox.setEnabled(False)
                 self.include_cal_graphs_checkbox.setStyleSheet(
-                    "QCheckBox:disabled { color: #666677; }"
+                    "QCheckBox:disabled { color: #666677; } " + self._cb_indicator_ss
                 )
                 self.include_cal_graphs_checkbox.setToolTip(
                     "Not available: no calibration was applied to this measurement."

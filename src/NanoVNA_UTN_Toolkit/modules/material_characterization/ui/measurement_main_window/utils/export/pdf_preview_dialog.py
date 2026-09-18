@@ -250,6 +250,22 @@ class PermittivityPdfPreviewDialog(QDialog):
 
         self.setWindowTitle("Export Preview — Characterization")
         self.setModal(True)
+        _theme = get_settings(
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+            "shared/utils/dark_light_mode/dark_light_config.ini",
+            Path(__file__).resolve()
+        )
+        self._is_dark = not _theme.value("Dark_Light/is_dark_mode", False, type=bool)
+        if self._is_dark:
+            _cb_bg, _cb_border = "#252538", "1px solid #383850"
+        else:
+            _cb_bg, _cb_border = "#f8f8ff", "1px solid #c4c4d8"
+        self._cb_indicator_ss = (
+            " QCheckBox::indicator { width: 14px; height: 14px; }"
+            f" QCheckBox::indicator:unchecked {{ background-color: {_cb_bg}; border: {_cb_border}; border-radius: 3px; }}"
+            " QCheckBox::indicator:checked { background-color: #4d90fe; border: 1px solid #4d90fe; border-radius: 3px; }"
+            " QCheckBox::indicator:hover { border: 1px solid #6aa2ff; }"
+        )
         screen = QGuiApplication.primaryScreen().availableGeometry()
         dialog_h = max(660, min(780, int(screen.height() * 0.72)))
         self.setFixedSize(740, dialog_h)
@@ -395,14 +411,7 @@ class PermittivityPdfPreviewDialog(QDialog):
         self._heading_chk = _QCheckBox()
         self._heading_chk.setFocusPolicy(Qt.NoFocus)
         self._heading_chk.setToolTip("Enable subsection / sub-subsection headings in PDF")
-        self._heading_chk.setStyleSheet(
-            "QCheckBox { spacing: 0px; }"
-            " QCheckBox::indicator { width: 15px; height: 15px;"
-            " border: 1px solid #4a4a6a; border-radius: 3px; background: #1e1e2e; }"
-            " QCheckBox::indicator:checked { background: #3a3a6a; border-color: #6666aa; }"
-            " QCheckBox::indicator:checked:hover { background: #4a4a8a; }"
-            " QCheckBox::indicator:hover { border-color: #6666aa; }"
-        )
+        self._heading_chk.setStyleSheet("QCheckBox { spacing: 0px; } " + self._cb_indicator_ss)
         self._heading_chk.toggled.connect(self._on_heading_mode_toggled)
         toolbar_l.addSpacing(4)
         toolbar_l.addWidget(self._heading_chk)
@@ -602,7 +611,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                 label = "Marker 1" if n == 1 else f"Marker {slot + 1}"
                 cb = QCheckBox(label)
                 cb.setStyleSheet(
-                    f"color: {colors[slot]}; font-weight: bold; font-size: 12pt;"
+                    f"QCheckBox {{ color: {colors[slot]}; font-weight: bold; font-size: 12pt; }} " + self._cb_indicator_ss
                 )
                 cb.stateChanged.connect(lambda _, idx=g: self._update_markers(idx))
                 cbs.append(cb)
