@@ -19,16 +19,10 @@ class AboutDialog(QDialog):
     Supports both English and Spanish versions.
     """
     
-    def __init__(self, parent=None, language='en'):
-        """
-        Initialize the About dialog.
-        
-        Args:
-            parent: Parent widget
-            language: Language code ('en' for English, 'es' for Spanish)
-        """
+    def __init__(self, parent=None, language='en', readme_file=None):
         super().__init__(parent)
         self.language = language
+        self.readme_file = readme_file
         
         if language == 'es':
             self.setWindowTitle("NanoVNA UTN Toolkit - Acerca de NanoVNA UTN Toolkit")
@@ -91,16 +85,21 @@ class AboutDialog(QDialog):
         layout.addWidget(self.text_widget)
     
     def _load_readme(self):
-        """Load and display the appropriate README file based on language."""
-        
+        """Load and display the appropriate README file based on module and language."""
+
         try:
-            # Get the project root directory (go up from help_menu.py to repo root, where the README files live)
             if hasattr(sys, '_MEIPASS'):
                 project_root = sys._MEIPASS
             else:
                 project_root = Path(__file__).resolve().parents[8]
-            
-            if self.language == 'es':
+
+            if self.readme_file:
+                readme_path = os.path.join(project_root, self.readme_file)
+                fallback_text = (
+                    f"Archivo {self.readme_file} no encontrado.\n\n"
+                    f"Ubicación esperada: {readme_path}"
+                )
+            elif self.language == 'es':
                 readme_path = os.path.join(project_root, "README_ES.md")
                 fallback_text = (
                     "Archivo README_ES.md no encontrado.\n\n"
@@ -258,15 +257,9 @@ def show_app_about(parent=None):
     dlg.exec()
 
 
-def show_about_dialog(self, language='en'):
-    """
-    Show the About dialog with the project README.
-    
-    Args:
-        language: Language code ('en' for English, 'es' for Spanish)
-    """
+def show_about_dialog(self, language='en', readme_file=None):
     try:
-        about_dialog = AboutDialog(self, language)
+        about_dialog = AboutDialog(self, language, readme_file=readme_file)
         about_dialog.exec()
     except Exception as e:
         # Fallback if dialog creation fails

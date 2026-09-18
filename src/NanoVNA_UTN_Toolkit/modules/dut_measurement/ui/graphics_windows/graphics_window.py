@@ -334,7 +334,7 @@ class NanoVNAGraphics(QMainWindow):
                 Path(__file__).resolve(),
             )
             _lang = _s.value("Preferences/language", "en") if _s else "en"
-            show_about_dialog(self, _lang)
+            show_about_dialog(self, _lang, readme_file="README_DUT.md")
 
         _doc_label = "Documentación" if current_lang == "es" else "Documentation"
         docs_action = help_menu.addAction(_doc_label)

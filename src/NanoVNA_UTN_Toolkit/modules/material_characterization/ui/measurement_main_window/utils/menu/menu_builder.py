@@ -119,7 +119,7 @@ def build_menu(main_window) -> None:
         )
 
         def _open_docs():
-            show_about_dialog(main_window, get_current_language())
+            show_about_dialog(main_window, get_current_language(), readme_file="README_CARACTERIZACION.md")
 
         _doc_label = menu.get(
             "documentation",
