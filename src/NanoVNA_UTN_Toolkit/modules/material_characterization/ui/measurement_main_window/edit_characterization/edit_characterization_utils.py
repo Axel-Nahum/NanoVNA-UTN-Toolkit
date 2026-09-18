@@ -9,7 +9,7 @@ from typing import Dict
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGroupBox,
-    QColorDialog, QSpinBox, QSizePolicy, QSpacerItem,
+    QColorDialog, QSpinBox, QSizePolicy, QSpacerItem, QPushButton,
 )
 from PySide6.QtCore import Qt
 
@@ -102,6 +102,21 @@ def _color_row(label_text: str, color: str):
     return row, btn
 
 
+def _spin_container(spin):
+    """Wrap a QSpinBox with ▲▼ buttons styled via dark_light_config object names."""
+    spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+    spin.setStyleSheet("QSpinBox { border: none; background: transparent; padding: 0px 2px; }")
+    c = QFrame()
+    c.setObjectName("spinboxContainer")
+    c.setFixedSize(68, 26)
+    cl = QHBoxLayout(c); cl.setContentsMargins(2, 0, 0, 0); cl.setSpacing(0)
+    u = QPushButton("▲"); u.setObjectName("spinboxUpBtn"); u.setFixedSize(16, 11); u.clicked.connect(spin.stepUp)
+    d = QPushButton("▼"); d.setObjectName("spinboxDownBtn"); d.setFixedSize(16, 11); d.clicked.connect(spin.stepDown)
+    col = QVBoxLayout(); col.setSpacing(1); col.setContentsMargins(3, 0, 0, 0); col.addWidget(u); col.addWidget(d)
+    cl.addWidget(spin, 1); cl.addLayout(col)
+    return c
+
+
 def _spin_row(label_text: str, value: int):
     """Return (layout, spinbox_widget)."""
     row = QHBoxLayout()
@@ -110,8 +125,7 @@ def _spin_row(label_text: str, value: int):
     spin.setRange(1, 10)
     spin.setValue(value)
     spin.setAlignment(Qt.AlignCenter)
-    spin.setFixedWidth(46)
-    row.addWidget(spin, alignment=Qt.AlignVCenter)
+    row.addWidget(_spin_container(spin), alignment=Qt.AlignVCenter)
     return row, spin
 
 
@@ -175,7 +189,7 @@ def create_tab_real(main_window, texts: Dict):
     gl = QVBoxLayout(grp_curve)
     gl.setAlignment(Qt.AlignTop)
     gl.setSpacing(20)
-    gl.setContentsMargins(10, 10, 10, 5)
+    gl.setContentsMargins(10, 10, 10, 10)
 
     row_tc, btn_trace = _color_row(t_trace.get("trace_color", "Trace color:"), tc)
     gl.addLayout(row_tc)
@@ -189,7 +203,7 @@ def create_tab_real(main_window, texts: Dict):
     gml = QVBoxLayout(grp_markers)
     gml.setAlignment(Qt.AlignTop)
     gml.setSpacing(20)
-    gml.setContentsMargins(10, 10, 10, 5)
+    gml.setContentsMargins(10, 10, 10, 10)
 
     row_mc1, btn_mc1 = _color_row(t_markers.get("marker_1_color", "Marker 1 color:"), mc1)
     gml.addLayout(row_mc1)
@@ -208,7 +222,7 @@ def create_tab_real(main_window, texts: Dict):
     gcl = QVBoxLayout(grp_chart)
     gcl.setAlignment(Qt.AlignTop)
     gcl.setSpacing(20)
-    gcl.setContentsMargins(10, 10, 10, 5)
+    gcl.setContentsMargins(10, 10, 10, 10)
 
     row_bg, btn_bg = _color_row(t_chart.get("background_color", "Background color:"), bg)
     gcl.addLayout(row_bg)
@@ -217,12 +231,13 @@ def create_tab_real(main_window, texts: Dict):
     row_ax, btn_axis = _color_row(t_chart.get("axis_color", "Axis color:"), ax_c)
     gcl.addLayout(row_ax)
 
-    grp_curve.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-    grp_markers.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-    grp_chart.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+    grp_curve.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+    grp_markers.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+    grp_chart.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
     v_layout.addWidget(grp_curve)
     v_layout.addWidget(grp_markers)
     v_layout.addWidget(grp_chart)
+    v_layout.addStretch(1)
 
     # --- Canvas ---
     fig, ax = plt.subplots(figsize=(3.2, 3.2))
@@ -355,7 +370,7 @@ def create_tab_imag(main_window, texts: Dict):
     gl = QVBoxLayout(grp_curve)
     gl.setAlignment(Qt.AlignTop)
     gl.setSpacing(20)
-    gl.setContentsMargins(10, 10, 10, 5)
+    gl.setContentsMargins(10, 10, 10, 10)
 
     row_tc, btn_trace = _color_row(t_trace.get("trace_color", "Trace color:"), tc)
     gl.addLayout(row_tc)
@@ -369,7 +384,7 @@ def create_tab_imag(main_window, texts: Dict):
     gml = QVBoxLayout(grp_markers)
     gml.setAlignment(Qt.AlignTop)
     gml.setSpacing(20)
-    gml.setContentsMargins(10, 10, 10, 5)
+    gml.setContentsMargins(10, 10, 10, 10)
 
     row_mc1, btn_mc1 = _color_row(t_markers.get("marker_1_color", "Marker 1 color:"), mc1)
     gml.addLayout(row_mc1)
@@ -388,7 +403,7 @@ def create_tab_imag(main_window, texts: Dict):
     gcl = QVBoxLayout(grp_chart)
     gcl.setAlignment(Qt.AlignTop)
     gcl.setSpacing(20)
-    gcl.setContentsMargins(10, 10, 10, 5)
+    gcl.setContentsMargins(10, 10, 10, 10)
 
     row_bg, btn_bg = _color_row(t_chart.get("background_color", "Background color:"), bg)
     gcl.addLayout(row_bg)
@@ -397,12 +412,13 @@ def create_tab_imag(main_window, texts: Dict):
     row_ax, btn_axis = _color_row(t_chart.get("axis_color", "Axis color:"), ax_c)
     gcl.addLayout(row_ax)
 
-    grp_curve.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-    grp_markers.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-    grp_chart.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+    grp_curve.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+    grp_markers.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+    grp_chart.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
     v_layout.addWidget(grp_curve)
     v_layout.addWidget(grp_markers)
     v_layout.addWidget(grp_chart)
+    v_layout.addStretch(1)
 
     # --- Canvas ---
     fig, ax = plt.subplots(figsize=(3.2, 3.2))
