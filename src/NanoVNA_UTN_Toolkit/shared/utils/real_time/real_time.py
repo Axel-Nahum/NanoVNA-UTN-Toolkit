@@ -94,15 +94,44 @@ def on_realtime_toggled(self, enabled):
     else:
         self.sweep_button.setEnabled(True)
 
-    if not enabled: 
+    if not enabled:
         self.sweep_button.setText(f"{self.measurement_ui_button_reset_kalman}")
         logging.info("[real_time] ENABLED")
         self._rt_generation = getattr(self, "_rt_generation", 0) + 1
         start_realtime(self)
     else:
-        self.sweep_button.setText(self.measurement_ui_button_run_sweep)
         logging.info("[real_time] DISABLED")
-        stop_realtime(self)
+
+        # Stop timer first so no new RT sweep is queued.
+        self._rt_active = False
+        self._rt_busy = False
+        if hasattr(self, "_rt_timer") and self._rt_timer:
+            self._rt_timer.stop()
+            self._rt_timer.deleteLater()
+            self._rt_timer = None
+
+        try:
+            from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh_thread import stop_sweep as _stop_sweep
+        except Exception:
+            _stop_sweep = None
+
+        rt_thread = getattr(self, '_rt_thread', None)
+        oneshot_thread = getattr(self, 'thread', None)
+
+        # RT was never active and a one-shot is already running: let it
+        # finish naturally — on_sweep_finished handles the UI.
+        if rt_thread is None and oneshot_thread is not None:
+            return
+
+        # RT was active: stop it cleanly, no new sweep.
+        _abort(self)
+        if _stop_sweep is not None:
+            try:
+                _stop_sweep(self)
+            except Exception:
+                pass
+
+        self.sweep_button.setText(self.measurement_ui_button_run_sweep)
 
 # ------------------------------------------------------------------------------------------------------------------ #
 # START / STOP
@@ -391,8 +420,19 @@ def _handle_processing_error(self, exc):
 # ABORT
 # ------------------------------------------------------------------------------------------------------------------ #
 
-def _abort(self):
+# Threads asked to stop that may still be blocking on a serial read.
+# Keeping a Python reference here prevents "QThread: Destroyed while
+# thread is still running" when self._rt_thread is set to None.
+_stopping_rt_threads: list = []
 
+
+def _abort(self, on_done=None):
+    """Stop the current real-time sweep worker.
+
+    on_done: optional zero-argument callable invoked on the GUI thread
+    once the worker thread has actually finished (i.e. the serial port
+    is free again).  Pass None when no follow-up action is needed.
+    """
     worker = getattr(self, "_rt_worker", None)
     thread = getattr(self, "_rt_thread", None)
 
@@ -407,8 +447,25 @@ def _abort(self):
         log_thread_checkpoint("real_time._abort: stopping worker thread", target_thread=thread)
         try:
             thread.quit()
+            # Park the thread so the Python wrapper (and therefore the C++
+            # QThread) stays alive until the thread exits its blocking serial
+            # read.  Mirrors the same pattern in graphics_refresh_thread.
+            _stopping_rt_threads.append(thread)
+            def _release(t=thread, cb=on_done):
+                try:
+                    _stopping_rt_threads.remove(t)
+                except ValueError:
+                    pass
+                if cb is not None:
+                    cb()
+            thread.finished.connect(_release)
         except RuntimeError:
-            pass
+            if on_done is not None:
+                on_done()
+    else:
+        # No thread was running; fire the callback immediately.
+        if on_done is not None:
+            on_done()
 
     self._rt_worker = None
     self._rt_thread = None

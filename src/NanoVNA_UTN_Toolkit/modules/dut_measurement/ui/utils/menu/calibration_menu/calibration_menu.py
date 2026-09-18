@@ -30,22 +30,41 @@ update_calibration_label_from_method = safe_import("NanoVNA_UTN_Toolkit.modules.
 
 # ---------------------------------------------------------------------------------------------------------------- #
 
+# Module-level reference so the wizard isn't garbage-collected when the
+# graphics window (which stores self.welcome_windows) closes.
+_open_wizard = None
+
 def open_calibration_wizard(self):
-        
+
+        global _open_wizard
+
         from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.wizard_cal_windows.wizard_windows import CalibrationWizard
 
         logging.info("[wizard_windows.open_calibration_wizard] Opening calibration wizard")
 
         stop_realtime = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time", "stop_realtime")
-
         stop_realtime(self)
 
+        # Stop any in-progress one-shot sweep so its worker thread doesn't emit
+        # signals to widgets that are about to be destroyed.
+        try:
+            from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh_thread import stop_sweep as _stop_sweep
+            _stop_sweep(self)
+        except Exception as e:
+            logging.warning("[open_calibration_wizard] Could not stop sweep: %s", e)
+
         if self.vna_device:
-            self.welcome_windows = CalibrationWizard(self.vna_device, parent = self, caller="graphics")
+            wizard = CalibrationWizard(self.vna_device, parent=self, caller="graphics")
         else:
-            self.welcome_windows = CalibrationWizard(parent = self, caller="graphics")
-        self.welcome_windows.show()
-        self.close()
+            wizard = CalibrationWizard(parent=self, caller="graphics")
+
+        # Keep a module-level reference so the wizard survives the graphics
+        # window closing (which would otherwise drop the only Python ref).
+        _open_wizard = wizard
+        self.welcome_windows = wizard
+
+        wizard.show()
+        QTimer.singleShot(0, self.close)
 
 def open_no_calibration(self):
 

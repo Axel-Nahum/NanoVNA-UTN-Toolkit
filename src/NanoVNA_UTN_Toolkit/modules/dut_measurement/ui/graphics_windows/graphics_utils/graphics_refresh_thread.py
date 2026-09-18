@@ -201,6 +201,10 @@ def run_sweep(self):
     self.sweep_progress_bar.setValue(0)
     self.reconnect_button.setEnabled(False)
 
+    if not getattr(self, '_initial_sweep_done', False):
+        self.realtime_checkbox.setEnabled(False)
+
+
     # ---------------- THREAD SETUP ---------------- #
 
     self.thread = QThread()
@@ -233,6 +237,14 @@ def run_sweep(self):
     log_thread_checkpoint("graphics_refresh.run_sweep: worker thread started", target_thread=self.thread)
 
 
+# Threads that have been asked to stop but may still be running their
+# blocking serial read.  We keep a Python reference here so that the
+# C++ QThread is not destroyed (GC'd) while it is still alive — that
+# would produce "QThread: Destroyed while thread is still running".
+# Each entry is removed when the thread emits finished().
+_stopping_threads: list = []
+
+
 def stop_sweep(self):
     controller = getattr(self, '_sweep_controller', None)
     worker = getattr(self, 'worker', None)
@@ -246,6 +258,12 @@ def stop_sweep(self):
 
     if worker:
         try:
+            # Disconnect progress signal before the widget is destroyed so
+            # any queued emission doesn't reach a dangling C++ object.
+            worker.progress.disconnect()
+        except RuntimeError:
+            pass
+        try:
             worker.abort()
         except RuntimeError:
             pass
@@ -253,6 +271,16 @@ def stop_sweep(self):
     if thread is not None:
         try:
             thread.quit()
+            # Park the thread in _stopping_threads so the Python wrapper
+            # (and therefore the C++ QThread) stays alive until the thread
+            # finishes its current blocking serial read and exits cleanly.
+            _stopping_threads.append(thread)
+            def _release(t=thread):
+                try:
+                    _stopping_threads.remove(t)
+                except ValueError:
+                    pass
+            thread.finished.connect(_release)
         except RuntimeError:
             pass
 
@@ -433,6 +461,7 @@ def on_sweep_finished(self, result):
 
     if not hasattr(self, '_initial_sweep_done') or not self._initial_sweep_done:
         self._initial_sweep_done = True
+        self.realtime_checkbox.setEnabled(True)
 
     sf_settings = get_settings(
         "INI/dut_measurement/signal_filters/signal_filters.ini",

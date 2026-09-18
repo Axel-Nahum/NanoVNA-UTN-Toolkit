@@ -19,8 +19,8 @@ plt.rcParams['mathtext.rm'] = 'serif'     # Números y texto coherentes
 
 
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGroupBox, 
-    QColorDialog, QSpinBox, QSizePolicy, QSpacerItem, QApplication
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGroupBox,
+    QColorDialog, QSpinBox, QSizePolicy, QSpacerItem, QApplication, QPushButton
 )
 from PySide6.QtCore import Qt
 
@@ -41,6 +41,40 @@ spin_style = """
         padding: 0px 2px;
     }
 """
+
+def _spin_container(spin):
+    """Wrap a QSpinBox in a fixed-width frame with ▲▼ external buttons, respecting dark/light mode."""
+    _dl = get_settings(
+        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+        "shared/utils/dark_light_mode/dark_light_config.ini",
+        Path(__file__).resolve()
+    )
+    _is_dark = _dl.value("Dark_Light/is_dark_mode", "false").lower() == "true"
+    if _is_dark:
+        _bg = _dl.value("Dark_Light/QSpinBox/background-color", "#252538")
+        _fg = _dl.value("Dark_Light/QSpinBox/color", "white")
+        _border = _dl.value("Dark_Light/QSpinBox/border", "1px solid #383850")
+        _btn_bg = "#383850"
+        _btn_hover = "#4a4a60"
+    else:
+        _bg = "white"
+        _fg = "black"
+        _border = "1px solid gray"
+        _btn_bg = "#e8e8e8"
+        _btn_hover = "#d0d0d0"
+
+    spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+    spin.setStyleSheet(f"QSpinBox {{ border: none; background: transparent; color: {_fg}; padding: 0px 2px; }}")
+    c = QFrame()
+    c.setFixedWidth(68)
+    c.setStyleSheet(f"QFrame {{ background-color: {_bg}; border: {_border}; border-radius: 2px; }}")
+    cl = QHBoxLayout(c); cl.setContentsMargins(2, 0, 0, 0); cl.setSpacing(0)
+    _btn_ss = f"QPushButton {{ border: {_border}; background: {_btn_bg}; color: {_fg}; font-size: 6px; padding: 0px; border-radius: 2px; }} QPushButton:hover {{ background: {_btn_hover}; }}"
+    u = QPushButton("▲"); u.setFixedSize(16, 11); u.setStyleSheet(_btn_ss); u.clicked.connect(spin.stepUp)
+    d = QPushButton("▼"); d.setFixedSize(16, 11); d.setStyleSheet(_btn_ss); d.clicked.connect(spin.stepDown)
+    col = QVBoxLayout(); col.setSpacing(1); col.setContentsMargins(3, 0, 0, 0); col.addWidget(u); col.addWidget(d)
+    cl.addWidget(spin, 1); cl.addLayout(col)
+    return c
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
@@ -153,10 +187,8 @@ def create_edit_tab1(self, tabs, nano_window):
     spin_line_tab1.setRange(1, 10)
     spin_line_tab1.setValue(trace_size1)
     spin_line_tab1.setAlignment(Qt.AlignCenter)
-    spin_line_tab1.setFrame(True)                
-    spin_line_tab1.setFixedWidth(50)
     line_layout.addWidget(lbl_line)
-    line_layout.addWidget(spin_line_tab1, alignment=Qt.AlignVCenter)
+    line_layout.addWidget(_spin_container(spin_line_tab1), alignment=Qt.AlignVCenter)
     left_layout.addLayout(line_layout)
 
     # --- Left Marker GroupBox ---
@@ -197,11 +229,9 @@ def create_edit_tab1(self, tabs, nano_window):
     spin_marker1_tab1 = QSpinBox()
     spin_marker1_tab1.setRange(1, 20)
     spin_marker1_tab1.setValue(marker_size1)
-    spin_marker1_tab1.setFrame(True)  
-    spin_marker1_tab1.setAlignment(Qt.AlignCenter)             
-    spin_marker1_tab1.setFixedWidth(50)
+    spin_marker1_tab1.setAlignment(Qt.AlignCenter)
     marker1_size_layout.addWidget(lbl_marker1_size)
-    marker1_size_layout.addWidget(spin_marker1_tab1, alignment=Qt.AlignVCenter)
+    marker1_size_layout.addWidget(_spin_container(spin_marker1_tab1), alignment=Qt.AlignVCenter)
     left_layout.addLayout(marker1_size_layout)
 
     marker2_size_layout = QHBoxLayout()
@@ -210,11 +240,9 @@ def create_edit_tab1(self, tabs, nano_window):
     spin_marker2_tab1 = QSpinBox()
     spin_marker2_tab1.setRange(1, 20)
     spin_marker2_tab1.setValue(marker_size2)
-    spin_marker2_tab1.setFrame(True)  
-    spin_marker2_tab1.setAlignment(Qt.AlignCenter)             
-    spin_marker2_tab1.setFixedWidth(50)
+    spin_marker2_tab1.setAlignment(Qt.AlignCenter)
     marker2_size_layout.addWidget(lbl_marker2_size)
-    marker2_size_layout.addWidget(spin_marker2_tab1, alignment=Qt.AlignVCenter)
+    marker2_size_layout.addWidget(_spin_container(spin_marker2_tab1), alignment=Qt.AlignVCenter)
     left_layout.addLayout(marker2_size_layout)
 
     # --- Left Graphic GroupBox ---
@@ -663,10 +691,8 @@ def create_edit_tab2(self, tabs, nano_window):
     spin_line_tab2.setRange(1, 10)
     spin_line_tab2.setValue(line_width2)
     spin_line_tab2.setAlignment(Qt.AlignCenter)
-    spin_line_tab2.setFrame(True)      
-    spin_line_tab2.setFixedWidth(50)
     trace_layout.addWidget(lbl_line)
-    trace_layout.addWidget(spin_line_tab2, alignment=Qt.AlignVCenter)
+    trace_layout.addWidget(_spin_container(spin_line_tab2), alignment=Qt.AlignVCenter)
     left_layout.addLayout(trace_layout)
 
     # --- Left Marker GroupBox ---
@@ -708,10 +734,8 @@ def create_edit_tab2(self, tabs, nano_window):
     spin_marker1_tab2.setRange(1, 20)
     spin_marker1_tab2.setValue(marker_size1)
     spin_marker1_tab2.setAlignment(Qt.AlignCenter)
-    spin_marker1_tab2.setFrame(True)  
-    spin_marker1_tab2.setFixedWidth(50)
     marker1_size_layout.addWidget(lbl_marker1_size)
-    marker1_size_layout.addWidget(spin_marker1_tab2, alignment=Qt.AlignVCenter)
+    marker1_size_layout.addWidget(_spin_container(spin_marker1_tab2), alignment=Qt.AlignVCenter)
     left_layout.addLayout(marker1_size_layout)
 
     # Marker size
@@ -722,10 +746,8 @@ def create_edit_tab2(self, tabs, nano_window):
     spin_marker2_tab2.setRange(1, 20)
     spin_marker2_tab2.setValue(marker_size2)
     spin_marker2_tab2.setAlignment(Qt.AlignCenter)
-    spin_marker2_tab2.setFrame(True)  
-    spin_marker2_tab2.setFixedWidth(50)
     marker2_size_layout.addWidget(lbl_marker2_size)
-    marker2_size_layout.addWidget(spin_marker2_tab2, alignment=Qt.AlignVCenter)
+    marker2_size_layout.addWidget(_spin_container(spin_marker2_tab2), alignment=Qt.AlignVCenter)
     left_layout.addLayout(marker2_size_layout)
 
     # --- Left Graphic GroupBox ---
