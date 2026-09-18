@@ -7,6 +7,7 @@ import webbrowser
 from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPalette, QColor
 from PySide6.QtWidgets import (
     QVBoxLayout, QMessageBox, QDialog, QTextEdit
 )
@@ -43,6 +44,11 @@ class AboutDialog(QDialog):
         # Create a text widget with scroll capability
         self.text_widget = QTextEdit()
         self.text_widget.setReadOnly(True)
+
+        palette = self.text_widget.palette()
+        palette.setColor(QPalette.ColorRole.Link, QColor("#58a6ff"))
+        palette.setColor(QPalette.ColorRole.LinkVisited, QColor("#58a6ff"))
+        self.text_widget.setPalette(palette)
         
         # Configure scrolling: vertical only, no horizontal scroll
         self.text_widget.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
