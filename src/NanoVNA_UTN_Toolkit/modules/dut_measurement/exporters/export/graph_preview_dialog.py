@@ -1088,16 +1088,30 @@ class GraphPreviewExportDialog(QDialog):
         editor = QTextEdit()
         editor.setPlaceholderText("Enter notes here…")
         editor.document().setIndentWidth(20)
+        _theme = get_settings(
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+            "shared/utils/dark_light_mode/dark_light_config.ini",
+            Path(__file__).resolve()
+        )
+        _is_dark = not _theme.value("Dark_Light/is_dark_mode", False, type=bool)
+        if _is_dark:
+            _edit_bg, _edit_color = "#1e1e2e", "#e0e0f0"
+            _sb_track, _sb_handle, _sb_handle_hover = "#1e1e2e", "#44446a", "#5a5a8a"
+        else:
+            _edit_bg, _edit_color = "#f8f8ff", "#1e1e2e"
+            _sb_track, _sb_handle, _sb_handle_hover = "#f0f0f8", "#b8b8d0", "#9898b8"
         editor.setStyleSheet(
-            "QTextEdit { background-color: #1e1e2e; color: #e0e0f0;"
+            f"QTextEdit {{ background-color: {_edit_bg}; color: {_edit_color};"
             " border: none; border-radius: 0px; padding: 8px; }"
-            "QScrollBar:vertical { background: #1e1e2e; width: 8px; margin: 0; }"
-            "QScrollBar::handle:vertical { background: #44446a; border-radius: 4px; min-height: 20px; }"
-            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }"
+            f"QScrollBar:vertical {{ background: {_sb_track}; width: 8px; margin: 0; border: none; }}"
+            f"QScrollBar::handle:vertical {{ background: {_sb_handle}; border-radius: 4px; min-height: 20px; }}"
+            f"QScrollBar::handle:vertical:hover {{ background: {_sb_handle_hover}; }}"
+            "QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; border: none; }"
             "QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }"
-            "QScrollBar:horizontal { background: #1e1e2e; height: 8px; margin: 0; }"
-            "QScrollBar::handle:horizontal { background: #44446a; border-radius: 4px; min-width: 20px; }"
-            "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }"
+            f"QScrollBar:horizontal {{ background: {_sb_track}; height: 8px; margin: 0; border: none; }}"
+            f"QScrollBar::handle:horizontal {{ background: {_sb_handle}; border-radius: 4px; min-width: 20px; }}"
+            f"QScrollBar::handle:horizontal:hover {{ background: {_sb_handle_hover}; }}"
+            "QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; border: none; }"
             "QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background: none; }"
         )
         from PySide6.QtGui import QFont as _QF

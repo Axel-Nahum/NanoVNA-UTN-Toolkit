@@ -227,18 +227,6 @@ class NanoVNAStatusApp(QMainWindow):
                 border-radius: 5px;
                 background-color: palette(base);
             }
-            QScrollBar:vertical {
-                background: palette(button);
-                width: 12px;
-                border-radius: 6px;
-            }
-            QScrollBar::handle:vertical {
-                background: palette(mid);
-                border-radius: 6px;
-            }
-            QScrollBar::handle:vertical:hover {
-                background: palette(dark);
-            }
         """)
         
         # Add to grid layout

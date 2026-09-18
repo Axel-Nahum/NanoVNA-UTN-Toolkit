@@ -894,7 +894,6 @@ class MeasurementMainWindow(QMainWindow):
             scroll_track   = "#111116"       # gris casi negro
             scroll_handle  = "#3a3a44"       # gris medio
             scroll_hover   = "#555560"       # gris más claro en hover
-            scroll_press   = "#28282e"       # gris oscuro al presionar
             legend_color   = "#606070"
             btn_bg         = "#1a1a24"
             btn_fg         = "#7ab3f5"       # azul solo en texto del botón
@@ -921,7 +920,6 @@ class MeasurementMainWindow(QMainWindow):
             scroll_track   = "#e4e4e8"
             scroll_handle  = "#aaaabc"
             scroll_hover   = "#888898"
-            scroll_press   = "#6a6a80"
             legend_color   = "#8080a0"
             btn_bg         = "#dce8f5"
             btn_fg         = "#1a3a5c"
@@ -1069,25 +1067,22 @@ class MeasurementMainWindow(QMainWindow):
             }}
             QScrollBar:vertical {{
                 background: {scroll_track};
-                width: 12px;
-                border-radius: 6px;
-                margin: 4px 2px 4px 2px;
+                width: 8px;
+                margin: 0;
+                border: none;
             }}
             QScrollBar::handle:vertical {{
                 background: {scroll_handle};
-                border-radius: 5px;
-                min-height: 30px;
+                border-radius: 4px;
+                min-height: 20px;
             }}
             QScrollBar::handle:vertical:hover {{
                 background: {scroll_hover};
             }}
-            QScrollBar::handle:vertical:pressed {{
-                background: {scroll_press};
-            }}
             QScrollBar::add-line:vertical,
             QScrollBar::sub-line:vertical {{
                 height: 0;
-                background: none;
+                border: none;
             }}
             QScrollBar::add-page:vertical,
             QScrollBar::sub-page:vertical {{

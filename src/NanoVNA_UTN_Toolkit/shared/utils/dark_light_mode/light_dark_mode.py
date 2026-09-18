@@ -132,6 +132,10 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
         settings.setValue("Dark_Light/QCheckBox_checked/background-color", "#4d90fe")
         settings.setValue("Dark_Light/QCheckBox_checked/border", "1px solid #4d90fe")
 
+        # --- QScrollBar ---
+        settings.setValue("Dark_Light/QScrollBar/handle", "#44446a")
+        settings.setValue("Dark_Light/QScrollBar/handle-hover", "#5a5a8a")
+
         self.setStyleSheet("""
             QWidget {
                 background-color: #1e1e2e;
@@ -274,6 +278,39 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             QComboBox::placeholder {
                 color: #8888aa;
             }
+
+            QScrollBar:vertical {
+                background: #1e1e2e;
+                width: 8px;
+                margin: 0;
+                border: none;
+            }
+            QScrollBar::handle:vertical {
+                background: #44446a;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #5a5a8a;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; border: none; }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
+            QScrollBar:horizontal {
+                background: #1e1e2e;
+                height: 8px;
+                margin: 0;
+                border: none;
+            }
+            QScrollBar::handle:horizontal {
+                background: #44446a;
+                border-radius: 4px;
+                min-width: 20px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background: #5a5a8a;
+            }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; border: none; }
+            QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background: none; }
         """)
         self.is_dark_mode = False
 
@@ -395,6 +432,10 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
         # --- QCheckBox checked ---
         settings.setValue("Dark_Light/QCheckBox_checked/background-color", "#4d90fe")
         settings.setValue("Dark_Light/QCheckBox_checked/border", "1px solid #4d90fe")
+
+        # --- QScrollBar ---
+        settings.setValue("Dark_Light/QScrollBar/handle", "#b8b8d0")
+        settings.setValue("Dark_Light/QScrollBar/handle-hover", "#9898b8")
 
         self.setStyleSheet("""
             QWidget {
@@ -538,6 +579,39 @@ def toggle_menu_dark_mode(self, light_dark_mode, preference_menu = "False"):
             QComboBox::placeholder {
                 color: #8888aa;
             }
+
+            QScrollBar:vertical {
+                background: #f0f0f8;
+                width: 8px;
+                margin: 0;
+                border: none;
+            }
+            QScrollBar::handle:vertical {
+                background: #b8b8d0;
+                border-radius: 4px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #9898b8;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; border: none; }
+            QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: none; }
+            QScrollBar:horizontal {
+                background: #f0f0f8;
+                height: 8px;
+                margin: 0;
+                border: none;
+            }
+            QScrollBar::handle:horizontal {
+                background: #b8b8d0;
+                border-radius: 4px;
+                min-width: 20px;
+            }
+            QScrollBar::handle:horizontal:hover {
+                background: #9898b8;
+            }
+            QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; border: none; }
+            QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal { background: none; }
         """)
 
         self.is_dark_mode = True
@@ -556,6 +630,8 @@ def dark_light_config(self):
 
     # QWidget
     background_color = settings.value("Dark_Light/QWidget/background-color", "#1e1e2e")
+    scrollbar_handle = settings.value("Dark_Light/QScrollBar/handle", "#44446a")
+    scrollbar_handle_hover = settings.value("Dark_Light/QScrollBar/handle-hover", "#5a5a8a")
 
     # QTabWidget
     tabwidget_pane_bg = settings.value("Dark_Light/QTabWidget_pane/background-color", "#2e2e42")
@@ -1014,6 +1090,63 @@ def dark_light_config(self):
             height: 1px;
             background: rgba(128, 128, 128, 0.5);
             margin: 3px 8px;
+        }}
+
+        /* QScrollBar */
+        QScrollBar:vertical {{
+            background: {background_color};
+            width: 8px;
+            margin: 0;
+            border: none;
+        }}
+
+        QScrollBar::handle:vertical {{
+            background: {scrollbar_handle};
+            border-radius: 4px;
+            min-height: 20px;
+        }}
+
+        QScrollBar::handle:vertical:hover {{
+            background: {scrollbar_handle_hover};
+        }}
+
+        QScrollBar::add-line:vertical,
+        QScrollBar::sub-line:vertical {{
+            height: 0;
+            border: none;
+        }}
+
+        QScrollBar::add-page:vertical,
+        QScrollBar::sub-page:vertical {{
+            background: none;
+        }}
+
+        QScrollBar:horizontal {{
+            background: {background_color};
+            height: 8px;
+            margin: 0;
+            border: none;
+        }}
+
+        QScrollBar::handle:horizontal {{
+            background: {scrollbar_handle};
+            border-radius: 4px;
+            min-width: 20px;
+        }}
+
+        QScrollBar::handle:horizontal:hover {{
+            background: {scrollbar_handle_hover};
+        }}
+
+        QScrollBar::add-line:horizontal,
+        QScrollBar::sub-line:horizontal {{
+            width: 0;
+            border: none;
+        }}
+
+        QScrollBar::add-page:horizontal,
+        QScrollBar::sub-page:horizontal {{
+            background: none;
         }}
 
         /* Lists and trees */
