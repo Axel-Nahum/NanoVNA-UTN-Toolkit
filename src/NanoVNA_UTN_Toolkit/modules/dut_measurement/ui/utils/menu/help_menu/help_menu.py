@@ -58,7 +58,7 @@ class AboutDialog(QDialog):
             line-height: 1.4;
         }
         a {
-            color: #4db8ff;
+            color: #80d4ff;
             text-decoration: underline;
         }
         pre, code, .codehilite, .highlight {
