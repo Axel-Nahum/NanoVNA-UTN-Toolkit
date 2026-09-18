@@ -83,6 +83,57 @@ dist/NanoVNA-UTN-Toolkit.exe
 
 ---
 
+## DUT Measurement Mode
+
+The toolkit includes a full-featured S-parameter measurement environment for characterizing a Device Under Test (DUT) using the NanoVNA.
+
+### How to launch
+From the main window, select **DUT Measurement** from the mode selector and click **Start**.
+
+### Calibration
+Before measuring, a calibration step corrects for systematic errors introduced by cables and connectors. Available methods:
+
+| Method | Standards required | Corrects |
+|--------|-------------------|---------|
+| **OSM** (Open–Short–Match) | Open, Short, Match | S₁₁ reflection errors |
+| **Thru Normalization** | Thru | S₂₁ transmission tracking |
+| **Open/Short Normalization** | Open, Short | S₁₁ reflection (simplified) |
+| **1-Port + N** | Open, Short, Match + Thru | S₁₁ + S₂₁ |
+| **Enhanced-Response** | Open, Short, Match + Thru | Full 2-port (reflection + transmission) |
+| **Kit-based** | Calibration kit `.s2p` | Full 2-port using a known cal kit |
+| **No Calibration** | — | Raw uncalibrated data |
+| **Import DUT** | `.s2p` file | Load previously measured DUT |
+
+Each calibration method has its own guided wizard that walks through the required standards one by one.
+
+### Sweep configuration
+The sweep (start frequency, stop frequency, number of points) is configured from the **Sweep Options** panel. Settings persist between sessions.
+
+### Measurement
+Click **Run Sweep** to perform a single measurement. Results are displayed as:
+- S₁₁ and S₂₁ magnitude (dB) vs frequency
+- Phase vs frequency
+- Smith chart (S₁₁)
+- Polar chart (S₂₁)
+
+### Real-time mode
+Enable the **Single Sweep Mode** checkbox to toggle real-time continuous sweeping. While active, the sweep repeats automatically and the button switches to **Reset Kalman**. Disabling it returns to single-sweep mode.
+
+### Signal filters
+An optional **Kalman filter** can be applied to smooth noisy measurements. Presets (Light, Default, Strong) are available from the Plot menu. Set to **Off** to disable filtering.
+
+### Export
+Click **Export** to generate a PDF report with:
+- Cover page with measurement metadata and calibration method
+- S-parameter charts (magnitude, phase, Smith, polar)
+- Marker readouts
+- Optional: data table with S₁₁ and S₂₁ values per frequency point
+
+### Markers
+Two independent draggable markers are available per chart. Each shows the frequency and S-parameter value at the cursor position.
+
+---
+
 ## Material Characterization Mode
 
 The toolkit includes a guided wizard to characterize the complex permittivity **εr(f)** of liquid samples using an open-ended coaxial probe connected to the NanoVNA.

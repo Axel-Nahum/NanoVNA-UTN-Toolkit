@@ -83,6 +83,57 @@ dist/NanoVNA-UTN-Toolkit.exe
 
 ---
 
+## Modo de Medición de DUT
+
+El toolkit incluye un entorno completo de medición de parámetros S para caracterizar un Dispositivo Bajo Ensayo (DUT) usando el NanoVNA.
+
+### Cómo iniciarlo
+Desde la ventana principal, seleccionar **Medición de DUT** en el selector de modo y hacer clic en **Iniciar**.
+
+### Calibración
+Antes de medir, un paso de calibración corrige los errores sistemáticos introducidos por cables y conectores. Métodos disponibles:
+
+| Método | Estándares requeridos | Corrige |
+|--------|-----------------------|---------|
+| **OSM** (Open–Short–Match) | Open, Short, Match | Errores de reflexión S₁₁ |
+| **Thru Normalization** | Thru | Seguimiento de transmisión S₂₁ |
+| **Open/Short Normalization** | Open, Short | Reflexión S₁₁ (simplificado) |
+| **1-Port + N** | Open, Short, Match + Thru | S₁₁ + S₂₁ |
+| **Enhanced-Response** | Open, Short, Match + Thru | 2 puertos completo (reflexión + transmisión) |
+| **Kit-based** | Kit de calibración `.s2p` | 2 puertos completo usando kit conocido |
+| **Sin Calibración** | — | Datos crudos sin calibrar |
+| **Importar DUT** | Archivo `.s2p` | Cargar DUT medido previamente |
+
+Cada método de calibración tiene su propio asistente guiado que recorre los estándares requeridos uno por uno.
+
+### Configuración del barrido
+El barrido (frecuencia de inicio, frecuencia de fin, número de puntos) se configura desde el panel **Opciones de Barrido**. La configuración persiste entre sesiones.
+
+### Medición
+Hacer clic en **Run Sweep** para realizar una medición única. Los resultados se muestran como:
+- Magnitud de S₁₁ y S₂₁ (dB) en función de la frecuencia
+- Fase en función de la frecuencia
+- Carta de Smith (S₁₁)
+- Diagrama polar (S₂₁)
+
+### Modo tiempo real
+Activar el checkbox **Single Sweep Mode** para alternar entre barrido continuo en tiempo real y barrido único. Mientras está activo, el barrido se repite automáticamente y el botón cambia a **Reset Kalman**. Al desactivarlo vuelve al modo de barrido único.
+
+### Filtros de señal
+Un **filtro de Kalman** opcional puede aplicarse para suavizar mediciones ruidosas. Los presets disponibles (Light, Default, Strong) se acceden desde el menú Plot. Seleccionar **Off** para deshabilitarlo.
+
+### Exportación
+Hacer clic en **Exportar** para generar un reporte PDF con:
+- Carátula con metadatos de la medición y método de calibración
+- Gráficos de parámetros S (magnitud, fase, Smith, polar)
+- Lecturas de marcadores
+- Opcional: tabla de datos con valores S₁₁ y S₂₁ por punto de frecuencia
+
+### Marcadores
+Dos marcadores independientes arrastrables disponibles por gráfico. Cada uno muestra la frecuencia y el valor del parámetro S en la posición del cursor.
+
+---
+
 ## Modo de Caracterización de Materiales
 
 El toolkit incluye un asistente guiado para caracterizar la permitividad compleja **εr(f)** de muestras líquidas usando una sonda coaxial de extremo abierto conectada al NanoVNA.
