@@ -57,6 +57,10 @@ class AboutDialog(QDialog):
             font-family: system-ui, -apple-system, sans-serif;
             line-height: 1.4;
         }
+        a {
+            color: #4db8ff;
+            text-decoration: underline;
+        }
         pre, code, .codehilite, .highlight {
             white-space: pre-wrap !important;
             word-wrap: break-word !important;
