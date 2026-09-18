@@ -43,35 +43,19 @@ spin_style = """
 """
 
 def _spin_container(spin):
-    """Wrap a QSpinBox in a fixed-width frame with ▲▼ external buttons, respecting dark/light mode."""
-    _dl = get_settings(
-        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
-        "shared/utils/dark_light_mode/dark_light_config.ini",
-        Path(__file__).resolve()
-    )
-    _is_dark = _dl.value("Dark_Light/is_dark_mode", "false").lower() == "true"
-    if _is_dark:
-        _bg = _dl.value("Dark_Light/QSpinBox/background-color", "#252538")
-        _fg = _dl.value("Dark_Light/QSpinBox/color", "white")
-        _border = _dl.value("Dark_Light/QSpinBox/border", "1px solid #383850")
-        _btn_bg = "#383850"
-        _btn_hover = "#4a4a60"
-    else:
-        _bg = "white"
-        _fg = "black"
-        _border = "1px solid gray"
-        _btn_bg = "#e8e8e8"
-        _btn_hover = "#d0d0d0"
+    """Wrap a QSpinBox in a fixed-width frame with ▲▼ external buttons.
 
+    Colors come from the global dark_light_config stylesheet via object names:
+      QFrame#spinboxContainer, QPushButton#spinboxUpBtn / #spinboxDownBtn.
+    """
     spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
-    spin.setStyleSheet(f"QSpinBox {{ border: none; background: transparent; color: {_fg}; padding: 0px 2px; }}")
+    spin.setStyleSheet("QSpinBox { border: none; background: transparent; padding: 0px 2px; }")
     c = QFrame()
-    c.setFixedWidth(68)
-    c.setStyleSheet(f"QFrame {{ background-color: {_bg}; border: {_border}; border-radius: 2px; }}")
+    c.setObjectName("spinboxContainer")
+    c.setFixedSize(68, 26)
     cl = QHBoxLayout(c); cl.setContentsMargins(2, 0, 0, 0); cl.setSpacing(0)
-    _btn_ss = f"QPushButton {{ border: {_border}; background: {_btn_bg}; color: {_fg}; font-size: 6px; padding: 0px; border-radius: 2px; }} QPushButton:hover {{ background: {_btn_hover}; }}"
-    u = QPushButton("▲"); u.setFixedSize(16, 11); u.setStyleSheet(_btn_ss); u.clicked.connect(spin.stepUp)
-    d = QPushButton("▼"); d.setFixedSize(16, 11); d.setStyleSheet(_btn_ss); d.clicked.connect(spin.stepDown)
+    u = QPushButton("▲"); u.setObjectName("spinboxUpBtn"); u.setFixedSize(16, 11); u.clicked.connect(spin.stepUp)
+    d = QPushButton("▼"); d.setObjectName("spinboxDownBtn"); d.setFixedSize(16, 11); d.clicked.connect(spin.stepDown)
     col = QVBoxLayout(); col.setSpacing(1); col.setContentsMargins(3, 0, 0, 0); col.addWidget(u); col.addWidget(d)
     cl.addWidget(spin, 1); cl.addLayout(col)
     return c
@@ -166,7 +150,7 @@ def create_edit_tab1(self, tabs, nano_window):
     left_layout = QVBoxLayout(left_group_trace)
     left_layout.setAlignment(Qt.AlignTop)
     left_layout.setSpacing(20)
-    left_layout.setContentsMargins(10, 10, 10, 5)
+    left_layout.setContentsMargins(10, 10, 10, 10)
 
     # --- Trace color ---
     trace_layout = QHBoxLayout()
@@ -179,7 +163,7 @@ def create_edit_tab1(self, tabs, nano_window):
     trace_layout.addWidget(btn_trace, alignment=Qt.AlignVCenter)
     left_layout.addLayout(trace_layout)
 
-     # --- Line width ---
+    # --- Line width ---
     line_layout = QHBoxLayout()
     lbl_line = QLabel(f"{self.edit_graphics_trace_width}")
     lbl_line.setStyleSheet("font-size: 11pt;")
@@ -194,12 +178,10 @@ def create_edit_tab1(self, tabs, nano_window):
     # --- Left Marker GroupBox ---
     left_group_marker = QGroupBox(f"{self.edit_graphics_group_markers}")
     left_group_marker.setStyleSheet(groupbox_style)
-    left_group_marker.setMinimumHeight(200)
-    left_group_marker.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
     left_layout = QVBoxLayout(left_group_marker)
     left_layout.setAlignment(Qt.AlignTop)
     left_layout.setSpacing(20)
-    left_layout.setContentsMargins(10, 10, 10, 5)
+    left_layout.setContentsMargins(10, 10, 10, 10)
 
     # --- Marker color ---
     marker1_layout = QHBoxLayout()
@@ -251,7 +233,7 @@ def create_edit_tab1(self, tabs, nano_window):
     left_layout = QVBoxLayout(left_group_graphics)
     left_layout.setAlignment(Qt.AlignTop)
     left_layout.setSpacing(20)
-    left_layout.setContentsMargins(10, 10, 10, 15)
+    left_layout.setContentsMargins(10, 10, 10, 10)
 
     # --- Brackground Color ---
     graphic_brackground_color_layout = QHBoxLayout()
@@ -342,17 +324,21 @@ def create_edit_tab1(self, tabs, nano_window):
 
     def update_graph(graph_type1):
         ax.clear()
-        # Safely remove legend if it exists
         try:
             legend = ax.get_legend()
             if legend is not None:
                 legend.remove()
         except (AttributeError, ValueError):
-            # No legend to remove or already removed
             pass
-        
+
         fig.patch.set_facecolor(f"{get_background_color()}")
         ax.set_facecolor(f"{get_background_color()}")
+
+        if freqs is None or S_data is None or len(freqs) == 0:
+            cg, = ax.plot([0], [0], 'o', markersize=get_marker1_size(), color=get_marker1_color(), visible=False)
+            cg2, = ax.plot([0], [0], 'o', markersize=get_marker2_size(), color=get_marker2_color(), visible=False)
+            canvas.draw()
+            return cg, cg2
 
         if graph_type1 == "Smith Diagram":  
             fig.subplots_adjust(left=0.15, right=0.9, top=0.82, bottom=0.18)
@@ -548,13 +534,14 @@ def create_edit_tab1(self, tabs, nano_window):
 
     layout.addWidget(layout_container_V, 1)
 
-    left_group_trace.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    left_group_marker.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    left_group_graphics.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    left_group_trace.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+    left_group_marker.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+    left_group_graphics.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
 
-    layoutV.addWidget(left_group_trace, 1)
-    layoutV.addWidget(left_group_marker, 1)
-    layoutV.addWidget(left_group_graphics, 1)
+    layoutV.addWidget(left_group_trace)
+    layoutV.addWidget(left_group_marker)
+    layoutV.addWidget(left_group_graphics)
+    layoutV.addStretch(1)
 
     layout.addWidget(canvas, 2)
 
@@ -670,7 +657,7 @@ def create_edit_tab2(self, tabs, nano_window):
     left_layout = QVBoxLayout(left_group_trace)
     left_layout.setAlignment(Qt.AlignTop)
     left_layout.setSpacing(20)
-    left_layout.setContentsMargins(10, 10, 10, 5)
+    left_layout.setContentsMargins(10, 10, 10, 10)
 
     # Trace color
     trace_layout = QHBoxLayout()
@@ -698,12 +685,10 @@ def create_edit_tab2(self, tabs, nano_window):
     # --- Left Marker GroupBox ---
     left_group_marker = QGroupBox(f"{self.edit_graphics_group_markers}")
     left_group_marker.setStyleSheet(groupbox_style)
-    left_group_marker.setMinimumHeight(200)
-    left_group_marker.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
     left_layout = QVBoxLayout(left_group_marker)
     left_layout.setAlignment(Qt.AlignTop)
     left_layout.setSpacing(20)
-    left_layout.setContentsMargins(10, 10, 10, 5)
+    left_layout.setContentsMargins(10, 10, 10, 10)
 
     # Marker color
     marker1_layout = QHBoxLayout()
@@ -756,7 +741,7 @@ def create_edit_tab2(self, tabs, nano_window):
     left_layout = QVBoxLayout(left_group_graphics)
     left_layout.setAlignment(Qt.AlignTop)
     left_layout.setSpacing(20)
-    left_layout.setContentsMargins(10, 10, 10, 15)
+    left_layout.setContentsMargins(10, 10, 10, 10)
 
     # --- Background Color ---
     graphic_brackground_color_layout = QHBoxLayout()
@@ -838,17 +823,21 @@ def create_edit_tab2(self, tabs, nano_window):
 
     def update_graph2(graph_type2):
         ax.clear()
-        # Safely remove legend if it exists
         try:
             legend = ax.get_legend()
             if legend is not None:
                 legend.remove()
         except (AttributeError, ValueError):
-            # No legend to remove or already removed
             pass
 
         fig.patch.set_facecolor(f"{get_background_color2()}")
         ax.set_facecolor(f"{get_background_color2()}")
+
+        if freqs is None or S_data is None or len(freqs) == 0:
+            cg, = ax.plot([0], [0], 'o', markersize=get_marker1_size2(), color=get_marker1_color2(), visible=False)
+            cg2, = ax.plot([0], [0], 'o', markersize=get_marker2_size2(), color=get_marker2_color2(), visible=False)
+            canvas.draw()
+            return cg, cg2
 
         if graph_type2 == "Smith Diagram":  
             fig.subplots_adjust(left=0.15, right=0.9, top=0.82, bottom=0.18)
@@ -1053,13 +1042,14 @@ def create_edit_tab2(self, tabs, nano_window):
 
     layout.addWidget(layout_container_V, 1)
 
-    left_group_trace.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    left_group_marker.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-    left_group_graphics.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+    left_group_trace.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+    left_group_marker.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
+    left_group_graphics.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Minimum)
 
-    layoutV.addWidget(left_group_trace, 1)
-    layoutV.addWidget(left_group_marker, 1)
-    layoutV.addWidget(left_group_graphics, 1)
+    layoutV.addWidget(left_group_trace)
+    layoutV.addWidget(left_group_marker)
+    layoutV.addWidget(left_group_graphics)
+    layoutV.addStretch(1)
 
     layout.addWidget(canvas, 2)
 
