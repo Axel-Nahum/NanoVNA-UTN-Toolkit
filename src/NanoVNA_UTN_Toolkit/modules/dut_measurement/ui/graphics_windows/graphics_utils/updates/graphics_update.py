@@ -255,6 +255,66 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
 
             ax.grid(current_state_grid)
 
+        elif graph_type == "Real":
+            real_data = np.real(s_data)
+            cursor_graph.set_xdata([freqs[0] / freq_div])
+            cursor_graph.set_ydata([real_data[0]])
+            fig.canvas.draw_idle()
+
+            data_line, = ax.plot(freqs / freq_div, real_data, color=tracecolor, linewidth=linewidth)
+
+            ax.set_xlabel(rf"$\mathrm{{Frequency\ ({freq_unit})}}$", color=f"{text_color}")
+            ax.set_ylabel(r"$\mathrm{Re}(%s)$" % _ls(s_param), color=text_color)
+            ax.set_title(r"$\mathrm{Re}(%s)$" % _ls(s_param), color=text_color)
+
+            freq_start = freqs[0] / freq_div
+            freq_end = freqs[-1] / freq_div
+            freq_range = freq_end - freq_start
+            margin = freq_range * 0.05
+            ax.set_xlim(freq_start - margin, freq_end + margin)
+
+            y_min = np.min(real_data); y_max = np.max(real_data)
+            y_range = y_max - y_min; y_margin = y_range * 0.05 if y_range > 0 else 0.1
+            ax.set_ylim(y_min - y_margin, y_max + y_margin)
+            ax.autoscale(False)
+            ax.tick_params(axis='x', colors=f"{axis_color}")
+            ax.tick_params(axis='y', colors=f"{axis_color}")
+            for spine in ax.spines.values():
+                spine.set_color(f"{axis_color}")
+            current_state_grid = self.settings.value(f"grid/current_{ax_type}_state", False, type=bool)
+            ax.grid(current_state_grid, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+            fig.canvas.draw_idle()
+
+        elif graph_type == "Imaginary":
+            imag_data = np.imag(s_data)
+            cursor_graph.set_xdata([freqs[0] / freq_div])
+            cursor_graph.set_ydata([imag_data[0]])
+            fig.canvas.draw_idle()
+
+            data_line, = ax.plot(freqs / freq_div, imag_data, color=tracecolor, linewidth=linewidth)
+
+            ax.set_xlabel(rf"$\mathrm{{Frequency\ ({freq_unit})}}$", color=f"{text_color}")
+            ax.set_ylabel(r"$\mathrm{Im}(%s)$" % _ls(s_param), color=text_color)
+            ax.set_title(r"$\mathrm{Im}(%s)$" % _ls(s_param), color=text_color)
+
+            freq_start = freqs[0] / freq_div
+            freq_end = freqs[-1] / freq_div
+            freq_range = freq_end - freq_start
+            margin = freq_range * 0.05
+            ax.set_xlim(freq_start - margin, freq_end + margin)
+
+            y_min = np.min(imag_data); y_max = np.max(imag_data)
+            y_range = y_max - y_min; y_margin = y_range * 0.05 if y_range > 0 else 0.1
+            ax.set_ylim(y_min - y_margin, y_max + y_margin)
+            ax.autoscale(False)
+            ax.tick_params(axis='x', colors=f"{axis_color}")
+            ax.tick_params(axis='y', colors=f"{axis_color}")
+            for spine in ax.spines.values():
+                spine.set_color(f"{axis_color}")
+            current_state_grid = self.settings.value(f"grid/current_{ax_type}_state", False, type=bool)
+            ax.grid(current_state_grid, which='both', axis='both', color=f"{axis_color}", linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+            fig.canvas.draw_idle()
+
         elif graph_type == "VSWR":
             # Calculate and plot VSWR
             s_magnitude = np.abs(s_data)

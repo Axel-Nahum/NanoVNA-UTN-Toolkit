@@ -99,11 +99,11 @@ def create_tab1(self):
     graphic_type_selector.setStyleSheet(groupbox_style)
     type_layout = QVBoxLayout()
     self.radio_buttons_tab1 = {} 
-    for option in [f"{self.graphic_view_smith_diagram}", f"{self.graphic_view_magnitude}", f"{self.graphic_view_phase}"]:
+    for option in [f"{self.graphic_view_smith_diagram}", f"{self.graphic_view_magnitude}", f"{self.graphic_view_phase}", "Real", "Imaginary"]:
         rb = QRadioButton(option)
         rb.setStyleSheet(f"color: {label_color};")
         type_layout.addWidget(rb)
-        self.radio_buttons_tab1[option] = rb 
+        self.radio_buttons_tab1[option] = rb
     self.radio_buttons_tab1[graph_type1].setChecked(True)
     graphic_type_selector.setLayout(type_layout)
     left_layout.addWidget(graphic_type_selector)
@@ -187,17 +187,41 @@ def create_tab1(self):
             ax.set_xlabel(f"{self.graphic_view_g1_phase_x_axis}")
             ax.set_ylabel(r'$\phi_{%s}$ [°]' % self.current_s_tab1)
 
-            ax.set_aspect('equal', 'box')    
+            ax.set_aspect('equal', 'box')
             ax.grid(True)
 
-            ax.spines['bottom'].set_color('grey')     
+            ax.spines['bottom'].set_color('grey')
             ax.spines['bottom'].set_linewidth(0.7)
 
-            ax.spines['left'].set_color('grey')      
+            ax.spines['left'].set_color('grey')
             ax.spines['left'].set_linewidth(0.7)
 
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
+
+        elif self.radio_buttons_tab1["Real"].isChecked():
+            self.current_graph_tab1 = "Real"
+            self.radio_s_tab1["S21"].setEnabled(True)
+            if np.any(data):
+                ax.plot(self.freqs*1e-6, np.real(data), color='blue', label=self.current_s_tab1)
+            ax.set_xlabel(f"{self.graphic_view_g1_phase_x_axis}")
+            ax.set_ylabel(r'$\mathrm{Re}(%s)$' % self.current_s_tab1)
+            ax.grid(True)
+            ax.spines['bottom'].set_color('grey'); ax.spines['bottom'].set_linewidth(0.7)
+            ax.spines['left'].set_color('grey'); ax.spines['left'].set_linewidth(0.7)
+            ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+
+        elif self.radio_buttons_tab1["Imaginary"].isChecked():
+            self.current_graph_tab1 = "Imaginary"
+            self.radio_s_tab1["S21"].setEnabled(True)
+            if np.any(data):
+                ax.plot(self.freqs*1e-6, np.imag(data), color='blue', label=self.current_s_tab1)
+            ax.set_xlabel(f"{self.graphic_view_g1_phase_x_axis}")
+            ax.set_ylabel(r'$\mathrm{Im}(%s)$' % self.current_s_tab1)
+            ax.grid(True)
+            ax.spines['bottom'].set_color('grey'); ax.spines['bottom'].set_linewidth(0.7)
+            ax.spines['left'].set_color('grey'); ax.spines['left'].set_linewidth(0.7)
+            ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
 
         canvas.draw()
 
@@ -279,7 +303,7 @@ def create_tab2(self):
     graphic_type_selector.setStyleSheet(groupbox_style)
     type_layout = QVBoxLayout()
     self.radio_buttons_tab2 = {}
-    for option in [f"{self.graphic_view_smith_diagram}", f"{self.graphic_view_magnitude}", f"{self.graphic_view_phase}"]:
+    for option in [f"{self.graphic_view_smith_diagram}", f"{self.graphic_view_magnitude}", f"{self.graphic_view_phase}", "Real", "Imaginary"]:
         rb = QRadioButton(option)
         type_layout.addWidget(rb)
         rb.setStyleSheet(f"color: {label_color};")
@@ -355,28 +379,52 @@ def create_tab2(self):
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
 
-        elif self.radio_buttons_tab2["Phase"].isChecked(): 
+        elif self.radio_buttons_tab2["Phase"].isChecked():
             self.current_graph_tab2 = "Phase"
             if np.any(data):
                 ax.plot(self.freqs*1e-6, np.angle(data, deg=True), color='blue', label=self.current_s_tab2)
 
             ax.set_xlabel(f"{self.graphic_view_g2_phase_x_axis}")
             ax.set_ylabel(r'$\phi_{%s}$ [°]' % self.current_s_tab2)
-            
-            ax.set_aspect('equal', 'box')   
+
+            ax.set_aspect('equal', 'box')
             ax.grid(True)
 
             self.radio_s_tab2["S21"].setEnabled(True)
 
-            ax.spines['bottom'].set_color('grey')     
+            ax.spines['bottom'].set_color('grey')
             ax.spines['bottom'].set_linewidth(0.7)
 
-            ax.spines['left'].set_color('grey')      
+            ax.spines['left'].set_color('grey')
             ax.spines['left'].set_linewidth(0.7)
 
             ax.spines['top'].set_visible(False)
             ax.spines['right'].set_visible(False)
-            
+
+        elif self.radio_buttons_tab2["Real"].isChecked():
+            self.current_graph_tab2 = "Real"
+            self.radio_s_tab2["S21"].setEnabled(True)
+            if np.any(data):
+                ax.plot(self.freqs*1e-6, np.real(data), color='blue', label=self.current_s_tab2)
+            ax.set_xlabel(f"{self.graphic_view_g2_phase_x_axis}")
+            ax.set_ylabel(r'$\mathrm{Re}(%s)$' % self.current_s_tab2)
+            ax.grid(True)
+            ax.spines['bottom'].set_color('grey'); ax.spines['bottom'].set_linewidth(0.7)
+            ax.spines['left'].set_color('grey'); ax.spines['left'].set_linewidth(0.7)
+            ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+
+        elif self.radio_buttons_tab2["Imaginary"].isChecked():
+            self.current_graph_tab2 = "Imaginary"
+            self.radio_s_tab2["S21"].setEnabled(True)
+            if np.any(data):
+                ax.plot(self.freqs*1e-6, np.imag(data), color='blue', label=self.current_s_tab2)
+            ax.set_xlabel(f"{self.graphic_view_g2_phase_x_axis}")
+            ax.set_ylabel(r'$\mathrm{Im}(%s)$' % self.current_s_tab2)
+            ax.grid(True)
+            ax.spines['bottom'].set_color('grey'); ax.spines['bottom'].set_linewidth(0.7)
+            ax.spines['left'].set_color('grey'); ax.spines['left'].set_linewidth(0.7)
+            ax.spines['top'].set_visible(False); ax.spines['right'].set_visible(False)
+
         canvas.draw()
 
     for rb in self.radio_s_tab2.values(): 

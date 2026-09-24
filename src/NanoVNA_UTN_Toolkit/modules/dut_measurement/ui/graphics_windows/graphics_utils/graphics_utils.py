@@ -253,6 +253,88 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
         cursor_graph_2, = ax.plot([], [], 'o', markersize=marker2size, color=marker2color, visible=False)
 
+    elif graph_type == "Real":
+
+        fig, ax = plt.subplots(figsize=(4,3))
+        fig.set_tight_layout(False)
+        fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
+
+        fig.patch.set_facecolor(f"{background_color_graphics}")
+        ax.set_facecolor(f"{background_color_graphics}")
+
+        canvas = FigureCanvas(fig)
+        canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        left_layout.addWidget(canvas)
+
+        line, = ax.plot(freqs*1e-6, np.real(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
+
+        ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
+        ax.set_ylabel(r"$\mathrm{Re}(%s)$" % _ls(s_param), color=text_color)
+        ax.set_title(r"$\mathrm{Re}(%s)$" % _ls(s_param), color=text_color)
+
+        freq_start = freqs[0]*1e-6
+        freq_end = freqs[-1]*1e-6
+        freq_range = freq_end - freq_start
+        margin = freq_range * 0.05
+        ax.set_xlim(freq_start - margin, freq_end + margin)
+        real_data = np.real(S_data)
+        y_min = np.min(real_data); y_max = np.max(real_data)
+        y_range = y_max - y_min; y_margin = y_range * 0.05 if y_range > 0 else 0.1
+        ax.set_ylim(y_min - y_margin, y_max + y_margin)
+        ax.autoscale(False)
+        ax.tick_params(axis='x', colors=f"{axis_color}")
+        ax.tick_params(axis='y', colors=f"{axis_color}")
+
+        for spine in ax.spines.values():
+            spine.set_color("white")
+
+        current_state_grid = self.settings.value(f"grid/current_left_state", "true", type=bool)
+        ax.grid(current_state_grid, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+
+        cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
+        cursor_graph_2, = ax.plot([], [], 'o', markersize=marker2size, color=marker2color, visible=False)
+
+    elif graph_type == "Imaginary":
+
+        fig, ax = plt.subplots(figsize=(4,3))
+        fig.set_tight_layout(False)
+        fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
+
+        fig.patch.set_facecolor(f"{background_color_graphics}")
+        ax.set_facecolor(f"{background_color_graphics}")
+
+        canvas = FigureCanvas(fig)
+        canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        left_layout.addWidget(canvas)
+
+        line, = ax.plot(freqs*1e-6, np.imag(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
+
+        ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
+        ax.set_ylabel(r"$\mathrm{Im}(%s)$" % _ls(s_param), color=text_color)
+        ax.set_title(r"$\mathrm{Im}(%s)$" % _ls(s_param), color=text_color)
+
+        freq_start = freqs[0]*1e-6
+        freq_end = freqs[-1]*1e-6
+        freq_range = freq_end - freq_start
+        margin = freq_range * 0.05
+        ax.set_xlim(freq_start - margin, freq_end + margin)
+        imag_data = np.imag(S_data)
+        y_min = np.min(imag_data); y_max = np.max(imag_data)
+        y_range = y_max - y_min; y_margin = y_range * 0.05 if y_range > 0 else 0.1
+        ax.set_ylim(y_min - y_margin, y_max + y_margin)
+        ax.autoscale(False)
+        ax.tick_params(axis='x', colors=f"{axis_color}")
+        ax.tick_params(axis='y', colors=f"{axis_color}")
+
+        for spine in ax.spines.values():
+            spine.set_color("white")
+
+        current_state_grid = self.settings.value(f"grid/current_left_state", "true", type=bool)
+        ax.grid(current_state_grid, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+
+        cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
+        cursor_graph_2, = ax.plot([], [], 'o', markersize=marker2size, color=marker2color, visible=False)
+
     else:
         raise ValueError(f"Unknown graph_type: {graph_type}")
 
@@ -591,6 +673,11 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
             _fq_div, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
             cursor_graph.set_data([freqs[index] / _fq_div], [phase_deg])
 
+        elif graph_type in ("Real", "Imaginary"):
+            _fq_div, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            y_val = np.real(val_complex) if graph_type == "Real" else np.imag(val_complex)
+            cursor_graph.set_data([freqs[index] / _fq_div], [y_val])
+
         # === Actualizar labels ===
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
         edit_value.blockSignals(True)
@@ -689,6 +776,11 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         elif graph_type == "Phase":
             _fq_div2, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
             cursor_graph_2.set_data([freqs[index] / _fq_div2], [phase_deg])
+
+        elif graph_type in ("Real", "Imaginary"):
+            _fq_div2, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            y_val2 = np.real(val_complex) if graph_type == "Real" else np.imag(val_complex)
+            cursor_graph_2.set_data([freqs[index] / _fq_div2], [y_val2])
 
         # === Actualizar labels del panel 2 ===
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
@@ -793,7 +885,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
             return
 
         if dragging_1["active"]:
-            if graph_type in ["Magnitude", "Phase"]:
+            if graph_type in ["Magnitude", "Phase", "Real", "Imaginary"]:
                 mouse_x = event.xdata
                 index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
                 update_cursor(index)
@@ -804,7 +896,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
                 update_cursor(index)
 
         elif dragging_2["active"]:
-            if graph_type in ["Magnitude", "Phase"]:
+            if graph_type in ["Magnitude", "Phase", "Real", "Imaginary"]:
                 mouse_x = event.xdata
                 index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
                 update_cursor_2(index)
@@ -1270,9 +1362,91 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
             spine.set_color("white")
 
         current_state_grid = self.settings.value(f"grid/current_right_state", "true", type=bool)
-            
+
         ax.grid(current_state_grid, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
-        
+
+        cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
+        cursor_graph_2, = ax.plot([], [], 'o', markersize=marker2size, color=marker2color, visible=False)
+
+    elif graph_type == "Real":
+
+        fig, ax = plt.subplots(figsize=(4,3))
+        fig.set_tight_layout(False)
+        fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
+
+        fig.patch.set_facecolor(f"{background_color_graphics}")
+        ax.set_facecolor(f"{background_color_graphics}")
+
+        canvas = FigureCanvas(fig)
+        canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        right_layout.addWidget(canvas)
+
+        line, = ax.plot(freqs*1e-6, np.real(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
+
+        ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
+        ax.set_ylabel(r"$\mathrm{Re}(%s)$" % _ls(s_param), color=text_color)
+        ax.set_title(r"$\mathrm{Re}(%s)$" % _ls(s_param), color=text_color)
+
+        freq_start = freqs[0]*1e-6
+        freq_end = freqs[-1]*1e-6
+        freq_range = freq_end - freq_start
+        margin = freq_range * 0.05
+        ax.set_xlim(freq_start - margin, freq_end + margin)
+        real_data = np.real(S_data)
+        y_min = np.min(real_data); y_max = np.max(real_data)
+        y_range = y_max - y_min; y_margin = y_range * 0.05 if y_range > 0 else 0.1
+        ax.set_ylim(y_min - y_margin, y_max + y_margin)
+        ax.autoscale(False)
+        ax.tick_params(axis='x', colors=f"{axis_color}")
+        ax.tick_params(axis='y', colors=f"{axis_color}")
+
+        for spine in ax.spines.values():
+            spine.set_color("white")
+
+        current_state_grid = self.settings.value(f"grid/current_right_state", "true", type=bool)
+        ax.grid(current_state_grid, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+
+        cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
+        cursor_graph_2, = ax.plot([], [], 'o', markersize=marker2size, color=marker2color, visible=False)
+
+    elif graph_type == "Imaginary":
+
+        fig, ax = plt.subplots(figsize=(4,3))
+        fig.set_tight_layout(False)
+        fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
+
+        fig.patch.set_facecolor(f"{background_color_graphics}")
+        ax.set_facecolor(f"{background_color_graphics}")
+
+        canvas = FigureCanvas(fig)
+        canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        right_layout.addWidget(canvas)
+
+        line, = ax.plot(freqs*1e-6, np.imag(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
+
+        ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
+        ax.set_ylabel(r"$\mathrm{Im}(%s)$" % _ls(s_param), color=text_color)
+        ax.set_title(r"$\mathrm{Im}(%s)$" % _ls(s_param), color=text_color)
+
+        freq_start = freqs[0]*1e-6
+        freq_end = freqs[-1]*1e-6
+        freq_range = freq_end - freq_start
+        margin = freq_range * 0.05
+        ax.set_xlim(freq_start - margin, freq_end + margin)
+        imag_data = np.imag(S_data)
+        y_min = np.min(imag_data); y_max = np.max(imag_data)
+        y_range = y_max - y_min; y_margin = y_range * 0.05 if y_range > 0 else 0.1
+        ax.set_ylim(y_min - y_margin, y_max + y_margin)
+        ax.autoscale(False)
+        ax.tick_params(axis='x', colors=f"{axis_color}")
+        ax.tick_params(axis='y', colors=f"{axis_color}")
+
+        for spine in ax.spines.values():
+            spine.set_color("white")
+
+        current_state_grid = self.settings.value(f"grid/current_right_state", "true", type=bool)
+        ax.grid(current_state_grid, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
+
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
         cursor_graph_2, = ax.plot([], [], 'o', markersize=marker2size, color=marker2color, visible=False)
 
@@ -1604,6 +1778,11 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
             _fq_div, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
             cursor_graph.set_data([freqs[index] / _fq_div], [phase_deg])
 
+        elif graph_type in ("Real", "Imaginary"):
+            _fq_div, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            y_val = np.real(val_complex) if graph_type == "Real" else np.imag(val_complex)
+            cursor_graph.set_data([freqs[index] / _fq_div], [y_val])
+
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
         edit_value.blockSignals(True)
         edit_value.setText(f"  {freq_value}")
@@ -1699,6 +1878,11 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         elif graph_type == "Phase":
             _fq_div2, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
             cursor_graph_2.set_data([freqs[index] / _fq_div2], [phase_deg])
+
+        elif graph_type in ("Real", "Imaginary"):
+            _fq_div2, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            y_val2 = np.real(val_complex) if graph_type == "Real" else np.imag(val_complex)
+            cursor_graph_2.set_data([freqs[index] / _fq_div2], [y_val2])
 
         # === Actualizar labels del panel 2 ===
         freq_value, freq_unit = format_frequency_smart_split(freqs[index])
@@ -1802,7 +1986,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
             return
 
         if dragging_1["active"]:
-            if graph_type in ["Magnitude", "Phase"]:
+            if graph_type in ["Magnitude", "Phase", "Real", "Imaginary"]:
                 mouse_x = event.xdata
                 index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
                 update_cursor(index)
@@ -1813,7 +1997,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
                 update_cursor(index)
 
         elif dragging_2["active"]:
-            if graph_type in ["Magnitude", "Phase"]:
+            if graph_type in ["Magnitude", "Phase", "Real", "Imaginary"]:
                 mouse_x = event.xdata
                 index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
                 update_cursor_2(index)
