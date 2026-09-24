@@ -1,10 +1,17 @@
 from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
+import os
+import shutil
 
 from datetime import datetime
 
 from pathlib import Path
+
+from PySide6.QtWidgets import (
+    QDialog, QVBoxLayout, QLabel, QLineEdit,
+    QCheckBox, QDialogButtonBox
+)
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
@@ -63,91 +70,92 @@ def save_calibration_dialog(self):
         )
         return
 
-    # Dialog to enter calibration name
-    from PySide6.QtWidgets import QInputDialog
+    _prefix_map = {
+        "OSM (Open - Short - Match)": "OSM",
+        "Thru Normalization": "Thru_Normalization",
+        "Open/Short Normalization": "OpenShort_Normalization",
+        "1-Port+N": "1PortN",
+        "Enhanced-Response": "Enhanced_Response",
+    }
+    prefix = _prefix_map.get(self.selected_method, "Calibration")
 
-    if self.selected_method == "OSM (Open - Short - Match)":
-        prefix = "OSM"
-    elif self.selected_method == "Thru Normalization":
-        prefix = "Thru_Normalization"
-    elif self.selected_method == "Open/Short Normalization":
-        prefix = "OpenShort_Normalization"
-    elif self.selected_method == "1-Port+N":
-        prefix = "1PortN"
-    elif self.selected_method == "Enhanced-Response":
-        prefix = "Enhanced Response"
-    else:
-        prefix = "Calibration"
-
-    name, ok = QInputDialog.getText(
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.save_calibration.save_calibration import _SaveKitDialog
+    dlg = _SaveKitDialog(
         self,
-        'Save Calibration',
-        f'Enter calibration name:\n\nMeasurements to save: {", ".join(measured_standards).upper()}',
-        text=f'{prefix}_Calibration_{get_current_timestamp(self)}'
+        default_name=f"{prefix}_Calibration_{get_current_timestamp(self)}"
     )
+    if dlg.exec() != QDialog.DialogCode.Accepted:
+        return
 
-    if ok and name:
+    name = dlg.kit_name
+    save_internal = dlg.save_internal
+    save_custom = dlg.save_custom
+
+    if not name:
+        return
+
+    dest_root = None
+    if save_custom:
+        from PySide6.QtWidgets import QFileDialog
+        dest_root = QFileDialog.getExistingDirectory(
+            self, "Select folder to export calibration kit"
+        )
+        if not dest_root:
+            return
+
+    if name:
         try:
+            import zipfile
+            from PySide6.QtWidgets import QMessageBox
+
+            # --- Save to internal library ---
             saved = False
 
             if self.selected_method == "Open/Short Normalization":
                 result = self.os_calibration.save_calibration_file(name, self.selected_method, False)
                 if _extract_success(result):
                     saved = True
-                    logging.info(f"Open/Short Normalization kit '{name}' saved successfully")
+                    logging.info(f"Open/Short Normalization kit '{name}' saved")
             else:
                 if self.selected_method in ("OSM (Open - Short - Match)", "1-Port+N", "Enhanced-Response"):
                     result = self.osm_calibration.save_calibration_file(name, self.selected_method, False)
                     if _extract_success(result):
                         saved = True
-                        logging.info(f"OSM calibration '{name}' saved successfully")
+                        logging.info(f"OSM calibration '{name}' saved")
 
                 if self.selected_method in ("Thru Normalization", "1-Port+N", "Enhanced-Response"):
                     result = self.thru_calibration.save_calibration_file(name, self.selected_method, False, osm_instance=self.osm_calibration)
                     if _extract_success(result):
                         saved = True
-                        logging.info(f"Thru calibration '{name}' saved successfully")
+                        logging.info(f"Thru calibration '{name}' saved")
 
-            if saved:
-                QMessageBox.information(
-                    self,
-                    "Success",
-                    f"Calibration '{name}' saved successfully!\n\nSaved measurements: {', '.join(measured_standards).upper()}\n\nFiles saved in:\n- Touchstone format\n- .cal format\n\nUse 'Finish' button to continue to graphics window."
-                )
-                # Reset all managers so this session's data does not bleed into the next calibration
-                _reset_all_managers(self)
-            else:
-                QMessageBox.warning(self, "Save Failed", f"Could not save calibration '{name}'.\nCheck that all required measurements have been performed.")
+            if not saved:
+                QMessageBox.warning(self, "Save Failed",
+                                    f"Could not save calibration '{name}'.\nCheck that all required measurements have been performed.")
                 return
 
-            # Load configuration for calibration settings
+            _reset_all_managers(self)
+
+            # --- Register in INI ---
             settings_calibration = get_settings(
                 "INI/dut_measurement/calibration_config/calibration_config.ini",
                 "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
                 Path(__file__).resolve()
             )
 
-            # --- Check if name already exists in any Kit ---
             existing_groups = settings_calibration.childGroups()
             for g in existing_groups:
-                if g.startswith("Kit_"):
-                    existing_name = settings_calibration.value(f"{g}/kit_name", "")
-                    if existing_name == name:
-                        QMessageBox.warning(self, "Duplicate Name",
-                                            f"The kit name '{name}' already exists.\nPlease choose another name.",
-                                            QMessageBox.Ok)
-                        return
+                if g.startswith("Kit_") and settings_calibration.value(f"{g}/kit_name", "") == name:
+                    QMessageBox.warning(self, "Duplicate Name",
+                                        f"The kit name '{name}' already exists.\nPlease choose another name.")
+                    return
 
-            # --- Determine ID: always calculate next available to prevent overwriting ---
             kit_ids = [int(g.split("_")[1]) for g in existing_groups if g.startswith("Kit_") and g.split("_")[1].isdigit()]
             next_id = max(kit_ids, default=0) + 1
-
             calibration_entry_name = f"Kit_{next_id}"
             full_calibration_name = f"{name}_{next_id}"
-
             current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-            # --- Save data ---
             settings_calibration.beginGroup(calibration_entry_name)
             settings_calibration.setValue("kit_name", name)
             settings_calibration.setValue("method", self.selected_method)
@@ -155,13 +163,62 @@ def save_calibration_dialog(self):
             settings_calibration.setValue("DateTime_Kits", current_datetime)
             settings_calibration.endGroup()
 
-            # --- Update active calibration reference ---
             settings_calibration.beginGroup("Calibration")
             settings_calibration.setValue("Name", full_calibration_name)
             settings_calibration.endGroup()
             settings_calibration.sync()
 
-            logging.info(f"[CalibrationDialog] Saved calibration {full_calibration_name}")
+            logging.info(f"[CalibrationDialog] Registered calibration {full_calibration_name}")
+
+            # --- Single final message ---
+            if save_custom:
+                from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
+                kits_base = get_calibration_path(
+                    "modules/dut_measurement/calibration/kits",
+                    "modules/dut_measurement/calibration/kits",
+                    Path(__file__).resolve()
+                )
+                kit_folder = os.path.join(kits_base, name)
+
+                sweep_settings = get_settings(
+                    "INI/dut_measurement/sweep_config/sweep_config.ini",
+                    "modules/dut_measurement/ui/sweep_window/sweep_config/sweep_config.ini",
+                    Path(__file__).resolve()
+                )
+
+                ini_lines = [
+                    "[Kit]\n",
+                    f"name = {name}\n",
+                    f"method = {self.selected_method}\n",
+                    f"date = {current_datetime}\n",
+                    f"start_freq_hz = {sweep_settings.value('Frequency/StartFreqHz', 0)}\n",
+                    f"stop_freq_hz = {sweep_settings.value('Frequency/StopFreqHz', 0)}\n",
+                    f"segments = {sweep_settings.value('Frequency/Segments', 101)}\n",
+                    f"start_unit = {sweep_settings.value('Frequency/StartUnit', 'MHz')}\n",
+                    f"stop_unit = {sweep_settings.value('Frequency/StopUnit', 'MHz')}\n",
+                ]
+
+                zip_path = os.path.join(dest_root, f"{name}.zip")
+                with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:
+                    if os.path.isdir(kit_folder):
+                        for root, dirs, fnames in os.walk(kit_folder):
+                            for fname in fnames:
+                                fpath = os.path.join(root, fname)
+                                arcname = os.path.relpath(fpath, kit_folder)
+                                zf.write(fpath, arcname)
+                    zf.writestr("kit_info.ini", "".join(ini_lines))
+
+                logging.info(f"[CalibrationDialog] Exported ZIP: {zip_path}")
+                if save_internal:
+                    msg = f"Kit '{name}' saved to the internal library and exported as:\n{zip_path}"
+                else:
+                    msg = f"Kit '{name}' exported as:\n{zip_path}"
+                QMessageBox.information(self, "Calibration kit saved", msg)
+            else:
+                QMessageBox.information(
+                    self, "Calibration kit saved",
+                    f"Kit '{name}' saved to the internal library."
+                )
 
         except Exception as e:
             logging.error(f"[CalibrationWizard] Error saving calibration: {e}")

@@ -511,8 +511,8 @@ def open_error_visualizer(parent_self, errors_folder: str | None = None,
             base_name = _resolve_kit_base_name(kit_name)
 
             errors_folder = get_calibration_path(
-                f"modules/dut_measurement/calibration/kits/{base_name}",
-                f"modules/dut_measurement/calibration/kits/{base_name}",
+                f"modules/dut_measurement/calibration/kits/{base_name}/errors",
+                f"modules/dut_measurement/calibration/kits/{base_name}/errors",
                 Path(__file__).resolve()
             )
 

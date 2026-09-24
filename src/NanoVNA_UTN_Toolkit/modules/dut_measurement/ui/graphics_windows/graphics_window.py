@@ -77,6 +77,8 @@ import_touchstone_data_dut, import_touchstone_data_calibration = safe_import("Na
 
 open_calibration_wizard, open_no_calibration, select_kit_dialog, handle_save_calibration, delete_kit_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.calibration_menu", "open_calibration_wizard", "open_no_calibration", "select_kit_dialog", "handle_save_calibration", "delete_kit_dialog")
 
+export_loaded_kit_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.save_calibration.save_calibration", "export_loaded_kit_dialog")
+
 open_view, edit_graphics_markers = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.view_edit_menu.view_edit_menu", "open_view", "edit_graphics_markers")
 
 open_plot_settings = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.plot_menu.plot_menu", "open_plot_manager")
@@ -298,6 +300,9 @@ class NanoVNAGraphics(QMainWindow):
         export_touchstone_action = file_menu.addAction(f"{self.measurement_menu_export_errors}")
         export_touchstone_action.triggered.connect(lambda: export_errors(self))
 
+        self._export_kit_action = file_menu.addAction("Export Kit…")
+        self._export_kit_action.triggered.connect(lambda: export_loaded_kit_dialog(self))
+
         file_menu.addSeparator()
 
         from NanoVNA_UTN_Toolkit.shared.utils.preferences.preferences import open_preferences_dialog
@@ -394,6 +399,16 @@ class NanoVNAGraphics(QMainWindow):
         delete_calibration.triggered.connect(lambda: delete_kit_dialog(self))
 
         apply_window_icon(self)
+
+        # Show Export Kit only when a kit is currently active
+        _cal_s = get_settings(
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
+            "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
+            Path(__file__).resolve()
+        )
+        self._export_kit_action.setVisible(
+            bool(_cal_s.value("Calibration/Kits", False, type=bool)) if _cal_s else False
+        )
 
 # ------- Calibration Manager ------------------------------------------------------------------------------------------------- #
         

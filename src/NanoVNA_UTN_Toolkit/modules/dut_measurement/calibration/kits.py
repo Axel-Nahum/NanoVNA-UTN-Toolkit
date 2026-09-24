@@ -36,7 +36,7 @@ class KitsCalibrator:
         logging.info("[Calibrator] Loading error terms from S1P files...")
 
         # Construct full paths to error S1P files with literal names
-        error_dir = os.path.join(self.calibration_dir, selected_kit)
+        error_dir = os.path.join(self.calibration_dir, selected_kit, "errors")
         directivity_file = os.path.join(error_dir, "directivity.s1p")
         reflection_tracking_file = os.path.join(error_dir, "reflection_tracking.s1p")
         source_match_file = os.path.join(error_dir, "source_match.s1p")
@@ -108,13 +108,7 @@ class KitsCalibrator:
         logging.info("[Calibrator] Loading transmission tracking error from S2P file...")
 
         # Path to normalization error file
-        error_dir = os.path.join(self.calibration_dir, selected_kit)
-        transmission_tracking_file = os.path.join(error_dir, "transmission_tracking.s2p")
-
-        logging.info("[Calibrator] Loading transmission tracking error from S2P file...")
-
-        # Path to normalization error file
-        error_dir = os.path.join(self.calibration_dir, selected_kit)
+        error_dir = os.path.join(self.calibration_dir, selected_kit, "errors")
         transmission_tracking_file = os.path.join(error_dir, "transmission_tracking.s2p")
 
         # Read S2P file using skrf and extract S21
@@ -162,7 +156,7 @@ class KitsCalibrator:
         """Calibrate S11 using Open/Short normalization reflection tracking error term (kit-based)."""
         logging.info("[Calibrator] Loading reflection tracking error from kit S1P file...")
 
-        error_dir = os.path.join(self.calibration_dir, selected_kit)
+        error_dir = os.path.join(self.calibration_dir, selected_kit, "errors")
         reflection_tracking_file = os.path.join(error_dir, "reflection_tracking.s1p")
 
         reflection_tracking_network = rf.Network(reflection_tracking_file)
@@ -216,7 +210,7 @@ class KitsCalibrator:
         logging.info("[Calibrator] Calibrating S11 and S21 using 1-Port+N method...")
 
         # Calibrate S11 using OSM errors from osm_dir
-        error_dir_osm = os.path.join(self.calibration_dir, selected_kit)
+        error_dir_osm = os.path.join(self.calibration_dir, selected_kit, "errors")
         directivity_file = os.path.join(error_dir_osm, "directivity.s1p")
         reflection_tracking_file = os.path.join(error_dir_osm, "reflection_tracking.s1p")
         source_match_file = os.path.join(error_dir_osm, "source_match.s1p")
@@ -225,11 +219,11 @@ class KitsCalibrator:
         reflection_tracking = rf.Network(reflection_tracking_file).s[:,0,0]
         source_match = rf.Network(source_match_file).s[:,0,0]
         delta_e = source_match * directivity - reflection_tracking
-        
+
         s11_cal = (s11_med - directivity) / (s11_med * source_match - delta_e)
 
         # Calibrate S21 using normalization error from thru_dir
-        error_dir_norm = os.path.join(self.calibration_dir, selected_kit)
+        error_dir_norm = os.path.join(self.calibration_dir, selected_kit, "errors")
         transmission_tracking_file = os.path.join(error_dir_norm, "transmission_tracking.s2p")
         transmission_tracking = rf.Network(transmission_tracking_file).s[:,1,0]
 
@@ -264,7 +258,7 @@ class KitsCalibrator:
         logging.info("[Calibrator] Calibrating S11 and S21 using 1-Port+N method...")
 
         # Calibrate S11 using OSM errors from osm_dir
-        error_dir_osm = os.path.join(self.calibration_dir, selected_kit)
+        error_dir_osm = os.path.join(self.calibration_dir, selected_kit, "errors")
         directivity_file = os.path.join(error_dir_osm, "directivity.s1p")
         reflection_tracking_file = os.path.join(error_dir_osm, "reflection_tracking.s1p")
         source_match_file = os.path.join(error_dir_osm, "source_match.s1p")
@@ -273,11 +267,11 @@ class KitsCalibrator:
         reflection_tracking = rf.Network(reflection_tracking_file).s[:,0,0]
         source_match = rf.Network(source_match_file).s[:,0,0]
         delta_e = source_match * directivity - reflection_tracking
-        
+
         s11_cal = (s11_med - directivity) / (s11_med * source_match - delta_e)
 
         # Calibrate S21 using normalization error from thru_dir
-        error_dir_norm = os.path.join(self.calibration_dir, selected_kit)
+        error_dir_norm = os.path.join(self.calibration_dir, selected_kit, "errors")
         transmission_tracking_file = os.path.join(error_dir_norm, "transmission_tracking.s2p")
         transmission_tracking = rf.Network(transmission_tracking_file).s[:,1,0]
 

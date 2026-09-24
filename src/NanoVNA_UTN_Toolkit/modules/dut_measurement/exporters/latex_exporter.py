@@ -1270,9 +1270,9 @@ class LatexExporter:
             "modules/dut_measurement/calibration/kits",
             Path(__file__).resolve()
         )
-        kit_path = os.path.join(kits_dir, kit_folder)
+        kit_path = os.path.join(kits_dir, kit_folder, "errors")
         if not os.path.isdir(kit_path):
-            logger.warning(f"Kit folder not found: {kit_path}")
+            logger.warning(f"Kit errors folder not found: {kit_path}")
             return []
         return [
             (label, kit_path, fname, is_s2p)

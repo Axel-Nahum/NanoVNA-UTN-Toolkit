@@ -83,11 +83,17 @@ def setup_graphics_window_body(self, settings, config, left_graph_type, left_s_p
     unit_start = settings_sweep.value("Frequency/StartUnit", "KHz")
     unit_stop = settings_sweep.value("Frequency/StopUnit", "MHz")
 
-    _divs = {"hz": 1, "khz": 1e3, "mhz": 1e6, "ghz": 1e9}
-    freq_start_display = f"{freq_start / _divs.get(unit_start.lower(), 1):g}"
-    freq_stop_display  = f"{freq_stop  / _divs.get(unit_stop.lower(),  1):g}"
+    def _auto_fmt(hz):
+        if hz >= 1e9:
+            return f"{hz / 1e9:g} GHz"
+        elif hz >= 1e6:
+            return f"{hz / 1e6:g} MHz"
+        elif hz >= 1e3:
+            return f"{hz / 1e3:g} kHz"
+        else:
+            return f"{hz:g} Hz"
 
-    self.sweep_info_label = QLabel(f"Sweep: {freq_start_display} {unit_start} - {freq_stop_display} {unit_stop}, {steps} points")
+    self.sweep_info_label = QLabel(f"Sweep: {_auto_fmt(freq_start)} - {_auto_fmt(freq_stop)}, {steps} points")
     self.sweep_info_label.setStyleSheet("font-size: 12px; margin-left: 12px;")
     top_grid.addWidget(self.sweep_info_label, 0, 2, Qt.AlignVCenter)
 

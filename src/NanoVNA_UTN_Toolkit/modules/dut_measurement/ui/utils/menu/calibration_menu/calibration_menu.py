@@ -18,7 +18,7 @@ from PySide6 import QtCore
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
-show_calibration_warning, save_kit_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.save_calibration.save_calibration", "show_calibration_warning", "save_kit_dialog")
+show_calibration_warning, save_kit_dialog, export_loaded_kit_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.save_calibration.save_calibration", "show_calibration_warning", "save_kit_dialog", "export_loaded_kit_dialog")
 
 handle_all_kits_deleted, handle_deleted_current_kit = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.delete_calibration.delete_calibration", "handle_all_kits_deleted", "handle_deleted_current_kit")
 
@@ -268,6 +268,7 @@ def select_kit_dialog(self):
     dialog.exec()
 
     if _should_reopen[0]:
+        stop_realtime(self)
         from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_window import NanoVNAGraphics
         if self.vna_device:
             new_window = NanoVNAGraphics(vna_device=self.vna_device)

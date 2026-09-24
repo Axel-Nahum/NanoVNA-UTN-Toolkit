@@ -5,6 +5,7 @@ Handles OSM calibrations with persistent state and Touchstone export.
 from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import os
+import shutil
 import sys
 import numpy as np
 from datetime import datetime
@@ -253,7 +254,14 @@ class OSMCalibrationManager:
             self._save_osm_error_file(freqs, e00, "directivity.s1p", "Directivity", kit_name)
             self._save_osm_error_file(freqs, e11, "source_match.s1p", "Source match", kit_name)
             self._save_osm_error_file(freqs, e10e01, "reflection_tracking.s1p", "Reflection tracking", kit_name)
-            
+
+            # --- Copy raw measurement files to measurements/ ---
+            meas_dir = os.path.join(kit_path, "measurements")
+            os.makedirs(meas_dir, exist_ok=True)
+            for src, dst in [(open_file, "open.s1p"), (short_file, "short.s1p"), (match_file, "match.s1p")]:
+                if src and os.path.exists(src):
+                    shutil.copy2(src, os.path.join(meas_dir, dst))
+
             logging.info(f"[OSMCalibrationManager] OSM calibration errors saved: {kit_path}")
             return True
 
@@ -263,13 +271,13 @@ class OSMCalibrationManager:
 
     def _save_osm_error_file(self, freq, s_data, filename, label, kit_subfolder=None):
         """
-        Save S-parameter data as a Touchstone file inside Kits/<kit_subfolder>.
+        Save S-parameter data as a Touchstone file inside Kits/<kit_subfolder>/errors/.
         Assumes self.kits_path already exists.
         """
-        
+
         save_dir = self.kits_path
         if kit_subfolder:
-            save_dir = os.path.join(self.kits_path, kit_subfolder)
+            save_dir = os.path.join(self.kits_path, kit_subfolder, "errors")
 
         os.makedirs(save_dir, exist_ok=True)
         logging.info(f"[DEBUG] Created folder: {save_dir}")
@@ -683,6 +691,16 @@ class THRUCalibrationManager:
                 self._save_thru_error_file(freqs, e22_save, "load_match.s2p", "Load Match", kit_subfolder)
                 self._save_thru_error_file(freqs, e10e32_save, "transmission_tracking.s2p", "Transmission tracking", kit_subfolder)
 
+            # --- Copy raw THRU measurement to measurements/ ---
+            meas_dir = os.path.join(kit_path, "measurements")
+            os.makedirs(meas_dir, exist_ok=True)
+            if not is_external_kit:
+                thru_src = os.path.join(self.thru_results_path, "thru.s2p")
+            else:
+                thru_src = files[3] if len(files) > 3 else None
+            if thru_src and os.path.exists(thru_src):
+                shutil.copy2(thru_src, os.path.join(meas_dir, "thru.s2p"))
+
             logging.info(f"[CalibrationManager] Calibration kit saved in: {kit_path}")
             return True, errors
 
@@ -692,12 +710,12 @@ class THRUCalibrationManager:
 
     def _save_thru_error_file(self, freq, s_data, filename, label, kit_subfolder=None):
         """
-        Save S-parameter data as a Touchstone file inside Kits/<kit_subfolder>.
+        Save S-parameter data as a Touchstone file inside Kits/<kit_subfolder>/errors/.
         Assumes self.kits_path already exists.
         """
         save_dir = self.kits_path
         if kit_subfolder:
-            save_dir = os.path.join(self.kits_path, kit_subfolder)
+            save_dir = os.path.join(self.kits_path, kit_subfolder, "errors")
 
         os.makedirs(save_dir, exist_ok=True)
         logging.info(f"[DEBUG] Created folder_thru data: {s_data}")
@@ -903,6 +921,16 @@ class OpenShortCalibrationManager:
 
             self._save_open_short_error_file(freqs, s11, "reflection_tracking.s1p", "Reflection tracking", kit_subfolder)
 
+            # --- Copy raw Open/Short measurement to measurements/ ---
+            meas_dir = os.path.join(kit_path, "measurements")
+            os.makedirs(meas_dir, exist_ok=True)
+            if not is_external_kit:
+                os_src = os.path.join(self.open_short_results_path, "open_short.s1p")
+            else:
+                os_src = files[3] if len(files) > 3 else None
+            if os_src and os.path.exists(os_src):
+                shutil.copy2(os_src, os.path.join(meas_dir, "open_short.s1p"))
+
             logging.info(f"[OpenShortCalibrationManager] Kit saved: {kit_path}")
             return True, {'reflection_tracking': s11}
 
@@ -911,7 +939,7 @@ class OpenShortCalibrationManager:
             return False, {}
 
     def _save_open_short_error_file(self, freq, s11_data, filename, label, kit_subfolder=None):
-        save_dir = os.path.join(self.kits_path, kit_subfolder) if kit_subfolder else self.kits_path
+        save_dir = os.path.join(self.kits_path, kit_subfolder, "errors") if kit_subfolder else self.kits_path
         os.makedirs(save_dir, exist_ok=True)
         filepath = os.path.join(save_dir, filename)
         s_data = np.zeros((len(freq), 1, 1), dtype=complex)
