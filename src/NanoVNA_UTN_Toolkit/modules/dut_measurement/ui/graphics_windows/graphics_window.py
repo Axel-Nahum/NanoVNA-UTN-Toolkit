@@ -77,7 +77,7 @@ import_touchstone_data_dut, import_touchstone_data_calibration = safe_import("Na
 
 open_calibration_wizard, open_no_calibration, select_kit_dialog, handle_save_calibration, delete_kit_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.calibration_menu", "open_calibration_wizard", "open_no_calibration", "select_kit_dialog", "handle_save_calibration", "delete_kit_dialog")
 
-export_loaded_kit_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.save_calibration.save_calibration", "export_loaded_kit_dialog")
+export_loaded_kit_dialog, import_kit_dialog = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.save_calibration.save_calibration", "export_loaded_kit_dialog", "import_kit_dialog")
 
 open_view, edit_graphics_markers = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.view_edit_menu.view_edit_menu", "open_view", "edit_graphics_markers")
 
@@ -283,11 +283,11 @@ class NanoVNAGraphics(QMainWindow):
 
         # --- File menu actions ---
 
-        import_touchstone_action = file_menu.addAction(f"{self.measurement_menu_import_touchstone_cal}")
-        import_touchstone_action.triggered.connect(lambda: import_touchstone_data_calibration(self))
-
         import_touchstone_action = file_menu.addAction(f"{self.measurement_menu_import_touchstone_dut}")
         import_touchstone_action.triggered.connect(lambda: import_touchstone_data_dut(self))
+
+        import_kit_action = file_menu.addAction("Import Calibration Kit")
+        import_kit_action.triggered.connect(lambda: import_kit_dialog(self))
 
         file_menu.addSeparator()
 
@@ -300,7 +300,7 @@ class NanoVNAGraphics(QMainWindow):
         export_touchstone_action = file_menu.addAction(f"{self.measurement_menu_export_errors}")
         export_touchstone_action.triggered.connect(lambda: export_errors(self))
 
-        self._export_kit_action = file_menu.addAction("Export Kit…")
+        self._export_kit_action = file_menu.addAction("Export Calibration Kit")
         self._export_kit_action.triggered.connect(lambda: export_loaded_kit_dialog(self))
 
         file_menu.addSeparator()

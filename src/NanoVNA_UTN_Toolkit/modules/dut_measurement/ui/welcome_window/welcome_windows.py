@@ -477,26 +477,26 @@ class NanoVNAWelcome(QMainWindow):
         layout.addWidget(_hsep(self._sep_color))
         layout.addSpacing(14)
 
-        desc = QLabel(self.dut_welcome_ui_import_calibration_description)
+        desc = QLabel("Import a previously exported calibration kit ZIP file. The kit will be registered and ready to use.")
         desc.setWordWrap(True)
         desc.setStyleSheet(f"font-size: 12px; color: {self._secondary_color}; background: transparent;")
         layout.addWidget(desc)
 
         layout.addSpacing(16)
 
-        files_lbl = QLabel("Required Touchstone files:")
+        files_lbl = QLabel("The ZIP must contain:")
         files_lbl.setStyleSheet(f"font-size: 12px; color: {self._muted_color}; background: transparent;")
         layout.addWidget(files_lbl)
 
         layout.addSpacing(8)
 
-        for fname in ["open.s1p", "short.s1p", "load/match.s1p", "thru.s2p"]:
-            layout.addLayout(_bullet_row("✓", fname, "#5cb85c", self._bullet_color))
+        for item in ["kit_info.ini (metadata)", "errors/ (calibration errors)", "measurements/ (raw data)"]:
+            layout.addLayout(_bullet_row("✓", item, "#5cb85c", self._bullet_color))
             layout.addSpacing(5)
 
         layout.addStretch(1)
 
-        self.import_button = QPushButton("Import Calibration")
+        self.import_button = QPushButton("Import Calibration Kit")
         self.import_button.setFixedHeight(44)
         self.import_button.setStyleSheet(self._btn_primary)
         self.import_button.clicked.connect(self.import_calibration)
@@ -541,9 +541,29 @@ class NanoVNAWelcome(QMainWindow):
                     "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
                     Path(__file__).resolve()
                 )
-                kit_method = settings.value(f"Kit_{kit_id}/method", "Unknown")
+                kit_method   = settings.value(f"Kit_{kit_id}/method", "Unknown")
                 kit_datetime = settings.value(f"Kit_{kit_id}/DateTime_Kits", "Unknown")
-                info_text = f"Selected Kit: {self.selected_kit_name}\nMethod: {kit_method}\nCreated: {kit_datetime}"
+                start_hz     = settings.value(f"Kit_{kit_id}/StartFreqHz", 0)
+                stop_hz      = settings.value(f"Kit_{kit_id}/StopFreqHz",  0)
+                segments     = settings.value(f"Kit_{kit_id}/Segments",    0)
+
+                def _auto_fmt(hz):
+                    try:
+                        hz = float(hz)
+                    except (TypeError, ValueError):
+                        return str(hz)
+                    if hz >= 1e9:   return f"{hz / 1e9:g} GHz"
+                    elif hz >= 1e6: return f"{hz / 1e6:g} MHz"
+                    elif hz >= 1e3: return f"{hz / 1e3:g} kHz"
+                    else:           return f"{hz:g} Hz"
+
+                info_text = f"Method: {kit_method}\nCreated: {kit_datetime}"
+                try:
+                    s = float(start_hz); e = float(stop_hz); pts = int(float(segments))
+                    if s and e:
+                        info_text += f"\nFrequency: {_auto_fmt(s)} – {_auto_fmt(e)},  {pts} pts"
+                except (TypeError, ValueError):
+                    pass
                 self.kit_info_label.setText(info_text)
             else:
                 self.kit_info_label.setText(f"Selected Kit: {self.selected_kit_name}\n(Kit details not found)")
@@ -581,75 +601,147 @@ class NanoVNAWelcome(QMainWindow):
         return calibration_name
 
     def import_calibration(self):
-        from PySide6.QtWidgets import QFileDialog, QMessageBox, QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox
-        import os
+        import zipfile
+        import configparser
+        from PySide6.QtWidgets import QFileDialog, QMessageBox, QDialog
+        from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
+        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.calibration_menu.save_calibration.save_calibration import _ImportKitDialog
 
-        files, _ = QFileDialog.getOpenFileNames(
-            self,
-            "Select Calibration Files",
-            "",
-            "Touchstone Files (*.s1p *.s2p);;All Files (*)"
+        zip_path, _ = QFileDialog.getOpenFileName(
+            self, "Select calibration kit ZIP", "", "ZIP files (*.zip)"
         )
-
-        if not files:
-            QMessageBox.warning(self, "No Files Selected", "Please select the 4 calibration files.")
+        if not zip_path:
             return
 
-        required_names = ["open", "short", "load", "match", "thru"]
-        filenames = [os.path.basename(f).lower() for f in files]
-        found = {name: any(name in f for f in filenames) for name in required_names}
-        has_load_or_match = found["load"] or found["match"]
-
-        missing = []
-        if not found["open"]:   missing.append("open")
-        if not found["short"]:  missing.append("short")
-        if not has_load_or_match: missing.append("load or match")
-        if not found["thru"]:   missing.append("thru")
-
-        if missing:
-            QMessageBox.warning(self, "Missing Files", f"The following calibration files are missing: {', '.join(missing)}")
+        try:
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                if "kit_info.ini" not in zf.namelist():
+                    QMessageBox.warning(
+                        self, "Invalid kit file",
+                        "The selected ZIP does not contain a kit_info.ini.\n"
+                        "Make sure it was exported using File → Export Calibration Kit."
+                    )
+                    return
+                ini_bytes = zf.read("kit_info.ini").decode("utf-8")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not open ZIP:\n{e}")
             return
 
-        if len(files) != 4:
-            QMessageBox.warning(self, "Invalid Selection", "You must select exactly 4 calibration files.")
+        cfg = configparser.ConfigParser()
+        cfg.read_string(ini_bytes)
+        kit_info = dict(cfg["Kit"]) if "Kit" in cfg else {}
+
+        zip_kit_name = kit_info.get("name", "") or os.path.splitext(os.path.basename(zip_path))[0]
+
+        dlg = _ImportKitDialog(self, zip_kit_name, kit_info)
+        if dlg.exec() != QDialog.DialogCode.Accepted:
             return
 
-        QMessageBox.information(self, "Success", "All calibration files selected successfully!")
+        name = dlg.kit_name
+        if not name:
+            return
 
-        dialog = QDialog(self)
-        dialog.setWindowTitle("NanoVNA UTN Toolkit - Select Calibration Method")
-        main_layout = QVBoxLayout(dialog)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(15)
+        settings_cal = get_settings(
+            "INI/dut_measurement/calibration_config/calibration_config.ini",
+            "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
+            Path(__file__).resolve()
+        )
+        existing_groups = settings_cal.childGroups()
+        for g in existing_groups:
+            if g.startswith("Kit_") and settings_cal.value(f"{g}/kit_name", "") == name:
+                QMessageBox.warning(self, "Duplicate name",
+                                    f"A kit named '{name}' already exists. Please choose another name.")
+                return
 
-        label = QLabel("Select Method", dialog)
-        main_layout.addWidget(label)
+        kits_base = get_calibration_path(
+            "modules/dut_measurement/calibration/kits",
+            "modules/dut_measurement/calibration/kits",
+            Path(__file__).resolve()
+        )
+        kit_folder = os.path.join(kits_base, name)
 
-        self.select_method = QComboBox()
-        self.select_method.setEditable(False)
-        self.select_method.addItem("Select Method")
-        item = self.select_method.model().item(0)
-        item.setEnabled(False)
-        item.setForeground(QColor(120, 120, 120))
-        self.select_method.addItems([
-            "OSM (Open - Short - Match)",
-            "Thru Normalization",
-            "1-Port+N",
-            "Enhanced-Response"
-        ])
-        main_layout.addWidget(self.select_method)
+        try:
+            os.makedirs(kit_folder, exist_ok=True)
+            with zipfile.ZipFile(zip_path, 'r') as zf:
+                for member in zf.namelist():
+                    if member == "kit_info.ini":
+                        continue
+                    zf.extract(member, kit_folder)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Could not extract kit:\n{e}")
+            return
 
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(10)
-        cancel_button = QPushButton("Cancel", dialog)
-        cancel_button.clicked.connect(dialog.reject)
-        button_layout.addWidget(cancel_button)
-        calibrate_button = QPushButton("Calibrate", dialog)
-        calibrate_button.clicked.connect(lambda: self.start_calibration(files, self.select_method.currentText(), dialog))
-        button_layout.addWidget(calibrate_button)
-        main_layout.addLayout(button_layout)
+        kit_ids = [int(g.split("_")[1]) for g in existing_groups if g.startswith("Kit_") and g.split("_")[1].isdigit()]
+        next_id = max(kit_ids, default=0) + 1
+        calibration_entry_name = f"Kit_{next_id}"
+        full_calibration_name = f"{name}_{next_id}"
+        current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        dialog.exec()
+        method     = kit_info.get("method", "")
+        start_hz   = kit_info.get("start_freq_hz", 0)
+        stop_hz    = kit_info.get("stop_freq_hz", 0)
+        segments   = kit_info.get("segments", 101)
+        start_unit = kit_info.get("start_unit", "MHz")
+        stop_unit  = kit_info.get("stop_unit", "MHz")
+
+        settings_cal.beginGroup(calibration_entry_name)
+        settings_cal.setValue("kit_name", name)
+        settings_cal.setValue("method", method)
+        settings_cal.setValue("id", next_id)
+        settings_cal.setValue("DateTime_Kits", current_datetime)
+        settings_cal.setValue("StartFreqHz", int(float(start_hz)) if start_hz else 0)
+        settings_cal.setValue("StopFreqHz",  int(float(stop_hz))  if stop_hz  else 0)
+        settings_cal.setValue("Segments",    int(segments))
+        settings_cal.setValue("StartUnit",   start_unit)
+        settings_cal.setValue("StopUnit",    stop_unit)
+        settings_cal.endGroup()
+
+        if method == "OSM (Open - Short - Match)":
+            parameter = "S11"
+        elif method == "Thru Normalization":
+            parameter = "S21"
+        elif method == "Open/Short Normalization":
+            parameter = "S11"
+        else:
+            parameter = "S11, S21"
+
+        settings_cal.beginGroup("Calibration")
+        settings_cal.setValue("Name", full_calibration_name)
+        settings_cal.setValue("id", next_id)
+        settings_cal.setValue("Method", method)
+        settings_cal.setValue("DateTime_Kits", current_datetime)
+        settings_cal.setValue("Kits", True)
+        settings_cal.setValue("NoCalibration", False)
+        settings_cal.setValue("Parameter", parameter)
+        settings_cal.endGroup()
+        settings_cal.sync()
+
+        if start_hz and stop_hz:
+            sweep_settings = get_settings(
+                "INI/dut_measurement/sweep_config/sweep_config.ini",
+                "modules/dut_measurement/ui/sweep_window/sweep_config/sweep_config.ini",
+                Path(__file__).resolve()
+            )
+            sweep_settings.setValue("Frequency/StartFreqHz", int(float(start_hz)))
+            sweep_settings.setValue("Frequency/StopFreqHz",  int(float(stop_hz)))
+            sweep_settings.setValue("Frequency/Segments",    int(segments))
+            sweep_settings.setValue("Frequency/StartUnit",   start_unit)
+            sweep_settings.setValue("Frequency/StopUnit",    stop_unit)
+            sweep_settings.sync()
+
+        logging.info(f"[welcome_windows.import_calibration] Imported kit '{name}' as {full_calibration_name}")
+
+        # Refresh kit dropdown and select the new kit
+        self._load_calibration_kits()
+        self.kit_dropdown.blockSignals(True)
+        self.kit_dropdown.clear()
+        self.kit_dropdown.addItem("None")
+        for kit_name in self.kit_names:
+            self.kit_dropdown.addItem(kit_name)
+        idx = self.kit_names.index(name) + 1 if name in self.kit_names else 0
+        self.kit_dropdown.setCurrentIndex(idx)
+        self.kit_dropdown.blockSignals(False)
+        self._on_kit_selection_changed(self.kit_dropdown.currentText())
 
     def start_calibration(self, files, selected_method, dialog):
         print(f"Starting calibration with method: {selected_method}")
