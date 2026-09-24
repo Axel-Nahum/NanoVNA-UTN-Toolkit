@@ -116,6 +116,7 @@ def open_signal_filters(self):
     sf_v.setSpacing(8)
 
     self.sf_dialog.smooth_title = QLabel("Smoothing")
+    self.sf_dialog.smooth_title.setStyleSheet(_TITLE_ACTIVE + " background: transparent;")
     sf_v.addWidget(self.sf_dialog.smooth_title)
 
     pct_row = QHBoxLayout()
@@ -177,10 +178,12 @@ def open_signal_filters(self):
     kf_v.setSpacing(8)
 
     self.sf_dialog.kalman_title = QLabel("Kalman Filter")
+    self.sf_dialog.kalman_title.setStyleSheet(_TITLE_INACTIVE + " background: transparent;")
     kf_v.addWidget(self.sf_dialog.kalman_title)
 
     preset_row = QHBoxLayout()
     self.sf_dialog.kalman_preset_lbl = QLabel(f"{self.kalman_preset_label}")
+    self.sf_dialog.kalman_preset_lbl.setStyleSheet("background: transparent;")
     preset_row.addWidget(self.sf_dialog.kalman_preset_lbl)
     preset_row.addStretch()
 
@@ -205,13 +208,13 @@ def open_signal_filters(self):
 
     self.sf_dialog.kalman_params_lbl = QLabel("Preset parameters:")
     self.sf_dialog.kalman_params_lbl.setStyleSheet(
-        "font-weight: normal; font-size: 11px; font-style: italic; border: none;"
+        "font-weight: normal; font-size: 11px; font-style: italic; border: none; background: transparent;"
     )
     kf_v.addWidget(self.sf_dialog.kalman_params_lbl)
 
     self.sf_dialog.kalman_info = QLabel()
     self.sf_dialog.kalman_info.setAlignment(Qt.AlignLeft)
-    self.sf_dialog.kalman_info.setStyleSheet("font-size: 13px; font-weight: normal; border: none; padding-left: 8px;")
+    self.sf_dialog.kalman_info.setStyleSheet("font-size: 13px; font-weight: normal; border: none; padding-left: 8px; background: transparent;")
     kf_v.addWidget(self.sf_dialog.kalman_info)
 
     main.addWidget(kalman_frame)
@@ -290,10 +293,20 @@ def update_filter_ui(self):
         if kalman_on else
         "QFrame#kalmanFrame { border: 1px solid #2a3050; border-radius: 6px; background: transparent; }"
     )
-    self.sf_dialog.kalman_title.setStyleSheet(_TITLE_ACTIVE if kalman_on else _TITLE_INACTIVE)
-    self.sf_dialog.kalman_preset_lbl.setStyleSheet(_LABEL_ACTIVE if kalman_on else _LABEL_INACTIVE)
+    self.sf_dialog.kalman_title.setStyleSheet(
+        (_TITLE_ACTIVE if kalman_on else _TITLE_INACTIVE) + " background: transparent;"
+    )
+    self.sf_dialog.kalman_preset_lbl.setStyleSheet(
+        (_LABEL_ACTIVE if kalman_on else _LABEL_INACTIVE) + " background: transparent;"
+    )
+    _k_dim = "color: #3a4a6a;" if not kalman_on else "color: #8899bb;"
+    self.sf_dialog.kalman_params_lbl.setStyleSheet(
+        f"font-weight: normal; font-size: 11px; font-style: italic; border: none; background: transparent; {_k_dim}"
+    )
+    self.sf_dialog.kalman_info.setStyleSheet(
+        f"font-size: 13px; font-weight: normal; border: none; padding-left: 8px; background: transparent; {_k_dim}"
+    )
     self.sf_dialog.kalman_combo.setEnabled(kalman_on)
-    self.sf_dialog.kalman_info.setEnabled(kalman_on)
 
 
 # =========================================================

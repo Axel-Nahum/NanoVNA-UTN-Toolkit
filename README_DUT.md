@@ -102,7 +102,22 @@ Uncheck the **Single Sweep Mode** checkbox to enter real-time continuous sweepin
 
 ## Signal Filters
 
-An optional **Kalman filter** smooths noisy measurements by tracking a state estimate across sweeps. Access it from **Plot → Signal Filters**.
+Access signal filters from **Plot → Signal Filters**. Two filter types are available:
+
+### Smoothing
+
+A moving average applied to the real and imaginary parts of each sweep independently. Magnitude, phase and Smith chart are all derived from the smoothed complex data.
+
+| Parameter | Description |
+|-----------|-------------|
+| **Window size (%)** | Percentage of sweep points used as the averaging window. Higher values produce a smoother trace at the cost of detail. |
+
+- Applied per sweep — does not accumulate state between sweeps
+- Active for both single-sweep and real-time modes
+
+### Kalman Filter
+
+Tracks a state estimate across consecutive sweeps, reducing sweep-to-sweep variation at each frequency point.
 
 | Preset | Effect |
 |--------|--------|
@@ -113,6 +128,8 @@ An optional **Kalman filter** smooths noisy measurements by tracking a state est
 
 - The filter state resets automatically on each new single sweep (when Single Sweep Mode is on)
 - During real-time mode the filter runs continuously; use **Reset Kalman** to clear the state
+
+> The active filter is session-only — it resets to **Off** each time the application is opened.
 
 ---
 

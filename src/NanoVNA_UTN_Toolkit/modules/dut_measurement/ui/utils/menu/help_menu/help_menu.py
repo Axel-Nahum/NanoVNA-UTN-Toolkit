@@ -210,7 +210,7 @@ def show_app_about(parent=None):
     dlg = QDialog(parent)
     dlg.setWindowTitle("About NanoVNA UTN Toolkit")
     dlg.setModal(True)
-    dlg.setFixedSize(340, 200)
+    dlg.setFixedSize(380, 220)
 
     is_dark = True
     if parent is not None:
@@ -232,7 +232,7 @@ def show_app_about(parent=None):
     title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {fg}; background: transparent;")
     layout.addWidget(title)
 
-    version = QLabel("Version 2.3.1")
+    version = QLabel("Version 2.3.1  —  September 2026")
     version.setAlignment(Qt.AlignCenter)
     version.setStyleSheet(f"font-size: 13px; color: {sub}; background: transparent;")
     layout.addWidget(version)
@@ -243,6 +243,11 @@ def show_app_about(parent=None):
     copy_lbl.setAlignment(Qt.AlignCenter)
     copy_lbl.setStyleSheet(f"font-size: 12px; color: {sub}; background: transparent;")
     layout.addWidget(copy_lbl)
+
+    authors_lbl = QLabel("Axel Nathanel Nahum · Fernando Castro Canosa")
+    authors_lbl.setAlignment(Qt.AlignCenter)
+    authors_lbl.setStyleSheet(f"font-size: 11px; color: {sub}; background: transparent;")
+    layout.addWidget(authors_lbl)
 
     layout.addSpacing(10)
 

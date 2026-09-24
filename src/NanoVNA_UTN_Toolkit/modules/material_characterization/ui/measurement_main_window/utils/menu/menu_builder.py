@@ -107,12 +107,6 @@ def build_menu(main_window) -> None:
     # ------------------------------------------------------------------ #
     help_menu = menubar.addMenu(menu.get("help", "Help"))
 
-    if show_app_about:
-        app_about_action = QAction("About NanoVNA UTN Toolkit", main_window)
-        app_about_action.triggered.connect(lambda: show_app_about(main_window))
-        help_menu.addAction(app_about_action)
-        help_menu.addSeparator()
-
     if show_about_dialog:
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import (
             get_current_language,
@@ -128,3 +122,9 @@ def build_menu(main_window) -> None:
         docs_action = QAction(_doc_label, main_window)
         docs_action.triggered.connect(_open_docs)
         help_menu.addAction(docs_action)
+
+    if show_app_about:
+        help_menu.addSeparator()
+        app_about_action = QAction("About NanoVNA UTN Toolkit", main_window)
+        app_about_action.triggered.connect(lambda: show_app_about(main_window))
+        help_menu.addAction(app_about_action)

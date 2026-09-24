@@ -327,11 +327,6 @@ class NanoVNAGraphics(QMainWindow):
 
         # --- Help menu actions ---
 
-        if show_app_about:
-            app_about_action = help_menu.addAction("About NanoVNA UTN Toolkit")
-            app_about_action.triggered.connect(lambda: show_app_about(self))
-            help_menu.addSeparator()
-
         def _open_docs():
             _s = get_settings(
                 "INI/dut_measurement/preferences/preferences.ini",
@@ -344,6 +339,11 @@ class NanoVNAGraphics(QMainWindow):
         _doc_label = "Documentación" if current_lang == "es" else "Documentation"
         docs_action = help_menu.addAction(_doc_label)
         docs_action.triggered.connect(_open_docs)
+
+        if show_app_about:
+            help_menu.addSeparator()
+            app_about_action = help_menu.addAction("About NanoVNA UTN Toolkit")
+            app_about_action.triggered.connect(lambda: show_app_about(self))
 
 #-------- Lock Markers ----------------------------------------------------------------------------#
 
