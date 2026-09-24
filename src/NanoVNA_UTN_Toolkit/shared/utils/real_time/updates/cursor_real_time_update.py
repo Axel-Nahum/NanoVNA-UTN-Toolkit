@@ -20,6 +20,16 @@ def compute_y(val, graph_type, unit):
     elif graph_type == "Phase":
         return np.angle(val) * 180 / np.pi
 
+    elif graph_type == "Real":
+        return np.real(val)
+
+    elif graph_type == "Imaginary":
+        return np.imag(val)
+
+    elif graph_type == "VSWR":
+        s_mag = np.abs(val)
+        return float((1 + s_mag) / (1 - s_mag)) if s_mag < 1 else 999.0
+
     return np.abs(val)
 
 
@@ -59,13 +69,15 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
             return
 
         # ================= LEFT =================
+        _USE_LINE = {"Phase", "Real", "Imaginary", "VSWR"}
+
         if hasattr(self, "cursor_left") and self.cursor_left:
             idx = get_idx("slider_left")
             if graph_left == "Smith Diagram":
                 self.cursor_left.set_data([np.real(s_left[idx])], [np.imag(s_left[idx])])
             else:
                 x = freqs[idx] / freq_div
-                if graph_left == "Phase":
+                if graph_left in _USE_LINE:
                     y = _get_y_from_line(self.line_left, idx) or compute_y(s_left[idx], graph_left, unit_left)
                 else:
                     y = compute_y(s_left[idx], graph_left, unit_left)
@@ -77,7 +89,7 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
                 self.cursor_left_2.set_data([np.real(s_left[idx])], [np.imag(s_left[idx])])
             else:
                 x = freqs[idx] / freq_div
-                if graph_left == "Phase":
+                if graph_left in _USE_LINE:
                     y = _get_y_from_line(self.line_left, idx) or compute_y(s_left[idx], graph_left, unit_left)
                 else:
                     y = compute_y(s_left[idx], graph_left, unit_left)
@@ -90,7 +102,7 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
                 self.cursor_right.set_data([np.real(s_right[idx])], [np.imag(s_right[idx])])
             else:
                 x = freqs[idx] / freq_div
-                if graph_right == "Phase":
+                if graph_right in _USE_LINE:
                     y = _get_y_from_line(self.line_right, idx) or compute_y(s_right[idx], graph_right, unit_right)
                 else:
                     y = compute_y(s_right[idx], graph_right, unit_right)
@@ -102,7 +114,7 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
                 self.cursor_right_2.set_data([np.real(s_right[idx])], [np.imag(s_right[idx])])
             else:
                 x = freqs[idx] / freq_div
-                if graph_right == "Phase":
+                if graph_right in _USE_LINE:
                     y = _get_y_from_line(self.line_right, idx) or compute_y(s_right[idx], graph_right, unit_right)
                 else:
                     y = compute_y(s_right[idx], graph_right, unit_right)

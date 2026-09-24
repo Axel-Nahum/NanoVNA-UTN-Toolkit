@@ -296,3 +296,27 @@ def _clear_all_marker_fields(self):
             self.cursor_right_2.set_visible(False)
 
         _clear_axis_and_show_message(self, 'right', (0.5, 0.5))
+
+    if graph_type_tab1 in ("Real", "Imaginary", "VSWR"):
+
+        _clear_panel_labels(self, 'left')
+
+        if hasattr(self, 'cursor_left') and self.cursor_left:
+            self.cursor_left.set_visible(False)
+
+        if hasattr(self, 'cursor_left_2') and self.cursor_left_2:
+            self.cursor_left_2.set_visible(False)
+
+        _clear_axis_and_show_message(self, 'left', (0.5, 0.5))
+
+    if graph_type_tab2 in ("Real", "Imaginary", "VSWR"):
+
+        _clear_panel_labels(self, 'right')
+
+        if hasattr(self, 'cursor_right') and self.cursor_right:
+            self.cursor_right.set_visible(False)
+
+        if hasattr(self, 'cursor_right_2') and self.cursor_right_2:
+            self.cursor_right_2.set_visible(False)
+
+        _clear_axis_and_show_message(self, 'right', (0.5, 0.5))

@@ -266,7 +266,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
 
-        line, = ax.plot(freqs*1e-6, np.real(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
+        line, = ax.plot(freqs*1e-6, np.real(S_data), color=tracecolor, linestyle='-', linewidth=linewidth, zorder=2)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$\mathrm{Re}(%s)$" % _ls(s_param), color=text_color)
@@ -307,7 +307,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
 
-        line, = ax.plot(freqs*1e-6, np.imag(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
+        line, = ax.plot(freqs*1e-6, np.imag(S_data), color=tracecolor, linestyle='-', linewidth=linewidth, zorder=2)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$\mathrm{Im}(%s)$" % _ls(s_param), color=text_color)
@@ -1381,7 +1381,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(canvas)
 
-        line, = ax.plot(freqs*1e-6, np.real(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
+        line, = ax.plot(freqs*1e-6, np.real(S_data), color=tracecolor, linestyle='-', linewidth=linewidth, zorder=2)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$\mathrm{Re}(%s)$" % _ls(s_param), color=text_color)
@@ -1422,7 +1422,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(canvas)
 
-        line, = ax.plot(freqs*1e-6, np.imag(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
+        line, = ax.plot(freqs*1e-6, np.imag(S_data), color=tracecolor, linestyle='-', linewidth=linewidth, zorder=2)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
         ax.set_ylabel(r"$\mathrm{Im}(%s)$" % _ls(s_param), color=text_color)

@@ -220,7 +220,7 @@ class GraphPreviewExportDialog(QDialog):
         screen_height = geometry.height()
         screen_width = geometry.width()
 
-        dialog_h = max(660, min(780, int(screen_height * 0.72)))
+        dialog_h = max(690, min(800, int(screen_height * 0.75)))
         self.setFixedSize(740, dialog_h)
 
         main_layout = QVBoxLayout(self)
@@ -558,7 +558,7 @@ class GraphPreviewExportDialog(QDialog):
 
         # --- Marker 1: title centered, [input][unit] below ---
         vbox1 = QVBoxLayout()
-        vbox1.setSpacing(8)
+        vbox1.setSpacing(14)
         cb_row1 = QHBoxLayout()
         cb_row1.addStretch()
         cb_row1.addWidget(marker1)
@@ -572,7 +572,7 @@ class GraphPreviewExportDialog(QDialog):
 
         # --- Marker 2: title centered, [input][unit] below ---
         vbox2 = QVBoxLayout()
-        vbox2.setSpacing(8)
+        vbox2.setSpacing(14)
         cb_row2 = QHBoxLayout()
         cb_row2.addStretch()
         cb_row2.addWidget(marker2)

@@ -27,8 +27,8 @@ from matplotlib.lines import Line2D
 from pathlib import Path
 
 from PySide6.QtWidgets import (
-    QVBoxLayout, QHBoxLayout, QWidget, 
-    QFrame, QGroupBox, QRadioButton
+    QVBoxLayout, QHBoxLayout, QWidget,
+    QFrame, QGroupBox, QRadioButton, QButtonGroup
 )
 from PySide6.QtCore import Qt
 
@@ -68,6 +68,11 @@ def create_tab1(self):
     # QLabel
     label_color = settings_dark_light.value("Dark_Light/QLabel/color", "white")
 
+    radio_style = (
+        f"QRadioButton {{ color: {label_color}; spacing: 6px; }}"
+        f"QRadioButton::indicator {{ width: 13px; height: 13px; }}"
+    )
+
     tab1 = QWidget()
     tab1_layout = QHBoxLayout(tab1)
     tab1_layout.setContentsMargins(0, 0, 0, 0)
@@ -75,38 +80,59 @@ def create_tab1(self):
 
     # --- Left panel ---
     left_panel = QWidget()
+    left_panel.setFixedHeight(350)
     left_layout = QVBoxLayout(left_panel)
-    left_layout.setAlignment(Qt.AlignTop)
-    left_layout.setSpacing(10)
-    left_layout.setContentsMargins(0, 14, 0, 0)
+    left_layout.setSpacing(14)
+    left_layout.setContentsMargins(0, 0, 0, 0)
+    left_layout.setAlignment(Qt.AlignVCenter)
 
     # --- Selector for S parameter ---
     graphic_param_selector = QGroupBox(f"{self.graphic_view_group_select_parameter}")
     graphic_param_selector.setStyleSheet(groupbox_style)
     param_layout = QVBoxLayout()
-    self.radio_s_tab1 = {}  
+    self.radio_s_tab1 = {}
     for option in ["S11", "S21"]:
         rb = QRadioButton(option)
-        rb.setStyleSheet(f"color: {label_color};")
+        rb.setStyleSheet(radio_style)
         param_layout.addWidget(rb)
-        self.radio_s_tab1[option] = rb  # 
+        self.radio_s_tab1[option] = rb
     self.radio_s_tab1[s_param1].setChecked(True)
     graphic_param_selector.setLayout(param_layout)
     left_layout.addWidget(graphic_param_selector)
 
-    # --- Selector for graph type ---
-    graphic_type_selector = QGroupBox(f"{self.graphic_view_group_selector_graphic_1}")
-    graphic_type_selector.setStyleSheet(groupbox_style)
-    type_layout = QVBoxLayout()
-    self.radio_buttons_tab1 = {} 
-    for option in [f"{self.graphic_view_smith_diagram}", f"{self.graphic_view_magnitude}", f"{self.graphic_view_phase}", "Real", "Imaginary"]:
-        rb = QRadioButton(option)
-        rb.setStyleSheet(f"color: {label_color};")
-        type_layout.addWidget(rb)
-        self.radio_buttons_tab1[option] = rb
+    # --- Selector for graph type (3 grouped sections) ---
+    self.radio_buttons_tab1 = {}
+    _type_group_tab1 = QButtonGroup(tab1)
+    _type_group_tab1.setExclusive(True)
+
+    def _make_type_box_tab1(title, options):
+        box = QGroupBox(title)
+        box.setStyleSheet(groupbox_style)
+        layout = QVBoxLayout()
+        layout.setSpacing(2)
+        for opt in options:
+            rb = QRadioButton(opt)
+            rb.setStyleSheet(radio_style)
+            layout.addWidget(rb)
+            _type_group_tab1.addButton(rb)
+            self.radio_buttons_tab1[opt] = rb
+        box.setLayout(layout)
+        return box
+
+    left_layout.addWidget(_make_type_box_tab1(
+        "Magnitude / Phase",
+        [f"{self.graphic_view_magnitude}", f"{self.graphic_view_phase}"]
+    ))
+    left_layout.addWidget(_make_type_box_tab1(
+        "Real / Imaginary",
+        ["Real", "Imaginary"]
+    ))
+    left_layout.addWidget(_make_type_box_tab1(
+        "Smith Diagram",
+        [f"{self.graphic_view_smith_diagram}"]
+    ))
+
     self.radio_buttons_tab1[graph_type1].setChecked(True)
-    graphic_type_selector.setLayout(type_layout)
-    left_layout.addWidget(graphic_type_selector)
 
     # --- Figure and Canvas ---
     fig, ax = plt.subplots(figsize=(4,4))
@@ -279,38 +305,64 @@ def create_tab2(self):
 
     # --- Right panel ---
     right_panel2 = QWidget()
+    right_panel2.setFixedHeight(350)
     right_layout2 = QVBoxLayout(right_panel2)
-    right_layout2.setAlignment(Qt.AlignTop)
-    right_layout2.setSpacing(10)
-    right_layout2.setContentsMargins(0, 14, 0, 0)
+    right_layout2.setSpacing(14)
+    right_layout2.setContentsMargins(0, 0, 0, 0)
+    right_layout2.setAlignment(Qt.AlignVCenter)
 
     # --- Selector for S parameter ---
     graphic_param_selector = QGroupBox(f"{self.graphic_view_group_select_parameter}")
     graphic_param_selector.setStyleSheet(groupbox_style)
     param_layout = QVBoxLayout()
+    radio_style2 = (
+        f"QRadioButton {{ color: {label_color}; spacing: 6px; }}"
+        f"QRadioButton::indicator {{ width: 13px; height: 13px; }}"
+    )
+
     self.radio_s_tab2 = {}
     for option in ["S11", "S21"]:
         rb = QRadioButton(option)
         param_layout.addWidget(rb)
-        rb.setStyleSheet(f"color: {label_color};")
+        rb.setStyleSheet(radio_style2)
         self.radio_s_tab2[option] = rb
     self.radio_s_tab2[s_param2].setChecked(True)
     graphic_param_selector.setLayout(param_layout)
     right_layout2.addWidget(graphic_param_selector)
 
-    # --- Selector for graph type ---
-    graphic_type_selector = QGroupBox(f"{self.graphic_view_group_selector_graphic_1}")
-    graphic_type_selector.setStyleSheet(groupbox_style)
-    type_layout = QVBoxLayout()
+    # --- Selector for graph type (3 grouped sections) ---
     self.radio_buttons_tab2 = {}
-    for option in [f"{self.graphic_view_smith_diagram}", f"{self.graphic_view_magnitude}", f"{self.graphic_view_phase}", "Real", "Imaginary"]:
-        rb = QRadioButton(option)
-        type_layout.addWidget(rb)
-        rb.setStyleSheet(f"color: {label_color};")
-        self.radio_buttons_tab2[option] = rb
+    _type_group_tab2 = QButtonGroup(tab2)
+    _type_group_tab2.setExclusive(True)
+
+    def _make_type_box_tab2(title, options):
+        box = QGroupBox(title)
+        box.setStyleSheet(groupbox_style)
+        layout = QVBoxLayout()
+        layout.setSpacing(2)
+        for opt in options:
+            rb = QRadioButton(opt)
+            rb.setStyleSheet(radio_style2)
+            layout.addWidget(rb)
+            _type_group_tab2.addButton(rb)
+            self.radio_buttons_tab2[opt] = rb
+        box.setLayout(layout)
+        return box
+
+    right_layout2.addWidget(_make_type_box_tab2(
+        "Magnitude / Phase",
+        [f"{self.graphic_view_magnitude}", f"{self.graphic_view_phase}"]
+    ))
+    right_layout2.addWidget(_make_type_box_tab2(
+        "Real / Imaginary",
+        ["Real", "Imaginary"]
+    ))
+    right_layout2.addWidget(_make_type_box_tab2(
+        "Smith Diagram",
+        [f"{self.graphic_view_smith_diagram}"]
+    ))
+
     self.radio_buttons_tab2[graph_type2].setChecked(True)
-    graphic_type_selector.setLayout(type_layout)
-    right_layout2.addWidget(graphic_type_selector)
 
     # --- Figure and Canvas ---
     fig, ax = plt.subplots(figsize=(4,4))

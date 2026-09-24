@@ -267,7 +267,7 @@ class PermittivityPdfPreviewDialog(QDialog):
             " QCheckBox::indicator:hover { border: 1px solid #6aa2ff; }"
         )
         screen = QGuiApplication.primaryScreen().availableGeometry()
-        dialog_h = max(660, min(780, int(screen.height() * 0.72)))
+        dialog_h = max(690, min(800, int(screen.height() * 0.75)))
         self.setFixedSize(740, dialog_h)
 
         self._build_ui()
@@ -646,7 +646,7 @@ class PermittivityPdfPreviewDialog(QDialog):
         mc_layout.addLayout(self.marker_layout)
         mc_layout.addStretch()
         main_layout.addWidget(marker_container, alignment=Qt.AlignCenter)
-        main_layout.addSpacing(4)
+        main_layout.addSpacing(10)
 
         # Generate button
         self.export_button = _NoEnterButton("Generate PDF Report")
@@ -1039,7 +1039,7 @@ class PermittivityPdfPreviewDialog(QDialog):
             edit, combo = edits_combos[slot]
 
             vbox = QVBoxLayout()
-            vbox.setSpacing(8)
+            vbox.setSpacing(14)
             cb_row = QHBoxLayout()
             cb_row.addStretch()
             cb_row.addWidget(cb)

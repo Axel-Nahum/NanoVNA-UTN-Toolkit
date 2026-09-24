@@ -86,6 +86,13 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
             y_data = raw
         if len(y_data) > 1:
             y_data[0] = y_data[1]
+    elif graph_type == "Real":
+        y_data = np.real(s_data)
+    elif graph_type == "Imaginary":
+        y_data = np.imag(s_data)
+    elif graph_type == "VSWR":
+        s_mag = np.abs(s_data)
+        y_data = np.where(s_mag < 1, (1 + s_mag) / (1 - s_mag), 999.0)
     else:
         return
 

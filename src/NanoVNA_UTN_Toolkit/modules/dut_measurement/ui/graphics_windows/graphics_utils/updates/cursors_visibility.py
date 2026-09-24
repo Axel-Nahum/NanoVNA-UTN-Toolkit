@@ -115,6 +115,10 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                         elif graph_type_left == "VSWR":
                                             s_mag = np.abs(val_complex)
                                             y_val = float((1 + s_mag) / (1 - s_mag)) if s_mag < 1 else 999.0
+                                        elif graph_type_left == "Real":
+                                            y_val = float(np.real(val_complex))
+                                        elif graph_type_left == "Imaginary":
+                                            y_val = float(np.imag(val_complex))
                                         else:
                                             y_val = float(np.abs(val_complex))
                                     self.cursor_left.set_data([freq_mhz], [y_val])
@@ -225,6 +229,10 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                         elif graph_type_right == "VSWR":
                                             s_mag = np.abs(val_complex)
                                             y_val = float((1 + s_mag) / (1 - s_mag)) if s_mag < 1 else 999.0
+                                        elif graph_type_right == "Real":
+                                            y_val = float(np.real(val_complex))
+                                        elif graph_type_right == "Imaginary":
+                                            y_val = float(np.imag(val_complex))
                                         else:
                                             y_val = float(np.abs(val_complex))
                                     self.cursor_right.set_data([freq_mhz], [y_val])
@@ -347,6 +355,10 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                         elif graph_type_left == "VSWR":
                                             s_mag = np.abs(val_complex)
                                             y_val = float((1 + s_mag) / (1 - s_mag)) if s_mag < 1 else 999.0
+                                        elif graph_type_left == "Real":
+                                            y_val = float(np.real(val_complex))
+                                        elif graph_type_left == "Imaginary":
+                                            y_val = float(np.imag(val_complex))
                                         else:
                                             y_val = float(np.abs(val_complex))
                                     self.cursor_left_2.set_data([freq_mhz], [y_val])
@@ -454,6 +466,10 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                         elif graph_type_right == "VSWR":
                                             s_mag = np.abs(val_complex)
                                             y_val = float((1 + s_mag) / (1 - s_mag)) if s_mag < 1 else 999.0
+                                        elif graph_type_right == "Real":
+                                            y_val = float(np.real(val_complex))
+                                        elif graph_type_right == "Imaginary":
+                                            y_val = float(np.imag(val_complex))
                                         else:
                                             y_val = float(np.abs(val_complex))
                                     self.cursor_right_2.set_data([freq_mhz], [y_val])
