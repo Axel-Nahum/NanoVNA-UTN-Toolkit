@@ -251,8 +251,8 @@ def open_plot_manager(main_window):
     cancel_btn.setAutoDefault(False)
     cancel_btn.clicked.connect(dialog.reject)
 
-    actions.addWidget(apply_btn)
     actions.addWidget(cancel_btn)
+    actions.addWidget(apply_btn)
     layout.addLayout(actions)
 
     main.addWidget(frame)

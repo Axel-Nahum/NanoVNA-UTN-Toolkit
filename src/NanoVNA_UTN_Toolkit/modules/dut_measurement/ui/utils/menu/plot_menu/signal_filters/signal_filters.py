@@ -3,12 +3,11 @@ from NanoVNA_UTN_Toolkit.utils import safe_import
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QCheckBox, QComboBox, QStyledItemDelegate,
-    QLineEdit, QFrame, QGridLayout, QSizePolicy, QMessageBox,
-    QWidget
+    QPushButton, QComboBox, QStyledItemDelegate,
+    QLineEdit, QGroupBox, QRadioButton, QButtonGroup,
+    QSpinBox, QFrame, QSizePolicy, QMessageBox, QWidget
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QDoubleValidator
 
 get_settings = safe_import(
     "NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils",
@@ -30,27 +29,21 @@ class CenterDelegate(QStyledItemDelegate):
         option.displayAlignment = Qt.AlignCenter
 
 
+_FRAME_ACTIVE   = "QFrame {{ border: 1px solid #3a7bd5; border-radius: 6px; background: transparent; }}"
+_FRAME_INACTIVE = "QFrame {{ border: 1px solid #2a3050; border-radius: 6px; background: transparent; }}"
+_TITLE_ACTIVE   = "font-weight: bold; font-size: 13px; color: #e0e0e0; border: none;"
+_TITLE_INACTIVE = "font-weight: bold; font-size: 13px; color: #5a6a8a; border: none;"
+_LABEL_ACTIVE   = "font-weight: normal; border: none;"
+_LABEL_INACTIVE = "font-weight: normal; color: #5a6a8a; border: none;"
+_DESC_ACTIVE    = "font-weight: normal; font-size: 11px; color: #8899bb; border: none;"
+_DESC_INACTIVE  = "font-weight: normal; font-size: 11px; color: #3a4a6a; border: none;"
+
+
 def open_signal_filters(self):
-
-    settings_dark = get_settings(
-        "INI/dut_measurement/dark_light_config/dark_light_config.ini",
-        "shared/utils/dark_light_mode/dark_light_config.ini",
-        Path(__file__).resolve()
-    )
-
-    border = settings_dark.value("Dark_Light/QGroupBox/color", "1px solid #999")
-
-    frame_style = f"""
-        QFrame {{
-            border: {border};
-            border-radius: 8px;
-            padding: 12px;
-        }}
-    """
 
     self.sf_dialog = QDialog(self)
     self.sf_dialog.setWindowTitle(f"{self.signal_filters_title}")
-    self.sf_dialog.setFixedSize(420, 380)
+    self.sf_dialog.setFixedSize(460, 492)
     self.sf_dialog.setStyleSheet(self.styleSheet())
     self.sf_dialog.setWindowFlags(
         Qt.WindowType.Dialog |
@@ -63,206 +56,244 @@ def open_signal_filters(self):
         Path(__file__).resolve()
     )
 
+    active = getattr(self, '_active_filter', 'Off')
+
     main = QVBoxLayout(self.sf_dialog)
-    main.setContentsMargins(15, 15, 15, 15)
+    main.setContentsMargins(20, 16, 20, 0)
+    main.setSpacing(6)
 
-    frame = QFrame()
-    frame.setStyleSheet(frame_style)
+    # ── Title ──────────────────────────────────────────────
+    title_lbl = QLabel(f"{self.signal_filters_title}")
+    title_lbl.setAlignment(Qt.AlignCenter)
+    title_lbl.setStyleSheet("font-size: 22px; font-weight: bold;")
+    main.addWidget(title_lbl)
 
-    layout = QVBoxLayout(frame)
-    layout.setSpacing(10)
+    subtitle = QLabel("Reduce measurement noise while preserving signal characteristics.")
+    subtitle.setAlignment(Qt.AlignCenter)
+    subtitle.setWordWrap(True)
+    subtitle.setStyleSheet("font-size: 11px; color: #8899bb;")
+    main.addWidget(subtitle)
 
-    # =====================================================
-    # TITLE
-    # =====================================================
+    # ── Filter mode (GroupBox keeps the native title-in-border look) ──
+    type_group = QGroupBox("Filter mode")
+    type_group.setStyleSheet("QGroupBox { font-weight: bold; font-size: 13px; }")
+    tg_layout = QHBoxLayout(type_group)
+    tg_layout.setSpacing(0)
 
-    title = QLabel(f"{self.signal_filters_title}")
-    title.setAlignment(Qt.AlignCenter)
-    title.setStyleSheet("font-size: 22px; font-weight: bold; border: none;")
-    layout.addWidget(title)
+    self.sf_dialog.rb_off    = QRadioButton("Off")
+    self.sf_dialog.rb_smooth = QRadioButton("Smoothing")
+    self.sf_dialog.rb_kalman = QRadioButton("Kalman")
 
-    layout.addSpacing(6)
+    rb_group = QButtonGroup(self.sf_dialog)
+    rb_group.addButton(self.sf_dialog.rb_off)
+    rb_group.addButton(self.sf_dialog.rb_smooth)
+    rb_group.addButton(self.sf_dialog.rb_kalman)
 
-    # =====================================================
-    # KALMAN CONTROLS
-    # =====================================================
+    if active == "Smoothing":
+        self.sf_dialog.rb_smooth.setChecked(True)
+    elif active == "Kalman":
+        self.sf_dialog.rb_kalman.setChecked(True)
+    else:
+        self.sf_dialog.rb_off.setChecked(True)
 
-    # ENABLED
+    tg_layout.addStretch()
+    tg_layout.addWidget(self.sf_dialog.rb_off)
+    tg_layout.addStretch()
+    tg_layout.addWidget(self.sf_dialog.rb_smooth)
+    tg_layout.addStretch()
+    tg_layout.addWidget(self.sf_dialog.rb_kalman)
+    tg_layout.addStretch()
+    main.addWidget(type_group)
+    main.addSpacing(12)
 
-    self.sf_dialog.kalman_check = QCheckBox()
+    # ── Smoothing — QFrame with title inside ───────────────
+    smooth_frame = QFrame()
+    smooth_frame.setObjectName("smoothFrame")
+    self.sf_dialog.smooth_frame = smooth_frame
 
-    kalman_enabled = self.sf_settings.value(
-        "kalman/enabled",
-        "false",
-        type=bool
-    )
+    sf_v = QVBoxLayout(smooth_frame)
+    sf_v.setContentsMargins(14, 10, 14, 12)
+    sf_v.setSpacing(8)
 
-    self.sf_dialog.kalman_check.setChecked(kalman_enabled)
+    self.sf_dialog.smooth_title = QLabel("Smoothing")
+    sf_v.addWidget(self.sf_dialog.smooth_title)
 
-    # PRESET
+    pct_row = QHBoxLayout()
+    self.sf_dialog.smooth_pct_lbl = QLabel("Window size:")
+    pct_row.addWidget(self.sf_dialog.smooth_pct_lbl)
+    pct_row.addStretch()
+
+    # Spinbox with custom ▲▼ buttons (app standard pattern)
+    spin_container = QFrame()
+    spin_container.setObjectName("spinboxContainer")
+    spin_c_layout = QHBoxLayout(spin_container)
+    spin_c_layout.setContentsMargins(4, 0, 0, 0)
+    spin_c_layout.setSpacing(0)
+
+    self.sf_dialog.smooth_spin = QSpinBox()
+    self.sf_dialog.smooth_spin.setRange(1, 100)
+    self.sf_dialog.smooth_spin.setSuffix(" %")
+    self.sf_dialog.smooth_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
+    self.sf_dialog.smooth_spin.setStyleSheet("QSpinBox { border: none; background: transparent; }")
+    saved_pct = self.sf_settings.value("smoothing/window_pct", 5, type=int)
+    self.sf_dialog.smooth_spin.setValue(saved_pct)
+
+    self.sf_dialog.smooth_btn_up = QPushButton("▲")
+    self.sf_dialog.smooth_btn_up.setObjectName("spinboxUpBtn")
+    self.sf_dialog.smooth_btn_up.setFixedSize(18, 12)
+    self.sf_dialog.smooth_btn_up.clicked.connect(self.sf_dialog.smooth_spin.stepUp)
+
+    self.sf_dialog.smooth_btn_down = QPushButton("▼")
+    self.sf_dialog.smooth_btn_down.setObjectName("spinboxDownBtn")
+    self.sf_dialog.smooth_btn_down.setFixedSize(18, 12)
+    self.sf_dialog.smooth_btn_down.clicked.connect(self.sf_dialog.smooth_spin.stepDown)
+
+    btn_col = QVBoxLayout()
+    btn_col.setSpacing(1)
+    btn_col.setContentsMargins(3, 0, 0, 0)
+    btn_col.addWidget(self.sf_dialog.smooth_btn_up)
+    btn_col.addWidget(self.sf_dialog.smooth_btn_down)
+
+    spin_c_layout.addWidget(self.sf_dialog.smooth_spin, 1)
+    spin_c_layout.addLayout(btn_col)
+
+    pct_row.addWidget(spin_container)
+    sf_v.addLayout(pct_row)
+
+    self.sf_dialog.smooth_desc = QLabel("Moving average window as a percentage of sweep points.")
+    self.sf_dialog.smooth_desc.setWordWrap(True)
+    sf_v.addWidget(self.sf_dialog.smooth_desc)
+
+    main.addWidget(smooth_frame)
+    main.addSpacing(12)
+
+    # ── Kalman Filter — QFrame with title inside ───────────
+    kalman_frame = QFrame()
+    kalman_frame.setObjectName("kalmanFrame")
+    self.sf_dialog.kalman_frame = kalman_frame
+
+    kf_v = QVBoxLayout(kalman_frame)
+    kf_v.setContentsMargins(14, 10, 14, 12)
+    kf_v.setSpacing(8)
+
+    self.sf_dialog.kalman_title = QLabel("Kalman Filter")
+    kf_v.addWidget(self.sf_dialog.kalman_title)
+
+    preset_row = QHBoxLayout()
+    self.sf_dialog.kalman_preset_lbl = QLabel(f"{self.kalman_preset_label}")
+    preset_row.addWidget(self.sf_dialog.kalman_preset_lbl)
+    preset_row.addStretch()
+
     self.sf_dialog.kalman_combo = QComboBox()
     self.sf_dialog.kalman_combo.setItemDelegate(CenterDelegate())
     self.sf_dialog.kalman_combo.setFixedWidth(120)
-
-    self.sf_dialog.kalman_check.setFixedHeight(
-        self.sf_dialog.kalman_combo.sizeHint().height()
-    )
-
     self.sf_dialog.kalman_combo.addItems(list(KALMAN_PRESETS.keys()))
 
-    self.sf_dialog.kalman_combo.currentTextChanged.connect(
-        lambda _: (
-            handle_kalman_combo_change(self),
-            update_kalman_info(self)
-        )
-    )
-
-    saved_preset = self.sf_settings.value(
-        "kalman/preset",
-        "Medium"
-    )
-
+    saved_preset = self.sf_settings.value("kalman/preset", "Medium")
     if saved_preset == "Custom":
         self.sf_dialog.kalman_combo.addItem("Custom")
-
     idx = self.sf_dialog.kalman_combo.findText(saved_preset)
-
     if idx >= 0:
         self.sf_dialog.kalman_combo.setCurrentIndex(idx)
 
-    self.sf_dialog.kalman_combo.setEnabled(kalman_enabled)
-
-    self.sf_dialog.kalman_check.toggled.connect(
-        lambda _: (
-            update_kalman_ui(self),
-            update_kalman_info(self)
-        )
+    self.sf_dialog.kalman_combo.currentTextChanged.connect(
+        lambda _: (handle_kalman_combo_change(self), update_kalman_info(self))
     )
 
-    enabled_label = QLabel(f"{self.kalman_filter_title}")
-    enabled_label.setStyleSheet(
-        "font-weight: bold; font-size: 15px; border: none;"
+    preset_row.addWidget(self.sf_dialog.kalman_combo)
+    kf_v.addLayout(preset_row)
+
+    self.sf_dialog.kalman_params_lbl = QLabel("Preset parameters:")
+    self.sf_dialog.kalman_params_lbl.setStyleSheet(
+        "font-weight: normal; font-size: 11px; font-style: italic; border: none;"
     )
-
-    preset_label = QLabel(f"{self.kalman_preset_label}")
-    preset_label.setStyleSheet(
-        "font-weight: bold; font-size: 15px; border: none;"
-    )
-
-    kalman_grid = QGridLayout()
-    kalman_grid.setColumnStretch(0, 2)
-    kalman_grid.setColumnStretch(1, 1)
-
-    kalman_grid.addWidget(
-        enabled_label,
-        0,
-        0,
-        alignment=Qt.AlignLeft
-    )
-
-    check_widget = QWidget()
-    check_widget.setFixedWidth(120)
-
-    check_layout = QHBoxLayout(check_widget)
-    check_layout.setContentsMargins(0, 0, 0, 0)
-    check_layout.addStretch()
-    check_layout.addWidget(self.sf_dialog.kalman_check)
-    check_layout.addStretch()
-
-    kalman_grid.addWidget(
-        check_widget,
-        0,
-        1,
-        alignment=Qt.AlignCenter
-    )
-
-    kalman_grid.addWidget(
-        preset_label,
-        1,
-        0,
-        alignment=Qt.AlignLeft
-    )
-
-    kalman_grid.addWidget(
-        self.sf_dialog.kalman_combo,
-        1,
-        1,
-        alignment=Qt.AlignCenter
-    )
-    
-    layout.addLayout(kalman_grid)
-
-    # ADVANCED
-    self.sf_dialog.kalman_adv_btn = QPushButton(f"{self.kalman_advanced_title}")
-    self.sf_dialog.kalman_adv_btn.setFlat(True)
-    self.sf_dialog.kalman_adv_btn.setStyleSheet("""
-        QPushButton {
-            border: none;
-            background: transparent;
-            color: white;
-            font-size: 12px;
-        }
-        QPushButton:hover {
-            text-decoration: underline;
-        }
-        QPushButton:disabled {
-            color: gray;
-        }
-    """)
-    self.sf_dialog.kalman_adv_btn.setCursor(Qt.PointingHandCursor)
-    self.sf_dialog.kalman_adv_btn.clicked.connect(lambda: open_kalman_advanced(self))
-
-    layout.addSpacing(15) 
-
-    adv_layout = QHBoxLayout()
-    adv_layout.addStretch()
-    adv_layout.addWidget(self.sf_dialog.kalman_adv_btn)
-    adv_layout.addStretch()
-    layout.addLayout(adv_layout)
+    kf_v.addWidget(self.sf_dialog.kalman_params_lbl)
 
     self.sf_dialog.kalman_info = QLabel()
-    self.sf_dialog.kalman_info.setAlignment(Qt.AlignCenter)
-    self.sf_dialog.kalman_info.setStyleSheet("""
-        QLabel {
-            border: none;
-            font-size: 11px;
-            color: gray;
-        }
-    """)
+    self.sf_dialog.kalman_info.setAlignment(Qt.AlignLeft)
+    self.sf_dialog.kalman_info.setStyleSheet("font-size: 13px; font-weight: normal; border: none; padding-left: 8px;")
+    kf_v.addWidget(self.sf_dialog.kalman_info)
 
-    layout.addWidget(self.sf_dialog.kalman_info)
+    main.addWidget(kalman_frame)
 
-    update_kalman_ui(self)
+    # ── Connect radios ─────────────────────────────────────
+    rb_group.buttonToggled.connect(lambda *_: update_filter_ui(self))
+    update_filter_ui(self)
     update_kalman_info(self)
 
-    layout.addSpacing(10)
+    main.addSpacing(8)
 
-    # =====================================================
-    # ACTIONS
-    # =====================================================
+    # ── Separator ──────────────────────────────────────────
+    sep = QFrame()
+    sep.setFrameShape(QFrame.Shape.HLine)
+    sep.setFixedHeight(1)
+    sep.setStyleSheet("background-color: #2a3050; border: none;")
+    main.addWidget(sep)
 
+    # ── Actions ────────────────────────────────────────────
     actions = QHBoxLayout()
-
-    apply_btn = QPushButton(f"{self.kalman_advanced_apply_button_label}")
+    actions.setContentsMargins(0, 10, 0, 14)
     cancel_btn = QPushButton(f"{self.kalman_advanced_cancel_button_label}")
-
-    apply_btn.setMinimumSize(100, 30)
-    cancel_btn.setMinimumSize(100, 30)
-
-    apply_btn.clicked.connect(lambda: apply_signal_filters(self))
+    apply_btn  = QPushButton(f"{self.kalman_advanced_apply_button_label}")
+    cancel_btn.setMinimumSize(120, 36)
+    apply_btn.setMinimumSize(120, 36)
+    cancel_btn.setStyleSheet("""
+        QPushButton { background-color: #2a2d3e; color: #c0c8d8; border: 1px solid #3a3f5a;
+                      border-radius: 8px; font-size: 13px; }
+        QPushButton:hover { background-color: #333754; }
+        QPushButton:pressed { background-color: #1e2030; }
+    """)
+    apply_btn.setStyleSheet("""
+        QPushButton { background-color: #2563eb; color: white; border: none;
+                      border-radius: 8px; font-size: 13px; font-weight: bold; }
+        QPushButton:hover { background-color: #1d4fd8; }
+        QPushButton:pressed { background-color: #1a44c2; }
+    """)
     cancel_btn.clicked.connect(self.sf_dialog.reject)
-
+    apply_btn.clicked.connect(lambda: apply_signal_filters(self))
     actions.addStretch()
-    actions.addWidget(apply_btn)
-    actions.addSpacing(15)
     actions.addWidget(cancel_btn)
+    actions.addSpacing(15)
+    actions.addWidget(apply_btn)
     actions.addStretch()
-
-    layout.addLayout(actions)
-
-    main.addWidget(frame)
+    main.addLayout(actions)
 
     self.sf_dialog.exec()
+
+
+# =========================================================
+# FILTER UI UPDATE
+# =========================================================
+
+def update_filter_ui(self):
+    if not hasattr(self, "sf_dialog"):
+        return
+    smooth_on = self.sf_dialog.rb_smooth.isChecked()
+    kalman_on = self.sf_dialog.rb_kalman.isChecked()
+
+    # Smoothing frame
+    self.sf_dialog.smooth_frame.setStyleSheet(
+        "QFrame#smoothFrame { border: 1px solid #3a7bd5; border-radius: 6px; background: transparent; }"
+        if smooth_on else
+        "QFrame#smoothFrame { border: 1px solid #2a3050; border-radius: 6px; background: transparent; }"
+    )
+    self.sf_dialog.smooth_title.setStyleSheet(_TITLE_ACTIVE if smooth_on else _TITLE_INACTIVE)
+    self.sf_dialog.smooth_pct_lbl.setStyleSheet(_LABEL_ACTIVE if smooth_on else _LABEL_INACTIVE)
+    self.sf_dialog.smooth_desc.setStyleSheet(_DESC_ACTIVE if smooth_on else _DESC_INACTIVE)
+    self.sf_dialog.smooth_spin.setEnabled(smooth_on)
+    self.sf_dialog.smooth_btn_up.setEnabled(smooth_on)
+    self.sf_dialog.smooth_btn_down.setEnabled(smooth_on)
+
+    # Kalman frame
+    self.sf_dialog.kalman_frame.setStyleSheet(
+        "QFrame#kalmanFrame { border: 1px solid #3a7bd5; border-radius: 6px; background: transparent; }"
+        if kalman_on else
+        "QFrame#kalmanFrame { border: 1px solid #2a3050; border-radius: 6px; background: transparent; }"
+    )
+    self.sf_dialog.kalman_title.setStyleSheet(_TITLE_ACTIVE if kalman_on else _TITLE_INACTIVE)
+    self.sf_dialog.kalman_preset_lbl.setStyleSheet(_LABEL_ACTIVE if kalman_on else _LABEL_INACTIVE)
+    self.sf_dialog.kalman_combo.setEnabled(kalman_on)
+    self.sf_dialog.kalman_info.setEnabled(kalman_on)
 
 
 # =========================================================
@@ -289,40 +320,22 @@ def open_kalman_advanced(self):
     title.setStyleSheet("font-size: 16px; font-weight: bold;")
     layout.addWidget(title)
 
-    # =====================================================
-    # Q
-    # =====================================================
-
     q_label = QLabel(f"{self.kalman_process_noise_label}")
     q_label.setAlignment(Qt.AlignCenter)
     layout.addWidget(q_label)
 
     q_edit = QLineEdit()
     q_edit.setAlignment(Qt.AlignCenter)
-
     saved_q = self.sf_settings.value("kalman/custom_Q", "")
     if saved_q:
         q_edit.setText(saved_q)
-
     layout.addWidget(q_edit)
 
-    q_help = QLabel(
-        f"{self.kalman_process_noise_description}"
-    )
+    q_help = QLabel(f"{self.kalman_process_noise_description}")
     q_help.setAlignment(Qt.AlignCenter)
     q_help.setWordWrap(True)
-    q_help.setStyleSheet("""
-        QLabel {
-            border: none;
-            color: gray;
-            font-size: 11px;
-        }
-    """)
+    q_help.setStyleSheet("border: none; color: gray; font-size: 11px;")
     layout.addWidget(q_help)
-
-    # =====================================================
-    # R
-    # =====================================================
 
     r_label = QLabel(f"{self.kalman_measurement_noise_label}")
     r_label.setAlignment(Qt.AlignCenter)
@@ -330,144 +343,79 @@ def open_kalman_advanced(self):
 
     r_edit = QLineEdit()
     r_edit.setAlignment(Qt.AlignCenter)
-
     saved_r = self.sf_settings.value("kalman/custom_R", "")
     if saved_r:
         r_edit.setText(saved_r)
-
     layout.addWidget(r_edit)
 
-    r_help = QLabel(
-        f"{self.kalman_measurement_noise_description}"
-    )
+    r_help = QLabel(f"{self.kalman_measurement_noise_description}")
     r_help.setAlignment(Qt.AlignCenter)
     r_help.setWordWrap(True)
-    r_help.setStyleSheet("""
-        QLabel {
-            border: none;
-            color: gray;
-            font-size: 11px;
-        }
-    """)
+    r_help.setStyleSheet("border: none; color: gray; font-size: 11px;")
     layout.addWidget(r_help)
 
-    # =====================================================
-    # BUTTONS
-    # =====================================================
-
     btn_row = QHBoxLayout()
-
-    ok_btn = QPushButton(f"{self.kalman_advanced_apply_button_label}")
+    ok_btn     = QPushButton(f"{self.kalman_advanced_apply_button_label}")
     cancel_btn = QPushButton(f"{self.kalman_advanced_cancel_button_label}")
-
     btn_row.addStretch()
     btn_row.addWidget(ok_btn)
     btn_row.addWidget(cancel_btn)
     btn_row.addStretch()
-
     layout.addLayout(btn_row)
 
     def apply_advanced():
-
         q_text = q_edit.text().strip()
         r_text = r_edit.text().strip()
-
         if not q_text or not r_text:
-            QMessageBox.warning(
-                adv,
-                f"{self.kalman_advanced_missing_values_title}",
-                f"{self.kalman_advanced_missing_values_message}"
-            )
+            QMessageBox.warning(adv, f"{self.kalman_advanced_missing_values_title}",
+                                f"{self.kalman_advanced_missing_values_message}")
             return
-
         try:
             q = float(q_text)
             r = float(r_text)
-
             if q <= 0 or r <= 0:
                 raise ValueError
-
         except ValueError:
-            QMessageBox.warning(
-                adv,
-                f"{self.kalman_advanced_invalid_values_title}",
-                f"{self.kalman_advanced_invalid_values_message}"
-            )
+            QMessageBox.warning(adv, f"{self.kalman_advanced_invalid_values_title}",
+                                f"{self.kalman_advanced_invalid_values_message}")
             return
-
         self.sf_settings.setValue("kalman/custom_Q", str(q))
         self.sf_settings.setValue("kalman/custom_R", str(r))
-
         if self.sf_dialog.kalman_combo.findText("Custom") < 0:
             self.sf_dialog.kalman_combo.addItem("Custom")
-
         self.sf_dialog.kalman_combo.setCurrentText("Custom")
-
         update_kalman_info(self)
-
         adv.accept()
 
     ok_btn.clicked.connect(apply_advanced)
     cancel_btn.clicked.connect(adv.reject)
-
     adv.exec()
 
+
 # =========================================================
-# KALMAN UI UPDATE
+# KALMAN HELPERS
 # =========================================================
+
 def update_kalman_info(self):
-
-    if not hasattr(self, "sf_dialog"):
+    if not hasattr(self, "sf_dialog") or not hasattr(self.sf_dialog, "kalman_info"):
         return
-
-    if not hasattr(self.sf_dialog, "kalman_info"):
-        return
-
     preset = self.sf_dialog.kalman_combo.currentText()
-
-    if preset == "Off":
-        self.sf_dialog.kalman_info.setText(
-            "Kalman filter is disabled."
-        )
-        return
-
     if preset in KALMAN_PRESETS:
         q = KALMAN_PRESETS[preset]["Q"]
         r = KALMAN_PRESETS[preset]["R"]
     else:
         q = self.sf_settings.value("kalman/custom_Q", "-")
         r = self.sf_settings.value("kalman/custom_R", "-")
+    self.sf_dialog.kalman_info.setText(f"Q = {q}  ·  R = {r}")
 
-    self.sf_dialog.kalman_info.setText(
-        f"Q = {q}   |   R = {r}"
-    )
-    
-def update_kalman_ui(self):
-
-    enabled = self.sf_dialog.kalman_check.isChecked()
-    self.sf_dialog.kalman_combo.setEnabled(enabled)
-
-    if not enabled:
-        if self.sf_dialog.kalman_combo.findText("Off") < 0:
-            self.sf_dialog.kalman_combo.insertItem(0, "Off")
-        self.sf_dialog.kalman_combo.setCurrentText("Off")
-    else:
-        idx = self.sf_dialog.kalman_combo.findText("Off")
-        if idx >= 0:
-            self.sf_dialog.kalman_combo.removeItem(idx)
-        if self.sf_dialog.kalman_combo.currentText() == "":
-            self.sf_dialog.kalman_combo.setCurrentText("Medium")
-
-    self.sf_dialog.kalman_adv_btn.setEnabled(enabled)
 
 def handle_kalman_combo_change(self):
-
     if self.sf_dialog.kalman_combo.currentText() == "Custom":
         return
-
     idx = self.sf_dialog.kalman_combo.findText("Custom")
     if idx >= 0:
         self.sf_dialog.kalman_combo.removeItem(idx)
+
 
 # =========================================================
 # APPLY
@@ -475,74 +423,54 @@ def handle_kalman_combo_change(self):
 
 def apply_signal_filters(self):
 
-    enabled = self.sf_dialog.kalman_check.isChecked()
-    self.sf_settings.setValue("kalman/enabled", enabled)
+    if self.sf_dialog.rb_smooth.isChecked():
+        active = "Smoothing"
+    elif self.sf_dialog.rb_kalman.isChecked():
+        active = "Kalman"
+    else:
+        active = "Off"
+
+    self._active_filter = active
+
+    pct = self.sf_dialog.smooth_spin.value()
+    self.sf_settings.setValue("smoothing/window_pct", pct)
 
     preset = self.sf_dialog.kalman_combo.currentText()
     self.sf_settings.setValue("kalman/preset", preset)
 
     if preset == "Custom":
-        self.sf_settings.setValue("kalman/preset", preset)
-
         q = self.sf_settings.value("kalman/custom_Q", None)
         r = self.sf_settings.value("kalman/custom_R", None)
-
         if q is None or r is None:
-            QMessageBox.warning(
-                self.sf_dialog,
-                "Missing Kalman values",
-                "Custom preset selected but no Q/R values were entered."
-            )
+            QMessageBox.warning(self.sf_dialog, "Missing Kalman values",
+                                "Custom preset selected but no Q/R values were entered.")
             return
-
         q = float(q)
         r = float(r)
-
     else:
         params = KALMAN_PRESETS.get(preset, KALMAN_PRESETS["Medium"])
         q = params["Q"]
         r = params["R"]
-
-        self.sf_settings.setValue("kalman/preset", preset)
         self.sf_settings.setValue("kalman/Q", q)
         self.sf_settings.setValue("kalman/R", r)
 
-    self.kalman_enabled = enabled
-    self.kalman_Q = q if enabled else None
-    self.kalman_R = r if enabled else None
+    self.sf_settings.sync()
 
-    process_noise = self.kalman_Q
-    measurement_noise = r
-
-    # kalman filters for real-time data smoothing
-    
+    # Reset Kalman filters
+    process_noise      = q if active == "Kalman" else 0.01
+    measurement_noise  = r if active == "Kalman" else 1.0
     self.kf_s11 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
     self.kf_s21 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
 
-    sf_settings = get_settings(
-        "INI/dut_measurement/signal_filters/signal_filters.ini",
-        "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
-        Path(__file__).resolve()
-    )
-
-    preset = sf_settings.value("kalman/preset", "Default")
-
-    if preset == "Custom":
-        q = sf_settings.value("kalman/custom_Q", 0.01, type=float)
-        r = sf_settings.value("kalman/custom_R", 1.0, type=float)
-    else:
-        q = sf_settings.value("kalman/Q", 0.01, type=float)
-        r = sf_settings.value("kalman/R", 1.0, type=float)
-
-    if preset == "Off":
-        self.sweep_button.setEnabled(False)
-        self.kalman_label.setText(
-            "Kalman filter is disabled"
-        )
-    else:
+    # Update label
+    if active == "Smoothing":
+        self.kalman_label.setText(f"Smoothing: {pct}%")
         self.sweep_button.setEnabled(True)
-        self.kalman_label.setText(
-            f"Kalman Filter: {preset} - Q = {q:.3f} · R = {r:.3f}"
-        )
+    elif active == "Kalman":
+        self.kalman_label.setText(f"Kalman: {preset} — Q = {q:.3f} · R = {r:.3f}")
+        self.sweep_button.setEnabled(True)
+    else:
+        self.kalman_label.setText("No filter active")
+        self.sweep_button.setEnabled(True)
 
     self.sf_dialog.accept()

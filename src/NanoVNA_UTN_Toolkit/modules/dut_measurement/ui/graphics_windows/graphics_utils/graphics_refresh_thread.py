@@ -183,15 +183,9 @@ def run_sweep(self):
 
     _reset_sliders_before_sweep(self)
 
-    sf_settings = get_settings(
-        "INI/dut_measurement/signal_filters/signal_filters.ini",
-        "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
-        Path(__file__).resolve()
-    )
+    active_filter = getattr(self, '_active_filter', 'Off')
 
-    preset = sf_settings.value("kalman/preset", "Default")
-
-    if preset != "Off" and not self.realtime_checkbox.isChecked():
+    if active_filter == "Kalman" and not self.realtime_checkbox.isChecked():
         self.kf_s11.reset()
         self.kf_s21.reset()
 
@@ -391,20 +385,32 @@ def on_sweep_finished(self, result):
         s21 = data_dut.s[:, 1, 0]
 
     # -------------------------------------------------
-    # KALMAN FILTER
+    # SIGNAL FILTER
     # -------------------------------------------------
 
-    settings = get_settings(
+    sf_settings = get_settings(
         "INI/dut_measurement/signal_filters/signal_filters.ini",
         "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
         Path(__file__).resolve()
     )
 
-    is_kalman_enabled = settings.value("kalman/enabled", False, type=bool)
+    active_filter = getattr(self, '_active_filter', 'Off')
 
-    if is_kalman_enabled:
+    if active_filter == "Kalman":
         s11_f = np.array([self.kf_s11.update(x) for x in s11])
         s21_f = np.array([self.kf_s21.update(x) for x in s21])
+    elif active_filter == "Smoothing":
+        pct = sf_settings.value("smoothing/window_pct", 5, type=int)
+        n   = len(s11)
+        w   = max(1, round(n * pct / 100))
+        k   = np.ones(w) / w
+        half = w // 2
+        def _smooth(s):
+            re_f = np.convolve(np.pad(s.real, half, mode='reflect'), k, mode='valid')[:len(s)]
+            im_f = np.convolve(np.pad(s.imag, half, mode='reflect'), k, mode='valid')[:len(s)]
+            return re_f + 1j * im_f
+        s11_f = _smooth(s11)
+        s21_f = _smooth(s21)
     else:
         s11_f = s11
         s21_f = s21
@@ -454,7 +460,8 @@ def on_sweep_finished(self, result):
     self.sweep_progress_bar.setValue(0)
     self.reconnect_button.setEnabled(True)
 
-    if getattr(self, '_rt_active', False):
+    _af = getattr(self, '_active_filter', 'Off')
+    if getattr(self, '_rt_active', False) and _af == "Kalman":
         self.sweep_button.setText(f"{self.measurement_ui_button_reset_kalman}")
     else:
         self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
@@ -463,21 +470,7 @@ def on_sweep_finished(self, result):
         self._initial_sweep_done = True
         self.realtime_checkbox.setEnabled(True)
 
-    sf_settings = get_settings(
-        "INI/dut_measurement/signal_filters/signal_filters.ini",
-        "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
-        Path(__file__).resolve()
-    )
-
-    preset = sf_settings.value("kalman/preset", "Default")
-
-    if preset == "Off":
-        self.sweep_button.setEnabled(False)
-    else:
-        self.sweep_button.setEnabled(True)
-
-    if self.realtime_checkbox.isChecked():
-        self.sweep_button.setEnabled(True)
+    self.sweep_button.setEnabled(True)
 
 # =========================================================
 # ERROR HANDLER

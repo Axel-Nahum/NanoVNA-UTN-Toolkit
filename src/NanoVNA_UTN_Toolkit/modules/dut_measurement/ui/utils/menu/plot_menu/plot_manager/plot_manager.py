@@ -306,8 +306,8 @@ def open_plot_settings(self):
     apply_btn.clicked.connect(lambda: apply_plot_settings(self))
 
     actions.addStretch()
-    actions.addWidget(apply_btn)
     actions.addWidget(cancel_btn)
+    actions.addWidget(apply_btn)
 
     layout.addLayout(actions)
 
