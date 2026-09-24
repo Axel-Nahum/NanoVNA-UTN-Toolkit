@@ -433,13 +433,18 @@ class ErrorVisualizerDialog(QDialog):
             return
 
         import shutil
+        from datetime import datetime
+        ts = datetime.now().strftime("%y%m%d_%H%M%S")
+
         saved = 0
         missing = []
 
         for term in self._terms:
             path = _find_file(self._folder, term)
             if path:
-                shutil.copy2(path, dest_dir)
+                stem, ext = os.path.splitext(os.path.basename(path))
+                dest_name = f"{stem}_{ts}{ext}"
+                shutil.copy2(path, os.path.join(dest_dir, dest_name))
                 saved += 1
             else:
                 missing.append(term)
