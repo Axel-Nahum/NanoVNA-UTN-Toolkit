@@ -136,7 +136,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                         self.slider_left.disconnect()
                     except:
                         pass
-                self.slider_left.on_changed(lambda val: cursor_left_wrapper(int(val), from_slider=True))
+                self.slider_left.on_changed(lambda val: (cursor_left_wrapper(int(val), from_slider=True), left_slider_moved(self, int(val))))
 
         except Exception as e:
             logging.warning(f"Error forcing cursor_left to ax_left: {e}")
@@ -246,7 +246,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                         self.slider_right.disconnect()
                     except:
                         pass
-                self.slider_right.on_changed(lambda val: cursor_right_wrapper(int(val), from_slider=True))
+                self.slider_right.on_changed(lambda val: (cursor_right_wrapper(int(val), from_slider=True), right_slider_moved(self, int(val))))
 
         except Exception as e:
             logging.warning(f"Error forcing cursor_right to ax_right: {e}")
@@ -368,7 +368,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                         self.slider_left_2.disconnect()
                     except:
                         pass
-                self.slider_left_2.on_changed(lambda val: cursor_left_wrapper_2(int(val), from_slider=True))
+                self.slider_left_2.on_changed(lambda val: (cursor_left_wrapper_2(int(val), from_slider=True), left_slider_moved_2(self, int(val))))
 
         except Exception as e:
             logging.warning(f"Error forcing cursor_left_2 to ax_left: {e}")
@@ -475,7 +475,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                         self.slider_right_2.disconnect()
                     except:
                         pass
-                self.slider_right_2.on_changed(lambda val: cursor_right_wrapper_2(int(val), from_slider=True))
+                self.slider_right_2.on_changed(lambda val: (cursor_right_wrapper_2(int(val), from_slider=True), right_slider_moved_2(self, int(val))))
 
         except Exception as e:
             logging.warning(f"Error forcing cursor_right_2 to ax_right: {e}")
