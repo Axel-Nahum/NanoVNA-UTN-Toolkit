@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.methods import Methods
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.kits import KitsCalibrator
+from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import _remove_spikes, _remove_phase_spikes
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
@@ -531,7 +532,13 @@ def run_sweep(self):
             logging.warning(f"[graphics_window.run_sweep] Expected {self.segments} S21 points, but got {len(s21_med)}")
         else:
             logging.info(f"[graphics_window.run_sweep] ✓ S21 points match expected count: {len(s21_med)}")
-        
+
+        # Remove spikes from raw data before any calibration is applied
+        s11_med = _remove_spikes(s11_med, freqs)
+        s21_med = _remove_spikes(s21_med, freqs)
+        s11_med = _remove_phase_spikes(s11_med, freqs)
+        s21_med = _remove_phase_spikes(s21_med, freqs)
+
         self.sweep_progress_bar.setValue(90)
         QApplication.processEvents()
 

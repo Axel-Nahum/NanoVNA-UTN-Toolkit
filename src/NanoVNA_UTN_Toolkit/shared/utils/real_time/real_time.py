@@ -292,24 +292,11 @@ def _done(self, freqs, s11, s21, gen):
     self.s11_raw = s11
     self.s21_raw = s21
 
-    # spike removal — only when a calibration method is active
-    cal_settings = get_settings(
-        "INI/dut_measurement/calibration_config/calibration_config.ini",
-        "modules/dut_measurement/calibration/calibration_config/calibration_config.ini",
-        Path(__file__).resolve()
-    )
-    _is_calibrated = (
-        not cal_settings.value("Calibration/NoCalibration", False, type=bool)
-        and (
-            cal_settings.value("Calibration/Method", "---") != "---"
-            or cal_settings.value("Calibration/Kits", False, type=bool)
-        )
-    )
-    if _is_calibrated:
-        s11 = _remove_spikes(s11, freqs)
-        s21 = _remove_spikes(s21, freqs)
-        s11 = _remove_phase_spikes(s11, freqs)
-        s21 = _remove_phase_spikes(s21, freqs)
+    # spike removal — always applied, regardless of calibration state
+    s11 = _remove_spikes(s11, freqs)
+    s21 = _remove_spikes(s21, freqs)
+    s11 = _remove_phase_spikes(s11, freqs)
+    s21 = _remove_phase_spikes(s21, freqs)
 
     # kalman filter for smoothing
     if is_kalman_enabled:
