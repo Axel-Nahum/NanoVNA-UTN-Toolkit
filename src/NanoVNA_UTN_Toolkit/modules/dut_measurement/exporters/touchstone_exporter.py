@@ -264,7 +264,7 @@ class TouchstoneExporter:
                 freq = freqs[i]
                 s11, s21 = s11_data[i], s21_data[i]
 
-                s12, s22 = s21, 0+0j
+                s12, s22 = 0+0j, 0+0j
 
                 # Column-aligned formatting
                 line = "{:<12.6e} {:<8.6f} {:<8.6f} {:<8.6f} {:<8.6f} {:<8.6f} {:<8.6f} {:<8.6f} {:<8.6f}\n".format(
