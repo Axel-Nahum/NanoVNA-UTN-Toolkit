@@ -98,11 +98,11 @@
     "indicative_label": "indicative (nominal model)",
     "open": {
       "name": "Open (probe in air)",
-      "instruction": "Connect the probe to the NanoVNA port and hold it in open air — do not let the probe face touch any surface or liquid. Make sure the cable lies naturally without excessive bending. This measurement establishes the open-circuit reference (Γ ≈ +1) used to correct cable and connector losses across the full frequency band. Then press Measure."
+      "instruction": "Hold the probe in open air — the face must not touch any surface or liquid. Cable natural, no forced bends. Sets the open-circuit reference (Γ ≈ +1) to correct cable and connector losses across the band."
     },
     "short": {
       "name": "Short",
-      "instruction": "Form a coplanar short circuit on the probe face that contacts BOTH the inner (center) and outer conductors at the same time, with firm pressure and no air gap. You can use a polished conductive disc pressed and centered against the face, or a soft pad (foam / EVA) wrapped in aluminium foil that contacts both conductors when compressed. The short quality is CRITICAL: a poor short corrupts the whole calibration. A good short should read close to Γ ≈ -1 (left edge of the Smith chart) with magnitude near 1 across the whole band. Then press Measure."
+      "instruction": "Contact BOTH inner and outer conductors on the probe face simultaneously — firm pressure, no air gap. Use a polished conductive disc or aluminium foil-wrapped foam. Short quality is CRITICAL: Γ ≈ −1, magnitude ≈ 1 across the full band."
     },
     "reference": {
       "name": "Reference liquid: {liquid}",

@@ -472,6 +472,9 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     standard = step_def.standard
     is_reference = standard.kind is StandardKind.REFERENCE_LIQUID
+    is_short = standard.key == "short"
+    is_open  = standard.key == "open"
+    is_dut   = standard.key == "dut"
     is_precalibrable = is_reference or standard.key in ("short", "dut")
     total = len(descriptor.steps)
     name, instruction_html, is_rich = _resolve_strings(wizard, std_texts, liquids, standard)
@@ -601,15 +604,21 @@ def build_standard_screen(wizard, descriptor, step_def):
         if not _p.isNull():
             photo = QLabel()
             photo.setAlignment(Qt.AlignHCenter)
-            _pw, _ph = (245, 184) if is_reference else (330, 245)
+            if is_reference or is_dut:
+                _pw, _ph = 245, 184
+            elif is_short:
+                _pw, _ph = 290, 215
+            else:
+                _pw, _ph = 330, 245
             _scaled = _p.scaled(_pw, _ph, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             photo.setPixmap(_scaled)
             photo.setFixedHeight(_scaled.height())
-            mid.addSpacing(18 if not is_reference else 10)
-            mid.addWidget(photo)
+            _photo_spacing = 14 if (is_reference or is_dut) else 18
+            mid.addSpacing(_photo_spacing)
+            mid.addWidget(photo, alignment=Qt.AlignHCenter)
             _has_photo = True
 
-    mid.addSpacing(20 if is_reference else 20)
+    mid.addSpacing(_photo_spacing if _has_photo else (10 if is_reference else 20))
 
     already = wizard.perm_calibration.is_standard_measured(standard.key)
 
@@ -623,19 +632,27 @@ def build_standard_screen(wizard, descriptor, step_def):
         " QPushButton:disabled { color: #3a4a5a; border-color: #3a4a5a; }"
     )
 
-    # ── Source selector (reference liquids only) ──────────────────────── #
+    # ── Source selector (reference liquids, short, open, dut) ────────── #
     btn_grp = None
-    if is_reference:
+    if is_reference or is_short or is_open or is_dut:
+        if is_reference:
+            _combo_liquid_key = selected_liquid_key(wizard, standard)
+        elif is_short:
+            _combo_liquid_key = "short"
+        elif is_open:
+            _combo_liquid_key = "air"
+        else:
+            _unknown = (getattr(wizard, "unknown_liquid_name", "") or "").strip().lower()
+            _combo_liquid_key = _unknown.replace(" ", "_") or "unknown"
+
         src_frame = QFrame()
         src_frame.setStyleSheet(
             "QFrame { border: 1.5px solid #606070; border-radius: 6px; }"
         )
-        # Without the Save/Delete action row the box is two rows shorter; one
-        # more when the import option is hidden (Debug Mode off).
         src_frame.setMinimumHeight(126)
         src_layout = QVBoxLayout(src_frame)
         src_layout.setContentsMargins(14, 12, 14, 14)
-        src_layout.setSpacing(8)
+        src_layout.setSpacing(8 if is_reference else 12)
 
         src_title = QLabel(std_texts.get("source_title", "Data source"))
         src_title.setStyleSheet("font-size: 11px; color: #888888; font-weight: bold; border: none;")
@@ -661,13 +678,11 @@ def build_standard_screen(wizard, descriptor, step_def):
         preset_combo.setMinimumHeight(26)
         preset_combo.setPlaceholderText(std_texts.get("preset_empty", "No presets saved"))
 
-        # Preset deletion now lives in Step 1, next to the liquid selection:
-        # this screen only consumes presets, it no longer manages the library.
-        _refresh_preset_combo(preset_combo, selected_liquid_key(wizard, standard))
+        _refresh_preset_combo(preset_combo, _combo_liquid_key)
 
         def _save_and_refresh():
             _do_save_measurement(wizard, descriptor, standard, std_texts)
-            _refresh_preset_combo(preset_combo, selected_liquid_key(wizard, standard))
+            _refresh_preset_combo(preset_combo, _combo_liquid_key)
 
         btn_save_preset.clicked.connect(_save_and_refresh)
 
@@ -681,7 +696,7 @@ def build_standard_screen(wizard, descriptor, step_def):
         preset_row.addWidget(btn_save_preset)
         src_layout.addLayout(preset_row)
 
-        mid.addSpacing(24)
+        mid.addSpacing(0 if _has_photo else 20)
         mid.addWidget(src_frame)
         mid.addSpacing(20)
     # ──────────────────────────────────────────────────────────────────── #
@@ -701,7 +716,7 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     mid.addSpacing(10)
 
-    if not is_reference:
+    if not is_reference and not is_short and not is_open and not is_dut:
         btn_save_preset.clicked.connect(
             lambda: _do_save_measurement(wizard, descriptor, standard, std_texts))
         btn_save_preset.setFixedHeight(38)
@@ -727,13 +742,13 @@ def build_standard_screen(wizard, descriptor, step_def):
     )
     mid.addWidget(wizard.status_label)
 
-    if is_reference:
+    if is_reference or is_short or is_open or is_dut:
         _lbl_ready     = std_texts.get("status_ready",        "Ready to measure")
         _lbl_import    = std_texts.get("status_import_ready", "No file imported yet")
         _lbl_no_preset = std_texts.get("status_no_preset",    "No preset selected")
         _btn_measure   = std_texts.get("measure_button",      "Measure")
         _btn_remeasure = std_texts.get("remeasure_button",    "Measure again")
-        _btn_import    = std_texts.get("import_button",       "Import Liquid")
+        _btn_import    = std_texts.get("import_button", "Import Liquid") if is_reference else std_texts.get("import_button_short", "Import .s1p")
 
         # Trace color per source mode: 0=measure, 1=import, 2=preset
         _trace_colors = {0: color, 1: "#ff9f43", 2: "#2ecc71"}
@@ -775,20 +790,6 @@ def build_standard_screen(wizard, descriptor, step_def):
             lambda *_: _load_preset(preset_combo.currentData()))
 
     mid.addStretch(1)
-
-    if not is_reference and debug_mode:
-        dev_import_btn = QPushButton(std_texts.get("import_file_button", "Import .s1p file"))
-        dev_import_btn.setFixedHeight(26)
-        dev_import_btn.setStyleSheet(
-            "QPushButton { font-size: 11px; color: #666677; border: 1px dashed #444455;"
-            " border-radius: 4px; padding: 0 12px; }"
-            " QPushButton:hover { color: #aaaacc; border-color: #6666aa; }"
-        )
-        mid.addWidget(dev_import_btn, alignment=Qt.AlignHCenter)
-        mid.addSpacing(4)
-        def _dev_import_clicked():
-            _on_import(wizard, standard, name, color, measure_btn, std_texts, state)
-        dev_import_btn.clicked.connect(_dev_import_clicked)
 
     mid_container = QWidget()
     mid_container.setLayout(mid)

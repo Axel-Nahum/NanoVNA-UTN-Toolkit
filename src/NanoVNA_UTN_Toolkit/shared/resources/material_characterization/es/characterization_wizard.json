@@ -98,11 +98,11 @@
     "indicative_label": "indicativa (modelo nominal)",
     "open": {
       "name": "Open (sonda en aire)",
-      "instruction": "Conectá la sonda al puerto del NanoVNA y mantenela en el aire — que la cara de la sonda no toque ninguna superficie ni líquido. Asegurate de que el cable quede en posición natural, sin dobladuras forzadas. Esta medición establece la referencia de circuito abierto (Γ ≈ +1) utilizada para corregir las pérdidas del cable y los conectores en toda la banda de frecuencias. Luego presioná Medir."
+      "instruction": "Mantené la sonda en el aire — la cara no debe tocar ninguna superficie ni líquido. Cable natural, sin dobladuras forzadas. Establece la referencia de circuito abierto (Γ ≈ +1) para corregir pérdidas del cable y conectores."
     },
     "short": {
       "name": "Short (cortocircuito)",
-      "instruction": "Formá un cortocircuito coplanar en la cara de la sonda que contacte A LA VEZ el conductor interno (central) y el externo, con presión firme y sin gap de aire. Podés usar un disco conductor pulido presionado y centrado contra la cara, o un material blando (espuma / goma EVA) forrado en papel de aluminio que al comprimirse contacte ambos conductores. La calidad del short es CRÍTICA: un short pobre corrompe toda la calibración. Un buen short debería leerse cerca de Γ ≈ -1 (borde izquierdo de la carta de Smith) con módulo cercano a 1 en toda la banda. Luego presioná Medir."
+      "instruction": "Contactá A LA VEZ el conductor interno y externo en la cara de la sonda — presión firme, sin gap de aire. Usá un disco conductor pulido o espuma forrada en papel aluminio. La calidad es CRÍTICA: Γ ≈ −1, módulo ≈ 1 en toda la banda."
     },
     "reference": {
       "name": "Líquido de referencia: {liquid}",
