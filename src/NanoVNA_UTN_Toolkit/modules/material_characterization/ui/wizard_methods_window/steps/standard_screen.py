@@ -119,6 +119,27 @@ def _freq_unit_for_range(start_hz: float, stop_hz: float):
     return 1e9, "GHz"   # kHz + GHz → GHz
 
 
+def _remove_spikes(s11, threshold=2.5):
+    """Replace isolated spikes with the average of adjacent neighbors (complex).
+
+    A point is a spike when its deviation from the linear interpolation of its
+    neighbors exceeds `threshold` times the variation between those neighbors.
+    Smooth gradients are untouched — only truly isolated outliers are removed.
+    """
+    s11 = np.asarray(s11, dtype=complex)
+    n = len(s11)
+    if n < 3:
+        return s11
+    result = s11.copy()
+    for i in range(1, n - 1):
+        expected = (s11[i - 1] + s11[i + 1]) / 2.0
+        residual = abs(s11[i] - expected)
+        neighbor_spread = abs(s11[i + 1] - s11[i - 1])
+        if residual > threshold * max(neighbor_spread, 1e-9):
+            result[i] = expected
+    return result
+
+
 def _render_magnitude(ax, wizard, standard, name, color, std_texts,
                       measured, show_indicative, show_raw) -> None:
     """Render |S11| in dB vs frequency."""
@@ -1468,7 +1489,7 @@ def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measu
     Returns (freqs, s11_stored) — whatever was actually written.
     """
     freqs_raw = np.asarray(freqs_raw, dtype=float)
-    s11_raw = np.asarray(s11_raw, dtype=complex)
+    s11_raw   = _remove_spikes(np.asarray(s11_raw, dtype=complex))
 
     if not hasattr(wizard, "_precal_open"):
         wizard._precal_open = {}
@@ -1846,7 +1867,7 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         # Always save the OPEN so future measure/import/preset auto-applies normalization.
         wizard._precal_open[standard.key] = (
             np.asarray(freqs_open, dtype=float).copy(),
-            np.asarray(s11_open, dtype=complex).copy(),
+            _remove_spikes(np.asarray(s11_open, dtype=complex)),
         )
         btn_delete_precal.setVisible(True)
         _liq = wizard.perm_calibration.get_measurement(standard.key)
