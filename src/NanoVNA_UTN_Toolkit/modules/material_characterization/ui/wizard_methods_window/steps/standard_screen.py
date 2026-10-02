@@ -480,11 +480,6 @@ def build_standard_screen(wizard, descriptor, step_def):
     name, instruction_html, is_rich = _resolve_strings(wizard, std_texts, liquids, standard)
     color = SMITH_COLOR_MAP.get(standard.key, "blue")
 
-    # Offline .s1p import is a Debug Mode feature: it lets the whole assistant be
-    # exercised without a probe. Read once per screen build; screens are rebuilt
-    # on every navigation, so toggling the preference takes effect immediately.
-    debug_mode = is_debug_enabled()
-
     title_tmpl = std_texts.get("title_template", "Step {index}/{total}: {name}")
     wizard.title_label.setText(title_tmpl.format(index=wizard.current_step, total=total, name=name))
 
@@ -1148,13 +1143,9 @@ def _ask_s1p_matching_sweep(wizard, std_texts, dialog_title=None):
         box.setIcon(QMessageBox.Warning)
         box.setWindowTitle(std_texts.get("import_error_title", "Import Error"))
         box.setText(message)
-        # Debug Mode can adopt the file's own sweep instead of forcing the user
-        # to retype it in Configuration (and mistype one of the endpoints).
-        adopt_btn = None
-        if is_debug_enabled():
-            adopt_btn = box.addButton(
-                std_texts.get("import_adopt_sweep", "Use the file's sweep"),
-                QMessageBox.AcceptRole)
+        adopt_btn = box.addButton(
+            std_texts.get("import_adopt_sweep", "Use the file's sweep"),
+            QMessageBox.AcceptRole)
         box.addButton(QMessageBox.Cancel)
         box.exec()
 
@@ -1294,10 +1285,9 @@ def _load_preset_into_step(wizard, standard, name, std_texts, preset_name):
             box.setInformativeText(std_texts.get(
                 "preset_grid_no_cover",
                 "It cannot be resampled: the preset does not span the whole configured range."))
-        if is_debug_enabled():
-            adopt_btn = box.addButton(
-                std_texts.get("import_adopt_sweep", "Use the file's sweep"),
-                QMessageBox.AcceptRole)
+        adopt_btn = box.addButton(
+            std_texts.get("import_adopt_sweep", "Use the file's sweep"),
+            QMessageBox.AcceptRole)
         box.addButton(QMessageBox.Cancel)
         box.exec()
 
@@ -1739,20 +1729,16 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
     _measure_open_btn.setFixedWidth(200)
     layout.addWidget(_measure_open_btn, alignment=Qt.AlignHCenter)
 
-    # Import the OPEN from a file (Debug Mode): without it the pre-calibration
-    # cannot be exercised at all when there is no probe available.
-    _import_open_btn = None
-    if is_debug_enabled():
-        _import_open_btn = QPushButton(std_texts.get("precal_import_button", "Import OPEN .s1p"))
-        _import_open_btn.setFixedHeight(26)
-        _import_open_btn.setFixedWidth(200)
-        _import_open_btn.setStyleSheet(
-            "QPushButton { font-size: 11px; color: #666677; border: 1px dashed #444455;"
-            " border-radius: 4px; padding: 0 12px; }"
-            " QPushButton:hover { color: #aaaacc; border-color: #6666aa; }"
-        )
-        layout.addSpacing(4)
-        layout.addWidget(_import_open_btn, alignment=Qt.AlignHCenter)
+    _import_open_btn = QPushButton(std_texts.get("precal_import_button", "Import OPEN .s1p"))
+    _import_open_btn.setFixedHeight(26)
+    _import_open_btn.setFixedWidth(200)
+    _import_open_btn.setStyleSheet(
+        "QPushButton { font-size: 11px; color: #666677; border: 1px dashed #444455;"
+        " border-radius: 4px; padding: 0 12px; }"
+        " QPushButton:hover { color: #aaaacc; border-color: #6666aa; }"
+    )
+    layout.addSpacing(4)
+    layout.addWidget(_import_open_btn, alignment=Qt.AlignHCenter)
 
     # Status label
     _status_lbl = QLabel(std_texts.get("precal_status_ready", "Sin medición del OPEN"))

@@ -101,11 +101,11 @@ def build_config_screen(wizard, descriptor, step_def):
         _infocard_border = "#a0bcd8"
         _infocard_text = "#1a3a5c"
 
-    debug_mode = is_debug_enabled()
-    wizard._debug_sweep = debug_mode
+    debug_mode = True
+    wizard._debug_sweep = True
     wizard._device_limits = (min_hz, max_hz, tuple(valid_points))
-    lim_min_hz = _DEBUG_MIN_HZ if debug_mode else min_hz
-    lim_max_hz = _DEBUG_MAX_HZ if debug_mode else max_hz
+    lim_min_hz = _DEBUG_MIN_HZ
+    lim_max_hz = _DEBUG_MAX_HZ
 
     left_half_layout = QHBoxLayout()
     left_half_layout.setContentsMargins(0, 0, 0, 0)
@@ -415,12 +415,12 @@ def _update_sweep_warning(wizard, cfg):
     label = getattr(wizard, "sweep_warning_label", None)
     if label is None:
         return
-    exceeded = _sweep_exceeds_device(wizard) if getattr(wizard, "_debug_sweep", False) else ""
+    exceeded = _sweep_exceeds_device(wizard)
     if exceeded:
         label.setText(cfg.get(
             "debug_sweep_warning",
-            "⚠ Debug Mode: this sweep is outside the connected device's capabilities "
-            "({caps}). It is valid for IMPORTING .s1p files, but the instrument "
+            "⚠ This sweep is outside the connected device's capabilities "
+            "({caps}). You can import .s1p files with this sweep, but the instrument "
             "cannot measure it."
         ).format(caps=exceeded))
     label.setVisible(bool(exceeded))
