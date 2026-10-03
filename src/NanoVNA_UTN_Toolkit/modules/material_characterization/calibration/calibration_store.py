@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -71,6 +71,11 @@ class CalibrationMeta:
     f_stop_hz: Optional[float] = None
     points: Optional[int] = None
     schema_version: int = SCHEMA_VERSION
+    # Temperature recorded with a standard's S11 when it differs from the
+    # session one (it came from a preset). Absent in older manifests.
+    standard_temperatures: Dict[str, float] = field(default_factory=dict)
+    # Probe the standards were taken with (algorithms.probe_models key).
+    probe_key: Optional[str] = None
 
     @property
     def is_simplified(self) -> bool:
@@ -85,7 +90,11 @@ class CalibrationMeta:
         if self.ref2_key:
             ref += f" + {self.ref2_key}"
         lines.append(f"References: {ref}")
+        if self.probe_key:
+            lines.append(f"Probe: {self.probe_key}")
         lines.append(f"Temperature: {self.temperature_c:.1f} °C")
+        for key, temp in sorted((self.standard_temperatures or {}).items()):
+            lines.append(f"  {key} (preset): {temp:.1f} °C")
         if self.f_start_hz is not None and self.f_stop_hz is not None:
             start = f"{self.f_start_hz / 1e6:.3g} MHz"
             stop = f"{self.f_stop_hz / 1e9:.4g} GHz"
@@ -175,6 +184,7 @@ def save_calibration(
 
     standards = []
     sources: Dict[str, str] = {}
+    temps: Dict[str, float] = {}
     f_start = f_stop = points = None
 
     for key in required:
@@ -184,6 +194,8 @@ def save_calibration(
         _write_s1p(_s1p_path(name, key), freqs, s11)
         standards.append(key)
         sources[key] = meas.get("source") or "measured"
+        if meas.get("temperature_c") is not None:
+            temps[key] = float(meas["temperature_c"])
         if f_start is None:
             f_start = float(freqs[0])
             f_stop = float(freqs[-1])
@@ -203,6 +215,8 @@ def save_calibration(
         f_start_hz=f_start,
         f_stop_hz=f_stop,
         points=points,
+        standard_temperatures=temps,
+        probe_key=getattr(cal, "probe_key", None),
     )
 
     _manifest_path(name).write_text(
@@ -299,6 +313,7 @@ def export_calibration(
         tmp_path = Path(tmp)
         standards: List[str] = []
         sources: Dict[str, str] = {}
+        temps: Dict[str, float] = {}
         f_start = f_stop = points = None
 
         for key in required:
@@ -308,6 +323,8 @@ def export_calibration(
             _write_s1p(tmp_path / f"{key}.s1p", freqs, s11)
             standards.append(key)
             sources[key] = meas.get("source") or "measured"
+            if meas.get("temperature_c") is not None:
+                temps[key] = float(meas["temperature_c"])
             if f_start is None:
                 f_start = float(freqs[0])
                 f_stop = float(freqs[-1])
@@ -327,6 +344,8 @@ def export_calibration(
             f_start_hz=f_start,
             f_stop_hz=f_stop,
             points=points,
+            standard_temperatures=temps,
+            probe_key=getattr(cal, "probe_key", None),
         )
         (tmp_path / "manifest.json").write_text(
             json.dumps(asdict(meta), indent=2, ensure_ascii=False),

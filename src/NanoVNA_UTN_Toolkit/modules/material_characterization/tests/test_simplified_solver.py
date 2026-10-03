@@ -4,8 +4,8 @@ Unit tests for the simplified (single-reference-liquid) permittivity solver.
 EN: Three layers: (1) a SYNTHETIC exactness test -- the barycentric formula
     must recover a known epsilon exactly through an arbitrary Moebius error
     box, which is the mathematical claim the method rests on; (2) a GOLDEN
-    test against the bundled 2026 probe-21mm presets (real Copper Mountain R60
-    sweeps shipped with the toolkit), checking the result against the NPL
+    test against the 2026 probe-21mm sweeps in ``tests/data`` (real Copper
+    Mountain R60 measurements), checking the result against the NPL
     ethanol model inside the band where the capacitive (Gn = 0) approximation
     holds; (3) guard-rail tests (degenerate denominators, shape mismatch,
     Ptolemy identity). Runnable with pytest or directly.
@@ -13,13 +13,15 @@ EN: Three layers: (1) a SYNTHETIC exactness test -- the barycentric formula
 ES: Tres capas: (1) test SINTETICO de exactitud -- la formula baricentrica
     debe recuperar un epsilon conocido exactamente a traves de una caja de
     error de Moebius arbitraria, que es el argumento matematico del metodo;
-    (2) test GOLDEN contra los presets 2026 sonda 21 mm incluidos en el
-    toolkit (barridos reales del Copper Mountain R60), contrastando contra el
+    (2) test GOLDEN contra los barridos 2026 sonda 21 mm de ``tests/data``
+    (mediciones reales del Copper Mountain R60), contrastando contra el
     modelo NPL del etanol dentro de la banda donde vale la aproximacion
     capacitiva (Gn = 0); (3) tests de guardas (denominadores degenerados,
     formas incompatibles, identidad de Ptolomeo). Ejecutable con pytest o
     directo.
 """
+
+from pathlib import Path
 
 import numpy as np
 
@@ -31,6 +33,16 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.simplified
     EPS_AIR,
     solve_epsilon_simplified,
 )
+
+_DATA = Path(__file__).resolve().parent / "data"
+
+
+def _load_fixture(name):
+    """(freqs, s11) of a real R60 sweep kept in tests/data (not a user preset)."""
+    import skrf as rf
+
+    net = rf.Network(str(_DATA / f"{name}.s1p"))
+    return np.asarray(net.f, dtype=float), np.asarray(net.s[:, 0, 0], dtype=complex)
 
 
 def _moebius(eps, a, b, c, d):
@@ -91,7 +103,7 @@ def test_synthetic_recovery_with_nonwater_reference():
 
 def test_golden_ethanol_2026_probe21():
     """
-    Real data: bundled 2026 R60 probe-21mm presets, ethanol as the unknown.
+    Real data: 2026 R60 probe-21mm sweeps (tests/data), ethanol as the unknown.
 
     Inside 50 MHz - 1.5 GHz the capacitive model holds for the 21 mm probe and
     eps' must track the NPL ethanol model within 10 % (measured: 2-6 %).
@@ -99,17 +111,13 @@ def test_golden_ethanol_2026_probe21():
     radiation above) -- that is the documented trade-off of this method.
     """
     try:
-        from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import (
-            preset_store,
-        )
-        f, s_open, _ = None, None, None
-        f, s_open = preset_store.load_preset("open_air_r60_probe21_2026")[:2]
-        _, s_short = preset_store.load_preset("short_r60_probe21_2026")[:2]
-        _, s_ref = preset_store.load_preset("water_r60_probe21_2026")[:2]
-        _, s_dut = preset_store.load_preset("ethanol_r60_probe21_2026")[:2]
+        f, s_open = _load_fixture("open_air_r60_probe21_2026")
+        _, s_short = _load_fixture("short_r60_probe21_2026")
+        _, s_ref = _load_fixture("water_r60_probe21_2026")
+        _, s_dut = _load_fixture("ethanol_r60_probe21_2026")
     except Exception:
         import pytest
-        pytest.skip("bundled 2026 presets not available")
+        pytest.skip("2026 probe-21mm test sweeps not available")
 
     water = get_reference_liquid("water")
     temp_c = 22.0

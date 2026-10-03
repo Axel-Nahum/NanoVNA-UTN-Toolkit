@@ -4,7 +4,9 @@
   "info": {
     "technique": "Técnica:",
     "temperature": "Temperatura:",
+    "temperature_preset": "ref. de preset",
     "references": "Líquidos de referencia:",
+    "probe": "Sonda:",
     "sweep": "Barrido:"
   },
   "table": {
@@ -12,7 +14,9 @@
     "frequency": "Frecuencia (MHz)",
     "eps_real": "ε′",
     "eps_imag": "ε″",
-    "loss_tangent": "tan δ"
+    "loss_tangent": "tan δ",
+    "export_csv": "Exportar CSV",
+    "export_s1p": "Exportar .s1p"
   },
   "pdf_options_help": {
     "style_help_title": "Estilo de Párrafo",
@@ -31,12 +35,19 @@
     "export_s11": "Exportar imagen S11",
     "dialog_title": "Guardar figura",
     "ok_title": "Guardado",
-    "ok_message": "Figura guardada en:\n{path}"
+    "ok_message": "Figura guardada en:\n{path}",
+    "eps_s1p_dialog_title": "Exportar permitividad como Touchstone",
+    "eps_s1p_filter": "Touchstone S1P (*.s1p);;Todos los archivos (*)",
+    "eps_s1p_saved": "Permitividad guardada en:\n{path}\n\nColumnas: ε′ y ε″. NO es S11: lo indica el encabezado del archivo y el asistente no deja importarlo como medición.",
+    "eps_s1p_failed": "Error al guardar el archivo:\n{error}",
+    "eps_s1p_no_data": "No hay datos de permitividad disponibles.",
+    "error_title": "Error"
   },
   "menu": {
     "file": "Archivo",
     "back_to_menu": "Volver al menú",
     "export_s11_touchstone": "Exportar Touchstone S11…",
+    "export_eps_touchstone": "Exportar Permitividad εr (.s1p)…",
     "export_pdf": "Exportar Informe PDF…",
     "plots": "Gráficos",
     "plot_manager": "Administrador de Gráfico",

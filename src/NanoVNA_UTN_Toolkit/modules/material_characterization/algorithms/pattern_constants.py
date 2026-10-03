@@ -31,7 +31,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 import numpy as np
 
@@ -66,6 +66,10 @@ class PatternConstants:
     ref1_key: str
     ref2_key: str
     warnings: List[str]
+    # Temperatures each reference eps_r was actually evaluated at (they differ
+    # from ``temp_c`` when a standard came from a preset recorded elsewhere).
+    temp_ref1_c: Optional[float] = None
+    temp_ref2_c: Optional[float] = None
 
 
 def compute_pattern_constants(
@@ -77,6 +81,8 @@ def compute_pattern_constants(
     s11_open: np.ndarray,
     ref1: ReferenceLiquid,
     ref2: ReferenceLiquid,
+    temp_ref1_c: Optional[float] = None,
+    temp_ref2_c: Optional[float] = None,
 ) -> PatternConstants:
     """
     Port of ``get_pattern_constants.m`` generalized to two reference liquids.
@@ -86,11 +92,15 @@ def compute_pattern_constants(
     f_hz : np.ndarray
         Frequency grid in Hz (shared by all standards).
     temp_c : float
-        Temperature at which the references are evaluated, in Celsius.
+        Session temperature, in Celsius. Used for any reference without its
+        own temperature.
     s11_short, s11_ref1, s11_ref2, s11_open : np.ndarray
         Complex S11 of each standard, aligned with ``f_hz``.
     ref1, ref2 : ReferenceLiquid
         Reference liquids for the ref1 (ipa slot) and ref2 (wtr slot).
+    temp_ref1_c, temp_ref2_c : float, optional
+        Temperature at which each reference's S11 was recorded, when it is not
+        the session one (e.g. a preset). Its known eps_r is evaluated there.
     """
     f_hz = np.asarray(f_hz, dtype=float)
     s11_short = np.asarray(s11_short, dtype=complex)
@@ -98,10 +108,13 @@ def compute_pattern_constants(
     s11_ref2 = np.asarray(s11_ref2, dtype=complex)
     s11_open = np.asarray(s11_open, dtype=complex)
 
+    t1 = float(temp_c if temp_ref1_c is None else temp_ref1_c)
+    t2 = float(temp_c if temp_ref2_c is None else temp_ref2_c)
+
     warnings: List[str] = []
 
-    eps_r1, w1 = evaluate_epsilon_r(ref1, f_hz, temp_c)   # MATLAB epsilon_ipa
-    eps_r2, w2 = evaluate_epsilon_r(ref2, f_hz, temp_c)   # MATLAB epsilon_wtr
+    eps_r1, w1 = evaluate_epsilon_r(ref1, f_hz, t1)   # MATLAB epsilon_ipa
+    eps_r2, w2 = evaluate_epsilon_r(ref2, f_hz, t2)   # MATLAB epsilon_wtr
     warnings.extend(w1)
     warnings.extend(w2)
 
@@ -147,4 +160,6 @@ def compute_pattern_constants(
         ref1_key=ref1.key,
         ref2_key=ref2.key,
         warnings=warnings,
+        temp_ref1_c=t1,
+        temp_ref2_c=t2,
     )

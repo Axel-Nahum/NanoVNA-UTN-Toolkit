@@ -5,6 +5,7 @@
         "copy_clipboard": "Copy to Clipboard",
         "save_image": "Save as Image",
         "save_csv": "Save as CSV",
+        "save_s1p": "Save as .s1p",
         "close": "Close"
     },
     "dialogs": {

@@ -1,0 +1,20 @@
+{
+  "name": "ipa_r60_probe21mm_18C",
+  "display_name": "Alcohol isopropílico - sonda 21 mm (R60, 18 °C)",
+  "liquid_key": "ipa",
+  "role": "reference",
+  "source": "measured",
+  "instrument": "Copper Mountain R60 (S/N 23103002)",
+  "probe": "open-ended coax 21 mm",
+  "temperature_c": 18.0,
+  "acquired": "unknown",
+  "saved": "2026-10-03T00:36:09",
+  "technique": "open_coax_liquids",
+  "points": 2000,
+  "f_start_hz": 1000000.0,
+  "f_stop_hz": 2000000000.0,
+  "precal_open_applied": false,
+  "origin_note": "No figura en el archivo de antecedentes (el mas parecido, sonda21-alcisoprop25-06.s1p, difiere en mediana 0.027 de |S11|); fecha de medicion no informada. Planilla entregada por el docente el 2026-10-02: 'Interpolacion medicion S11 IPA sonda 21mm.xlsx'. En la planilla las columnas se rotulan Er'/Er'' pero son Re/Im de S11. Se usan los puntos medidos, no los polinomios de ajuste. Temperatura ~18 C informada por el docente (no registrada con el barrido)",
+  "bundled": true,
+  "schema_version": 1
+}

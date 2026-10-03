@@ -13,6 +13,8 @@ ES: Verificaciones de cordura de la Etapa 1 (no es la suite autoritativa de
     Ejecutable con pytest o directamente: ``python test_algorithms.py``.
 """
 
+from pathlib import Path
+
 import numpy as np
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
@@ -26,6 +28,16 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.pattern_co
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.permittivity_solver import (
     solve_epsilon_r,
 )
+
+_DATA = Path(__file__).resolve().parent / "data"
+
+
+def _load_fixture(name):
+    """(freqs, s11) of a real R60 sweep kept in tests/data (not a user preset)."""
+    import skrf as rf
+
+    net = rf.Network(str(_DATA / f"{name}.s1p"))
+    return np.asarray(net.f, dtype=float), np.asarray(net.s[:, 0, 0], dtype=complex)
 
 
 def test_reference_registry_has_water_and_ipa():
@@ -156,17 +168,15 @@ def test_seeded_solver_follows_seed_and_attaches_crosscheck():
 
 
 def test_golden_full_method_seeded_2026():
-    """Regression (H13 / task 5.3): full method on the bundled 2026 probe-21mm
-    presets, swept from 1 MHz, must land on the canonical ethanol branch."""
+    """Regression (H13 / task 5.3): full method on the 2026 probe-21mm R60
+    sweeps (tests/data), swept from 1 MHz, must land on the canonical ethanol
+    branch."""
     try:
-        from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import (
-            preset_store,
-        )
         from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.permittivity_probe_calibration import (
             PermittivityProbeCalibration,
         )
         data = {
-            key: preset_store.load_preset(name)[:2]
+            key: _load_fixture(name)
             for key, name in (
                 ("open", "open_air_r60_probe21_2026"),
                 ("short", "short_r60_probe21_2026"),
@@ -177,7 +187,7 @@ def test_golden_full_method_seeded_2026():
         }
     except Exception:
         import pytest
-        pytest.skip("bundled 2026 presets not available")
+        pytest.skip("2026 probe-21mm test sweeps not available")
 
     cal = PermittivityProbeCalibration()
     assert cal.set_reference_liquids("water", "ipa")

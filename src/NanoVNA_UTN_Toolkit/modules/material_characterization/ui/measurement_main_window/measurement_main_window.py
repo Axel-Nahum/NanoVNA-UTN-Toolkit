@@ -147,6 +147,33 @@ class MeasurementMainWindow(QMainWindow):
 
     # --------------------------------------------------------------------- #
 
+    def _probe_text(self):
+        """Probe of the session and the C0 of its capacitive model."""
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.probe_models import get_probe
+
+        probe = get_probe(getattr(getattr(self.wizard_window, "perm_calibration", None),
+                                  "probe_key", None))
+        names = load_text("characterization_wizard.json").get("probes", {})
+        return f"{names.get(probe.key, probe.display_name)} (C0 {probe.c0_f * 1e12:.3g} pF)"
+
+    def _temperature_text(self, temp):
+        """Session temperature, plus the one of any reference loaded from a preset."""
+        if temp is None:
+            return "—"
+        text = f"{temp:.1f} °C"
+        cal = getattr(self.wizard_window, "perm_calibration", None)
+        if cal is None:
+            return text
+        own = sorted({
+            round(float(t), 1)
+            for t in (cal.standard_temperature("ref1"), cal.standard_temperature("ref2"))
+            if t is not None
+        })
+        if own:
+            preset = self._texts.get("info", {}).get("temperature_preset", "ref. preset")
+            text += f" ({preset}: " + ", ".join(f"{t:.1f} °C" for t in own) + ")"
+        return text
+
     def _build_info_strip(self):
         info = self._texts.get("info", {})
         wiz = self.wizard_window
@@ -167,8 +194,9 @@ class MeasurementMainWindow(QMainWindow):
 
         items = [
             (info.get("technique",    "Technique"),   technique),
-            (info.get("temperature",  "Temperature"), f"{temp:.1f} °C" if temp is not None else "—"),
+            (info.get("temperature",  "Temperature"), self._temperature_text(temp)),
             (info.get("references",   "References"),  refs_text),
+            (info.get("probe",        "Probe"),       self._probe_text()),
             (info.get("sweep",        "Sweep"),
              f"{start/1e6:.3f}–{stop/1e6:.3f} MHz · {steps} pts"
              if start is not None and stop is not None else "—"),
@@ -952,7 +980,7 @@ class MeasurementMainWindow(QMainWindow):
         eps  = result.eps_selected
         n_pts = len(f_hz)
         temp = getattr(wiz, "temperature_c", None)
-        temp_str  = f"{temp:.1f} °C" if temp is not None else "—"
+        temp_str  = self._temperature_text(temp)
         freq_str  = f"{f_hz[0]/1e6:.3f} – {f_hz[-1]/1e6:.3f} MHz"
 
         info_items = [
@@ -1140,11 +1168,7 @@ class MeasurementMainWindow(QMainWindow):
         footer_row.addWidget(legend_lbl)
         footer_row.addStretch()
 
-        export_btn = QPushButton("  Export CSV  ")
-        export_btn.setDefault(False)
-        export_btn.setAutoDefault(False)
-        export_btn.setFixedHeight(28)
-        export_btn.setStyleSheet(
+        export_btn_style = (
             f"QPushButton {{ background-color: {btn_bg}; color: {btn_fg};"
             f" border: 1px solid {btn_bdr}; border-radius: 6px;"
             f" padding: 3px 12px; font-size: 11px; font-weight: bold; }}"
@@ -1152,6 +1176,18 @@ class MeasurementMainWindow(QMainWindow):
             f"   border-color: {scroll_hover}; }}"
             f" QPushButton:pressed {{ background-color: {btn_press}; }}"
         )
+        export_btn = QPushButton(f"  {t.get('export_csv', 'Export CSV')}  ")
+        export_btn.setDefault(False)
+        export_btn.setAutoDefault(False)
+        export_btn.setFixedHeight(28)
+        export_btn.setStyleSheet(export_btn_style)
+
+        s1p_btn = QPushButton(f"  {t.get('export_s1p', 'Export .s1p')}  ")
+        s1p_btn.setDefault(False)
+        s1p_btn.setAutoDefault(False)
+        s1p_btn.setFixedHeight(28)
+        s1p_btn.setStyleSheet(export_btn_style)
+        s1p_btn.clicked.connect(lambda: self._export_permittivity_touchstone(dlg))
 
         def _do_export_csv():
             path, _ = QFileDialog.getSaveFileName(
@@ -1173,6 +1209,7 @@ class MeasurementMainWindow(QMainWindow):
 
         export_btn.clicked.connect(_do_export_csv)
         footer_row.addWidget(export_btn)
+        footer_row.addWidget(s1p_btn)
 
         footer_w = QWidget()
         footer_w.setLayout(footer_row)
@@ -1285,6 +1322,29 @@ class MeasurementMainWindow(QMainWindow):
             export_s11_touchstone,
         )
         export_s11_touchstone(self)
+
+    def _export_permittivity_touchstone(self, parent=None):
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.export_permittivity_touchstone import (
+            export_permittivity_touchstone,
+        )
+        export_permittivity_touchstone(parent or self, self._result, self._sample_name(),
+                                       self._permittivity_notes())
+
+    def _permittivity_notes(self):
+        """Provenance lines for the header of the εr .s1p export."""
+        wiz = self.wizard_window
+        cal = getattr(wiz, "perm_calibration", None)
+        notes = []
+        technique = getattr(wiz, "selected_method", "")
+        if technique:
+            notes.append(f"Technique / Tecnica: {technique}")
+        if cal is not None and cal.ref1_key:
+            refs = cal.ref1_key + (f" + {cal.ref2_key}" if cal.ref2_key else "")
+            notes.append(f"References / Referencias: {refs}")
+        notes.append(f"Probe / Sonda: {self._probe_text()}")
+        notes.append("Temperature / Temperatura: "
+                     + self._temperature_text(getattr(wiz, "temperature_c", None)))
+        return notes
 
     def return_to_menu_window(self):
         try:

@@ -43,6 +43,10 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.simplified
     SimplifiedEpsilonResult,
     solve_epsilon_simplified,
 )
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.permittivity_touchstone import (
+    implausible_s11_reason,
+    is_permittivity_touchstone,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -71,10 +75,12 @@ class PermittivityProbeCalibration:
         )
         os.makedirs(self.results_path, exist_ok=True)
 
-        # Per-standard measurement storage.
+        # Per-standard measurement storage. ``temperature_c`` is only set when
+        # the S11 was NOT taken in this session (a preset or kit recorded at a
+        # known temperature): the reference liquid's known eps_r must then be
+        # evaluated at THAT temperature, not at the session one.
         self.measurements: Dict[str, Dict] = {
-            key: {"freqs": None, "s11": None, "measured": False, "source": None}
-            for key in STANDARD_KEYS + (MUT_KEY,)
+            key: self._empty_measurement() for key in STANDARD_KEYS + (MUT_KEY,)
         }
 
         # Configuration / reference selection.
@@ -82,6 +88,9 @@ class PermittivityProbeCalibration:
         self.ref2_key: Optional[str] = None
         self.temperature_c: Optional[float] = None
         self.device_name: Optional[str] = None
+        # Probe in use (algorithms.probe_models key). Metadata only: it picks
+        # the indicative model and which presets apply, never the solver math.
+        self.probe_key: Optional[str] = None
 
         # Computed results.
         self.pattern_constants: Optional[PatternConstants] = None
@@ -89,6 +98,11 @@ class PermittivityProbeCalibration:
         self.last_error: Optional[str] = None
 
         logger.info("[PermittivityProbeCalibration] Initialized at %s", self.results_path)
+
+    @staticmethod
+    def _empty_measurement() -> Dict:
+        return {"freqs": None, "s11": None, "measured": False, "source": None,
+                "temperature_c": None}
 
     # --------------------------------------------------------------------- #
     # Configuration
@@ -134,28 +148,57 @@ class PermittivityProbeCalibration:
 
     def set_temperature(self, temp_c: float) -> List[str]:
         """
-        Set the reference temperature; returns extrapolation warnings (if any)
-        for the currently-selected reference liquids.
+        Set the session temperature; returns extrapolation warnings (if any)
+        for the currently-selected reference liquids, each checked at the
+        temperature its known eps_r is actually evaluated at.
         """
         self.temperature_c = float(temp_c)
         warnings: List[str] = []
-        for key in (self.ref1_key, self.ref2_key):
-            if key is None:
+        for std_key, liq_key in (("ref1", self.ref1_key), ("ref2", self.ref2_key)):
+            if liq_key is None:
                 continue
-            liquid = get_reference_liquid(key)
-            if temp_c < liquid.temp_min_c or temp_c > liquid.temp_max_c:
+            liquid = get_reference_liquid(liq_key)
+            t = self.reference_temperature(std_key)
+            if t < liquid.temp_min_c or t > liquid.temp_max_c:
                 warnings.append(
-                    f"{liquid.display_name}: {temp_c:.1f} C outside "
+                    f"{liquid.display_name}: {t:.1f} C outside "
                     f"[{liquid.temp_min_c:.0f}, {liquid.temp_max_c:.0f}] C (extrapolated)."
                 )
         return warnings
+
+    def standard_temperature(self, standard_key: str) -> Optional[float]:
+        """Temperature recorded WITH a standard's S11 (preset / kit), or None."""
+        data = self.measurements.get(standard_key.lower())
+        return data.get("temperature_c") if data else None
+
+    def reference_temperature(self, standard_key: str) -> Optional[float]:
+        """
+        Temperature at which ``standard_key``'s reference eps_r is evaluated.
+
+        EN: The S11 and the known eps_r of a reference liquid must describe the
+            liquid at the SAME temperature. A standard loaded from a preset
+            measured at 18 C keeps 18 C even if this session runs at 25 C;
+            anything measured now uses the session temperature.
+        ES: El S11 y el eps_r conocido de un liquido de referencia tienen que
+            corresponder a la MISMA temperatura. Un patron cargado de un preset
+            medido a 18 C conserva 18 C aunque la sesion este a 25 C; lo que se
+            mide ahora usa la temperatura de la sesion.
+        """
+        own = self.standard_temperature(standard_key)
+        return float(own) if own is not None else self.temperature_c
 
     # --------------------------------------------------------------------- #
     # Measurement storage
     # --------------------------------------------------------------------- #
 
-    def set_measurement(self, standard_key: str, freqs, s11, source: str = "measured") -> bool:
-        """Store a measurement and persist it as a Touchstone .s1p file."""
+    def set_measurement(self, standard_key: str, freqs, s11, source: str = "measured",
+                        temperature_c: Optional[float] = None) -> bool:
+        """Store a measurement and persist it as a Touchstone .s1p file.
+
+        ``temperature_c`` is the temperature the S11 was recorded at when it
+        does NOT come from this session (preset / kit); leave it None for a
+        live measurement so the session temperature applies.
+        """
         key = standard_key.lower()
         if key not in self.measurements:
             logger.error("[PermittivityProbeCalibration] Unknown standard: %s", key)
@@ -167,6 +210,8 @@ class PermittivityProbeCalibration:
             self.measurements[key]["s11"] = s11
             self.measurements[key]["measured"] = True
             self.measurements[key]["source"] = source
+            self.measurements[key]["temperature_c"] = (
+                float(temperature_c) if temperature_c is not None else None)
 
             path = os.path.join(self.results_path, f"{key}.s1p")
             self._save_as_touchstone(freqs, s11, path)
@@ -190,9 +235,14 @@ class PermittivityProbeCalibration:
             archivos SIMCAL).
         """
         try:
+            if is_permittivity_touchstone(filepath):
+                raise ValueError("the file holds an exported permittivity, not S11")
             net = rf.Network(filepath)
             freqs = np.asarray(net.f, dtype=float)        # skrf normalizes to Hz
             s11 = np.asarray(net.s[:, 0, 0], dtype=complex)
+            reason = implausible_s11_reason(s11)
+            if reason:
+                raise ValueError(reason)
             return self.set_measurement(standard_key, freqs, s11, source="imported")
         except Exception as exc:  # noqa: BLE001
             logger.error("[PermittivityProbeCalibration] Import failed (%s): %s", filepath, exc)
@@ -281,6 +331,8 @@ class PermittivityProbeCalibration:
             self.pattern_constants = compute_pattern_constants(
                 f_hz=f_hz,
                 temp_c=self.temperature_c,
+                temp_ref1_c=self.reference_temperature("ref1"),
+                temp_ref2_c=self.reference_temperature("ref2"),
                 s11_short=self.measurements["short"]["s11"],
                 s11_ref1=self.measurements["ref1"]["s11"],
                 s11_ref2=self.measurements["ref2"]["s11"],
@@ -346,7 +398,7 @@ class PermittivityProbeCalibration:
                 self.measurements["short"]["s11"],
                 self.measurements["ref1"]["s11"],
                 get_reference_liquid(self.ref1_key),
-                self.temperature_c,
+                self.reference_temperature("ref1"),
             )
             return simplified.eps
         except Exception as exc:  # noqa: BLE001
@@ -379,12 +431,12 @@ class PermittivityProbeCalibration:
             self.measurements["short"]["s11"],
             self.measurements["ref1"]["s11"],
             get_reference_liquid(self.ref1_key),
-            self.temperature_c,
+            self.reference_temperature("ref1"),
         )
         return self.epsilon_result
 
     def clear_all_measurements(self) -> None:
         for key in self.measurements:
-            self.measurements[key] = {"freqs": None, "s11": None, "measured": False}
+            self.measurements[key] = self._empty_measurement()
         self.pattern_constants = None
         self.epsilon_result = None

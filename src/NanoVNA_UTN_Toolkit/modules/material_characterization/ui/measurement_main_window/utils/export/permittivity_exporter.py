@@ -1063,8 +1063,24 @@ class PermittivityExporter:
         doc.append(NoEscape(rf"\item \textbf{{Sample:}} {_esc(sample_name or 'Unknown')}"))
         doc.append(NoEscape(rf"\item \textbf{{Technique:}} {_esc(technique)}"))
         temp_str = f"{temp:.1f} °C" if temp is not None else "—"
+        # A reference loaded from a preset keeps the temperature it was recorded at.
+        preset_temps = []
+        if cal is not None and hasattr(cal, "standard_temperature"):
+            preset_temps = sorted({
+                round(float(t), 1)
+                for t in (cal.standard_temperature("ref1"), cal.standard_temperature("ref2"))
+                if t is not None
+            })
+        if temp is not None and preset_temps:
+            temp_str += " (preset ref.: " + ", ".join(f"{t:.1f} °C" for t in preset_temps) + ")"
         doc.append(NoEscape(rf"\item \textbf{{Temperature:}} {_esc(temp_str)}"))
         doc.append(NoEscape(rf"\item \textbf{{Reference Liquids:}} {_esc(refs_text)}"))
+        if cal is not None and getattr(cal, "probe_key", None):
+            from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.probe_models import (
+                get_probe,
+            )
+            probe = get_probe(cal.probe_key)
+            doc.append(NoEscape(rf"\item \textbf{{Probe:}} {_esc(probe.display_name)}"))
         doc.append(NoEscape(rf"\item \textbf{{Frequency Range:}} {_esc(freq_str)}"))
 
         # Data sources per standard — one sub-item per source

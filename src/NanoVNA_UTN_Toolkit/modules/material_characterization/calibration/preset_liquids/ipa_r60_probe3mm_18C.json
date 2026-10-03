@@ -1,0 +1,20 @@
+{
+  "name": "ipa_r60_probe3mm_18C",
+  "display_name": "Alcohol isopropílico - sonda 3 mm (R60, 18 °C)",
+  "liquid_key": "ipa",
+  "role": "reference",
+  "source": "measured",
+  "instrument": "Copper Mountain R60 (S/N 23103002)",
+  "probe": "open-ended coax 3 mm",
+  "temperature_c": 18.0,
+  "acquired": "2026-06-24T00:00:00",
+  "saved": "2026-10-03T00:36:08",
+  "technique": "open_coax_liquids",
+  "points": 1181,
+  "f_start_hz": 100000000.0,
+  "f_stop_hz": 6000000000.0,
+  "precal_open_applied": false,
+  "origin_note": "Coincide con sonda3-alc-isoprop.s1p del archivo de antecedentes. Planilla entregada por el docente el 2026-10-02: 'Interpolacion medicion S11 IPA sonda 3mm.xlsx'. En la planilla las columnas se rotulan Er'/Er'' pero son Re/Im de S11. Se usan los puntos medidos, no los polinomios de ajuste. Temperatura ~18 C informada por el docente (no registrada con el barrido)",
+  "bundled": true,
+  "schema_version": 1
+}

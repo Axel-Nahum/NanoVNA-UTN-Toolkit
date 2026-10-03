@@ -582,12 +582,18 @@ class MaterialCharacterizationWelcome(QMainWindow):
                 if meta.points is not None:
                     wizard.sweep_steps = meta.points
                 wizard.perm_calibration.set_reference_liquids(meta.ref1_key, meta.ref2_key)
-                wizard.perm_calibration.set_temperature(meta.temperature_c)
+                wizard.perm_calibration.probe_key = meta.probe_key
 
+                std_temps = meta.standard_temperatures or {}
                 for key, (freqs, s11) in cal_data.items():
                     wizard.perm_calibration.set_measurement(
-                        key, freqs, s11, source=f"kit:{meta.name}"
+                        key, freqs, s11, source=f"kit:{meta.name}",
+                        temperature_c=std_temps.get(key),
                     )
+                # After the standards: the warnings check each reference at
+                # the temperature its eps_r is really evaluated at.
+                wizard.temperature_warnings = wizard.perm_calibration.set_temperature(
+                    meta.temperature_c)
 
                 # Find the DUT step index (current_step = descriptor index + 1)
                 dut_step = next(

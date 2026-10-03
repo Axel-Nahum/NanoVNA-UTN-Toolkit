@@ -101,6 +101,8 @@ class PresetMeta:
     f_stop_hz: Optional[float] = None
     precal_open_applied: bool = False
     origin_note: str = ""
+    # Shipped with the toolkit: the wizard can neither delete nor overwrite it.
+    bundled: bool = False
     schema_version: int = SCHEMA_VERSION
 
     @property
@@ -155,11 +157,14 @@ def read_meta(name: str) -> PresetMeta:
 
 def list_presets(liquid_key: Optional[str] = None,
                  role: Optional[str] = None,
-                 include_legacy: bool = True) -> List[PresetMeta]:
-    """List presets, optionally filtered by liquid and/or role.
+                 include_legacy: bool = True,
+                 probe: Optional[str] = None) -> List[PresetMeta]:
+    """List presets, optionally filtered by liquid, role and/or probe.
 
-    Legacy presets (no sidecar) match every filter by default: their liquid is
-    unknown, so hiding them would silently drop data the user saved earlier.
+    Legacy presets (no sidecar) match the liquid/role filters by default: their
+    liquid is unknown, so hiding them would silently drop data the user saved
+    earlier. ``probe`` is compared with ``PresetMeta.probe``; pass ``""`` to
+    get the presets of unknown probe (legacy ones included).
     """
     out: List[PresetMeta] = []
     try:
@@ -170,6 +175,9 @@ def list_presets(liquid_key: Optional[str] = None,
 
     for name in names:
         meta = read_meta(name)
+        # S11 sweeps of different probes are not interchangeable.
+        if probe is not None and (meta.probe or "") != probe:
+            continue
         if not meta.has_metadata:
             if include_legacy:
                 out.append(meta)
@@ -196,13 +204,31 @@ def preset_exists(name: str) -> bool:
     return _s1p_path(name).exists()
 
 
+class PresetProtectedError(PermissionError):
+    """Raised when deleting or overwriting a preset shipped with the toolkit."""
+
+
+def is_bundled(name: Optional[str]) -> bool:
+    """True for presets shipped with the toolkit (protected from the wizard)."""
+    return bool(name) and preset_exists(name) and read_meta(name).bundled
+
+
 # --------------------------------------------------------------------------- #
 # Write
 # --------------------------------------------------------------------------- #
 
-def save_preset(name: str, freqs, s11, meta: PresetMeta) -> Path:
-    """Write ``<name>.s1p`` + ``<name>.json`` and refresh PRESETS.md."""
+def save_preset(name: str, freqs, s11, meta: PresetMeta, *,
+                overwrite_bundled: bool = False) -> Path:
+    """Write ``<name>.s1p`` + ``<name>.json`` and refresh PRESETS.md.
+
+    A bundled preset is only rewritten by the bundled-presets builder
+    (``overwrite_bundled=True``); the wizard can never replace it.
+    """
     import skrf as rf
+
+    if is_bundled(name) and not overwrite_bundled:
+        raise PresetProtectedError(f"'{name}' is a preset shipped with the toolkit; "
+                                   f"it cannot be overwritten.")
 
     freqs = np.asarray(freqs, dtype=float)
     s11 = np.asarray(s11, dtype=complex)
@@ -228,8 +254,14 @@ def save_preset(name: str, freqs, s11, meta: PresetMeta) -> Path:
 
 
 def delete_preset(name: str) -> bool:
-    """Remove both files and log the deletion in PRESETS.md."""
+    """Remove both files and log the deletion in PRESETS.md.
+
+    Raises ``PresetProtectedError`` for presets shipped with the toolkit.
+    """
     meta = read_meta(name)
+    if meta.bundled:
+        raise PresetProtectedError(f"'{name}' is a preset shipped with the toolkit; "
+                                   f"it cannot be deleted.")
     removed = False
     for path in (_s1p_path(name), _json_path(name)):
         try:
@@ -268,6 +300,8 @@ def _md_row(m: PresetMeta) -> str:
     temp = "{:.1f} C".format(m.temperature_c) if m.temperature_c is not None else "-"
     origin = " ".join(x for x in (m.instrument, m.probe) if x) or "-"
     notes = m.origin_note or ""
+    if m.bundled:
+        notes = "**Incluido con el toolkit (no se puede borrar ni sobrescribir).** " + notes
     if m.precal_open_applied:
         notes = (notes + " - normalizado con OPEN").strip(" -")
     detail = (origin + ". " + notes).strip().rstrip(".")

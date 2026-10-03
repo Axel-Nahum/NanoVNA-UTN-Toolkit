@@ -17,26 +17,14 @@ la carpeta de antecedentes de la sonda,
 
 <!-- BEGIN AUTO-GENERATED TABLE - do not edit by hand -->
 
-## Presets disponibles (16)
+## Presets disponibles (4)
 
 | Preset | Liquido | Rol | Fuente | Barrido | Temp. | Origen |
 |---|---|---|---|---|---|---|
-| `ethanol_r60_probe21_2026` | ethanol | reference | measured | 1 MHz - 2 GHz / 2000 pts | - | Copper Mountain R60 (S/N 23103002) open-ended coax 21 mm. Alcohol etilico. Antecedentes de la sonda (Drive UTN). Archivo original: sonda21-alc-etilico25-06.s1p |
-| `ethanol_r60_probe3_2026` | ethanol | reference | measured | 100 MHz - 6 GHz / 1181 pts | - | Copper Mountain R60 (S/N 23103002) open-ended coax 3 mm. Alcohol etilico. Antecedentes de la sonda (Drive UTN). Archivo original: sonda3-alc-etilico.s1p |
-| `ipa_r60_probe21_2026` | ipa | reference | measured | 1 MHz - 2 GHz / 2000 pts | - | Copper Mountain R60 (S/N 23103002) open-ended coax 21 mm. Alcohol isopropilico (propan-2-ol). Antecedentes de la sonda (Drive UTN). Archivo original: sonda21-alcisoprop25-06.s1p |
-| `ipa_r60_probe3_2026` | ipa | reference | measured | 100 MHz - 6 GHz / 1181 pts | - | Copper Mountain R60 (S/N 23103002) open-ended coax 3 mm. Alcohol isopropilico (propan-2-ol). Antecedentes de la sonda (Drive UTN). Archivo original: sonda3-alc-isoprop.s1p |
-| `open_air_r60_probe21_2026` | air | open | measured | 1 MHz - 2 GHz / 2000 pts | - | Copper Mountain R60 (S/N 23103002) open-ended coax 21 mm. Sonda al aire (patron OPEN). Antecedentes de la sonda (Drive UTN). Archivo original: sonda21-aire.s1p |
-| `open_air_r60_probe3_2026` | air | open | measured | 100 MHz - 6 GHz / 1181 pts | - | Copper Mountain R60 (S/N 23103002) open-ended coax 3 mm. Sonda al aire (patron OPEN). Antecedentes de la sonda (Drive UTN). Archivo original: sonda3-aire.s1p |
-| `short_r60_probe21_2026` | short | short | measured | 1 MHz - 2 GHz / 2000 pts | - | Copper Mountain R60 (S/N 23103002) open-ended coax 21 mm. Sonda cortocircuitada. Antecedentes de la sonda (Drive UTN). Archivo original: sonda21-short.s1p |
-| `short_r60_probe3_2026` | short | short | measured | 100 MHz - 6 GHz / 1181 pts | - | Copper Mountain R60 (S/N 23103002) open-ended coax 3 mm. Sonda cortocircuitada. Antecedentes de la sonda (Drive UTN). Archivo original: sonda3-short.s1p |
-| `sim_cst2020_alcohol` | ipa | reference | simulated | 100 MHz - 10 GHz / 100 pts | - | CST Studio Suite (simulacion) open-ended coax (modelo CST). Alcohol simulado. Reconstruido de modS11alcohol / phaseS11alcohol en ws_patrones_2020.mat (magnitud lineal + fase en grados, igual que pol2complex.m). El |S11| de origen supera levemente 1 en algunos puntos: es un artefacto del post-proceso de CST, no un error de conversion. Antecedentes de la sonda (Drive UTN). NO es una medicion |
-| `sim_cst2020_muscle_dut` | muscle | dut | simulated | 100 MHz - 10 GHz / 100 pts | - | CST Studio Suite (simulacion) open-ended coax (modelo CST). Musculo sin capa de aceite; el .mat trae Er_musculo_real / Er_musculo_tgD como valor teorico esperado. Reconstruido de modS11musculoaceite000 / phaseS11musculoaceite000 en ws_patrones_2020.mat (magnitud lineal + fase en grados, igual que pol2complex.m). El |S11| de origen supera levemente 1 en algunos puntos: es un artefacto del post-proceso de CST, no un error de conversion. Antecedentes de la sonda (Drive UTN). NO es una medicion |
-| `sim_cst2020_open_air` | air | open | simulated | 100 MHz - 10 GHz / 100 pts | - | CST Studio Suite (simulacion) open-ended coax (modelo CST). Patron OPEN simulado. Reconstruido de modS11open / phaseS11open en ws_patrones_2020.mat (magnitud lineal + fase en grados, igual que pol2complex.m). El |S11| de origen supera levemente 1 en algunos puntos: es un artefacto del post-proceso de CST, no un error de conversion. Antecedentes de la sonda (Drive UTN). NO es una medicion |
-| `sim_cst2020_short` | short | short | simulated | 100 MHz - 10 GHz / 100 pts | - | CST Studio Suite (simulacion) open-ended coax (modelo CST). Patron SHORT simulado. Reconstruido de modS11short / phaseS11short en ws_patrones_2020.mat (magnitud lineal + fase en grados, igual que pol2complex.m). El |S11| de origen supera levemente 1 en algunos puntos: es un artefacto del post-proceso de CST, no un error de conversion. Antecedentes de la sonda (Drive UTN). NO es una medicion |
-| `sim_cst2020_water` | water | reference | simulated | 100 MHz - 10 GHz / 100 pts | - | CST Studio Suite (simulacion) open-ended coax (modelo CST). Agua simulada. Reconstruido de modS11agua / phaseS11agua en ws_patrones_2020.mat (magnitud lineal + fase en grados, igual que pol2complex.m). El |S11| de origen supera levemente 1 en algunos puntos: es un artefacto del post-proceso de CST, no un error de conversion. Antecedentes de la sonda (Drive UTN). NO es una medicion |
-| `water_deep35mm_r60_probe21_2026` | water | reference | measured | 1 MHz - 2 GHz / 2000 pts | - | Copper Mountain R60 (S/N 23103002) open-ended coax 21 mm. Agua a 35 mm de profundidad, base plastica ancha. Antecedentes de la sonda (Drive UTN). Archivo original: sonda 21-agua 35mm prof base plastico ancha 06-08.s1p |
-| `water_r60_probe21_2026` | water | reference | measured | 1 MHz - 2 GHz / 2000 pts | - | Copper Mountain R60 (S/N 23103002) open-ended coax 21 mm. Agua destilada. Antecedentes de la sonda (Drive UTN). Archivo original: sonda21-agua25-06.s1p |
-| `water_r60_probe3_2026` | water | reference | measured | 100 MHz - 6 GHz / 1181 pts | - | Copper Mountain R60 (S/N 23103002) open-ended coax 3 mm. Agua destilada. Antecedentes de la sonda (Drive UTN). Archivo original: sonda3-agua.s1p |
+| `ipa_r60_probe21mm_18C` | ipa | reference | measured | 1 MHz - 2 GHz / 2000 pts | 18.0 C | Copper Mountain R60 (S/N 23103002) open-ended coax 21 mm. **Incluido con el toolkit (no se puede borrar ni sobrescribir).** No figura en el archivo de antecedentes (el mas parecido, sonda21-alcisoprop25-06.s1p, difiere en mediana 0.027 de |S11|); fecha de medicion no informada. Planilla entregada por el docente el 2026-10-02: 'Interpolacion medicion S11 IPA sonda 21mm.xlsx'. En la planilla las columnas se rotulan Er'/Er'' pero son Re/Im de S11. Se usan los puntos medidos, no los polinomios de ajuste. Temperatura ~18 C informada por el docente (no registrada con el barrido) |
+| `ipa_r60_probe3mm_18C` | ipa | reference | measured | 100 MHz - 6 GHz / 1181 pts | 18.0 C | Copper Mountain R60 (S/N 23103002) open-ended coax 3 mm. **Incluido con el toolkit (no se puede borrar ni sobrescribir).** Coincide con sonda3-alc-isoprop.s1p del archivo de antecedentes. Planilla entregada por el docente el 2026-10-02: 'Interpolacion medicion S11 IPA sonda 3mm.xlsx'. En la planilla las columnas se rotulan Er'/Er'' pero son Re/Im de S11. Se usan los puntos medidos, no los polinomios de ajuste. Temperatura ~18 C informada por el docente (no registrada con el barrido) |
+| `water_r60_probe21mm_18C` | water | reference | measured | 1 MHz - 2 GHz / 2000 pts | 18.0 C | Copper Mountain R60 (S/N 23103002) open-ended coax 21 mm. **Incluido con el toolkit (no se puede borrar ni sobrescribir).** Coincide con 'sonda 21-agua 35mm prof base plastico ancha 06-08.s1p' (35 mm de profundidad, base plastica ancha). Planilla entregada por el docente el 2026-10-02: 'Interpolacion medicion S11 agua sonda 21mm.xlsx'. En la planilla las columnas se rotulan Er'/Er'' pero son Re/Im de S11. Se usan los puntos medidos, no los polinomios de ajuste. Temperatura ~18 C informada por el docente (no registrada con el barrido) |
+| `water_r60_probe3mm_18C` | water | reference | measured | 100 MHz - 6 GHz / 1181 pts | 18.0 C | Copper Mountain R60 (S/N 23103002) open-ended coax 3 mm. **Incluido con el toolkit (no se puede borrar ni sobrescribir).** Coincide con sonda3-agua.s1p del archivo de antecedentes. Planilla entregada por el docente el 2026-10-02: 'Interpolacion medicion S11 agua sonda 3mm.xlsx'. En la planilla las columnas se rotulan Er'/Er'' pero son Re/Im de S11. Se usan los puntos medidos, no los polinomios de ajuste. Temperatura ~18 C informada por el docente (no registrada con el barrido) |
 
 <!-- END AUTO-GENERATED TABLE -->
 
@@ -47,3 +35,19 @@ Registro de presets borrados desde el asistente (append-only).
 - **2026-08-27T16:04:42** - eliminado `water_open_coax_liquids_simplified_25.0C_50kHz-1.5GHz_101pts_20260827-160207` (water, reference)
 - **2026-08-27T16:05:44** - eliminado `water_open_coax_liquids_simplified_25.0C_50kHz-1.5GHz_101pts_20260827-160518` (water, reference)
 - **2026-08-27T16:05:47** - eliminado `water_open_coax_liquids_simplified_25.0C_50kHz-1.5GHz_101pts_20260827-160522` (water, reference)
+- **2026-10-02T23:38:39** - eliminado `ethanol_r60_probe21_2026` (ethanol, reference)
+- **2026-10-02T23:38:39** - eliminado `ethanol_r60_probe3_2026` (ethanol, reference)
+- **2026-10-02T23:38:39** - eliminado `ipa_r60_probe21_2026` (ipa, reference)
+- **2026-10-02T23:38:39** - eliminado `ipa_r60_probe3_2026` (ipa, reference)
+- **2026-10-02T23:38:39** - eliminado `open_air_r60_probe21_2026` (air, open)
+- **2026-10-02T23:38:39** - eliminado `open_air_r60_probe3_2026` (air, open)
+- **2026-10-02T23:38:39** - eliminado `short_r60_probe21_2026` (short, short)
+- **2026-10-02T23:38:39** - eliminado `short_r60_probe3_2026` (short, short)
+- **2026-10-02T23:38:39** - eliminado `sim_cst2020_alcohol` (ipa, reference)
+- **2026-10-02T23:38:39** - eliminado `sim_cst2020_muscle_dut` (muscle, dut)
+- **2026-10-02T23:38:39** - eliminado `sim_cst2020_open_air` (air, open)
+- **2026-10-02T23:38:39** - eliminado `sim_cst2020_short` (short, short)
+- **2026-10-02T23:38:39** - eliminado `sim_cst2020_water` (water, reference)
+- **2026-10-02T23:38:39** - eliminado `water_deep35mm_r60_probe21_2026` (water, reference)
+- **2026-10-02T23:38:39** - eliminado `water_r60_probe21_2026` (water, reference)
+- **2026-10-02T23:38:39** - eliminado `water_r60_probe3_2026` (water, reference)

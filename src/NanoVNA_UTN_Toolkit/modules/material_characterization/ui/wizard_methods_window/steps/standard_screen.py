@@ -39,11 +39,11 @@ from pathlib import Path
 import numpy as np
 from matplotlib.lines import Line2D
 from PySide6.QtCore import Qt, QEvent, QObject
-from PySide6.QtGui import QPixmap
+from PySide6.QtGui import QCursor, QPixmap
 from PySide6.QtWidgets import (
     QButtonGroup, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame,
     QHBoxLayout, QInputDialog, QLabel, QMessageBox, QPushButton, QRadioButton,
-    QSizePolicy, QVBoxLayout, QWidget,
+    QSizePolicy, QToolTip, QVBoxLayout, QWidget,
 )
 
 from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_enabled
@@ -169,11 +169,11 @@ def _render_magnitude(ax, wizard, standard, name, color, std_texts,
             try:
                 liquid = get_reference_liquid(liq_key)
                 f_hz = np.linspace(start, stop, points)
-                s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
+                s_ind = _indicative_s11(wizard, standard, liquid, f_hz)
                 ax.plot(f_x, 20 * np.log10(np.abs(s_ind) + 1e-15),
                         linestyle=":", color=color, linewidth=1.4, zorder=1)
                 handles.append(Line2D([0], [0], linestyle=":", color=color))
-                labels.append("indicative")
+                labels.append(_indicative_legend(wizard, standard, std_texts))
             except Exception:
                 pass
 
@@ -236,12 +236,12 @@ def _render_phase(ax, wizard, standard, name, color, std_texts,
             try:
                 liquid = get_reference_liquid(liq_key)
                 f_hz = np.linspace(start, stop, points)
-                s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
+                s_ind = _indicative_s11(wizard, standard, liquid, f_hz)
                 phase_ind = np.unwrap(np.angle(s_ind)) * 180.0 / np.pi
                 ax.plot(f_x, phase_ind,
                         linestyle=":", color=color, linewidth=1.4, zorder=1)
                 handles.append(Line2D([0], [0], linestyle=":", color=color))
-                labels.append("indicative")
+                labels.append(_indicative_legend(wizard, standard, std_texts))
             except Exception:
                 pass
 
@@ -306,11 +306,11 @@ def _render_real_imag(fig, wizard, standard, name, color, std_texts,
             try:
                 liquid = get_reference_liquid(liq_key)
                 f_hz = np.linspace(start, stop, points)
-                s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
+                s_ind = _indicative_s11(wizard, standard, liquid, f_hz)
                 ax_re.plot(f_x, np.real(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
                 ax_im.plot(f_x, np.imag(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
                 handles.append(Line2D([0], [0], linestyle=":", color=color))
-                labels.append("indicative")
+                labels.append(_indicative_legend(wizard, standard, std_texts))
             except Exception:
                 pass
 
@@ -379,12 +379,12 @@ def _render_db_phase(fig, wizard, standard, name, color, std_texts,
             try:
                 liquid = get_reference_liquid(liq_key)
                 f_hz = np.linspace(start, stop, points)
-                s_ind = indicative_s11(liquid, f_hz, getattr(wizard, "temperature_c", 25.0))
+                s_ind = _indicative_s11(wizard, standard, liquid, f_hz)
                 ax_mag.plot(f_x, _mag(s_ind), linestyle=":", color=color, linewidth=1.4, zorder=1)
                 phase_ind = np.unwrap(np.angle(s_ind)) * 180.0 / np.pi
                 ax_ph.plot(f_x, phase_ind, linestyle=":", color=color, linewidth=1.4, zorder=1)
                 handles.append(Line2D([0], [0], linestyle=":", color=color))
-                labels.append("indicative")
+                labels.append(_indicative_legend(wizard, standard, std_texts))
             except Exception:
                 pass
 
@@ -423,8 +423,9 @@ def _render_db_phase(fig, wizard, standard, name, color, std_texts,
         ax_mag.legend(handles, labels, fontsize=8, framealpha=0.9, loc="best")
 
 
-def _refresh_preset_combo(combo: QComboBox, liquid_key=None) -> None:
-    """Fill ``combo`` with the presets of ``liquid_key`` (all of them if None).
+def _refresh_preset_combo(combo: QComboBox, liquid_key=None, probe=None) -> None:
+    """Fill ``combo`` with the presets of ``liquid_key`` (all of them if None)
+    taken with ``probe`` (a ``PresetMeta.probe`` value; any probe if None).
 
     The preset NAME travels as userData, because the visible label is the
     human-readable ``display_name`` from the sidecar, not the file stem.
@@ -432,7 +433,7 @@ def _refresh_preset_combo(combo: QComboBox, liquid_key=None) -> None:
     current = combo.currentData()
     combo.clear()
     try:
-        metas = preset_store.list_presets(liquid_key=liquid_key)
+        metas = preset_store.list_presets(liquid_key=liquid_key, probe=probe)
     except Exception:
         logger.exception("[standard_screen] could not list presets")
         metas = []
@@ -461,8 +462,11 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_
     get_reference_liquid, indicative_s11,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import preset_store
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.permittivity_touchstone import (
+    implausible_s11_peak, is_permittivity_touchstone,
+)
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
-    preset_preload, selected_liquid_key, set_preset_preload,
+    preset_preload, selected_liquid_key, selected_probe, set_preset_preload,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.step_sidebar import (
     build_step_sidebar,
@@ -601,13 +605,34 @@ def build_standard_screen(wizard, descriptor, step_def):
     mid.addWidget(instr)
 
     # Temperature reminder (reference liquids only)
+    wizard._step_info_refresh = None
     if is_reference:
         mid.addSpacing(3)
-        temp_reminder = QLabel(std_texts.get(
-            "temperature_reminder", "Configured temperature: {temp:.1f} °C"
-        ).format(temp=float(getattr(wizard, "temperature_c", 25.0))))
+        temp_reminder = QLabel()
+        temp_reminder.setWordWrap(True)
         temp_reminder.setStyleSheet("font-size: 11px; color: #4da6ff; font-weight: bold;")
         mid.addWidget(temp_reminder)
+
+        def _refresh_temp_reminder():
+            session_t = float(getattr(wizard, "temperature_c", 25.0))
+            own_t = wizard.perm_calibration.standard_temperature(standard.key)
+            if own_t is None:
+                text = std_texts.get(
+                    "temperature_reminder", "Configured temperature: {temp:.1f} °C"
+                ).format(temp=session_t)
+            else:
+                text = std_texts.get(
+                    "temperature_reminder_preset",
+                    "Preset recorded at {temp:.1f} °C: this liquid's known εr is "
+                    "evaluated at that temperature (session: {session:.1f} °C)."
+                ).format(temp=float(own_t), session=session_t)
+            try:
+                temp_reminder.setText(text)
+            except RuntimeError:  # label already destroyed by a step change
+                pass
+
+        _refresh_temp_reminder()
+        wizard._step_info_refresh = _refresh_temp_reminder
 
     # ── Helper photo centrada debajo de la instrucción ───────────────────── #
     # En pasos sin pre-calibrate (Open, Short, DUT) la foto puede ser más grande
@@ -694,11 +719,11 @@ def build_standard_screen(wizard, descriptor, step_def):
         preset_combo.setMinimumHeight(26)
         preset_combo.setPlaceholderText(std_texts.get("preset_empty", "No presets saved"))
 
-        _refresh_preset_combo(preset_combo, _combo_liquid_key)
+        _refresh_preset_combo(preset_combo, _combo_liquid_key, selected_probe(wizard).preset_probe)
 
         def _save_and_refresh():
             _do_save_measurement(wizard, descriptor, standard, std_texts)
-            _refresh_preset_combo(preset_combo, _combo_liquid_key)
+            _refresh_preset_combo(preset_combo, _combo_liquid_key, selected_probe(wizard).preset_probe)
 
         btn_save_preset.clicked.connect(_save_and_refresh)
 
@@ -882,7 +907,10 @@ def build_standard_screen(wizard, descriptor, step_def):
         )
         _chk_indicative_qt.setChecked(False)
         _chk_indicative_qt.setStyleSheet(_CHK_STYLE)
-        _chk_indicative_qt.setToolTip("Show theoretical S11 for the reference liquid")
+        _chk_indicative_qt.setToolTip(std_texts.get(
+            "show_indicative_tooltip",
+            "Theoretical S11 of the reference liquid (Debye εr through the probe's "
+            "capacitive model). Hover its legend entry to see its source and parameters."))
 
         _chk_raw_qt = QCheckBox(
             std_texts.get("show_raw", "Show without pre-cal")
@@ -917,6 +945,12 @@ def build_standard_screen(wizard, descriptor, step_def):
         figsize=(6, 6),
     )
     wizard.current_fig, wizard.current_ax, wizard.current_canvas = fig, ax, canvas
+
+    # Hovering the indicative legend entry tells where the dotted curve comes
+    # from and what it depends on (a caption widget would shift the chart).
+    if is_reference:
+        _install_indicative_legend_tooltip(
+            wizard, standard, canvas, std_texts, liquids, texts.get("probes", {}))
 
     # ── dB/× overlay toggle (top-right inside canvas, only in dbphase mode) ─ #
     _BTN_OV_DB = (
@@ -1123,6 +1157,19 @@ def _ask_s1p_matching_sweep(wizard, std_texts, dialog_title=None):
         )
         return None
 
+    # A permittivity export is a .s1p too, but it is NOT S11 (UTN 2021/2024 trap)
+    if is_permittivity_touchstone(filepath):
+        QMessageBox.warning(
+            wizard,
+            std_texts.get("import_error_title", "Import Error"),
+            std_texts.get(
+                "import_error_permittivity",
+                "This file is a permittivity export (εr), not an S11 measurement.\n\n"
+                "It was saved as .s1p only so Touchstone viewers can plot it; it "
+                "cannot be used as a calibration standard or as the sample."),
+        )
+        return None
+
     # Parse with skrf
     try:
         import skrf as rf
@@ -1134,6 +1181,22 @@ def _ask_s1p_matching_sweep(wizard, std_texts, dialog_title=None):
             wizard,
             std_texts.get("import_error_title", "Import Error"),
             std_texts.get("import_error_parse", "Could not read the file:\n{err}").format(err=exc),
+        )
+        return None
+
+    # Legacy permittivity files carry no marker: catch them by magnitude
+    peak = implausible_s11_peak(s11)
+    if peak is not None:
+        QMessageBox.warning(
+            wizard,
+            std_texts.get("import_error_title", "Import Error"),
+            std_texts.get(
+                "import_error_not_s11",
+                "The file does not look like S11: |S11| reaches {peak:.3g}, while a "
+                "reflection coefficient stays near or below 1.\n\n"
+                "It probably holds an already computed permittivity (as many .s1p "
+                "files from the UTN 2021/2024 campaigns do)."
+            ).format(peak=peak),
         )
         return None
 
@@ -1232,6 +1295,112 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
         hook()
 
 
+def _reference_temp(wizard, standard) -> float:
+    """Temperature the known eps_r of ``standard`` is evaluated at.
+
+    A step loaded from a preset keeps the temperature the preset was recorded
+    at; anything else follows the session temperature.
+    """
+    own = wizard.perm_calibration.standard_temperature(standard.key)
+    return float(own) if own is not None else float(getattr(wizard, "temperature_c", 25.0))
+
+
+def _indicative_s11(wizard, standard, liquid, f_hz):
+    """Indicative S11: the liquid's Debye eps_r through the session probe's C0."""
+    return indicative_s11(liquid, f_hz, _reference_temp(wizard, standard),
+                          c0_f=selected_probe(wizard).c0_f)
+
+
+def _indicative_legend(wizard, standard, std_texts) -> str:
+    """Short legend entry naming the parameters the dotted curve depends on."""
+    return std_texts.get(
+        "indicative_legend", "indicative (C0 {c0} pF · {temp:.1f} °C)"
+    ).format(c0=f"{selected_probe(wizard).c0_f * 1e12:.3g}",
+             temp=_reference_temp(wizard, standard))
+
+
+_DEBYE_MODEL_KEYS = {
+    "single_debye": ("indicative_model_single", "single-Debye model"),
+    "double_debye": ("indicative_model_double", "double-Debye model"),
+    "debye_gamma": ("indicative_model_gamma", "Debye-Gamma model"),
+}
+
+
+def _indicative_tooltip(wizard, standard, std_texts, liquids_texts, probes_texts) -> str:
+    """Where the indicative curve comes from and every input it depends on."""
+    liq_key = selected_liquid_key(wizard, standard)
+    if not liq_key:
+        return ""
+    try:
+        liquid = get_reference_liquid(liq_key)
+    except KeyError:
+        return ""
+    probe = selected_probe(wizard)
+    model_key, model_default = _DEBYE_MODEL_KEYS.get(
+        liquid.model_type.value, ("", liquid.model_type.value))
+    from_preset = wizard.perm_calibration.standard_temperature(standard.key) is not None
+    c0_note = (std_texts.get("indicative_c0_fitted", "{probe}, fitted to its bundled presets")
+               if probe.preset_probe else
+               std_texts.get("indicative_c0_generic",
+                             "generic value, not fitted: pick the probe in Setup"))
+    return std_texts.get(
+        "indicative_tooltip",
+        "Indicative reference (not calibrated)\n"
+        "εr: {liquid}, {model} (NPL tables)\n"
+        "Temperature: {temp:.1f} °C ({temp_source})\n"
+        "Probe: capacitive model Y = jω·C0·εr\n"
+        "C0 = {c0} pF ({c0_note}), Z0 = 50 Ω"
+    ).format(
+        liquid=liquids_texts.get(liquid.key, liquid.display_name),
+        model=std_texts.get(model_key, model_default) if model_key else model_default,
+        temp=_reference_temp(wizard, standard),
+        temp_source=(std_texts.get("indicative_temp_preset", "preset temperature")
+                     if from_preset else
+                     std_texts.get("indicative_temp_session", "session temperature")),
+        c0=f"{probe.c0_f * 1e12:.4g}",
+        c0_note=c0_note.format(probe=probes_texts.get(probe.key, probe.display_name)),
+    )
+
+
+def _install_indicative_legend_tooltip(wizard, standard, canvas, std_texts,
+                                       liquids_texts, probes_texts) -> None:
+    """Show ``_indicative_tooltip`` while the mouse is over the indicative
+    entry of any legend on ``canvas`` (charts are redrawn, the hook stays)."""
+    shown = {"on": False}
+
+    def _over_indicative_entry(event) -> bool:
+        label = _indicative_legend(wizard, standard, std_texts)
+        for axes in canvas.figure.get_axes():
+            legend = axes.get_legend()
+            if legend is None or not legend.get_visible() or not legend.contains(event)[0]:
+                continue
+            for text in legend.get_texts():
+                if text.get_text() != label:
+                    continue
+                # Whole row of the entry: legend width, the text's height + margin.
+                box = text.get_window_extent()
+                margin = 0.5 * box.height
+                if box.y0 - margin <= event.y <= box.y1 + margin:
+                    return True
+        return False
+
+    def _on_motion(event):
+        try:
+            over = _over_indicative_entry(event)
+        except Exception:  # noqa: BLE001 - a hover must never break the chart
+            logger.debug("[standard_screen] legend hover check failed", exc_info=True)
+            over = False
+        if over:
+            QToolTip.showText(QCursor.pos(), _indicative_tooltip(
+                wizard, standard, std_texts, liquids_texts, probes_texts), canvas)
+            shown["on"] = True
+        elif shown["on"]:
+            QToolTip.hideText()
+            shown["on"] = False
+
+    canvas.mpl_connect("motion_notify_event", _on_motion)
+
+
 def _fmt_freq(hz: float) -> str:
     """Format Hz as kHz / MHz / GHz string."""
     if hz >= 1e9:
@@ -1323,7 +1492,8 @@ def _load_preset_into_step(wizard, standard, name, std_texts, preset_name):
         else:
             return None
 
-    freqs, s11 = _store_measurement(wizard, standard.key, freqs, s11, source=f"preset:{preset_name}")
+    freqs, s11 = _store_measurement(wizard, standard.key, freqs, s11, source=f"preset:{preset_name}",
+                                    temperature_c=meta.temperature_c)
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
@@ -1378,6 +1548,15 @@ def _do_save_measurement(wizard, descriptor, standard, std_texts):
         return
     preset_name = preset_name.strip()
 
+    if preset_store.is_bundled(preset_name):
+        QMessageBox.warning(
+            wizard,
+            std_texts.get("preset_save_title", "Save preset"),
+            std_texts.get("preset_bundled_overwrite_msg",
+                          '"{n}" is a preset shipped with the program and cannot be '
+                          'overwritten. Choose another name.').format(n=preset_name))
+        return
+
     if preset_store.preset_exists(preset_name):
         answer = QMessageBox.question(
             wizard,
@@ -1396,7 +1575,10 @@ def _do_save_measurement(wizard, descriptor, standard, std_texts):
         role=_preset_role(standard),
         source=preset_store.SOURCE_MEASURED,
         instrument=getattr(getattr(wizard, "vna_device", None), "name", "") or "",
-        temperature_c=float(getattr(wizard, "temperature_c", 25.0)),
+        # Sweeps are probe-specific: tag them so other probes never list them.
+        probe=selected_probe(wizard).preset_probe,
+        # Re-saving a preset must keep the temperature it was recorded at.
+        temperature_c=_reference_temp(wizard, standard),
         technique=getattr(descriptor, "id", ""),
         precal_open_applied=standard.key in getattr(wizard, "_precal_originals", {}),
         origin_note=std_texts.get("preset_saved_from_wizard",
@@ -1454,7 +1636,7 @@ def _suggested_preset_name(wizard, descriptor, standard) -> str:
         parts.append(technique_id)
 
     try:
-        parts.append(f"{float(getattr(wizard, 'temperature_c', 25.0)):.1f}C")
+        parts.append(f"{_reference_temp(wizard, standard):.1f}C")
     except (TypeError, ValueError):
         pass
 
@@ -1477,8 +1659,12 @@ def _suggested_preset_name(wizard, descriptor, standard) -> str:
     return name
 
 
-def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measured"):
+def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measured",
+                       temperature_c=None):
     """Store a raw S11, applying pre-cal normalization if active for this step.
+
+    ``temperature_c`` is the temperature a preset was recorded at (None for
+    anything taken in this session, which follows the session temperature).
 
     If wizard._precal_open[std_key] exists and the OPEN grid matches, the raw
     value is saved to _precal_originals and the normalized one is written to
@@ -1521,8 +1707,12 @@ def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measu
                 except Exception:
                     pass
 
-    wizard.perm_calibration.set_measurement(std_key, freqs_raw, s11_to_store, source=source)
+    wizard.perm_calibration.set_measurement(std_key, freqs_raw, s11_to_store, source=source,
+                                            temperature_c=temperature_c)
     wizard.epsilon_result = None
+    refresh = getattr(wizard, "_step_info_refresh", None)
+    if callable(refresh):
+        refresh()
     return freqs_raw, s11_to_store
 
 
@@ -1629,11 +1819,11 @@ def _render(wizard, standard, name, color, std_texts, measured,
         try:
             liquid = get_reference_liquid(selected_liquid_key(wizard, standard))
             f = np.linspace(start, stop, points)
-            s_ind = indicative_s11(liquid, f, getattr(wizard, "temperature_c", 25.0))
+            s_ind = _indicative_s11(wizard, standard, liquid, f)
             ax.plot(np.real(s_ind), np.imag(s_ind), linestyle=":", color=color,
                     linewidth=1.4, zorder=1)
             handles.append(Line2D([0], [0], linestyle=":", color=color))
-            labels.append(r"$S_{11}$ — indicative")
+            labels.append(_indicative_legend(wizard, standard, std_texts))
         except Exception as exc:  # noqa: BLE001
             logger.error("[standard_screen] indicative curve failed: %s", exc)
 

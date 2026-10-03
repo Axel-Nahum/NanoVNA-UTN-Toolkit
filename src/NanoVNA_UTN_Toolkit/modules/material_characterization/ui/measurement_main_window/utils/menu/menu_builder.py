@@ -40,6 +40,10 @@ def build_menu(main_window) -> None:
     export_s11_action.triggered.connect(main_window._export_s11_touchstone)
     file_menu.addAction(export_s11_action)
 
+    export_eps_action = QAction(menu.get("export_eps_touchstone", "Export Permittivity εr (.s1p)…"), main_window)
+    export_eps_action.triggered.connect(lambda: main_window._export_permittivity_touchstone())
+    file_menu.addAction(export_eps_action)
+
     export_pdf_action = QAction(menu.get("export_pdf", "Export PDF Report…"), main_window)
     export_pdf_action.triggered.connect(main_window._export_pdf)
     file_menu.addAction(export_pdf_action)

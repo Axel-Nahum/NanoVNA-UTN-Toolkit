@@ -118,8 +118,15 @@ The result screen displays:
 Measurements of reference liquids can be saved as **presets** and reused in future sessions. This avoids re-measuring known liquids every time.
 
 - Save a preset from the step screen after a successful measurement
-- Presets are stored under `calibration/presets/` as `.s1p` files with metadata
+- Presets are stored under `calibration/preset_liquids/` as `.s1p` files with a `.json` metadata sidecar (see `PRESETS.md` there)
 - Presets can be deleted from the configuration screen using the trash button next to each reference row
+- A preset keeps the **temperature it was recorded at**: when it is loaded into a reference step, that liquid's known εr is evaluated at the preset's temperature, not at the session one (the step and the results window show both)
+- Bundled presets: distilled water and isopropyl alcohol for the 3 mm (100 MHz – 6 GHz) and 21 mm (1 MHz – 2 GHz) probes, measured with a Copper Mountain R60 at ~18 °C. They cannot be deleted or overwritten from the wizard. A preset recorded on a different sweep is linearly resampled onto the configured one, as long as it covers the whole range
+- **Probe selector** (Setup): 3 mm, 21 mm or other. Only presets taken with the selected probe are listed (presets saved from the wizard are tagged with it), and the probe sets the C0 of the indicative reference
+
+## Indicative Reference
+
+The dotted "indicative" S₁₁ shown in reference-liquid steps is orientative, not calibrated: the liquid's Debye εr (NPL tables) at the reference temperature (the preset's, if the step was loaded from one), through the probe's low-frequency capacitive model Y = jω·C₀·εr with Z₀ = 50 Ω. C₀ comes from the selected probe — 0.019 pF (3 mm) and 0.117 pF (21 mm), least-squares fitted to the bundled water/IPA presets, or a generic 0.05 pF for other probes. Hovering the indicative entry of the chart legend shows a tooltip with the liquid, Debye model, temperature (and whether it is the preset's or the session's) and the C₀ in use; the legend entry itself shows C₀ and temperature. The model ignores radiation, so it departs from the measurement at high frequency
 
 ---
 
@@ -150,6 +157,8 @@ Click **Export PDF** on the result screen to generate a LaTeX-compiled report. T
 | Format | Used for |
 |--------|----------|
 | `.s1p` (Touchstone 1-port) | Calibration standards (Open, Short, reference liquids, unknown) |
+| `<sample>_er.s1p` | Computed permittivity (ε′, ε″) exported for Touchstone viewers — **not S11**; its header says so and the wizard refuses to import it as a measurement |
+| `.csv` | Computed permittivity (frequency, ε′, ε″) |
 | `.ini` | Sweep configuration, temperature settings |
 | `.json` | Preset metadata |
 | `.pdf` | Exported characterization report |

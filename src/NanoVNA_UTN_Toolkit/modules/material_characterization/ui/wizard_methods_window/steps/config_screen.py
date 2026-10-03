@@ -35,12 +35,14 @@ from PySide6.QtWidgets import (
 from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_enabled
 from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
+from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.probe_models import list_probes
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
     get_reference_liquid, list_reference_liquids,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import preset_store
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
-    ensure_defaults, preset_preload, selected_liquid_key, set_liquid_key, set_preset_preload,
+    ensure_defaults, preset_preload, selected_liquid_key, selected_probe, set_liquid_key,
+    set_preset_preload, set_probe_key,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.step_sidebar import (
     build_step_sidebar,
@@ -220,6 +222,50 @@ def build_config_screen(wizard, descriptor, step_def):
     all_liquids = list_reference_liquids()
     wizard.ref_liquid_combos = {}
     wizard.ref_preset_combos = {}
+    wizard._ref_row_refreshers = []
+
+    # Probe: sets the C0 of the indicative reference and which presets apply.
+    probes_txt = texts.get("probes", {})
+    probe_combo = QComboBox()
+    for probe in list_probes():
+        probe_combo.addItem(probes_txt.get(probe.key, probe.display_name), probe.key)
+        probe_combo.setItemData(
+            probe_combo.count() - 1,
+            f"C0 = {probe.c0_f * 1e12:.4g} pF — {probe.c0_source}", Qt.ToolTipRole)
+    idx = probe_combo.findData(selected_probe(wizard).key)
+    probe_combo.setCurrentIndex(idx if idx >= 0 else probe_combo.count() - 1)
+    probe_combo.setMinimumWidth(150)
+    ref_form.addRow(cfg.get("probe", "Probe:"), probe_combo)
+    wizard.probe_combo = probe_combo
+
+    probe_hint = QLabel()
+    probe_hint.setWordWrap(True)
+    probe_hint.setStyleSheet("color: gray; font-style: italic; font-size: 11px;")
+    ref_form.addRow(probe_hint)
+
+    def _update_probe_hint():
+        probe = selected_probe(wizard)
+        if probe.preset_probe:
+            text = cfg.get(
+                "probe_hint",
+                "Presets and indicative reference for: {probe} (C0 = {c0} pF)."
+            ).format(probe=probe_combo.currentText(), c0=f"{probe.c0_f * 1e12:.4g}")
+        else:
+            text = cfg.get(
+                "probe_hint_generic",
+                "Pick the probe in use to list its bundled presets and fit the indicative "
+                "reference. With this option only presets of unknown probe are listed and "
+                "the indicative reference uses a generic C0 = {c0} pF."
+            ).format(c0=f"{probe.c0_f * 1e12:.4g}")
+        probe_hint.setText(text)
+
+    def _on_probe_changed():
+        set_probe_key(wizard, probe_combo.currentData())
+        _update_probe_hint()
+        for refresh in wizard._ref_row_refreshers:
+            refresh()
+
+    _update_probe_hint()
 
     for i, std in enumerate(descriptor.reference_standards, start=1):
         liquid_combo = QComboBox()
@@ -257,6 +303,8 @@ def build_config_screen(wizard, descriptor, step_def):
         wizard.ref_preset_combos[std.key] = preset_combo
 
         _bind_reference_row(wizard, descriptor, std, cfg, liquid_combo, preset_combo, del_btn)
+
+    probe_combo.currentIndexChanged.connect(lambda *_: _on_probe_changed())
 
     wizard.reference_warning_label = QLabel("")
     wizard.reference_warning_label.setWordWrap(True)
@@ -322,14 +370,16 @@ def build_config_screen(wizard, descriptor, step_def):
 
 
 def _refresh_preset_combo(wizard, standard, combo, cfg):
-    """Repopulate ``combo`` with the stored measurements of the current liquid."""
+    """Repopulate ``combo`` with the stored measurements of the current liquid
+    taken with the session's probe."""
     liquid_key = selected_liquid_key(wizard, standard)
     previous = combo.currentData()
     combo.blockSignals(True)
     combo.clear()
     combo.addItem(cfg.get("preset_none", "None (measure in its step)"), None)
     try:
-        presets = preset_store.list_presets(liquid_key=liquid_key)
+        presets = preset_store.list_presets(liquid_key=liquid_key,
+                                            probe=selected_probe(wizard).preset_probe)
     except Exception:
         logger.exception("[config_screen] could not list presets")
         presets = []
@@ -346,7 +396,14 @@ def _bind_reference_row(wizard, descriptor, standard, cfg,
     """Wire one reference row: liquid choice, preset choice and preset deletion."""
 
     def _sync_delete_enabled():
-        del_btn.setEnabled(preset_combo.currentData() is not None)
+        name = preset_combo.currentData()
+        bundled = preset_store.is_bundled(name)
+        del_btn.setEnabled(name is not None and not bundled)
+        del_btn.setToolTip(
+            cfg.get("preset_delete_bundled_tooltip",
+                    "Preset shipped with the program: it cannot be deleted")
+            if bundled else
+            cfg.get("preset_delete_tooltip", "Delete the selected stored measurement"))
 
     def _on_liquid_changed():
         key = liquid_combo.currentData()
@@ -365,7 +422,7 @@ def _bind_reference_row(wizard, descriptor, standard, cfg,
 
     def _on_delete():
         name = preset_combo.currentData()
-        if not name:
+        if not name or preset_store.is_bundled(name):
             return
         answer = QMessageBox.question(
             wizard,
@@ -383,9 +440,16 @@ def _bind_reference_row(wizard, descriptor, standard, cfg,
         _refresh_preset_combo(wizard, standard, preset_combo, cfg)
         _sync_delete_enabled()
 
+    def _on_probe_changed():
+        # Presets of the previous probe no longer apply: re-list, re-sync preload.
+        _refresh_preset_combo(wizard, standard, preset_combo, cfg)
+        set_preset_preload(wizard, standard.key, preset_combo.currentData())
+        _sync_delete_enabled()
+
     liquid_combo.currentIndexChanged.connect(lambda *_: _on_liquid_changed())
     preset_combo.currentIndexChanged.connect(lambda *_: _on_preset_changed())
     del_btn.clicked.connect(_on_delete)
+    getattr(wizard, "_ref_row_refreshers", []).append(_on_probe_changed)
 
     _refresh_preset_combo(wizard, standard, preset_combo, cfg)
     # Restore a selection made earlier in this session.

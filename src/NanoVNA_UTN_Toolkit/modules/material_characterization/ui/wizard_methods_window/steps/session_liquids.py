@@ -21,6 +21,10 @@ from __future__ import annotations
 import logging
 from typing import Dict, Optional
 
+from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.probe_models import (
+    ProbeModel,
+    get_probe,
+)
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
     get_reference_liquid,
 )
@@ -67,6 +71,19 @@ def liquid_display_name(wizard, standard, liquids_texts) -> str:
         logger.warning("[session_liquids] unknown liquid key '%s'", key)
         fallback = key
     return liquids_texts.get(key, fallback)
+
+
+# --------------------------------------------------------------------------- #
+# Probe chosen in Step 1
+# --------------------------------------------------------------------------- #
+
+def selected_probe(wizard) -> ProbeModel:
+    """Probe of this session (the generic one until the user picks a probe)."""
+    return get_probe(getattr(wizard.perm_calibration, "probe_key", None))
+
+
+def set_probe_key(wizard, probe_key: str) -> None:
+    wizard.perm_calibration.probe_key = probe_key
 
 
 # --------------------------------------------------------------------------- #

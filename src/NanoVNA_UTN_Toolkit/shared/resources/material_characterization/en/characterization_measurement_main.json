@@ -4,7 +4,9 @@
   "info": {
     "technique": "Technique:",
     "temperature": "Temperature:",
+    "temperature_preset": "preset ref.",
     "references": "Reference liquids:",
+    "probe": "Probe:",
     "sweep": "Sweep:"
   },
   "table": {
@@ -12,7 +14,9 @@
     "frequency": "Frequency (MHz)",
     "eps_real": "ε′",
     "eps_imag": "ε″",
-    "loss_tangent": "tan δ"
+    "loss_tangent": "tan δ",
+    "export_csv": "Export CSV",
+    "export_s1p": "Export .s1p"
   },
   "pdf_options_help": {
     "style_help_title": "Paragraph Style",
@@ -31,12 +35,19 @@
     "export_s11": "Export S11 image",
     "dialog_title": "Save figure",
     "ok_title": "Saved",
-    "ok_message": "Figure saved to:\n{path}"
+    "ok_message": "Figure saved to:\n{path}",
+    "eps_s1p_dialog_title": "Export permittivity as Touchstone",
+    "eps_s1p_filter": "Touchstone S1P (*.s1p);;All Files (*)",
+    "eps_s1p_saved": "Permittivity saved to:\n{path}\n\nColumns: ε′ and ε″. It is NOT S11: the file header says so, and the wizard refuses to import it as a measurement.",
+    "eps_s1p_failed": "Failed to save the file:\n{error}",
+    "eps_s1p_no_data": "No permittivity data available.",
+    "error_title": "Error"
   },
   "menu": {
     "file": "File",
     "back_to_menu": "Back to menu",
     "export_s11_touchstone": "Export Touchstone S11…",
+    "export_eps_touchstone": "Export Permittivity εr (.s1p)…",
     "export_pdf": "Export PDF Report…",
     "plots": "Plots",
     "plot_manager": "Plot Manager",

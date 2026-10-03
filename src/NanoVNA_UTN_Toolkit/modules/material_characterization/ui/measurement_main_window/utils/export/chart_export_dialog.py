@@ -96,6 +96,10 @@ class ChartExportDialog(QDialog):
         csv_btn.clicked.connect(self._save_as_csv)
         btn_row.addWidget(csv_btn)
 
+        s1p_btn = QPushButton(btn_t.get("save_s1p", "Save as .s1p"))
+        s1p_btn.clicked.connect(self._save_as_s1p)
+        btn_row.addWidget(s1p_btn)
+
         btn_row.addStretch()
 
         close_btn = QPushButton(btn_t.get("close", "Close"))
@@ -453,6 +457,14 @@ class ChartExportDialog(QDialog):
                 msgs.get("error_title", "Error"),
                 msgs.get("image_failed", "Failed to save image:\n{error}").format(error=exc),
             )
+
+    def _save_as_s1p(self):
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.export_permittivity_touchstone import (
+            export_permittivity_touchstone,
+        )
+        notes_fn = getattr(self.parent(), "_permittivity_notes", None)
+        notes = notes_fn() if callable(notes_fn) else ()
+        export_permittivity_touchstone(self, self._result, self._sample_name, notes)
 
     def _save_as_csv(self):
         msgs = self._t.get("messages", {})
