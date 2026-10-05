@@ -28,7 +28,6 @@ logger = logging.getLogger(__name__)
 # Maps relative INI path → set of keys (across ALL sections) that must be
 # preserved from the user's current file even during an overwrite.
 _DESIGN_INIS: dict[str, set[str]] = {
-    "dut_measurement/graphics_config/graphics_config.ini": set(),
     "dut_measurement/dark_light_config/dark_light_config.ini": {
         "is_dark_mode",
         "text_light_dark",
@@ -42,6 +41,7 @@ _CONFIG_INIS = [
     "dut_measurement/signal_filters/signal_filters.ini",
     "dut_measurement/auto_scale/auto_scale.ini",
     "dut_measurement/plot_manager/plot_manager.ini",
+    "dut_measurement/graphics_config/graphics_config.ini",
     "material_characterization/characterization_chart_config/characterization_chart_config.ini",
     "material_characterization/plot_manager/plot_manager.ini",
 ]
