@@ -35,7 +35,7 @@
     "preset_delete_msg": "Delete \"{n}\" permanently?",
     "references_duplicated": "The two reference liquids must be different: two identical standards carry no extra information and the calibration cannot be solved.",
     "temperature_out_of_range": "{liquid}: {temp:.1f} °C is outside its tabulated range [{tmin:.0f}, {tmax:.0f}] °C; its permittivity is extrapolated.",
-    "debug_sweep_warning": "⚠ Debug Mode: this sweep is outside the connected device's capabilities ({caps}). It is valid for IMPORTING .s1p files, but the instrument cannot measure it."
+    "debug_sweep_warning": "⚠ This sweep is outside the connected device's capabilities ({caps}). You can import .s1p files with this sweep, but the instrument cannot measure it."
   },
   "liquids": {
     "water": "Distilled Water",

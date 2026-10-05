@@ -35,7 +35,7 @@
     "preset_delete_msg": "¿Eliminar \"{n}\" definitivamente?",
     "references_duplicated": "Los dos líquidos de referencia deben ser distintos: dos patrones iguales no aportan información nueva y la calibración no se puede resolver.",
     "temperature_out_of_range": "{liquid}: {temp:.1f} °C está fuera de su rango tabulado [{tmin:.0f}, {tmax:.0f}] °C; su permitividad se extrapola.",
-    "debug_sweep_warning": "⚠ Modo Debug: este barrido excede las capacidades del equipo conectado ({caps}). Sirve para IMPORTAR archivos .s1p, pero el instrumento no puede medirlo."
+    "debug_sweep_warning": "⚠ Este barrido excede las capacidades del equipo conectado ({caps}). Podés importar archivos .s1p con este barrido, pero el instrumento no puede medirlo."
   },
   "liquids": {
     "water": "Agua destilada",
