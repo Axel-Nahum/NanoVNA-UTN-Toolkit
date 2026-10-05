@@ -17,8 +17,9 @@ else:
 from NanoVNA_UTN_Toolkit.compat import apply_patches
 apply_patches()
 
-from NanoVNA_UTN_Toolkit.utils import check_required_packages, cleanup_routine    
+from NanoVNA_UTN_Toolkit.utils import check_required_packages, cleanup_routine
 from NanoVNA_UTN_Toolkit.shared.ui.connection_window.connection_window import NanoVNAStatusApp
+from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_migrator import migrate_settings
 
 # ----------------------------
 # LOGGING
@@ -139,6 +140,12 @@ def main():
 
     print("INI:", ini_path)
     print("MEAS:", meas_path)
+
+    if getattr(sys, "frozen", False):
+        migrate_settings(
+            defaults_ini_dir=os.path.join(sys._MEIPASS, "INI"),
+            user_ini_dir=ini_path,
+        )
 
     check_required_packages()
     run_app()
