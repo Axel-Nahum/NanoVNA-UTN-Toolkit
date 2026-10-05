@@ -202,13 +202,13 @@ def open_report_url(self):
             "to report bugs or request features."
         )
 
-def show_app_about(parent=None):
+def show_app_about(parent=None, lang="en"):
     """Small About dialog showing app name, version and copyright."""
     from PySide6.QtWidgets import QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout
     from PySide6.QtCore import Qt
 
     dlg = QDialog(parent)
-    dlg.setWindowTitle("About NanoVNA UTN Toolkit")
+    dlg.setWindowTitle("Acerca de NanoVNA UTN Toolkit" if lang == "es" else "About NanoVNA UTN Toolkit")
     dlg.setModal(True)
     dlg.setFixedSize(380, 220)
 
@@ -232,7 +232,8 @@ def show_app_about(parent=None):
     title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {fg}; background: transparent;")
     layout.addWidget(title)
 
-    version = QLabel("Version 2.3.1  —  September 2026")
+    _date = "Octubre 2026" if lang == "es" else "October 2026"
+    version = QLabel(f"Version 2.3.1  —  {_date}")
     version.setAlignment(Qt.AlignCenter)
     version.setStyleSheet(f"font-size: 13px; color: {sub}; background: transparent;")
     layout.addWidget(version)

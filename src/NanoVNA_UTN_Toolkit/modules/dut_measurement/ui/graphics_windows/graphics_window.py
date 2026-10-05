@@ -343,7 +343,7 @@ class NanoVNAGraphics(QMainWindow):
         if show_app_about:
             help_menu.addSeparator()
             app_about_action = help_menu.addAction("About NanoVNA UTN Toolkit")
-            app_about_action.triggered.connect(lambda: show_app_about(self))
+            app_about_action.triggered.connect(lambda: show_app_about(self, lang=current_lang))
 
 #-------- Lock Markers ----------------------------------------------------------------------------#
 
