@@ -215,6 +215,7 @@ class NanoVNAGraphics(QMainWindow):
         self.resourceLoader.load_export_touchstone_resources()
         self.resourceLoader.load_set_range_resources()
         self.resourceLoader.load_file_menu_dialogs_resources()
+        self.resourceLoader.load_exporters_resources()
 
         self.resourceLoader = DutResourceLoader(
             self_window = self,

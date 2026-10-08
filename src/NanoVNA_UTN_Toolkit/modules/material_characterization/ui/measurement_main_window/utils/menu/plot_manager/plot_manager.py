@@ -55,7 +55,7 @@ def open_plot_manager(main_window):
     )
     border = dl_settings.value("Dark_Light/QGroupBox/color", "1px solid #999")
     frame_style = f"""
-        QFrame#pm_frame {{
+        QFrame {{
             border: {border};
             border-radius: 8px;
             padding: 12px;
@@ -74,7 +74,6 @@ def open_plot_manager(main_window):
     main.setContentsMargins(15, 15, 15, 15)
 
     frame = QFrame()
-    frame.setObjectName("pm_frame")
     frame.setStyleSheet(frame_style)
 
     layout = QVBoxLayout(frame)
@@ -114,61 +113,59 @@ def open_plot_manager(main_window):
     layout.addWidget(_sep())
 
     # =====================================================
-    # DISPLAY OPTIONS
+    # DISPLAY + AXIS — single grid guarantees column alignment
     # =====================================================
     disp_t = t.get("display", {})
+    axis_t = t.get("axis", {})
+
+    grid = QGridLayout()
+    grid.setHorizontalSpacing(28)
+    grid.setVerticalSpacing(10)
+    grid.setColumnStretch(0, 3)
+    grid.setColumnStretch(1, 2)
+    grid.setColumnStretch(2, 2)
+
+    # ── row 0: Display Options title ─────────────────────
     display_title = QLabel(disp_t.get("title", "Display Options"))
     display_title.setAlignment(Qt.AlignCenter)
     display_title.setStyleSheet("font-size: 18px; font-weight: bold; border: none;")
-    layout.addWidget(display_title)
+    grid.addWidget(display_title, 0, 0, 1, 3)
 
-    disp_grid = QGridLayout()
-    disp_grid.setHorizontalSpacing(28)
-    disp_grid.setColumnStretch(0, 3)
-    disp_grid.setColumnStretch(1, 2)
-    disp_grid.setColumnStretch(2, 2)
-
+    # ── row 1: chart column header ────────────────────────
     g1 = QLabel(disp_t.get("chart", "Permittivity Chart (εᵣ)"))
     g1.setAlignment(Qt.AlignCenter)
     g1.setStyleSheet("font-weight: bold; font-size: 15px; border: none;")
-    disp_grid.addWidget(g1, 0, 1, 1, 2)
+    grid.addWidget(g1, 1, 1, 1, 2)
 
+    # ── row 2: Show Grid ──────────────────────────────────
     grid_chk = QCheckBox()
     grid_chk.setChecked(pm_settings.value("grid/current_state", True, type=bool))
+    grid.addWidget(_bold(disp_t.get("showGrid", "Show Grid:")), 2, 0, Qt.AlignLeft)
+    grid.addWidget(grid_chk, 2, 1, 1, 2, Qt.AlignCenter)
 
-    disp_grid.addWidget(_bold(disp_t.get("showGrid", "Show Grid:")), 1, 0, Qt.AlignLeft)
-    disp_grid.addWidget(grid_chk, 1, 1, 1, 2, Qt.AlignCenter)
+    # ── row 3: separator with 12 px top padding ───────────
+    sep_mid = _sep()
+    grid.addWidget(sep_mid, 3, 0, 1, 3, Qt.AlignBottom)
+    grid.setRowMinimumHeight(3, 14)
 
-    layout.addLayout(disp_grid)
-    layout.addSpacing(12)
-    layout.addWidget(_sep())
-
-    # =====================================================
-    # AXIS SETTINGS
-    # =====================================================
-    axis_t = t.get("axis", {})
+    # ── row 4: Axis Settings title ────────────────────────
     axis_title = QLabel(axis_t.get("title", "Axis Settings (Y Limits)"))
     axis_title.setAlignment(Qt.AlignCenter)
     axis_title.setStyleSheet("font-size: 18px; font-weight: bold; border: none;")
-    layout.addWidget(axis_title)
+    grid.addWidget(axis_title, 4, 0, 1, 3)
 
-    axis_grid = QGridLayout()
-    axis_grid.setHorizontalSpacing(28)
-    axis_grid.setColumnStretch(0, 3)
-    axis_grid.setColumnStretch(1, 2)
-    axis_grid.setColumnStretch(2, 2)
-
+    # ── row 5: chart column header ────────────────────────
     ag1 = QLabel(axis_t.get("chart", "Permittivity Chart (εᵣ)"))
     ag1.setAlignment(Qt.AlignCenter)
     ag1.setStyleSheet("font-weight: bold; font-size: 15px; border: none;")
-    axis_grid.addWidget(ag1, 0, 1, 1, 2)
+    grid.addWidget(ag1, 5, 1, 1, 2)
 
+    # ── row 6: Auto Scale ─────────────────────────────────
     auto_checked = pm_settings.value("auto_scale/current_state", True, type=bool)
     auto_chk = QCheckBox()
     auto_chk.setChecked(auto_checked)
-
-    axis_grid.addWidget(_bold(axis_t.get("autoScale", "Auto Scale:")), 1, 0, Qt.AlignLeft)
-    axis_grid.addWidget(auto_chk, 1, 1, 1, 2, Qt.AlignCenter)
+    grid.addWidget(_bold(axis_t.get("autoScale", "Auto Scale:")), 6, 0, Qt.AlignLeft)
+    grid.addWidget(auto_chk, 6, 1, 1, 2, Qt.AlignCenter)
 
     validator = QDoubleValidator()
     validator.setNotation(QDoubleValidator.StandardNotation)
@@ -215,7 +212,11 @@ def open_plot_manager(main_window):
 
     auto_chk.stateChanged.connect(_on_auto_changed)
 
-    axis_grid.addWidget(_bold(axis_t.get("yRange", "Y Range:")), 3, 0, Qt.AlignLeft)
+    # ── row 7: spacing before Y Range ─────────────────────
+    grid.setRowMinimumHeight(7, 4)
+
+    # ── row 8: Y Range ────────────────────────────────────
+    grid.addWidget(_bold(axis_t.get("yRange", "Y Range:")), 8, 0, Qt.AlignLeft)
 
     range_row = QHBoxLayout()
     range_row.setSpacing(15)
@@ -223,9 +224,9 @@ def open_plot_manager(main_window):
     range_row.addWidget(y_min)
     range_row.addWidget(y_max)
     range_row.addStretch()
-    axis_grid.addLayout(range_row, 3, 1, 1, 2)
+    grid.addLayout(range_row, 8, 1, 1, 2)
 
-    layout.addLayout(axis_grid)
+    layout.addLayout(grid)
     layout.addSpacing(8)
     layout.addWidget(_sep())
     layout.addSpacing(10)

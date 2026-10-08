@@ -115,7 +115,7 @@ def build_config_screen(wizard, descriptor, step_def):
     left_half_layout.addWidget(build_step_sidebar(wizard, descriptor, texts), stretch=0)
 
     root = QVBoxLayout()
-    root.setSpacing(20)
+    root.setSpacing(14)
 
     # --- Connected device info ------------------------------------------- #
     if dev_name:
@@ -144,7 +144,7 @@ def build_config_screen(wizard, descriptor, step_def):
     # --- Sweep configuration --------------------------------------------- #
     sweep_group = QGroupBox(cfg.get("sweep_title", "Sweep Configuration"))
     sweep_form = QFormLayout(sweep_group)
-    sweep_form.setVerticalSpacing(10)
+    sweep_form.setVerticalSpacing(7)
     sweep_form.setHorizontalSpacing(16)
 
     wizard.start_freq_input = QDoubleSpinBox()
@@ -152,15 +152,18 @@ def build_config_screen(wizard, descriptor, step_def):
     wizard.start_freq_input.setRange(0.0001, 1e12)
     wizard.start_freq_unit = QComboBox()
     wizard.start_freq_unit.addItems(list(_UNIT_MULT))
+    wizard.start_freq_unit.setMinimumHeight(30)
 
     wizard.stop_freq_input = QDoubleSpinBox()
     wizard.stop_freq_input.setDecimals(4)
     wizard.stop_freq_input.setRange(0.0001, 1e12)
     wizard.stop_freq_unit = QComboBox()
     wizard.stop_freq_unit.addItems(list(_UNIT_MULT))
+    wizard.stop_freq_unit.setMinimumHeight(30)
 
     wizard.points_input = QComboBox()
     wizard.points_input.addItems([str(p) for p in valid_points])
+    wizard.points_input.setMinimumHeight(30)
     if debug_mode:
         # Editable so any point count can be typed, not just the device list.
         wizard.points_input.setEditable(True)
@@ -168,9 +171,9 @@ def build_config_screen(wizard, descriptor, step_def):
         wizard.points_input.setInsertPolicy(QComboBox.NoInsert)
 
     sweep_form.addRow(cfg.get("start_freq", "Start Frequency:"),
-                      _freq_row(wizard.start_freq_input, wizard.start_freq_unit))
+                      _freq_row(wizard.start_freq_input, wizard.start_freq_unit, height=30))
     sweep_form.addRow(cfg.get("stop_freq", "Stop Frequency:"),
-                      _freq_row(wizard.stop_freq_input, wizard.stop_freq_unit))
+                      _freq_row(wizard.stop_freq_input, wizard.stop_freq_unit, height=30))
     sweep_form.addRow(cfg.get("points", "Number of Points:"), wizard.points_input)
 
     # Shown only when the configured sweep is outside what the device supports.
@@ -180,16 +183,17 @@ def build_config_screen(wizard, descriptor, step_def):
         "color: #ffa94d; font-size: 11px; font-weight: bold; border: none;")
     wizard.sweep_warning_label.setVisible(False)
     sweep_form.addRow(wizard.sweep_warning_label)
-    root.addWidget(sweep_group)
+    root.addWidget(sweep_group, stretch=3)
 
     # --- Unknown liquid + temperature ------------------------------------ #
     sample_group = QGroupBox(cfg.get("sample_title", "Sample"))
     sample_form = QFormLayout(sample_group)
-    sample_form.setVerticalSpacing(10)
+    sample_form.setVerticalSpacing(7)
     sample_form.setHorizontalSpacing(16)
 
     wizard.unknown_name_input = QLineEdit()
     wizard.unknown_name_input.setMaxLength(_UNKNOWN_NAME_MAXLEN)
+    wizard.unknown_name_input.setMinimumHeight(36)
     wizard.unknown_name_input.setPlaceholderText(
         cfg.get("unknown_placeholder", "e.g. tap water, glycerin solution…")
     )
@@ -209,14 +213,14 @@ def build_config_screen(wizard, descriptor, step_def):
     temp_help.setWordWrap(True)
     temp_help.setStyleSheet("color: gray; font-style: italic; font-size: 11px;")
     sample_form.addRow(temp_help)
-    root.addWidget(sample_group)
+    root.addWidget(sample_group, stretch=2)
 
     # --- Reference liquids: selectable + optional stored measurement ------ #
     ensure_defaults(wizard, descriptor)
 
     ref_group = QGroupBox(cfg.get("references_title", "Reference Liquids"))
     ref_form = QFormLayout(ref_group)
-    ref_form.setVerticalSpacing(10)
+    ref_form.setVerticalSpacing(7)
     ref_form.setHorizontalSpacing(16)
 
     all_liquids = list_reference_liquids()
@@ -235,6 +239,7 @@ def build_config_screen(wizard, descriptor, step_def):
     idx = probe_combo.findData(selected_probe(wizard).key)
     probe_combo.setCurrentIndex(idx if idx >= 0 else probe_combo.count() - 1)
     probe_combo.setMinimumWidth(150)
+    probe_combo.setMinimumHeight(32)
     ref_form.addRow(cfg.get("probe", "Probe:"), probe_combo)
     wizard.probe_combo = probe_combo
 
@@ -275,9 +280,11 @@ def build_config_screen(wizard, descriptor, step_def):
         idx = liquid_combo.findData(current)
         liquid_combo.setCurrentIndex(idx if idx >= 0 else 0)
         liquid_combo.setMinimumWidth(150)
+        liquid_combo.setMinimumHeight(32)
 
         preset_combo = QComboBox()
         preset_combo.setMinimumWidth(190)
+        preset_combo.setMinimumHeight(32)
         preset_combo.setToolTip(cfg.get(
             "preset_tooltip",
             "Optional: load a stored measurement of this liquid instead of measuring it."))
@@ -320,8 +327,7 @@ def build_config_screen(wizard, descriptor, step_def):
     note.setWordWrap(True)
     note.setStyleSheet("color: gray; font-style: italic; font-size: 11px;")
     ref_form.addRow(note)
-    root.addWidget(ref_group)
-    root.addStretch(1)
+    root.addWidget(ref_group, stretch=3)
 
     # --- Initialize from session, then wire commits ----------------------- #
 
@@ -538,27 +544,30 @@ def _fmt_hz(hz):
     return f"{hz:.0f} Hz"
 
 
-def _spinbox_container(spin):
+def _spinbox_container(spin, height=36):
     """Wrap a spinbox in a themed QFrame with ▲▼ external buttons."""
     spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
+    spin.setMinimumHeight(height - 2)
     spin.setStyleSheet(
         "QDoubleSpinBox { border: none; background: transparent; }"
         "QSpinBox { border: none; background: transparent; }"
     )
     c = QFrame(); c.setObjectName("spinboxContainer")
-    cl = QHBoxLayout(c); cl.setContentsMargins(4, 0, 0, 0); cl.setSpacing(0)
-    u = QPushButton("▲"); u.setObjectName("spinboxUpBtn"); u.setFixedSize(18, 12); u.clicked.connect(spin.stepUp)
-    d = QPushButton("▼"); d.setObjectName("spinboxDownBtn"); d.setFixedSize(18, 12); d.clicked.connect(spin.stepDown)
+    c.setMinimumHeight(height)
+    cl = QHBoxLayout(c); cl.setContentsMargins(4, 1, 0, 1); cl.setSpacing(0)
+    btn_h = max((height - 2) // 2, 10)
+    u = QPushButton("▲"); u.setObjectName("spinboxUpBtn"); u.setFixedSize(18, btn_h); u.clicked.connect(spin.stepUp)
+    d = QPushButton("▼"); d.setObjectName("spinboxDownBtn"); d.setFixedSize(18, btn_h); d.clicked.connect(spin.stepDown)
     col = QVBoxLayout(); col.setSpacing(1); col.setContentsMargins(3, 0, 0, 0); col.addWidget(u); col.addWidget(d)
     cl.addWidget(spin, 1); cl.addLayout(col)
     return c
 
 
-def _freq_row(spin, unit_combo):
+def _freq_row(spin, unit_combo, height=36):
     row = QWidget()
     h = QHBoxLayout(row)
     h.setContentsMargins(0, 0, 0, 0)
-    h.addWidget(_spinbox_container(spin), 1)
+    h.addWidget(_spinbox_container(spin, height=height), 1)
     h.addWidget(unit_combo, 1)
     return row
 
