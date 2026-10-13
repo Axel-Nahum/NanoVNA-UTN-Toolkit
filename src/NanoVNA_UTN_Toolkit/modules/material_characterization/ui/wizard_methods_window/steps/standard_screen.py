@@ -535,13 +535,24 @@ def build_standard_screen(wizard, descriptor, step_def):
         precal_hint.setStyleSheet("font-size: 11px; color: #606080; font-style: italic;")
         precal_row.addWidget(precal_hint, stretch=1)
 
-        btn_precal = QPushButton(std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)"))
+        _precal_btn_label = (
+            std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)")
+            if _has_precal
+            else std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)")
+        )
+        btn_precal = QPushButton(_precal_btn_label)
         btn_precal.setFixedHeight(24)
-        btn_precal.setStyleSheet(
+        _precal_ss_inactive = (
             "QPushButton { font-size: 11px; color: #888888; border: 1px solid #484858;"
             " border-radius: 4px; padding: 0 10px; }"
             " QPushButton:hover { color: #cccccc; border-color: #7070a0; }"
         )
+        _precal_ss_active = (
+            "QPushButton { font-size: 11px; color: #ffaa44; border: 1px solid #ffaa44;"
+            " border-radius: 4px; padding: 0 10px; }"
+            " QPushButton:hover { background: #2a1a00; }"
+        )
+        btn_precal.setStyleSheet(_precal_ss_active if _has_precal else _precal_ss_inactive)
         precal_row.addWidget(btn_precal)
 
         btn_delete_precal_top = QPushButton(std_texts.get("delete_precal", "✕ Quitar pre-cal"))
@@ -560,11 +571,25 @@ def build_standard_screen(wizard, descriptor, step_def):
         precal_row.addWidget(btn_delete_precal_top)
 
         def _on_precal_clicked():
-            _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_delete_precal_top)
+            _open_precal_dialog(wizard, standard, name, color, std_texts, state,
+                                btn_delete_precal_top, btn_precal)
 
         btn_precal.clicked.connect(_on_precal_clicked)
 
         def _delete_precal():
+            from PySide6.QtWidgets import QMessageBox
+            confirm = QMessageBox.question(
+                wizard,
+                std_texts.get("delete_precal_confirm_title", "Quitar pre-calibración"),
+                std_texts.get(
+                    "delete_precal_confirm_msg",
+                    "¿Seguro? Se perderá la pre-calibración de {name} y se restaurará la medición original."
+                ).format(name=name),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if confirm != QMessageBox.Yes:
+                return
             getattr(wizard, "_precal_open", {}).pop(standard.key, None)
             originals = getattr(wizard, "_precal_originals", {})
             if standard.key in originals:
@@ -580,6 +605,8 @@ def build_standard_screen(wizard, descriptor, step_def):
                 _render(wizard, standard, name, color, std_texts, (freqs, s11_orig),
                         state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
             btn_delete_precal_top.setVisible(False)
+            btn_precal.setText(std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)"))
+            btn_precal.setStyleSheet(_precal_ss_inactive)
 
         btn_delete_precal_top.clicked.connect(_delete_precal)
 
@@ -1293,9 +1320,8 @@ def _ask_apply_precal(wizard, standard, name, std_texts) -> bool:
     from PySide6.QtWidgets import QMessageBox
     msg = std_texts.get(
         "precal_import_prompt",
-        f"Hay una pre-calibración activa para <b>{name}</b>.<br>"
-        "¿Aplicarla a la medición que estás cargando?"
-    )
+        "Hay una pre-calibración activa para {name}.\n¿Aplicarla a la medición que estás cargando?"
+    ).format(name=name)
     reply = QMessageBox.question(
         wizard,
         std_texts.get("precal_import_title", "Pre-calibración activa"),
@@ -1936,7 +1962,7 @@ def _resolve_strings(wizard, std_texts, liquids, standard):
     return name, instruction, False
 
 
-def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_delete_precal):
+def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_delete_precal, btn_precal=None):
     """Open-normalization pre-calibration dialog (vertical single-column layout).
 
     Measures an OPEN (probe in air) and normalizes the stored liquid S11 by
@@ -2100,6 +2126,13 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         if "*" not in wizard._precal_open:  # set global only once — per-step overrides don't replace it
             wizard._precal_open["*"] = _precal_entry
         btn_delete_precal.setVisible(True)
+        if btn_precal is not None:
+            btn_precal.setText(std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)"))
+            btn_precal.setStyleSheet(
+                "QPushButton { font-size: 11px; color: #ffaa44; border: 1px solid #ffaa44;"
+                " border-radius: 4px; padding: 0 10px; }"
+                " QPushButton:hover { background: #2a1a00; }"
+            )
         _liq = wizard.perm_calibration.get_measurement(standard.key)
         if _liq is not None:
             # Liquid already measured — apply normalization immediately.
