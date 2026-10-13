@@ -1279,12 +1279,41 @@ def _adopt_sweep_from_file(wizard, freqs, std_texts) -> bool:
     return True
 
 
+def _ask_apply_precal(wizard, standard, name, std_texts) -> bool:
+    """Return True if the user wants pre-cal applied to an imported/preset measurement.
+
+    Returns True immediately (no prompt) when no pre-cal is active for this step.
+    """
+    precal_active = (
+        standard.key in getattr(wizard, "_precal_open", {})
+        or "*" in getattr(wizard, "_precal_open", {})
+    )
+    if not precal_active:
+        return True
+    from PySide6.QtWidgets import QMessageBox
+    msg = std_texts.get(
+        "precal_import_prompt",
+        f"Hay una pre-calibración activa para <b>{name}</b>.<br>"
+        "¿Aplicarla a la medición que estás cargando?"
+    )
+    reply = QMessageBox.question(
+        wizard,
+        std_texts.get("precal_import_title", "Pre-calibración activa"),
+        msg,
+        QMessageBox.Yes | QMessageBox.No,
+        QMessageBox.Yes,
+    )
+    return reply == QMessageBox.Yes
+
+
 def _on_import(wizard, standard, name, color, button, std_texts, state):
     """Open a .s1p file, validate frequencies, store and render."""
     imported = _ask_s1p_matching_sweep(wizard, std_texts)
     if imported is None:
         return
-    freqs, s11 = _store_measurement(wizard, standard.key, imported[0], imported[1], source="imported")
+    apply_precal = _ask_apply_precal(wizard, standard, name, std_texts)
+    freqs, s11 = _store_measurement(wizard, standard.key, imported[0], imported[1],
+                                    source="imported", apply_precal=apply_precal)
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     button.setText(std_texts.get("reimport_button", "Import again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11),
@@ -1493,8 +1522,9 @@ def _load_preset_into_step(wizard, standard, name, std_texts, preset_name):
         else:
             return None
 
+    apply_precal = _ask_apply_precal(wizard, standard, name, std_texts)
     freqs, s11 = _store_measurement(wizard, standard.key, freqs, s11, source=f"preset:{preset_name}",
-                                    temperature_c=meta.temperature_c)
+                                    temperature_c=meta.temperature_c, apply_precal=apply_precal)
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
@@ -1661,7 +1691,7 @@ def _suggested_preset_name(wizard, descriptor, standard) -> str:
 
 
 def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measured",
-                       temperature_c=None):
+                       temperature_c=None, apply_precal: bool = True):
     """Store a raw S11, applying pre-cal normalization if active for this step.
 
     ``temperature_c`` is the temperature a preset was recorded at (None for
@@ -1685,8 +1715,9 @@ def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measu
 
     s11_to_store = s11_raw
     _precal_key = (
-        std_key if std_key in wizard._precal_open
-        else ("*" if "*" in wizard._precal_open else None)
+        (std_key if std_key in wizard._precal_open
+         else ("*" if "*" in wizard._precal_open else None))
+        if apply_precal else None
     )
     if _precal_key is not None:
         freqs_open, s11_open = wizard._precal_open[_precal_key]
