@@ -53,6 +53,14 @@ from NanoVNA_UTN_Toolkit.shared.ui.pdf_export_widgets import (
 
 _DASH_STYLE = "dash"
 
+
+def _freq_unit_index(freqs) -> int:
+    """Return combo index (0=kHz, 1=MHz, 2=GHz) matching the sweep's natural unit."""
+    max_f = float(np.max(freqs)) if len(freqs) else 1e6
+    if max_f >= 1e9: return 2
+    if max_f >= 1e6: return 1
+    return 0
+
 _LIST_STYLES = [
     ("•",  "Disc",        QTextListFormat.ListDisc),
     ("◦",  "Circle",      QTextListFormat.ListCircle),
@@ -322,15 +330,19 @@ class GraphPreviewExportDialog(QDialog):
             self.marker_checkboxes[i] = (marker1, marker2)
 
             # --- Frequency inputs (white style) ---
+            _unit_idx = _freq_unit_index(self.freqs)
+
             edit1 = QLineEdit()
             edit1.setFixedWidth(80)
             edit1.setStyleSheet("background-color: white; color: black; border: 2px solid white; border-radius: 3px;")
             combo1 = _make_centered_combo(["kHz", "MHz", "GHz"])
+            combo1.setCurrentIndex(_unit_idx)
 
             edit2 = QLineEdit()
             edit2.setFixedWidth(80)
             edit2.setStyleSheet("background-color: white; color: black; border: 2px solid white; border-radius: 3px;")
             combo2 = _make_centered_combo(["kHz", "MHz", "GHz"])
+            combo2.setCurrentIndex(_unit_idx)
 
             # --- Inline validator function ---
             def validate_input(edit, combo):
@@ -903,7 +915,8 @@ class GraphPreviewExportDialog(QDialog):
                     freq_val_hz = freq_val * unit_factor
                 except Exception:
                     freq_val_hz = freqs[len(freqs)//3 if i == 0 else 2*len(freqs)//3]
-                    freq_val = freq_val_hz / 1e3
+                    unit_factor = scale_x
+                    freq_val = freq_val_hz / scale_x
 
                 idx = (np.abs(freqs - freq_val_hz)).argmin()
                 nearest_freq_hz = freqs[idx]

@@ -82,6 +82,19 @@ def _freq_scale(freqs):
     return 1e3, "kHz"
 
 
+def _make_contrast_color(hex_color: str) -> str:
+    """Return a visually distinct color by rotating the hue 120° and boosting saturation/value."""
+    import colorsys
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16) / 255, int(h[2:4], 16) / 255, int(h[4:6], 16) / 255
+    hue, sat, val = colorsys.rgb_to_hsv(r, g, b)
+    hue = (hue + 120 / 360) % 1.0
+    sat = max(sat, 0.75)
+    val = max(val, 0.85)
+    r2, g2, b2 = colorsys.hsv_to_rgb(hue, sat, val)
+    return "#{:02x}{:02x}{:02x}".format(int(r2 * 255), int(g2 * 255), int(b2 * 255))
+
+
 # --------------------------------------------------------------------------- #
 
 _DASH_STYLE = "dash"   # sentinel: no QTextList, insert "– " prefix
@@ -237,7 +250,10 @@ class PermittivityPdfPreviewDialog(QDialog):
         except Exception:
             self._real_color, self._loss_color = "#4da6ff", "#d62728"
 
-        self._perm_marker_colors = [self._real_color, self._loss_color]
+        self._perm_marker_colors = [
+            _make_contrast_color(self._real_color),
+            _make_contrast_color(self._loss_color),
+        ]
 
         # Pre-compute permittivity curves
         self._real_eps = _fill_nans(np.real(self.eps_selected))
@@ -623,6 +639,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                     "border: 2px solid white; border-radius: 3px;"
                 )
                 combo = _make_centered_combo(["kHz", "MHz", "GHz"])
+                combo.setCurrentIndex({"kHz": 0, "MHz": 1, "GHz": 2}.get(self._freq_unit, 1))
 
                 edit.editingFinished.connect(
                     lambda e=edit, c=combo: self._validate_input(e, c) or self._on_marker_input_changed()
@@ -1112,7 +1129,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                 except Exception:
                     split = len(self.freqs) // 3
                     freq_hz = self.freqs[split if slot == 0 else 2 * split]
-                    unit_factor = 1e6
+                    unit_factor = self._freq_div
 
                 idx_f = int(np.abs(self.freqs - freq_hz).argmin())
                 nearest_hz = self.freqs[idx_f]
