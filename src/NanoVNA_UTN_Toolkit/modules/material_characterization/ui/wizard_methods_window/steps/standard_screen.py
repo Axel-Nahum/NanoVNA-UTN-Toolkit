@@ -186,7 +186,7 @@ def _render_magnitude(ax, wizard, standard, name, color, std_texts,
         handles.append(Line2D([0], [0], color=color))
         labels.append(_short_legend_name(standard, name))
 
-    if show_raw and standard.kind is StandardKind.REFERENCE_LIQUID:
+    if show_raw:
         raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
         if raw_data is not None:
             _, s11_raw = raw_data
@@ -254,7 +254,7 @@ def _render_phase(ax, wizard, standard, name, color, std_texts,
         handles.append(Line2D([0], [0], color=color))
         labels.append(_short_legend_name(standard, name))
 
-    if show_raw and standard.kind is StandardKind.REFERENCE_LIQUID:
+    if show_raw:
         raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
         if raw_data is not None:
             _, s11_raw = raw_data
@@ -323,7 +323,7 @@ def _render_real_imag(fig, wizard, standard, name, color, std_texts,
         handles.append(Line2D([0], [0], color=color))
         labels.append(_short_legend_name(standard, name))
 
-    if show_raw and standard.kind is StandardKind.REFERENCE_LIQUID:
+    if show_raw:
         raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
         if raw_data is not None:
             _, s11_raw = raw_data
@@ -398,7 +398,7 @@ def _render_db_phase(fig, wizard, standard, name, color, std_texts,
         handles.append(Line2D([0], [0], color=color))
         labels.append(_short_legend_name(standard, name))
 
-    if show_raw and standard.kind is StandardKind.REFERENCE_LIQUID:
+    if show_raw:
         raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
         if raw_data is not None:
             _, s11_raw = raw_data
@@ -949,6 +949,7 @@ def build_standard_screen(wizard, descriptor, step_def):
             "Theoretical S11 of the reference liquid (Debye εr through the probe's "
             "capacitive model). Hover its legend entry to see its source and parameters."))
 
+    if is_precalibrable:
         _chk_raw_qt = QCheckBox(
             std_texts.get("show_raw", "Show without pre-cal")
         )
@@ -1030,17 +1031,20 @@ def build_standard_screen(wizard, descriptor, step_def):
     _canvas_rf = _CanvasResizeFilter(canvas)
     canvas.installEventFilter(_canvas_rf)
 
-    # ── Checkbox signal connections (reference liquid steps only) ────────── #
+    # ── Checkbox signal connections ───────────────────────────────────────── #
     if is_reference:
-        if standard.key in getattr(wizard, "_precal_originals", {}):
-            _chk_raw_qt.setVisible(True)
-
         def _on_indicative_toggled(checked):
             state["show_indicative"] = checked
             stored_now = wizard.perm_calibration.get_measurement(standard.key)
             _render(wizard, standard, name, color, std_texts, stored_now,
                     state["show_indicative"], state.get("show_raw", False),
                     state.get("chart_mode", "reimag"), state.get("mag_linear", False))
+
+        _chk_indicative_qt.toggled.connect(_on_indicative_toggled)
+
+    if is_precalibrable:
+        if standard.key in getattr(wizard, "_precal_originals", {}):
+            _chk_raw_qt.setVisible(True)
 
         def _on_raw_toggled(checked):
             if standard.key not in getattr(wizard, "_precal_originals", {}):
@@ -1049,10 +1053,9 @@ def build_standard_screen(wizard, descriptor, step_def):
             state["show_raw"] = checked
             stored_now = wizard.perm_calibration.get_measurement(standard.key)
             _render(wizard, standard, name, color, std_texts, stored_now,
-                    state["show_indicative"], state["show_raw"],
+                    state.get("show_indicative", False), state["show_raw"],
                     state.get("chart_mode", "reimag"), state.get("mag_linear", False))
 
-        _chk_indicative_qt.toggled.connect(_on_indicative_toggled)
         _chk_raw_qt.toggled.connect(_on_raw_toggled)
 
         def _on_precal_applied():
@@ -1908,7 +1911,7 @@ def _render(wizard, standard, name, color, std_texts, measured,
         handles.append(Line2D([0], [0], color=color))
         labels.append(rf"$S_{{11}}$ — {_short_legend_name(standard, name)}")
 
-    if show_raw and standard.kind is StandardKind.REFERENCE_LIQUID:
+    if show_raw:
         raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
         if raw_data is not None:
             _, s11_raw = raw_data
