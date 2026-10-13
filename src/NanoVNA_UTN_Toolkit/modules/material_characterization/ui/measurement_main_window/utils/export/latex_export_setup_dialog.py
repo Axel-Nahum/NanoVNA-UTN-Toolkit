@@ -332,12 +332,14 @@ class PermittivityLatexSetupDialog(QDialog):
             include_notes=self.include_notes_chk.isChecked(),
             include_tables=self.include_tables_chk.isChecked(),
         )
+        _geom = self.geometry()
         self.hide()
         result = preview.exec()
 
         if result == PermittivityPdfPreviewDialog.DialogCode.Accepted:
             self.reject()
         else:
+            self.setGeometry(_geom)
             self.show()
             self.raise_()
             self.activateWindow()

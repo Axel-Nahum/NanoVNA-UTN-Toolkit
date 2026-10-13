@@ -680,22 +680,8 @@ class PermittivityPdfPreviewDialog(QDialog):
         """)
         self.export_button.clicked.connect(self._generate_pdf)
 
-        self.back_button = _NoEnterButton("← Back to settings")
-        self.back_button.setDefault(False)
-        self.back_button.setAutoDefault(False)
-        self.back_button.setStyleSheet("""
-            QPushButton {
-                background-color: transparent; color: #aaaacc;
-                font-size: 12px; padding: 6px 12px;
-                border: 1px solid #555577; border-radius: 5px;
-            }
-            QPushButton:hover { background-color: #333355; color: #ddddff; }
-        """)
-        self.back_button.clicked.connect(self.reject)
-
         bottom_bar = QHBoxLayout()
         bottom_bar.setContentsMargins(0, 4, 0, 0)
-        bottom_bar.addWidget(self.back_button)
         bottom_bar.addStretch()
         bottom_bar.addWidget(self.export_button)
         bottom_bar.addStretch()
@@ -1033,16 +1019,19 @@ class PermittivityPdfPreviewDialog(QDialog):
         self.export_button.setEnabled(self.current_graph_index == self.TOTAL_GRAPHS - 1)
 
     def _show_previous_graph(self):
+        if self.current_graph_index == 0:
+            self.reject()
+            return
+
         self._save_fig_at_current()
-        if self.current_graph_index > 0:
-            self.current_graph_index -= 1
-            self._plot_graph(self.current_graph_index)
-            self._update_nav_buttons()
-            self._update_marker_checkboxes()
+        self.current_graph_index -= 1
+        self._plot_graph(self.current_graph_index)
+        self._update_nav_buttons()
+        self._update_marker_checkboxes()
         self.export_button.setEnabled(self.current_graph_index == self.TOTAL_GRAPHS - 1)
 
     def _update_nav_buttons(self):
-        self.prev_button.setEnabled(self.current_graph_index > 0)
+        self.prev_button.setEnabled(True)
         self.next_button.setEnabled(self.current_graph_index < self.TOTAL_GRAPHS - 1)
         self.page_label.setText(f"{self.current_graph_index + 1} / {self.TOTAL_GRAPHS}")
 

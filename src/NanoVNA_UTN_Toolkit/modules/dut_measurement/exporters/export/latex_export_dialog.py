@@ -507,12 +507,14 @@ class LaTeXExportDialog(QDialog):
             include_tables=self.get_include_tables(),
             include_cal_graphs=self.get_include_cal_graphs()
         )
+        _geom = self.geometry()
         self.hide()
         result = preview_dialog.exec()
 
         if result == GraphPreviewExportDialog.DialogCode.Accepted:
             self.reject()
         else:
+            self.setGeometry(_geom)
             self.show()
             self.raise_()
             self.activateWindow()
