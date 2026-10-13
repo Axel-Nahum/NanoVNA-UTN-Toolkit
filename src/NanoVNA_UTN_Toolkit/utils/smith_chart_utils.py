@@ -81,7 +81,9 @@ class SmithChartBuilder:
         import logging
         logging.info(f"[SmithChartBuilder] Creating figure with figsize={figsize}")
             
-        self.fig, self.ax = plt.subplots(figsize=figsize)
+        from matplotlib.figure import Figure as _Figure
+        self.fig = _Figure(figsize=figsize)
+        self.ax = self.fig.add_subplot(111)
         self.fig.set_layout_engine("none")
         self.fig.subplots_adjust(**layout_params)
 

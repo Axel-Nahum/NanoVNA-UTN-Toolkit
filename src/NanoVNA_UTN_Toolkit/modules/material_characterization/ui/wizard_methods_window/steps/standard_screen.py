@@ -525,6 +525,12 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     # ── Pre-calibrate bar — líquidos de referencia, short y DUT ─────────── #
     if is_precalibrable:
+        _has_precal = (
+            standard.key in getattr(wizard, "_precal_originals", {})
+            or standard.key in getattr(wizard, "_precal_open", {})
+            or "*" in getattr(wizard, "_precal_open", {})
+        )
+
         precal_row = QHBoxLayout()
         precal_row.setContentsMargins(0, 0, 0, 0)
         precal_row.setSpacing(8)
@@ -535,13 +541,6 @@ def build_standard_screen(wizard, descriptor, step_def):
         precal_hint.setStyleSheet("font-size: 11px; color: #606080; font-style: italic;")
         precal_row.addWidget(precal_hint, stretch=1)
 
-        _precal_btn_label = (
-            std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)")
-            if _has_precal
-            else std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)")
-        )
-        btn_precal = QPushButton(_precal_btn_label)
-        btn_precal.setFixedHeight(24)
         _precal_ss_inactive = (
             "QPushButton { font-size: 11px; color: #888888; border: 1px solid #484858;"
             " border-radius: 4px; padding: 0 10px; }"
@@ -552,6 +551,13 @@ def build_standard_screen(wizard, descriptor, step_def):
             " border-radius: 4px; padding: 0 10px; }"
             " QPushButton:hover { background: #2a1a00; }"
         )
+        _precal_btn_label = (
+            std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)")
+            if _has_precal
+            else std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)")
+        )
+        btn_precal = QPushButton(_precal_btn_label)
+        btn_precal.setFixedHeight(24)
         btn_precal.setStyleSheet(_precal_ss_active if _has_precal else _precal_ss_inactive)
         precal_row.addWidget(btn_precal)
 
@@ -562,13 +568,9 @@ def build_standard_screen(wizard, descriptor, step_def):
             " border-radius: 4px; padding: 0 10px; }"
             " QPushButton:hover { background: #3a1a1a; }"
         )
-        _has_precal = (
-            standard.key in getattr(wizard, "_precal_originals", {})
-            or standard.key in getattr(wizard, "_precal_open", {})
-            or "*" in getattr(wizard, "_precal_open", {})
-        )
-        btn_delete_precal_top.setVisible(_has_precal)
         precal_row.addWidget(btn_delete_precal_top)
+        if not _has_precal:
+            btn_delete_precal_top.hide()
 
         def _on_precal_clicked():
             _open_precal_dialog(wizard, standard, name, color, std_texts, state,
@@ -1117,7 +1119,7 @@ def build_standard_screen(wizard, descriptor, step_def):
     # the user can still measure over it.
     pending_preset = preset_preload(wizard).get(standard.key)
     if pending_preset and not already:
-        loaded = _load_preset_into_step(wizard, standard, name, std_texts, pending_preset)
+        loaded = _load_preset_into_step(wizard, standard, name, std_texts, pending_preset, ask_precal=False)
         if loaded is not None:
             already = True
             if btn_grp is not None:
@@ -1481,7 +1483,7 @@ def _resample_to_grid(freqs_src, s11_src, grid):
     return grid, re + 1j * im
 
 
-def _load_preset_into_step(wizard, standard, name, std_texts, preset_name):
+def _load_preset_into_step(wizard, standard, name, std_texts, preset_name, ask_precal=True):
     """Load a stored preset into ``standard``, validating the frequency grid.
 
     Returns ``(freqs, s11)`` on success, ``None`` if it could not be applied.
@@ -1548,7 +1550,7 @@ def _load_preset_into_step(wizard, standard, name, std_texts, preset_name):
         else:
             return None
 
-    apply_precal = _ask_apply_precal(wizard, standard, name, std_texts)
+    apply_precal = _ask_apply_precal(wizard, standard, name, std_texts) if ask_precal else True
     freqs, s11 = _store_measurement(wizard, standard.key, freqs, s11, source=f"preset:{preset_name}",
                                     temperature_c=meta.temperature_c, apply_precal=apply_precal)
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
@@ -1972,6 +1974,7 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
     from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import create_wizard_smith_chart, SmithChartManager
 
     dlg = QDialog(wizard)
+    dlg.setAttribute(Qt.WA_DeleteOnClose)
     dlg.setWindowTitle(std_texts.get("precal_dialog_title", "Pre-calibración — Normalización con OPEN"))
     dlg.setMinimumSize(460, 620)
     dlg.resize(500, 700)
