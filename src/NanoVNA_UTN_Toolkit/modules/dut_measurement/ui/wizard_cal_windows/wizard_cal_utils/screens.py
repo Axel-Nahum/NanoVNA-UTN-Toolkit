@@ -538,7 +538,9 @@ def show_step_screen(self, step, parent = None):
 
     if self.selected_method == "Open/Short Normalization":
         if step == 1:
-            step_name = "OPEN"
+            # Use the combo selection if it exists, otherwise default to OPEN
+            step_name = getattr(self, "_os_standard_combo", None)
+            step_name = step_name.currentText() if step_name is not None else "OPEN"
 
     if self.selected_method == "1-Port+N":
         if step == 1:
@@ -573,11 +575,31 @@ def show_step_screen(self, step, parent = None):
             is_measured = self.os_calibration.is_standard_measured(step_name.lower())
 
     if self.selected_method == "Open/Short Normalization":
+        # Standard selector combo (OPEN / SHORT)
+        _os_row = QHBoxLayout()
+        _os_row.setSpacing(8)
+        _os_sel_lbl = QLabel("Normalize with:")
+        _os_sel_lbl.setStyleSheet("font-size: 13px; color: #aaaaaa;")
+        _os_combo = QComboBox()
+        _os_combo.addItem("OPEN")
+        _os_combo.addItem("SHORT")
+        _os_combo.setFixedHeight(28)
+        _os_combo.setFixedWidth(120)
+        _os_combo.setStyleSheet("font-size: 13px;")
+        _os_row.addStretch(1)
+        _os_row.addWidget(_os_sel_lbl)
+        _os_row.addWidget(_os_combo)
+        _os_row.addStretch(1)
+        left_layout.addLayout(_os_row)
+        # Store on self so the measure button lambda can read the current selection
+        self._os_standard_combo = _os_combo
+
         if is_measured:
-            instruction_text = "Open or Short standard already measured ✓"
+            _measured_std = getattr(self, '_os_last_standard', 'Open/Short')
+            instruction_text = f"{_measured_std} standard already measured ✓"
             instruction_style = "font-size: 14px; padding: 8px; color: lightgreen;"
         else:
-            instruction_text = "Connect Open or Short standard and press Measure"
+            instruction_text = "Select OPEN or SHORT above, then press Measure"
             instruction_style = "font-size: 14px; padding: 8px; color: yellow;"
     else:
         if is_measured:
@@ -597,7 +619,11 @@ def show_step_screen(self, step, parent = None):
     measure_button = QPushButton(f"{self.dut_wizard_ui_re_measure_label_button}" if is_measured else f"{self.dut_wizard_ui_measure_label_button}")
     measure_button.setStyleSheet("font-size: 16px; padding: 10px; font-weight: bold;")
     if self.selected_method == "Open/Short Normalization":
-        measure_button.clicked.connect(lambda: perform_calibration_measurement(self, step, "OPEN"))
+        measure_button.clicked.connect(
+            lambda: perform_calibration_measurement(
+                self, step, self._os_standard_combo.currentText()
+            )
+        )
     else:
         measure_button.clicked.connect(lambda: perform_calibration_measurement(self, step, step_name))
     left_layout.addWidget(measure_button)

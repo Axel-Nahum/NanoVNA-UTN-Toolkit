@@ -844,13 +844,25 @@ class OpenShortCalibrationManager:
         logging.info(f"[OpenShortCalibrationManager] Initialized with base path: {base_path}")
 
     def set_measurement(self, standard_name: str, freqs: np.ndarray, s11: np.ndarray) -> bool:
-        """Store Open/Short measurement, sign-corrected, and save as Touchstone S1P."""
+        """Store Open/Short measurement, sign-corrected, and save as Touchstone S1P.
+
+        standard_name must be "open" or "short" (case-insensitive) — explicitly set
+        by the user in the UI. The old auto-detection via np.mean(s11.real) was
+        unreliable when cable losses or phase shift caused the OPEN S11 real part
+        to appear negative.
+        """
         freqs = np.asarray(freqs, dtype=np.float64)
         s11 = np.asarray(s11, dtype=np.complex128)
 
-        sign = -1.0 if np.mean(s11.real) < 0 else 1.0
-        s11_corrected = s11 * sign
-        self.selected_standard = "short" if sign < 0 else "open"
+        # Use the explicitly chosen standard instead of guessing from the sign.
+        # SHORT has Γ_ideal = −1; negate it so reflection_tracking ≈ +H_cable,
+        # matching the OPEN convention used by the calibration formula.
+        if standard_name.lower() == "short":
+            s11_corrected = -s11
+            self.selected_standard = "short"
+        else:
+            s11_corrected = s11
+            self.selected_standard = "open"
 
         try:
             self.measurements['open_short']['freqs'] = np.array(freqs)

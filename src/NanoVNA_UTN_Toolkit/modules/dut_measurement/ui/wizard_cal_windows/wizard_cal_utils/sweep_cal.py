@@ -348,10 +348,11 @@ def perform_calibration_measurement(self, step, standard_name):
                     if hasattr(self, 'os_calibration') and self.os_calibration:
                         standard_key = standard_name.lower()
                         self.os_calibration.set_measurement(standard_key, freqs, s11)
+                        self._os_last_standard = standard_name  # remember for "already measured" label
                         status = self.os_calibration.get_completion_status()
                         logging.info(f"[CalibrationWizard] Open/Short calibration status: {status}")
                         update_calibration_status_display(self)
-                        self.status_label.setText(f"{display_name} measurement complete")
+                        self.status_label.setText(f"{standard_name} measurement complete")
                         self.status_label.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
                 else:
                     # Route to OSM calibration manager
