@@ -555,11 +555,15 @@ def build_standard_screen(wizard, descriptor, step_def):
             " border-radius: 4px; padding: 0 10px; }"
             " QPushButton:hover { background: #2a1a00; }"
         )
-        _precal_btn_label = (
-            std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)")
-            if _has_precal
-            else std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)")
-        )
+        _precal_kind = getattr(wizard, "_precal_type", {}).get(standard.key, "open")
+        if _has_precal:
+            _precal_btn_label = (
+                std_texts.get("recalibrate_short", "⚙  Recalibrar (SHORT)")
+                if _precal_kind == "short"
+                else std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)")
+            )
+        else:
+            _precal_btn_label = std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)")
         btn_precal = QPushButton(_precal_btn_label)
         btn_precal.setFixedHeight(24)
         btn_precal.setStyleSheet(_precal_ss_active if _has_precal else _precal_ss_inactive)
@@ -606,11 +610,6 @@ def build_standard_screen(wizard, descriptor, step_def):
                 _src = wizard.perm_calibration.get_source(standard.key) or "measured"
                 wizard.perm_calibration.set_measurement(standard.key, freqs, s11_orig, source=_src)
                 wizard.epsilon_result = None
-                state["show_raw"] = False
-                _raw_qt = state.get("raw_chk_qt")
-                if _raw_qt is not None:
-                    _raw_qt.setChecked(False)
-                    _raw_qt.setVisible(False)
                 _render(wizard, standard, name, color, std_texts, (freqs, s11_orig),
                         state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
             btn_delete_precal_top.setVisible(False)
@@ -937,7 +936,6 @@ def build_standard_screen(wizard, descriptor, step_def):
         "QCheckBox::indicator { width: 12px; height: 12px; }"
     )
     _chk_indicative_qt = None
-    _chk_raw_qt = None
     if is_reference:
         _chk_indicative_qt = QCheckBox(
             std_texts.get("show_indicative", "Show ideal reference")
@@ -949,23 +947,12 @@ def build_standard_screen(wizard, descriptor, step_def):
             "Theoretical S11 of the reference liquid (Debye εr through the probe's "
             "capacitive model). Hover its legend entry to see its source and parameters."))
 
-    if is_precalibrable:
-        _chk_raw_qt = QCheckBox(
-            std_texts.get("show_raw", "Show without pre-cal")
-        )
-        _chk_raw_qt.setChecked(False)
-        _chk_raw_qt.setStyleSheet(_CHK_STYLE)
-        _chk_raw_qt.setVisible(False)
-        state["raw_chk_qt"] = _chk_raw_qt
-
     tab_row = QHBoxLayout()
     tab_row.setContentsMargins(0, 2, 0, 4)
     tab_row.setSpacing(6)
     if _chk_indicative_qt is not None:
         tab_row.addWidget(_chk_indicative_qt)
         tab_row.addSpacing(4)
-    if _chk_raw_qt is not None:
-        tab_row.addWidget(_chk_raw_qt)
     tab_row.addStretch(1)
     tab_row.addWidget(_btn_reimag)
     tab_row.addWidget(_btn_dbphase)
@@ -1042,36 +1029,6 @@ def build_standard_screen(wizard, descriptor, step_def):
 
         _chk_indicative_qt.toggled.connect(_on_indicative_toggled)
 
-    if is_precalibrable:
-        if standard.key in getattr(wizard, "_precal_originals", {}):
-            _chk_raw_qt.setVisible(True)
-
-        def _on_raw_toggled(checked):
-            if standard.key not in getattr(wizard, "_precal_originals", {}):
-                _chk_raw_qt.setChecked(False)
-                return
-            state["show_raw"] = checked
-            stored_now = wizard.perm_calibration.get_measurement(standard.key)
-            _render(wizard, standard, name, color, std_texts, stored_now,
-                    state.get("show_indicative", False), state["show_raw"],
-                    state.get("chart_mode", "reimag"), state.get("mag_linear", False))
-
-        _chk_raw_qt.toggled.connect(_on_raw_toggled)
-
-        def _on_precal_applied():
-            if _chk_raw_qt is not None:
-                _chk_raw_qt.setVisible(True)
-        wizard._on_precal_applied_hook = _on_precal_applied
-
-        _orig_discard = wizard._precal_discard_hooks.get(standard.key)
-        def _on_precal_discard_full():
-            if callable(_orig_discard):
-                _orig_discard()
-            state["show_raw"] = False
-            if _chk_raw_qt is not None:
-                _chk_raw_qt.setChecked(False)
-                _chk_raw_qt.setVisible(False)
-        wizard._precal_discard_hooks[standard.key] = _on_precal_discard_full
 
     # ── Tab button click handlers ────────────────────────────────────────── #
     def _on_tab_click(new_mode: str) -> None:
@@ -1999,19 +1956,42 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
     title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #4da6ff;")
     layout.addWidget(title_lbl)
 
-    # Description
-    desc_lbl = QLabel(std_texts.get(
+    # Standard selector (OPEN / SHORT)
+    _std_row = QHBoxLayout()
+    _std_row.setSpacing(8)
+    _std_sel_lbl = QLabel(std_texts.get("precal_std_label", "Normalizar con:"))
+    _std_sel_lbl.setStyleSheet("font-size: 11px; color: #aaaaaa;")
+    _std_combo = QComboBox()
+    _std_combo.addItem(std_texts.get("precal_std_open", "OPEN (probe en aire)"))
+    _std_combo.addItem(std_texts.get("precal_std_short", "SHORT (cortocircuito)"))
+    _std_combo.setFixedHeight(26)
+    _std_combo.setFixedWidth(200)
+    _std_row.addWidget(_std_sel_lbl)
+    _std_row.addWidget(_std_combo)
+    _std_row.addStretch(1)
+    layout.addLayout(_std_row)
+    layout.addSpacing(4)
+
+    # Description (updates with selector)
+    _desc_open = std_texts.get(
         "precal_description",
-        "Colocá la sonda en el aire (OPEN) y medí. La normalización divide "
-        "el S₁₁ del líquido por el S₁₁ del OPEN, corrigiendo los efectos "
-        "del cable y los conectores.\n\ns₁₁_norm = s₁₁_líquido / s₁₁_OPEN"
-    ))
+        "Place the probe in open air (OPEN) and measure. Normalization divides "
+        "the liquid S₁₁ by the OPEN S₁₁, correcting cable and connector effects."
+        "\n\ns₁₁_norm = s₁₁_liquid / s₁₁_OPEN"
+    )
+    _desc_short = std_texts.get(
+        "precal_description_short",
+        "Short-circuit the probe face and measure. Normalization divides the "
+        "liquid S₁₁ by −S₁₁_SHORT, correcting for the SHORT's ideal Γ = −1."
+        "\n\ns₁₁_norm = s₁₁_liquid / (−s₁₁_SHORT)"
+    )
+    desc_lbl = QLabel(_desc_open)
     desc_lbl.setWordWrap(True)
     desc_lbl.setStyleSheet("font-size: 11px; color: #aaaaaa;")
     layout.addWidget(desc_lbl)
 
     # Measure button
-    _measure_open_btn = QPushButton(std_texts.get("precal_measure_button", "Medir OPEN"))
+    _measure_open_btn = QPushButton(std_texts.get("precal_measure_button", "Measure OPEN"))
     _measure_open_btn.setFixedHeight(34)
     _measure_open_btn.setFixedWidth(200)
     layout.addWidget(_measure_open_btn, alignment=Qt.AlignHCenter)
@@ -2027,8 +2007,31 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
     layout.addSpacing(4)
     layout.addWidget(_import_open_btn, alignment=Qt.AlignHCenter)
 
+    def _on_std_changed():
+        _is_short = _std_combo.currentIndex() == 1
+        desc_lbl.setText(_desc_short if _is_short else _desc_open)
+        _measure_open_btn.setText(
+            std_texts.get("precal_measure_button_short", "Measure SHORT")
+            if _is_short
+            else std_texts.get("precal_measure_button", "Measure OPEN")
+        )
+        _import_open_btn.setText(
+            std_texts.get("precal_import_button_short", "Import SHORT .s1p")
+            if _is_short
+            else std_texts.get("precal_import_button", "Import OPEN .s1p")
+        )
+        # Reset measurement state when switching standard type
+        _open_data[0] = None
+        apply_btn.setEnabled(False)
+        _status_lbl.setText(std_texts.get("precal_status_ready", "No measurement yet"))
+        _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: gray;")
+        ax.clear()
+        canvas.draw()
+
+    _std_combo.currentIndexChanged.connect(_on_std_changed)
+
     # Status label
-    _status_lbl = QLabel(std_texts.get("precal_status_ready", "Sin medición del OPEN"))
+    _status_lbl = QLabel(std_texts.get("precal_status_ready", "No measurement yet"))
     _status_lbl.setAlignment(Qt.AlignCenter)
     _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: gray;")
     layout.addWidget(_status_lbl)
@@ -2088,18 +2091,21 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         base = builder.create_empty_network(start, stop, points)
         base.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
         builder._configure_smith_chart_appearance()
-        ax.set_title(r"$S_{11}$ — OPEN", fontsize=13, pad=20, color=builder.config.text_color)
+        _std_label = "SHORT" if _std_combo.currentIndex() == 1 else "OPEN"
+        ax.set_title(rf"$S_{{11}}$ — {_std_label}", fontsize=13, pad=20, color=builder.config.text_color)
         ax.plot(np.real(s11_arr), np.imag(s11_arr), "o-", color=trace_color,
                 linewidth=2, markersize=3, zorder=3)
         builder.add_start_point_marker(s11_arr, color=trace_color)
         ax.legend(
-            [Line2D([0], [0], color=trace_color)], [r"$S_{11}$ — OPEN"],
+            [Line2D([0], [0], color=trace_color)], [rf"$S_{{11}}$ — {_std_label}"],
             loc="upper left", bbox_to_anchor=(-0.22, 1.14),
             bbox_transform=ax.transAxes, fontsize=8.5, framealpha=0.93,
         )
         canvas.draw()
 
-        _status_lbl.setText(std_texts.get("precal_status_done", "OPEN medido ✓"))
+        _done_key = "precal_status_done_short" if _std_combo.currentIndex() == 1 else "precal_status_done"
+        _done_default = "SHORT measured ✓" if _std_combo.currentIndex() == 1 else "OPEN measured ✓"
+        _status_lbl.setText(std_texts.get(_done_key, _done_default))
         _status_lbl.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
         apply_btn.setEnabled(True)
 
@@ -2131,18 +2137,31 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
             wizard._precal_open = {}
         if not hasattr(wizard, "_precal_originals"):
             wizard._precal_originals = {}
+        if not hasattr(wizard, "_precal_type"):
+            wizard._precal_type = {}
         getattr(wizard, "_precal_blacklist", set()).discard(standard.key)
-        # Always save the OPEN so future measure/import/preset auto-applies normalization.
+        _using_short = _std_combo.currentIndex() == 1
+        wizard._precal_type[standard.key] = "short" if _using_short else "open"
+        # For SHORT: store the negated S11 so the division formula (s11 / stored)
+        # yields s11 / (−s11_short) = correct normalization for Γ_ref = −1.
+        _s11_ref_raw = _remove_spikes(np.asarray(s11_open, dtype=complex))
+        _s11_ref_stored = -_s11_ref_raw if _using_short else _s11_ref_raw
         _precal_entry = (
             np.asarray(freqs_open, dtype=float).copy(),
-            _remove_spikes(np.asarray(s11_open, dtype=complex)),
+            _s11_ref_stored,
         )
         wizard._precal_open[standard.key] = _precal_entry
         if "*" not in wizard._precal_open:  # set global only once — per-step overrides don't replace it
             wizard._precal_open["*"] = _precal_entry
+            wizard._precal_type["*"] = wizard._precal_type[standard.key]
         btn_delete_precal.setVisible(True)
         if btn_precal is not None:
-            btn_precal.setText(std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)"))
+            _recal_text = (
+                std_texts.get("recalibrate_short", "⚙  Recalibrar (SHORT)")
+                if _using_short
+                else std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)")
+            )
+            btn_precal.setText(_recal_text)
             btn_precal.setStyleSheet(
                 "QPushButton { font-size: 11px; color: #ffaa44; border: 1px solid #ffaa44;"
                 " border-radius: 4px; padding: 0 10px; }"
@@ -2163,12 +2182,8 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
             _src = wizard.perm_calibration.get_source(standard.key) or "measured"
             wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm, source=_src)
             wizard.epsilon_result = None
-            state["show_raw"] = False
             _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm),
                     state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
-            hook = getattr(wizard, "_on_precal_applied_hook", None)
-            if callable(hook):
-                hook()
         dlg.accept()
 
     _measure_open_btn.clicked.connect(_do_measure_open)
