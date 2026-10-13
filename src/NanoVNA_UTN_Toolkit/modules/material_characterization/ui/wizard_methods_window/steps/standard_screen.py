@@ -2068,7 +2068,7 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
                 np.asarray(freqs_liq, dtype=float).copy(),
                 np.asarray(s11_liq, dtype=complex).copy(),
             )
-            s11_norm = np.asarray(s11_liq, dtype=complex) / np.asarray(s11_open, dtype=complex)
+            s11_norm = np.asarray(s11_liq, dtype=complex) / wizard._precal_open[standard.key][1]
             _src = wizard.perm_calibration.get_source(standard.key) or "measured"
             wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm, source=_src)
             wizard.epsilon_result = None
