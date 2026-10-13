@@ -554,6 +554,7 @@ def build_standard_screen(wizard, descriptor, step_def):
         _has_precal = (
             standard.key in getattr(wizard, "_precal_originals", {})
             or standard.key in getattr(wizard, "_precal_open", {})
+            or "*" in getattr(wizard, "_precal_open", {})
         )
         btn_delete_precal_top.setVisible(_has_precal)
         precal_row.addWidget(btn_delete_precal_top)
@@ -1683,8 +1684,12 @@ def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measu
         wizard._precal_originals = {}
 
     s11_to_store = s11_raw
-    if std_key in wizard._precal_open:
-        freqs_open, s11_open = wizard._precal_open[std_key]
+    _precal_key = (
+        std_key if std_key in wizard._precal_open
+        else ("*" if "*" in wizard._precal_open else None)
+    )
+    if _precal_key is not None:
+        freqs_open, s11_open = wizard._precal_open[_precal_key]
         f_tol = 1e-3
         grid_ok = (
             len(freqs_open) == len(freqs_raw)
@@ -1698,7 +1703,7 @@ def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measu
             logger.warning(
                 "[standard_screen] pre-cal OPEN grid mismatch for %s — discarding", std_key
             )
-            wizard._precal_open.pop(std_key)
+            wizard._precal_open.pop(_precal_key, None)
             wizard._precal_originals.pop(std_key, None)
             hook = getattr(wizard, "_precal_discard_hooks", {}).get(std_key)
             if callable(hook):
@@ -2055,10 +2060,12 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         if not hasattr(wizard, "_precal_originals"):
             wizard._precal_originals = {}
         # Always save the OPEN so future measure/import/preset auto-applies normalization.
-        wizard._precal_open[standard.key] = (
+        _precal_entry = (
             np.asarray(freqs_open, dtype=float).copy(),
             _remove_spikes(np.asarray(s11_open, dtype=complex)),
         )
+        wizard._precal_open[standard.key] = _precal_entry
+        wizard._precal_open["*"] = _precal_entry  # propagate to all subsequent steps
         btn_delete_precal.setVisible(True)
         _liq = wizard.perm_calibration.get_measurement(standard.key)
         if _liq is not None:
