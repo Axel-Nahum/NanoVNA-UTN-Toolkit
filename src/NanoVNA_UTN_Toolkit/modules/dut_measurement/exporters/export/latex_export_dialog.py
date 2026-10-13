@@ -507,6 +507,7 @@ class LaTeXExportDialog(QDialog):
             include_tables=self.get_include_tables(),
             include_cal_graphs=self.get_include_cal_graphs()
         )
-        preview_dialog.exec()
+        result = preview_dialog.exec()
 
-        self.reject()
+        if result == GraphPreviewExportDialog.DialogCode.Accepted:
+            self.reject()

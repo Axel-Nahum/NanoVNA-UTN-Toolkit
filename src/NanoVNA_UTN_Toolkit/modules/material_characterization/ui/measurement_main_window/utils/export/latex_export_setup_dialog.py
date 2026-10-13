@@ -332,8 +332,10 @@ class PermittivityLatexSetupDialog(QDialog):
             include_notes=self.include_notes_chk.isChecked(),
             include_tables=self.include_tables_chk.isChecked(),
         )
-        preview.exec()
-        self.reject()
+        result = preview.exec()
+
+        if result == PermittivityPdfPreviewDialog.DialogCode.Accepted:
+            self.reject()
 
     # ------------------------------------------------------------------ #
 
