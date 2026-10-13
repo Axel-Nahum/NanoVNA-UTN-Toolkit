@@ -2038,6 +2038,7 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: orange;")
         QApplication.processEvents()
         result = run_s11_sweep(wizard)
+        set_status(wizard, "", "gray")  # clear "Measuring..." left on the wizard status bar
         if result is None:
             _status_lbl.setText(std_texts.get("precal_status_ready", "Sin medición del OPEN"))
             _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: gray;")
