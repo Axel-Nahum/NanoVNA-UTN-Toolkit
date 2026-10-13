@@ -158,6 +158,8 @@ class PermittivityProbeCalibration:
             if liq_key is None:
                 continue
             liquid = get_reference_liquid(liq_key)
+            if not liquid.has_debye_model:
+                continue
             t = self.reference_temperature(std_key)
             if t < liquid.temp_min_c or t > liquid.temp_max_c:
                 warnings.append(

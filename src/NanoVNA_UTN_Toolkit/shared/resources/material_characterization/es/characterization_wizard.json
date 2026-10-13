@@ -41,7 +41,9 @@
     "water": "Agua destilada",
     "ipa": "Alcohol Isopropílico (IPA)",
     "ethanol": "Etanol",
-    "methanol": "Metanol"
+    "methanol": "Metanol",
+    "cyclohexane": "Ciclohexano",
+    "acetone": "Acetona"
   },
   "probes": {
     "probe3mm": "Sonda 3 mm",

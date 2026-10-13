@@ -519,6 +519,8 @@ def _update_reference_warning(wizard, descriptor, cfg):
             liq = get_reference_liquid(key)
         except KeyError:
             continue
+        if not liq.has_debye_model:
+            continue
         if temp < liq.temp_min_c or temp > liq.temp_max_c:
             messages.append(cfg.get(
                 "temperature_out_of_range",

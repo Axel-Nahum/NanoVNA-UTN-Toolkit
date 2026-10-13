@@ -41,7 +41,9 @@
     "water": "Distilled Water",
     "ipa": "Isopropyl Alcohol (IPA)",
     "ethanol": "Ethanol",
-    "methanol": "Methanol"
+    "methanol": "Methanol",
+    "cyclohexane": "Cyclohexane",
+    "acetone": "Acetone"
   },
   "probes": {
     "probe3mm": "3 mm probe",

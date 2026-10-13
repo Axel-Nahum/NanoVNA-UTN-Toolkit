@@ -2151,7 +2151,10 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         _liq = wizard.perm_calibration.get_measurement(standard.key)
         if _liq is not None:
             # Liquid already measured — apply normalization immediately.
-            freqs_liq, s11_liq = _liq
+            # If a previous pre-cal was already applied, _precal_originals holds the
+            # true raw S11. Use that as the base so we don't double-normalize.
+            _prev_orig = getattr(wizard, "_precal_originals", {}).get(standard.key)
+            freqs_liq, s11_liq = _prev_orig if _prev_orig is not None else _liq
             wizard._precal_originals[standard.key] = (
                 np.asarray(freqs_liq, dtype=float).copy(),
                 np.asarray(s11_liq, dtype=complex).copy(),

@@ -90,6 +90,7 @@ class ReferenceLiquid:
     validated: bool = False
     source: str = ""
     poly_order: int = _POLY_ORDER
+    has_debye_model: bool = True
 
     @property
     def temp_min_c(self) -> float:
@@ -128,6 +129,13 @@ def evaluate_epsilon_r(
         rango tabulado -> extrapolacion). A diferencia del MATLAB original,
         NO lanza error si la temperatura esta fuera de rango: avisa y extrapola.
     """
+    if not liquid.has_debye_model:
+        raise NotImplementedError(
+            f"No Debye model is available yet for '{liquid.display_name}'. "
+            "It can be listed as a reference but cannot be used for calibration "
+            "until its model coefficients are added."
+        )
+
     warnings: List[str] = []
     f_hz = np.asarray(f_hz, dtype=float)
 
@@ -279,11 +287,44 @@ _METHANOL = ReferenceLiquid(
 )
 
 
+# --------------------------------------------------------------------------- #
+# Liquids listed in the UI but without a Debye model yet.
+# has_debye_model=False: evaluate_epsilon_r raises NotImplementedError.
+# All callers that draw the indicative curve already catch exceptions.
+# The solver will also raise if one of these is selected as a reference —
+# which prevents wrong calibration results until proper coefficients are added.
+# --------------------------------------------------------------------------- #
+
+_CYCLOHEXANE = ReferenceLiquid(
+    key="cyclohexane",
+    display_name="Cyclohexane",
+    model_type=DebyeModelType.SINGLE_DEBYE,  # placeholder — not used
+    temp_axis_c=(20,),                        # placeholder
+    columns={},                               # placeholder
+    validated=False,
+    source="No Debye model available yet — listed for future use.",
+    has_debye_model=False,
+)
+
+_ACETONE = ReferenceLiquid(
+    key="acetone",
+    display_name="Acetone",
+    model_type=DebyeModelType.SINGLE_DEBYE,  # placeholder — not used
+    temp_axis_c=(20,),                        # placeholder
+    columns={},                               # placeholder
+    validated=False,
+    source="No Debye model available yet — listed for future use.",
+    has_debye_model=False,
+)
+
+
 REFERENCE_LIQUIDS: Dict[str, ReferenceLiquid] = {
     _WATER.key: _WATER,
     _IPA.key: _IPA,
     _ETHANOL.key: _ETHANOL,
     _METHANOL.key: _METHANOL,
+    _CYCLOHEXANE.key: _CYCLOHEXANE,
+    _ACETONE.key: _ACETONE,
 }
 
 
