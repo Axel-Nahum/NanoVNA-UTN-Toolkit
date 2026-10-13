@@ -197,7 +197,7 @@ class _SaveCalibrationDialog:
     def __init__(self, wizard, rtexts, cal, ui_parent=None):
         from PySide6.QtWidgets import (
             QDialog, QVBoxLayout, QHBoxLayout, QLineEdit,
-            QRadioButton, QDialogButtonBox, QLabel,
+            QCheckBox, QDialogButtonBox, QLabel,
         )
         from datetime import datetime as _dt
 
@@ -222,15 +222,15 @@ class _SaveCalibrationDialog:
         self._name_edit = QLineEdit(default_name)
         layout.addWidget(self._name_edit)
 
-        self._rb_internal = QRadioButton(
+        self._chk_internal = QCheckBox(
             rtexts.get("save_kit_internal_radio", "Save internally (appears in the welcome dropdown)")
         )
-        self._rb_internal.setChecked(True)
-        self._rb_zip = QRadioButton(
+        self._chk_internal.setChecked(True)
+        self._chk_zip = QCheckBox(
             rtexts.get("save_kit_zip_radio", "Export as .charpkg file (for sharing)")
         )
-        layout.addWidget(self._rb_internal)
-        layout.addWidget(self._rb_zip)
+        layout.addWidget(self._chk_internal)
+        layout.addWidget(self._chk_zip)
 
         zip_hint = QLabel(rtexts.get(
             "save_kit_zip_hint",
@@ -240,12 +240,19 @@ class _SaveCalibrationDialog:
         zip_hint.setStyleSheet("font-size: 11px; color: #888888; font-style: italic; margin-left: 20px;")
         layout.addWidget(zip_hint)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
-        buttons.button(QDialogButtonBox.StandardButton.Ok).setText(rtexts.get("save_kit_ok", "Save"))
-        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(rtexts.get("save_kit_cancel", "Cancel"))
-        buttons.accepted.connect(self._on_accepted)
-        buttons.rejected.connect(self._dlg.reject)
-        layout.addWidget(buttons)
+        self._btn_ok = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        self._btn_ok.button(QDialogButtonBox.StandardButton.Ok).setText(rtexts.get("save_kit_ok", "Save"))
+        self._btn_ok.button(QDialogButtonBox.StandardButton.Cancel).setText(rtexts.get("save_kit_cancel", "Cancel"))
+        self._btn_ok.accepted.connect(self._on_accepted)
+        self._btn_ok.rejected.connect(self._dlg.reject)
+        layout.addWidget(self._btn_ok)
+
+        def _update_ok():
+            self._btn_ok.button(QDialogButtonBox.StandardButton.Ok).setEnabled(
+                self._chk_internal.isChecked() or self._chk_zip.isChecked()
+            )
+        self._chk_internal.toggled.connect(_update_ok)
+        self._chk_zip.toggled.connect(_update_ok)
 
     def exec(self):
         self._dlg.exec()
@@ -277,13 +284,15 @@ class _SaveCalibrationDialog:
             return
 
         p = self._ui_parent
-        if self._rb_internal.isChecked():
+        any_ok = False
+
+        if self._chk_internal.isChecked():
             try:
                 calibration_store.save_calibration(
                     name=slug, display_name=display_name, cal=cal,
                     technique_id=tech_id, temperature_c=temp_c, device_name=device,
                 )
-                self._dlg.accept()
+                any_ok = True
                 QMessageBox.information(
                     p,
                     rtexts.get("save_kit_success_title", "Calibration saved"),
@@ -291,26 +300,29 @@ class _SaveCalibrationDialog:
                 )
             except Exception as exc:
                 QMessageBox.critical(p, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
-        else:
+
+        if self._chk_zip.isChecked():
             dest_dir = QFileDialog.getExistingDirectory(
                 p, rtexts.get("save_kit_dialog_title", "Export calibration — choose folder"),
                 str(__import__("pathlib").Path.home()),
             )
-            if not dest_dir:
-                return
-            try:
-                out_folder = calibration_store.export_calibration(
-                    dest_dir=dest_dir, slug=slug, display_name=display_name, cal=cal,
-                    technique_id=tech_id, temperature_c=temp_c, device_name=device,
-                )
-                self._dlg.accept()
-                QMessageBox.information(
-                    p,
-                    rtexts.get("save_kit_success_title", "Calibration saved"),
-                    rtexts.get("save_kit_success_zip", "Calibration exported to:\n{path}").format(path=out_folder),
-                )
-            except Exception as exc:
-                QMessageBox.critical(p, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
+            if dest_dir:
+                try:
+                    out_folder = calibration_store.export_calibration(
+                        dest_dir=dest_dir, slug=slug, display_name=display_name, cal=cal,
+                        technique_id=tech_id, temperature_c=temp_c, device_name=device,
+                    )
+                    any_ok = True
+                    QMessageBox.information(
+                        p,
+                        rtexts.get("save_kit_success_title", "Calibration saved"),
+                        rtexts.get("save_kit_success_zip", "Calibration exported to:\n{path}").format(path=out_folder),
+                    )
+                except Exception as exc:
+                    QMessageBox.critical(p, rtexts.get("save_kit_fail_title", "Save failed"), str(exc))
+
+        if any_ok:
+            self._dlg.accept()
 
 
 def _sample_name(wizard, rtexts):
