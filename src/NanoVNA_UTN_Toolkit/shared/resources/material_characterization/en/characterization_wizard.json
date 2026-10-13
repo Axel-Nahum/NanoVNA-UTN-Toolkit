@@ -87,7 +87,7 @@
     "preset_saved_msg": "Preset \"{n}\" saved.",
     "preset_delete_title": "Delete preset",
     "preset_delete_msg": "Delete \"{n}\"?",
-    "pre_calibrate_hint": "OPEN normalization — corrects cable/connector effects",
+    "pre_calibrate_hint": "OPEN normalization — probe pre-calibration",
     "pre_calibrate": "⚙  Pre-calibrate (OPEN)",
     "recalibrate": "⚙  Recalibrate (OPEN)",
     "delete_precal": "✕ Remove pre-cal",

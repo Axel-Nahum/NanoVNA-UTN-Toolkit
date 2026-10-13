@@ -87,7 +87,7 @@
     "preset_saved_msg": "Preset \"{n}\" guardado.",
     "preset_delete_title": "Eliminar preset",
     "preset_delete_msg": "¿Eliminar \"{n}\"?",
-    "pre_calibrate_hint": "Normalización con OPEN — corrige cable y conectores",
+    "pre_calibrate_hint": "Normalización OPEN — pre-calibración de sonda",
     "pre_calibrate": "⚙  Pre-calibrar (OPEN)",
     "recalibrate": "⚙  Recalibrar (OPEN)",
     "delete_precal": "✕ Quitar pre-cal",
