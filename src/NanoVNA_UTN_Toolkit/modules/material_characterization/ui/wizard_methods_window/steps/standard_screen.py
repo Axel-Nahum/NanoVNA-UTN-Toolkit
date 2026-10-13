@@ -525,10 +525,14 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     # ── Pre-calibrate bar — líquidos de referencia, short y DUT ─────────── #
     if is_precalibrable:
+        _blacklist = getattr(wizard, "_precal_blacklist", set())
         _has_precal = (
-            standard.key in getattr(wizard, "_precal_originals", {})
-            or standard.key in getattr(wizard, "_precal_open", {})
-            or "*" in getattr(wizard, "_precal_open", {})
+            standard.key not in _blacklist
+            and (
+                standard.key in getattr(wizard, "_precal_originals", {})
+                or standard.key in getattr(wizard, "_precal_open", {})
+                or "*" in getattr(wizard, "_precal_open", {})
+            )
         )
 
         precal_row = QHBoxLayout()
@@ -593,6 +597,9 @@ def build_standard_screen(wizard, descriptor, step_def):
             if confirm != QMessageBox.Yes:
                 return
             getattr(wizard, "_precal_open", {}).pop(standard.key, None)
+            if not hasattr(wizard, "_precal_blacklist"):
+                wizard._precal_blacklist = set()
+            wizard._precal_blacklist.add(standard.key)
             originals = getattr(wizard, "_precal_originals", {})
             if standard.key in originals:
                 freqs, s11_orig = originals.pop(standard.key)
@@ -1742,10 +1749,11 @@ def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measu
         wizard._precal_originals = {}
 
     s11_to_store = s11_raw
+    _blacklisted = std_key in getattr(wizard, "_precal_blacklist", set())
     _precal_key = (
         (std_key if std_key in wizard._precal_open
          else ("*" if "*" in wizard._precal_open else None))
-        if apply_precal else None
+        if (apply_precal and not _blacklisted) else None
     )
     if _precal_key is not None:
         freqs_open, s11_open = wizard._precal_open[_precal_key]
@@ -2120,6 +2128,7 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
             wizard._precal_open = {}
         if not hasattr(wizard, "_precal_originals"):
             wizard._precal_originals = {}
+        getattr(wizard, "_precal_blacklist", set()).discard(standard.key)
         # Always save the OPEN so future measure/import/preset auto-applies normalization.
         _precal_entry = (
             np.asarray(freqs_open, dtype=float).copy(),

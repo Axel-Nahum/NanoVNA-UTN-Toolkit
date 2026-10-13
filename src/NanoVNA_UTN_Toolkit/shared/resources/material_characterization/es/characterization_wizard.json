@@ -92,7 +92,7 @@
     "recalibrate": "⚙  Recalibrar (OPEN)",
     "delete_precal": "✕ Quitar pre-cal",
     "delete_precal_confirm_title": "Quitar pre-calibración",
-    "delete_precal_confirm_msg": "¿Seguro? Se perderá la pre-calibración de {name} y se restaurará la medición original.",
+    "delete_precal_confirm_msg": "¿Eliminar la pre-calibración de {name}?\n\nSe restaurará la medición original. La pre-calibración no se volverá a aplicar en este paso aunque haya una pre-calibración global activa — deberás re-calibrar explícitamente.",
     "precal_import_title": "Pre-calibración activa",
     "precal_import_prompt": "Hay una pre-calibración activa para {name}.\n¿Aplicarla a la medición que estás cargando?",
     "precal_no_liquid_title": "Sin datos",
