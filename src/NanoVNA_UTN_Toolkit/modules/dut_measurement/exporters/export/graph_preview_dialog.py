@@ -477,8 +477,20 @@ class GraphPreviewExportDialog(QDialog):
         """)
         self.export_button.clicked.connect(self._generate_pdf)
 
+        self.back_button = QPushButton("← Back to settings")
+        self.back_button.setStyleSheet("""
+            QPushButton {
+                background-color: transparent; color: #aaaacc;
+                font-size: 12px; padding: 6px 12px;
+                border: 1px solid #555577; border-radius: 5px;
+            }
+            QPushButton:hover { background-color: #333355; color: #ddddff; }
+        """)
+        self.back_button.clicked.connect(self.reject)
+
         bottom_bar = QHBoxLayout()
         bottom_bar.setContentsMargins(0, 4, 0, 0)
+        bottom_bar.addWidget(self.back_button)
         bottom_bar.addStretch()
         bottom_bar.addWidget(self.export_button)
         bottom_bar.addStretch()
