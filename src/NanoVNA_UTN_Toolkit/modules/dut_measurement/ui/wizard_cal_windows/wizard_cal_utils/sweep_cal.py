@@ -404,8 +404,11 @@ def perform_calibration_measurement(self, step, standard_name):
 
                 s21 = np.array(s21_data)
 
+                s11 = _remove_spikes(s11)
+                s21 = _remove_spikes(s21)
+
                 logging.info(f"[CalibrationWizard] Got {len(freqs)} freq, {len(s11)} S11, and {len(s21)} S21 points")
-                
+
                 # Verify that we got the expected number of points for THRU
                 if len(s11) != num_points:
                     logging.warning(f"[CalibrationWizard] THRU S11 points mismatch! Expected {num_points}, got {len(s11)}")
