@@ -2066,7 +2066,8 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
             _remove_spikes(np.asarray(s11_open, dtype=complex)),
         )
         wizard._precal_open[standard.key] = _precal_entry
-        wizard._precal_open["*"] = _precal_entry  # propagate to all subsequent steps
+        if "*" not in wizard._precal_open:  # set global only once — per-step overrides don't replace it
+            wizard._precal_open["*"] = _precal_entry
         btn_delete_precal.setVisible(True)
         _liq = wizard.perm_calibration.get_measurement(standard.key)
         if _liq is not None:
