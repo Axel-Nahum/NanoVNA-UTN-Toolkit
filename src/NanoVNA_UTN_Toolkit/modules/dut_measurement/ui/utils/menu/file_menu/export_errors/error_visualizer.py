@@ -177,8 +177,8 @@ class _DualCanvas(QWidget):
 
     # ── public ────────────────────────────────────────────────────────────────
 
-    def plot(self, network: rf.Network, label: str, term: str):
-        """Plot magnitude and phase into their respective independent canvases."""
+    def plot(self, network: rf.Network, label: str, term: str, mode: str = "magphase"):
+        """Plot into both canvases according to *mode* ('magphase' or 'reimag')."""
         self.ax_mag.cla()
         self.ax_phase.cla()
         self._apply_theme()
@@ -186,18 +186,32 @@ class _DualCanvas(QWidget):
         freqs_ghz = network.f / 1e9
         s = _get_s_data(network, term)
 
-        mag_db = 20 * np.log10(np.abs(s) + 1e-12)
-        phase  = np.angle(s, deg=True)
+        if mode == "reimag":
+            left_data    = np.real(s)
+            right_data   = np.imag(s)
+            left_ylabel  = r"$\mathrm{Re}(S)$"
+            right_ylabel = r"$\mathrm{Im}(S)$"
+            left_title   = f"{label} — Real"
+            right_title  = f"{label} — Imaginary"
+            right_color  = "#cba6f7"
+        else:
+            left_data    = 20 * np.log10(np.abs(s) + 1e-12)
+            right_data   = np.angle(s, deg=True)
+            left_ylabel  = "Magnitude (dB)"
+            right_ylabel = "Phase (°)"
+            left_title   = f"{label} — Magnitude"
+            right_title  = f"{label} — Phase"
+            right_color  = "#a6e3a1"
 
-        self.ax_mag.plot(freqs_ghz, mag_db, color="#89b4fa", linewidth=1.6)
+        self.ax_mag.plot(freqs_ghz, left_data, color="#89b4fa", linewidth=1.6)
         self.ax_mag.set_xlabel("Frequency (GHz)")
-        self.ax_mag.set_ylabel("Magnitude (dB)")
-        self.ax_mag.set_title(f"{label} — Magnitude")
+        self.ax_mag.set_ylabel(left_ylabel)
+        self.ax_mag.set_title(left_title)
 
-        self.ax_phase.plot(freqs_ghz, phase, color="#a6e3a1", linewidth=1.6)
+        self.ax_phase.plot(freqs_ghz, right_data, color=right_color, linewidth=1.6)
         self.ax_phase.set_xlabel("Frequency (GHz)")
-        self.ax_phase.set_ylabel("Phase (°)")
-        self.ax_phase.set_title(f"{label} — Phase")
+        self.ax_phase.set_ylabel(right_ylabel)
+        self.ax_phase.set_title(right_title)
 
         self.canvas_mag.draw()
         self.canvas_phase.draw()
@@ -239,6 +253,7 @@ class ErrorVisualizerDialog(QDialog):
         self._index   = 0
 
         self._networks: dict[str, rf.Network | None] = {}
+        self._chart_mode = "magphase"
         self._load_all()
 
         self._build_ui()
@@ -283,6 +298,26 @@ class ErrorVisualizerDialog(QDialog):
         header.addWidget(self._counter_label, 1)
         root.addLayout(header)
 
+        # ── mode tabs ─────────────────────────────────────────────────────────
+        tab_row = QHBoxLayout()
+        tab_row.setSpacing(4)
+        tab_row.addStretch()
+
+        self._btn_magphase = QPushButton("Mag/∠")
+        self._btn_magphase.setFixedSize(64, 26)
+        self._btn_magphase.setCheckable(False)
+        self._btn_magphase.clicked.connect(lambda: self._set_mode("magphase"))
+
+        self._btn_reimag = QPushButton("Re/Im")
+        self._btn_reimag.setFixedSize(64, 26)
+        self._btn_reimag.setCheckable(False)
+        self._btn_reimag.clicked.connect(lambda: self._set_mode("reimag"))
+
+        tab_row.addWidget(self._btn_magphase)
+        tab_row.addWidget(self._btn_reimag)
+        root.addLayout(tab_row)
+        self._update_tabs("magphase")
+
         # ── canvas ────────────────────────────────────────────────────────────
         self._canvas = _DualCanvas(is_dark=self._is_dark, parent=self)
         root.addWidget(self._canvas, stretch=1)
@@ -318,6 +353,30 @@ class ErrorVisualizerDialog(QDialog):
 
         root.addLayout(nav)
 
+    # ── mode toggle ───────────────────────────────────────────────────────────
+
+    def _set_mode(self, mode: str):
+        if mode == self._chart_mode:
+            return
+        self._chart_mode = mode
+        self._update_tabs(mode)
+        self._refresh()
+
+    def _update_tabs(self, active: str):
+        active_ss = (
+            "QPushButton { background-color: #4a5568; color: #e2e8f0; border: none; "
+            "border-radius: 4px; padding: 2px 8px; font-size: 12px; font-weight: bold; }"
+        )
+        inactive_ss = (
+            "QPushButton { background-color: transparent; "
+            f"color: {'#718096' if self._is_dark else '#888'}; "
+            "border: 1px solid #4a5568; border-radius: 4px; "
+            "padding: 2px 8px; font-size: 12px; }"
+            "QPushButton:hover { background-color: #2d3748; color: #e2e8f0; }"
+        )
+        self._btn_magphase.setStyleSheet(active_ss if active == "magphase" else inactive_ss)
+        self._btn_reimag.setStyleSheet(active_ss if active == "reimag"   else inactive_ss)
+
     # ── navigation ────────────────────────────────────────────────────────────
 
     def _prev(self):
@@ -348,7 +407,7 @@ class ErrorVisualizerDialog(QDialog):
         self._btn_next.setEnabled(self._index < n - 1)
 
         if network is not None:
-            self._canvas.plot(network, label, term)
+            self._canvas.plot(network, label, term, mode=self._chart_mode)
         else:
             self._canvas.clear()
             for ax, canvas in (
@@ -390,14 +449,20 @@ class ErrorVisualizerDialog(QDialog):
             label = _ERROR_LABELS.get(term, term)
 
             freqs_ghz = net.f / 1e9
-            s      = _get_s_data(net, term)
-            mag_db = 20 * np.log10(np.abs(s) + 1e-12)
-            phase  = np.angle(s, deg=True)
+            s = _get_s_data(net, term)
 
-            for data, ylabel, title_suffix, color, suffix in (
-                (mag_db, "Magnitude (dB)", "Magnitude", "#89b4fa", "magnitude"),
-                (phase,  "Phase (°)",      "Phase",     "#a6e3a1", "phase"),
-            ):
+            if self._chart_mode == "reimag":
+                plot_pairs = (
+                    (np.real(s), r"$\mathrm{Re}(S)$", "Real",      "#89b4fa", "real"),
+                    (np.imag(s), r"$\mathrm{Im}(S)$", "Imaginary", "#cba6f7", "imaginary"),
+                )
+            else:
+                plot_pairs = (
+                    (20 * np.log10(np.abs(s) + 1e-12), "Magnitude (dB)", "Magnitude", "#89b4fa", "magnitude"),
+                    (np.angle(s, deg=True),             "Phase (°)",      "Phase",     "#a6e3a1", "phase"),
+                )
+
+            for data, ylabel, title_suffix, color, suffix in plot_pairs:
                 fig = Figure(figsize=(6, 4))
                 fig.patch.set_facecolor(bg)
                 fig.subplots_adjust(left=0.17, right=0.95, top=0.88, bottom=0.15)

@@ -648,10 +648,10 @@ def show_step_screen(self, step, parent = None):
             status_label = QLabel(f"{self.dut_wizard_ui_calibration_status}")
             status_label.setStyleSheet("font-size: 16px; font-weight: bold; margin-top: 10px;")
             left_layout.addWidget(status_label)
-        
+
         # Store references to status widgets for later updates
         self.calibration_status_widgets = {}
-        
+
         for standard, completed in status.items():
             if standard == 'complete':
                 continue
@@ -661,10 +661,31 @@ def show_step_screen(self, step, parent = None):
             label = QLabel(f"{icon} {standard.upper()}: {status_text}")
             label.setStyleSheet(f"font-size: 14px; color: {color}; margin-left: 10px;")
             left_layout.addWidget(label)
-            
+
             # Store reference for later updates
             self.calibration_status_widgets[standard] = label
-    
+
+    # Measurement completion status — Open/Short Normalization
+    if self.os_calibration and self.selected_method == "Open/Short Normalization":
+        status = self.os_calibration.get_completion_status()
+
+        status_label = QLabel(f"{self.dut_wizard_ui_calibration_status}")
+        status_label.setStyleSheet("font-size: 16px; font-weight: bold; margin-top: 10px;")
+        left_layout.addWidget(status_label)
+
+        self.calibration_status_widgets = {}
+
+        for standard, completed in status.items():
+            if standard == 'complete':
+                continue
+            icon = "✓" if completed else "✗"
+            color = "green" if completed else "red"
+            status_text = 'Completed' if completed else 'Pending'
+            label = QLabel(f"{icon} {standard.upper()}: {status_text}")
+            label.setStyleSheet(f"font-size: 14px; color: {color}; margin-left: 10px;")
+            left_layout.addWidget(label)
+            self.calibration_status_widgets[standard] = label
+
     left_layout.addStretch()
 
     # Panel derecho: Smith chart con canvas de matplotlib usando utils consolidadas
