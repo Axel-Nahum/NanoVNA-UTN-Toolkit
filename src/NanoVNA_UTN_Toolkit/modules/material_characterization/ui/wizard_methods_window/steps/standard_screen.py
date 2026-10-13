@@ -500,7 +500,7 @@ def build_standard_screen(wizard, descriptor, step_def):
     is_short = standard.key == "short"
     is_open  = standard.key == "open"
     is_dut   = standard.key == "dut"
-    is_precalibrable = is_reference or standard.key in ("short", "dut")
+    is_precalibrable = is_reference or standard.key in ("open", "short", "dut")
     total = len(descriptor.steps)
     name, instruction_html, is_rich = _resolve_strings(wizard, std_texts, liquids, standard)
     color = SMITH_COLOR_MAP.get(standard.key, "blue")
