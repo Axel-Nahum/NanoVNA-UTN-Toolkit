@@ -42,6 +42,7 @@
     "ipa": "Isopropyl Alcohol (IPA)",
     "ethanol": "Ethanol",
     "methanol": "Methanol",
+    "butanol": "1-Butanol",
     "cyclohexane": "Cyclohexane",
     "acetone": "Acetone"
   },
@@ -117,6 +118,7 @@
     "indicative_model_single": "single-Debye model",
     "indicative_model_double": "double-Debye model",
     "indicative_model_gamma": "Debye-Gamma model",
+    "indicative_model_nonpolar": "lossless, constant εr",
     "indicative_temp_preset": "preset temperature",
     "indicative_temp_session": "session temperature",
     "indicative_c0_fitted": "{probe}, fitted to its bundled presets",

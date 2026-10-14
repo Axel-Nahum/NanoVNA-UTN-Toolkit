@@ -1348,6 +1348,7 @@ _DEBYE_MODEL_KEYS = {
     "single_debye": ("indicative_model_single", "single-Debye model"),
     "double_debye": ("indicative_model_double", "double-Debye model"),
     "debye_gamma": ("indicative_model_gamma", "Debye-Gamma model"),
+    "nonpolar": ("indicative_model_nonpolar", "lossless, constant εr"),
 }
 
 
