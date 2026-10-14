@@ -557,6 +557,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.wizard_methods_window import CharacterizationWizard
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import update_step_screen
         from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import get as get_technique
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
 
         logging.info("[material_characterization_welcome.open_characterization_methods] Opening characterization methods window")
 
@@ -573,7 +574,11 @@ class MaterialCharacterizationWelcome(QMainWindow):
                 descriptor = get_technique(meta.technique_id)
 
                 wizard.selected_technique_id = meta.technique_id
-                wizard.selected_method = descriptor.name_token
+                # Localized title, as the introduction screen stores it; the
+                # raw name_token would end up verbatim in the report.
+                methods = load_text("characterization_methods.json").get("methods", {})
+                wizard.selected_method = methods.get(descriptor.name_token, {}).get(
+                    "title", descriptor.name_token)
                 wizard.temperature_c = meta.temperature_c
                 if meta.f_start_hz is not None:
                     wizard.sweep_start_freq = meta.f_start_hz

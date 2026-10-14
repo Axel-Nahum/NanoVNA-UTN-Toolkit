@@ -59,7 +59,11 @@ def _load_calibration_into_wizard(wizard, cal_name):
         )
 
     wizard.selected_technique_id = meta.technique_id
-    wizard.selected_method = descriptor.name_token
+    # Localized title, as the introduction screen stores it; the raw
+    # name_token would end up verbatim in the report.
+    methods = load_text("characterization_methods.json").get("methods", {})
+    wizard.selected_method = methods.get(descriptor.name_token, {}).get(
+        "title", descriptor.name_token)
     wizard.temperature_c = meta.temperature_c
     if meta.f_start_hz is not None:
         wizard.sweep_start_freq = meta.f_start_hz
