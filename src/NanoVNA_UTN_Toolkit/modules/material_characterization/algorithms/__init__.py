@@ -9,7 +9,8 @@ Subpackage layout / Estructura del subpaquete:
     reference_liquids   - Reference-liquid library + temperature-dependent
                           Debye permittivity models (Water, IPA).
     pattern_constants   - VNA + probe calibration constants (Gn, Y refs).
-    permittivity_solver - 5th-order solver + cross-frequency root tracking.
+    permittivity_solver - 5th-order solver + continuity tracking of the
+                          physical (principal-branch) root.
 
 Algorithm source / Fuente del algoritmo:
     "Mediciones de permitividad mediante una sonda coaxial", Medidas

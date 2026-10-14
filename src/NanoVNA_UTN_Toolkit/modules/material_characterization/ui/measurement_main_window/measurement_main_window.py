@@ -46,6 +46,12 @@ except ImportError as e:
 apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon", "apply_window_icon")
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
+    loss_tangent,
+    nonpassive_mask_of,
+    permittivity_columns,
+    write_permittivity_csv,
+)
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
     get_reference_liquid,
 )
@@ -447,9 +453,6 @@ class MeasurementMainWindow(QMainWindow):
     def _setup_markers(self, fig, ax, canvas, result):
         """Add two matplotlib sliders + marker cursors to the permittivity chart."""
         from matplotlib.widgets import Slider
-        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.charts.epsilon_chart import (
-            _fill_nans,
-        )
 
         _s = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
         m1_color = _s.value("Epsilon_Real/MarkerColor1", "#ff0000")
@@ -460,8 +463,9 @@ class MeasurementMainWindow(QMainWindow):
         freqs = np.asarray(result.f_hz, dtype=float)
         n = len(freqs)
         self._marker_freqs    = freqs
-        self._marker_real_eps = _fill_nans(np.real(result.eps_selected))
-        self._marker_loss_eps = _fill_nans(-np.imag(result.eps_selected))
+        # Real values only: at a gap the cursor hides and the label reads "—",
+        # instead of reporting an interpolated number that was never measured.
+        self._marker_real_eps, self._marker_loss_eps = permittivity_columns(result.eps_selected)
         self._marker_n        = n
 
         try:
@@ -560,6 +564,9 @@ class MeasurementMainWindow(QMainWindow):
         def _fmt_freq(hz):
             return f"{hz/1e9:.4f} GHz" if hz >= 1e9 else f"{hz/1e6:.4f} MHz"
 
+        def _fmt_eps(value):
+            return f"{value:.4f}" if np.isfinite(value) else "—"
+
         self._marker_updating = False
 
         def _upd1(val):
@@ -573,7 +580,7 @@ class MeasurementMainWindow(QMainWindow):
             self._cursor1.set_data([freq], [eps_r])
             if hasattr(self, "_marker1_info_label"):
                 self._marker1_info_label.setText(
-                    f"F = {_fmt_freq(freq)} ; ε ={eps_r:.4f}")
+                    f"F = {_fmt_freq(freq)} ; ε ={_fmt_eps(eps_r)}")
             get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                 "markers/index_1", idx
             )
@@ -585,7 +592,7 @@ class MeasurementMainWindow(QMainWindow):
                     self._cursor2.set_data([freq], [self._marker_loss_eps[idx]])
                 if hasattr(self, "_marker2_info_label"):
                     self._marker2_info_label.setText(
-                        f"F = {_fmt_freq(freq)} ; ε ={self._marker_loss_eps[idx]:.4f}")
+                        f"F = {_fmt_freq(freq)} ; ε ={_fmt_eps(self._marker_loss_eps[idx])}")
                 get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                     "markers/index_2", idx
                 )
@@ -602,7 +609,7 @@ class MeasurementMainWindow(QMainWindow):
             self._cursor2.set_data([freq], [eps_i])
             if hasattr(self, "_marker2_info_label"):
                 self._marker2_info_label.setText(
-                    f"F = {_fmt_freq(freq)} ; ε ={eps_i:.4f}")
+                    f"F = {_fmt_freq(freq)} ; ε ={_fmt_eps(eps_i)}")
             get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                 "markers/index_2", idx
             )
@@ -614,7 +621,7 @@ class MeasurementMainWindow(QMainWindow):
                     self._cursor1.set_data([freq], [self._marker_real_eps[idx]])
                 if hasattr(self, "_marker1_info_label"):
                     self._marker1_info_label.setText(
-                        f"F = {_fmt_freq(freq)} ; ε ={self._marker_real_eps[idx]:.4f}")
+                        f"F = {_fmt_freq(freq)} ; ε ={_fmt_eps(self._marker_real_eps[idx])}")
                 get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
                     "markers/index_1", idx
                 )
@@ -895,7 +902,6 @@ class MeasurementMainWindow(QMainWindow):
         if result is None:
             return
 
-        import csv
         from PySide6.QtWidgets import QFileDialog, QFrame, QMessageBox, QPushButton
 
         t = self._texts.get("table", {})
@@ -1118,18 +1124,19 @@ class MeasurementMainWindow(QMainWindow):
             }}
         """)
 
+        # eps'' = -Im(eps); a gap is NaN in both columns -> "—" in both.
+        # Points the solver flags as non-physical get a dagger, as in the PDF.
+        eps_real, eps_loss = permittivity_columns(eps)
+        tand = loss_tangent(eps_real, eps_loss)
+        flag_mask = nonpassive_mask_of(result)
+        flagged = (flag_mask & np.isfinite(eps_real) if flag_mask is not None
+                   else np.zeros(eps_real.shape, dtype=bool))
         for r, i in enumerate(rows_idx):
-            re_val   = float(np.real(eps[i]))
-            loss_val = float(-np.imag(eps[i]))
-            if re_val != 0.0 and np.isfinite(re_val) and np.isfinite(loss_val):
-                tand_val = loss_val / re_val
-            else:
-                tand_val = float("nan")
             for c, val in enumerate([
                 f"{f_hz[i]/1e6:.4f}",
-                _fmt(re_val,   4),
-                _fmt(loss_val, 4),
-                _fmt(tand_val, 5),
+                _fmt(eps_real[i], 4),
+                _fmt(eps_loss[i], 4) + (" †" if flagged[i] else ""),
+                _fmt(tand[i],     5),
             ]):
                 item = QTableWidgetItem(val)
                 item.setTextAlignment(Qt.AlignCenter)
@@ -1160,7 +1167,11 @@ class MeasurementMainWindow(QMainWindow):
         footer_row = QHBoxLayout()
         footer_row.setContentsMargins(4, 4, 4, 0)
 
-        legend_lbl = QLabel("  — : No data (NaN)")
+        legend_text = "  " + t.get("legend_no_data", "— : No data (NaN)")
+        if flagged.any():
+            legend_text += "     " + t.get(
+                "legend_flagged", "† : non-physical (ε″ < 0 or ε′ ≤ 0), kept and flagged")
+        legend_lbl = QLabel(legend_text)
         legend_lbl.setStyleSheet(
             f"font-size: 10px; color: {legend_color}; border: none;"
             " font-style: italic;"
@@ -1196,13 +1207,7 @@ class MeasurementMainWindow(QMainWindow):
             if not path:
                 return
             try:
-                e_real = np.real(eps)
-                e_imag = -np.imag(eps)
-                with open(path, "w", newline="", encoding="utf-8") as fh:
-                    writer = csv.writer(fh)
-                    writer.writerow(["Frequency (Hz)", "Epsilon_real", "Epsilon_imag"])
-                    for freq, er, ei in zip(f_hz, e_real, e_imag):
-                        writer.writerow([f"{freq:.4f}", f"{er:.6f}", f"{ei:.6f}"])
+                write_permittivity_csv(path, f_hz, eps)
                 QMessageBox.information(dlg, "Saved", f"CSV saved to:\n{path}")
             except Exception as exc:
                 QMessageBox.critical(dlg, "Error", f"Failed to save CSV:\n{exc}")

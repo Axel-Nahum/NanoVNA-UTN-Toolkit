@@ -19,6 +19,12 @@ from datetime import datetime
 
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
+    loss_tangent,
+    permittivity_columns,
+    plot_with_gaps,
+)
+
 logger = logging.getLogger(__name__)
 
 get_settings = safe_import(
@@ -398,15 +404,56 @@ def _document_to_latex(qt_document) -> str:
 
 
 # --------------------------------------------------------------------------- #
+# Permittivity table helpers. Convention eps = eps' - j*eps'': the table shows
+# eps'' = -Im(eps) (the same number the .s1p and CSV write) and a SIGNED
+# tan(delta) = eps''/eps', so non-passive points are visible, not abs()-hidden.
 
-def _fill_nans(y: np.ndarray) -> np.ndarray:
-    finite = np.isfinite(y)
-    if finite.all() or not finite.any():
-        return y
-    x = np.arange(len(y))
-    out = y.copy()
-    out[~finite] = np.interp(x[~finite], x[finite], y[finite])
-    return out
+_TEX_GAP = r"\textemdash{}"
+_TEX_NONPASSIVE = r"$^{\dagger}$"
+
+
+def _tex_num(value: float, fmt: str) -> str:
+    """Format a table number; a gap (NaN) is an em dash, never 0.000."""
+    return format(float(value), fmt) if np.isfinite(value) else _TEX_GAP
+
+
+def _flagged_nonpassive(nonpassive_mask, eps_real: np.ndarray) -> np.ndarray:
+    """Solver's non-passive flag restricted to points with a value.
+
+    A missing mask (older results) or one that does not match the grid flags
+    nothing: it is never applied to the wrong points.
+    """
+    flagged = np.zeros(eps_real.shape, dtype=bool)
+    if nonpassive_mask is None:
+        return flagged
+    mask = np.asarray(nonpassive_mask, dtype=bool)
+    if mask.shape != eps_real.shape:
+        logger.warning("[PermittivityExporter] nonpassive_mask shape %s != %s; ignored",
+                       mask.shape, eps_real.shape)
+        return flagged
+    return mask & np.isfinite(eps_real)
+
+
+def _quality_note_tex(eps_real: np.ndarray, flagged: np.ndarray, with_table: bool) -> str:
+    """Short italic note on gaps and flagged non-physical points ("" when none)."""
+    n_total = eps_real.size
+    n_gap = int(np.count_nonzero(~np.isfinite(eps_real)))
+    n_flag = int(np.count_nonzero(flagged))
+    parts = []
+    if n_gap:
+        where = (r"left blank in the plot and shown as \textemdash{} in the table"
+                 if with_table else "left blank in the plot")
+        parts.append(f"Points without a solution: {n_gap} of {n_total} ({where}).")
+    if n_flag:
+        # Full solver flags eps'' < 0, simplified also eps' <= 0: cover both.
+        mark = rf" and marked {_TEX_NONPASSIVE} in the table" if with_table else ""
+        parts.append(
+            rf"Non-physical points ($\varepsilon_r'' < 0$ or $\varepsilon_r' \le 0$): "
+            rf"{n_flag} of {n_total}, kept{mark}, not discarded."
+        )
+    if not parts:
+        return ""
+    return r"\noindent{\footnotesize\textit{" + " ".join(parts) + r"}}\par"
 
 
 def _freq_scale(freqs):
@@ -483,12 +530,14 @@ class PermittivityExporter:
     def compile_pdf(
         self, freqs, eps_selected, image_files, sample_name,
         wizard_window, output_path, compiler_path, include_steps=False, notes="",
-        s11_data=None, notes_doc=None, include_tables=False,
+        s11_data=None, notes_doc=None, include_tables=False, nonpassive_mask=None,
     ):
         """Build the .tex from already-rendered images and run LaTeX.
 
         Blocking and Qt-free, so it can be handed to a worker thread. Raises on
-        failure instead of showing a dialog.
+        failure instead of showing a dialog. ``nonpassive_mask`` (optional,
+        bool per frequency) is the solver's flag for non-physical points
+        (eps'' < 0, or eps' <= 0 in the simplified method).
         """
         self._create_latex_document(
             freqs=freqs,
@@ -503,11 +552,12 @@ class PermittivityExporter:
             include_tables=include_tables,
             notes=notes,
             notes_doc=notes_doc,
+            nonpassive_mask=nonpassive_mask,
         )
 
     def export_to_pdf(
         self, freqs, s11_data, eps_selected, sample_name,
-        wizard_window, output_path, compiler_path,
+        wizard_window, output_path, compiler_path, nonpassive_mask=None,
     ):
         """Render and compile in one blocking call (freezes the UI while it runs).
 
@@ -525,6 +575,7 @@ class PermittivityExporter:
                     wizard_window=wizard_window,
                     output_path=output_path,
                     compiler_path=compiler_path,
+                    nonpassive_mask=nonpassive_mask,
                 )
             return True
         except Exception as exc:
@@ -585,23 +636,23 @@ class PermittivityExporter:
         except Exception as exc:
             logger.error("[PermittivityExporter] Smith plot failed: %s", exc)
 
-        # --- Permittivity ---
+        # --- Permittivity (gaps left as breaks, same as the preview chart) ---
         f_arr = np.asarray(freqs, dtype=float)
-        eps = np.asarray(eps_selected, dtype=complex)
-        real = _fill_nans(np.real(eps))
-        loss = _fill_nans(-np.imag(eps))
+        real, loss = permittivity_columns(eps_selected)
         div, unit = _freq_scale(f_arr)
 
         fig, ax = plt.subplots(figsize=(9, 5))
         fig.patch.set_facecolor("white")
         ax.set_facecolor("white")
-        ax.plot(f_arr / div, real, color=real_color, linewidth=2, label=r"$\varepsilon_r'$")
-        ax.plot(f_arr / div, loss, color=loss_color, linewidth=2, label=r"$\varepsilon_r''$")
+        plot_with_gaps(ax, f_arr / div, real, color=real_color, linewidth=2,
+                       label=r"$\varepsilon_r'$")
+        plot_with_gaps(ax, f_arr / div, loss, color=loss_color, linewidth=2,
+                       label=r"$\varepsilon_r''$")
         ax.set_xlabel(f"Frequency ({unit})", fontsize=12)
         ax.set_ylabel(r"$\varepsilon_r$", fontsize=12)
         ax.set_title(r"$\varepsilon_r$ vs Frequency", fontsize=14, pad=10)
         ax.grid(True, linestyle="--", alpha=0.5)
-        ax.legend(loc="upper right", fontsize=11)
+        ax.legend(loc="best", fontsize=11)
         perm_path = os.path.join(output_dir, "permittivity.png")
         fig.savefig(perm_path, dpi=300, bbox_inches="tight")
         plt.close(fig)
@@ -674,7 +725,7 @@ class PermittivityExporter:
     def _create_latex_document(
         self, freqs, eps_selected, image_files, file_path,
         sample_name, wizard_window, compiler_path, include_steps=False, notes="",
-        s11_data=None, notes_doc=None, include_tables=False,
+        s11_data=None, notes_doc=None, include_tables=False, nonpassive_mask=None,
     ):
         try:
             from pylatex import Document, Section, Subsection, Command, Figure, NewPage
@@ -743,9 +794,19 @@ class PermittivityExporter:
                             image_files["permittivity"].replace("\\", "/"),
                             width=NoEscape(r"0.78\linewidth"),
                         )
-                if include_tables and freqs is not None and eps_selected is not None:
+                with_table = include_tables and freqs is not None
+                if eps_selected is not None:
+                    eps_real, _ = permittivity_columns(eps_selected)
+                    note = _quality_note_tex(
+                        eps_real, _flagged_nonpassive(nonpassive_mask, eps_real), with_table,
+                    )
+                    if note:
+                        doc.append(NoEscape(note))
+                if with_table and eps_selected is not None:
                     doc.append(NoEscape(r"\vspace{1.2em}"))
-                    self._build_permittivity_mini_table(doc, freqs, eps_selected, NoEscape)
+                    self._build_permittivity_mini_table(
+                        doc, freqs, eps_selected, NoEscape, nonpassive_mask=nonpassive_mask,
+                    )
 
             # --- Page: Smith S11 graph + table ---
             if "smith" in image_files:
@@ -801,22 +862,27 @@ class PermittivityExporter:
 
     # ------------------------------------------------------------------ #
 
-    def _build_permittivity_mini_table(self, doc, freqs, eps_selected, NoEscape):
-        """Permittivity table with all measurement points appended below the graph."""
+    def _build_permittivity_mini_table(self, doc, freqs, eps_selected, NoEscape,
+                                       nonpassive_mask=None):
+        """Permittivity table with all measurement points appended below the graph.
+
+        Columns: eps', eps'' = -Im(eps) and signed tan(delta). A gap is an em
+        dash in all three; a point the solver flags as non-physical
+        (``nonpassive_mask``) is marked with a dagger on eps''.
+        """
         f_hz = np.asarray(freqs, dtype=float)
-        eps  = np.asarray(eps_selected, dtype=complex)
-        n    = len(f_hz)
+        eps_real, eps_loss = permittivity_columns(eps_selected)
+        tand = loss_tangent(eps_real, eps_loss)
+        flagged = _flagged_nonpassive(nonpassive_mask, eps_real)
 
         div, unit = (1e9, "GHz") if f_hz[-1] >= 0.5e9 else (1e6, "MHz") if f_hz[-1] >= 0.5e6 else (1e3, "kHz")
 
         rows_tex = []
-        for i in range(n):
-            f_val  = f_hz[i] / div
-            re_val = float(np.real(eps[i]))
-            im_val = float(np.imag(eps[i]))
-            tan_d  = abs(im_val / re_val) if abs(re_val) > 1e-15 else 0.0
+        for i in range(len(f_hz)):
+            mark = _TEX_NONPASSIVE if flagged[i] else ""
             rows_tex.append(
-                rf"{f_val:.3f} & {re_val:.4f} & {im_val:+.4f} & {tan_d:.4f} \\"
+                rf"{f_hz[i] / div:.3f} & {_tex_num(eps_real[i], '.4f')} & "
+                rf"{_tex_num(eps_loss[i], '.4f')}{mark} & {_tex_num(tand[i], '.4f')} \\"
             )
 
         table_body = "\n".join([
@@ -880,22 +946,14 @@ class PermittivityExporter:
         from pylatex.utils import NoEscape
 
         f_hz = np.asarray(freqs, dtype=float)
-        eps  = np.asarray(eps_selected, dtype=complex)
-        n    = len(f_hz)
-
-        def _fv(v, decimals):
-            return r"\textemdash{}" if not np.isfinite(v) else f"{v:.{decimals}f}"
+        eps_real, eps_loss = permittivity_columns(eps_selected)
+        tand = loss_tangent(eps_real, eps_loss)
 
         rows_latex = []
-        for i in range(n):
-            re_v   = float(np.real(eps[i]))
-            loss_v = float(-np.imag(eps[i]))
-            if re_v != 0.0 and np.isfinite(re_v) and np.isfinite(loss_v):
-                tand_v = loss_v / re_v
-            else:
-                tand_v = float("nan")
+        for i in range(len(f_hz)):
             rows_latex.append(
-                f"{f_hz[i]/1e6:.4f} & {_fv(re_v,4)} & {_fv(loss_v,4)} & {_fv(tand_v,5)} \\\\"
+                f"{f_hz[i]/1e6:.4f} & {_tex_num(eps_real[i], '.4f')} & "
+                f"{_tex_num(eps_loss[i], '.4f')} & {_tex_num(tand[i], '.5f')} \\\\"
             )
 
         n_shown = len(rows_latex)

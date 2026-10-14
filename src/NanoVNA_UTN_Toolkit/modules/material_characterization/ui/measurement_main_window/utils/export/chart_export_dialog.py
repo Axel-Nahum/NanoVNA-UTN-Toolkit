@@ -6,11 +6,11 @@ expanded) with two draggable / resizable marker boxes — one for ε' and one
 for ε'' — using the same FancyBboxPatch + edge-detection pattern as the DUT.
 
 Actions: Copy to Clipboard (300 DPI) | Save as Image | Save as CSV | Close
-CSV columns: Frequency (Hz) | Epsilon_real | Epsilon_imag
+CSV columns: Frequency (Hz) | Epsilon_real | Epsilon_imag (= eps'' = -Im(eps));
+a point without a solution is ``nan`` in both permittivity columns.
 """
 
 import copy
-import csv
 import io
 import logging
 
@@ -26,6 +26,9 @@ from PySide6.QtWidgets import (
 )
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
+    write_permittivity_csv,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -153,6 +156,10 @@ class ChartExportDialog(QDialog):
         def _fmt_freq(hz):
             return f"{hz/1e9:.4f} GHz" if hz >= 0.5e9 else f"{hz/1e6:.4f} MHz"
 
+        def _fmt_eps(value):
+            # Marker sitting on a gap: no solution there, nothing to report.
+            return f"{value:.4f}" if np.isfinite(value) else "—"
+
         # Compute default text-box positions (in data coords of the preview axes)
         xlim = ax.get_xlim()
         ylim = ax.get_ylim()
@@ -161,11 +168,11 @@ class ChartExportDialog(QDialog):
 
         specs = [
             (idx1, real_eps, m1_color,
-             f"f = {_fmt_freq(freqs[idx1])}\nε' = {real_eps[idx1]:.4f}",
+             f"f = {_fmt_freq(freqs[idx1])}\nε' = {_fmt_eps(real_eps[idx1])}",
              xlim[0] + x_span * 0.10,
              ylim[1] - y_span * 0.15),
             (idx2, loss_eps, m2_color,
-             f"f = {_fmt_freq(freqs[idx2])}\nε'' = {loss_eps[idx2]:.4f}",
+             f"f = {_fmt_freq(freqs[idx2])}\nε'' = {_fmt_eps(loss_eps[idx2])}",
              xlim[0] + x_span * 0.60,
              ylim[1] - y_span * 0.15),
         ]
@@ -485,15 +492,7 @@ class ChartExportDialog(QDialog):
         if not path:
             return
         try:
-            f_hz   = np.asarray(self._result.f_hz, dtype=float)
-            eps    = np.asarray(self._result.eps_selected, dtype=complex)
-            e_real = np.real(eps)
-            e_imag = -np.imag(eps)
-            with open(path, "w", newline="", encoding="utf-8") as fh:
-                writer = csv.writer(fh)
-                writer.writerow(["Frequency (Hz)", "Epsilon_real", "Epsilon_imag"])
-                for freq, er, ei in zip(f_hz, e_real, e_imag):
-                    writer.writerow([f"{freq:.4f}", f"{er:.6f}", f"{ei:.6f}"])
+            write_permittivity_csv(path, self._result.f_hz, self._result.eps_selected)
             QMessageBox.information(
                 self,
                 msgs.get("saved_title", "Saved"),

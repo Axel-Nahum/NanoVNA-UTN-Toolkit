@@ -81,8 +81,9 @@ class SimplifiedEpsilonResult:
     f_hz : np.ndarray
         Frequency grid in Hz (n_freq,).
     eps : np.ndarray
-        Complex (n_freq,) permittivity of the unknown liquid. NaN where the
-        formula is numerically degenerate (see ``gap_mask``).
+        Complex (n_freq,) permittivity of the unknown liquid.
+        complex(nan, nan) where the formula is numerically degenerate (see
+        ``gap_mask``).
     eps_ref : np.ndarray
         Complex (n_freq,) model permittivity used for the reference liquid.
     coef_ref, coef_air : np.ndarray
@@ -175,7 +176,8 @@ def solve_epsilon_simplified(
     gap_mask = (np.abs(denom) < denom_floor) | ~np.isfinite(eps)
     if np.any(gap_mask):
         eps = eps.copy()
-        eps[gap_mask] = np.nan + 0j
+        # NaN in BOTH parts: nan+0j would read as eps'' = 0 (lossless).
+        eps[gap_mask] = complex(np.nan, np.nan)
         n_gap = int(np.count_nonzero(gap_mask))
         msg = (
             f"{n_gap} frequency point(s) are numerically degenerate "

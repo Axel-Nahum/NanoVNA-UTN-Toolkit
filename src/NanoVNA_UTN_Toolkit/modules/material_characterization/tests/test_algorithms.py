@@ -115,19 +115,6 @@ def test_grid_mismatch_blocks_calibration():
     assert m.compute_calibration() is False
 
 
-if __name__ == "__main__":
-    failures = 0
-    for name, fn in sorted(globals().items()):
-        if name.startswith("test_") and callable(fn):
-            try:
-                fn()
-                print(f"PASS {name}")
-            except AssertionError as exc:
-                failures += 1
-                print(f"FAIL {name}: {exc}")
-    raise SystemExit(1 if failures else 0)
-
-
 def _synthetic_pattern_case(n=21):
     """Same synthetic construction as the roundtrip test, shared by seed tests."""
     f = np.linspace(1e8, 2e9, n)
@@ -156,7 +143,7 @@ def test_seeded_solver_follows_seed_and_attaches_crosscheck():
     assert res.eps_crosscheck is not None
     np.testing.assert_allclose(res.eps_crosscheck, seed)
 
-    # NaN gaps in the seed fall back to the unseeded tracker (no crash, no gap).
+    # NaN gaps in the seed fall back to -third_term (no crash, no gap).
     seed_gappy = seed.copy()
     seed_gappy[5:9] = np.nan + 0j
     res2 = solve_epsilon_r(s_m, pc, eps_seed=seed_gappy)
@@ -207,3 +194,16 @@ def test_golden_full_method_seeded_2026():
         assert abs(got - expected) < 0.05 * abs(expected), (
             f"@{f_tgt/1e9:.1f} GHz: {got:.3f} vs expected {expected:.3f}"
         )
+
+
+if __name__ == "__main__":
+    failures = 0
+    for name, fn in sorted(globals().items()):
+        if name.startswith("test_") and callable(fn):
+            try:
+                fn()
+                print(f"PASS {name}")
+            except AssertionError as exc:
+                failures += 1
+                print(f"FAIL {name}: {exc}")
+    raise SystemExit(1 if failures else 0)

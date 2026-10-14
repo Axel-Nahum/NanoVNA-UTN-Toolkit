@@ -6,7 +6,8 @@ EN: Runs the calibration + permittivity solver and plots epsilon_r(f): the real
     root branches drawn faintly. The left column shows a worded summary (using
     the unknown-liquid name), any warnings, and a copyable "intermediate data"
     block: the general 5th-order equation and, for a user-selected frequency,
-    the numeric coefficients, the five x-roots and the selected epsilon_r.
+    the numeric coefficients, the five x-roots (the extraneous ones, Re x <= 0,
+    marked as such; the selected one tagged) and the selected epsilon_r.
     The bottom bar shows an "Export image" button (left of Finish) that saves
     the epsilon_r figure in high quality. Manual per-frequency root override is
     a Stage 2 feature.
@@ -16,7 +17,8 @@ ES: Ejecuta la calibracion y el solver de permitividad y grafica epsilon_r(f):
     demas ramas candidatas en tenue. La columna izquierda muestra un resumen en
     palabras (usando el nombre del liquido incognita), los avisos y un bloque de
     "datos intermedios" copiable: la ecuacion general de 5to orden y, para una
-    frecuencia elegida, los coeficientes numericos, las cinco raices x y el
+    frecuencia elegida, los coeficientes numericos, las cinco raices x (las
+    extranas, Re x <= 0, marcadas como tales; la elegida senalada) y el
     epsilon_r seleccionado. La barra inferior muestra un boton "Exportar imagen"
     (a la izquierda de Finalizar) que guarda la figura de epsilon_r en alta
     calidad. La seleccion manual de raiz por frecuencia es de la Etapa 2.
@@ -24,13 +26,21 @@ ES: Ejecuta la calibracion y el solver de permitividad y grafica epsilon_r(f):
 
 from __future__ import annotations
 
+import html
 import logging
+from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import Qt, QEvent, QObject
 from PySide6.QtWidgets import (
-    QCheckBox, QComboBox, QDialog, QHBoxLayout, QLabel, QPlainTextEdit,
-    QPushButton, QVBoxLayout, QWidget,
+    QCheckBox, QComboBox, QDialog, QFrame, QHBoxLayout, QLabel, QPlainTextEdit,
+    QPushButton, QScrollArea, QVBoxLayout, QWidget,
+)
+
+from NanoVNA_UTN_Toolkit.utils import safe_import
+
+get_settings = safe_import(
+    "NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings"
 )
 
 
@@ -48,6 +58,11 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.simplified
     SimplifiedEpsilonResult,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
+    loss_tangent,
+    nonpassive_mask_of,
+    permittivity_columns,
+)
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.charts.epsilon_chart import (
     EpsilonChartManager,
 )
@@ -103,7 +118,13 @@ def build_result_screen(wizard, descriptor, step_def):
 
     mid_container = QWidget()
     mid_container.setLayout(mid)
-    left_half_layout.addWidget(mid_container, stretch=1)
+    # The wizard has a fixed size: the column scrolls vertically instead of
+    # squeezing its widgets, so long texts or a small screen never overlap.
+    mid_scroll = QScrollArea()
+    mid_scroll.setWidgetResizable(True)
+    mid_scroll.setFrameShape(QFrame.Shape.NoFrame)
+    mid_scroll.setWidget(mid_container)
+    left_half_layout.addWidget(mid_scroll, stretch=1)
 
     left_half = QWidget()
     left_half.setLayout(left_half_layout)
@@ -332,26 +353,47 @@ def _sample_name(wizard, rtexts):
 
 
 def _build_summary(wizard, layout, result, rtexts):
-    eps = result.eps_selected
-    valid = np.isfinite(eps)
+    # eps'' = -Im(eps); gaps are NaN in both columns and ignored below.
+    eps_real, eps_loss = permittivity_columns(result.eps_selected)
     sample = _sample_name(wizard, rtexts)
-    if np.any(valid):
-        with np.errstate(invalid="ignore", divide="ignore"):
-            re_mean = float(np.nanmean(np.real(eps[valid])))
-            tand = float(np.nanmean(-np.imag(eps[valid]) / np.real(eps[valid])))
+    if np.any(np.isfinite(eps_real)):
+        # Median, not mean: robust to a few outlier points (a root on the
+        # wrong branch, a noisy band edge) that would drag a mean away from
+        # the bulk of the sweep.
+        re_median = float(np.nanmedian(eps_real))
+        tand_all = loss_tangent(eps_real, eps_loss)
+        tand_ok = tand_all[np.isfinite(tand_all)]
+        tand = float(np.median(tand_ok)) if tand_ok.size else float("nan")
         text = rtexts.get(
             "summary_template",
-            "Sample: {sample}\nMean ε′ = {er_real:.2f}\nMean loss tangent = {tand:.3f}",
-        ).format(sample=sample, er_real=re_mean, tand=tand)
+            "Sample: {sample}\nMedian ε′ = {er_real:.2f}\nMedian loss tangent = {tand:.3f}",
+        ).format(sample=sample, er_real=re_median, tand=tand)
+
+        # Full solver flags eps'' < 0; simplified flags eps'' < 0 or eps' <= 0:
+        # the wording covers both.
+        mask = nonpassive_mask_of(result)
+        n_flagged = (int(np.count_nonzero(mask & np.isfinite(eps_real)))
+                     if mask is not None else 0)
     else:
         text = rtexts.get(
             "all_gap",
             "No physically valid permittivity could be selected on this sweep.",
         )
+        n_flagged = 0
     label = QLabel(text)
     label.setWordWrap(True)
     label.setStyleSheet("font-size: 15px;")
     layout.addWidget(label)
+
+    if n_flagged:
+        # Own, smaller line: it must fit in one row of the narrow column.
+        flag_lbl = QLabel(rtexts.get(
+            "summary_nonpassive",
+            "Non-physical (ε″ < 0 or ε′ ≤ 0): {n} of {total}, flagged",
+        ).format(n=n_flagged, total=eps_real.size))
+        flag_lbl.setWordWrap(True)
+        flag_lbl.setStyleSheet("font-size: 12px;")
+        layout.addWidget(flag_lbl)
 
 
 def _build_sources(wizard, layout, rtexts):
@@ -491,67 +533,74 @@ def _build_warnings(wizard, layout, result, rtexts):
     layout.addWidget(btn)
 
 
+_NAN_C = complex(np.nan, np.nan)
+
+
 def _greedy_assign(prev_vals: np.ndarray, candidates: np.ndarray) -> np.ndarray:
-    """One-to-one nearest-neighbour assignment of candidates to previous track values."""
+    """
+    One-to-one assignment of the finite ``candidates`` to branch slots.
+
+    Slots with a finite previous value are continued first, closest pairs
+    first. Candidates left over (a root that appears mid-sweep, or more roots
+    than continued slots) go to the free slots, highest Re(eps) first and
+    preferring slots that never held a value -- so no finite candidate is
+    ever dropped while there is a free slot.
+    """
     n = len(prev_vals)
-    m = len(candidates)
-    assigned = np.full(n, np.nan + 0j, dtype=complex)
-    used_cand = [False] * m
+    assigned = np.full(n, _NAN_C, dtype=complex)
+    cands = [complex(c) for c in candidates if np.isfinite(c)]
 
-    pairs = []
-    for pi in range(n):
-        if not np.isfinite(prev_vals[pi]):
-            continue
-        for ci in range(m):
-            if np.isfinite(candidates[ci]):
-                pairs.append((abs(candidates[ci] - prev_vals[pi]), pi, ci))
-    pairs.sort(key=lambda x: x[0])
+    pairs = sorted(
+        (abs(c - prev_vals[s]), s, k)
+        for s in range(n) if np.isfinite(prev_vals[s])
+        for k, c in enumerate(cands)
+    )
+    slot_used = [False] * n
+    cand_used = [False] * len(cands)
+    for _, s, k in pairs:
+        if not slot_used[s] and not cand_used[k]:
+            assigned[s] = cands[k]
+            slot_used[s] = cand_used[k] = True
 
-    used_prev = [False] * n
-    for _, pi, ci in pairs:
-        if not used_prev[pi] and not used_cand[ci]:
-            assigned[pi] = candidates[ci]
-            used_prev[pi] = True
-            used_cand[ci] = True
-
+    leftovers = sorted((c for k, c in enumerate(cands) if not cand_used[k]),
+                       key=lambda c: -c.real)
+    # Never-used slots first (stable sort keeps index order within each group).
+    free = sorted((s for s in range(n) if not slot_used[s]),
+                  key=lambda s: bool(np.isfinite(prev_vals[s])))
+    if len(leftovers) > len(free):
+        logger.warning("[result_screen] %d candidate(s) without a free branch slot",
+                       len(leftovers) - len(free))
+    for s, c in zip(free, leftovers):
+        assigned[s] = c
     return assigned
 
 
 def _track_all_branches(result) -> np.ndarray:
     """
-    Track 5 continuous branches.
-    Column 0 = eps_selected (algorithm auto).
-    Columns 1-4 = remaining roots tracked by continuity.
-    Returns shape (n_freq, 5).
+    Arrange every root into 5 branch columns for the manual override.
+
+    Column 0 = eps_selected (algorithm auto). Columns 1-4 = the other finite
+    candidates, continued by nearest neighbour against the LAST value each
+    branch had (so a branch survives a frequency where its root is missing)
+    and with new roots placed in free columns: at every solved frequency each
+    finite candidate appears in exactly one column. Gap frequencies (the
+    solver declined the point) stay blank in every column. Returns shape
+    (n_freq, 5), complex(nan, nan) where a column has no value.
     """
     n_freq = len(result.f_hz)
-    tracked = np.full((n_freq, 5), np.nan + 0j, dtype=complex)
+    tracked = np.full((n_freq, 5), _NAN_C, dtype=complex)
     tracked[:, 0] = result.eps_selected
+    last_seen = np.full(4, _NAN_C, dtype=complex)
 
     for i in range(n_freq):
         sel_idx = int(result.selected_index[i])
         if sel_idx < 0:
-            continue  # gap frequency — leave branches 1-4 as NaN
+            continue  # gap: no auto value and no override offered either
 
-        remaining = np.array(
-            [result.eps_candidates[i, j] for j in range(5) if j != sel_idx],
-            dtype=complex,
-        )  # shape (4,)
-
-        prev = tracked[i - 1, 1:] if i > 0 else np.full(4, np.nan + 0j, dtype=complex)
-
-        if i == 0 or not np.any(np.isfinite(prev)):
-            # Seed: order by real part descending (physically valid first)
-            valid_mask = np.isfinite(remaining) & (np.real(remaining) > 0)
-            valid = remaining[valid_mask]
-            invalid = remaining[~valid_mask]
-            if len(valid) > 1:
-                valid = valid[np.argsort(-np.real(valid))]
-            ordered = np.concatenate([valid, invalid])
-            for b in range(min(4, len(ordered))):
-                tracked[i, b + 1] = ordered[b]
-        else:
-            tracked[i, 1:] = _greedy_assign(prev, remaining)
+        remaining = np.delete(np.asarray(result.eps_candidates[i], dtype=complex), sel_idx)
+        tracked[i, 1:] = _greedy_assign(last_seen, remaining)
+        hit = np.isfinite(tracked[i, 1:])
+        last_seen[hit] = tracked[i, 1:][hit]
 
     return tracked
 
@@ -684,6 +733,51 @@ def _build_extend_to_full(wizard, layout, rtexts):
     btn.clicked.connect(_on_extend)
 
 
+# Marks at the start of each root line of the intermediate block (both glyphs
+# are in Consolas, the box font, with the same advance as any other char).
+_MARK_SELECTED = "►"
+_MARK_EXTRANEOUS = "×"
+
+
+def _secondary_text_color() -> str:
+    """Muted text colour readable on the current theme's background."""
+    try:
+        theme = get_settings(
+            "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+            "shared/utils/dark_light_mode/dark_light_config.ini",
+            Path(__file__).resolve(),
+        )
+        is_dark = not theme.value("Dark_Light/is_dark_mode", False, type=bool)
+    except Exception:  # noqa: BLE001 - styling only, never block the screen
+        is_dark = True
+    # Dark: the theme's placeholder grey; light: the previous #555555.
+    return "#8888aa" if is_dark else "#555555"
+
+
+def _bulleted_tooltip(title: str, text: str) -> str:
+    """Rich-text tooltip: bold title and one bullet per " · "-separated item."""
+    items = [part.strip() for part in text.split("·") if part.strip()]
+    body = "<br>".join("• " + html.escape(item) for item in items)
+    return f"<b>{html.escape(title)}</b><br>{body}"
+
+
+def _fit_height_to_text(box: QPlainTextEdit) -> None:
+    """Make ``box`` exactly as tall as its text, measured from its own font.
+
+    With NoWrap every block is one visual line; room is kept for the
+    horizontal scrollbar a long line may need. The column around it scrolls,
+    so a tall box can never cover the widgets below.
+    """
+    box.ensurePolished()  # the stylesheet font must be in effect before measuring
+    n_lines = max(1, box.document().blockCount())
+    height = (n_lines * box.fontMetrics().lineSpacing()
+              + 2 * int(box.document().documentMargin())
+              + 2 * box.frameWidth()
+              + box.horizontalScrollBar().sizeHint().height()
+              + 2)
+    box.setFixedHeight(height)
+
+
 def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=None, fixed_ylim=None):
     """Copyable block: general 5th-order equation + per-frequency coefficients."""
     layout.addSpacing(10)
@@ -691,19 +785,39 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
     title.setStyleSheet("font-weight: bold; font-size: 13px;")
     layout.addWidget(title)
 
+    # Short criterion on screen; the full description goes in the tooltip.
     crit_title = rtexts.get("criterion_title", "Branch selection criterion")
     crit_text  = rtexts.get(
         "criterion_text",
-        "Physical filter: Re(ε) > 0, Im(ε) ≤ 1×10⁻⁶  ·  Traversal: high → low frequency"
-        "  ·  Seed: root with smallest |Im(ε)| at highest valid frequency"
-        "  ·  Tracking: polynomial extrapolation (window 5, order ≤2) + nearest-neighbour"
-        "  ·  Ill-conditioned points (|S₁₁ʳ¹ − S₁₁ʳ²| < 0.01) excluded as gaps"
-        "  ·  With the simplified-method seed available, the root closest to that"
-        " curve is chosen instead (shown as the cross-check overlay)",
+        "Principal-branch roots, Re(√ε) > 0  ·  Anchor: smallest-|Gn| point"
+        " unambiguously matched to the simplified curve  ·  then continuity in"
+        " frequency  ·  ε″ < 0 kept and flagged  ·  Gaps: indistinguishable"
+        " references, no valid root, ε′ ≤ 0 or ambiguous step",
     )
-    crit_lbl = QLabel(f"<b>{crit_title}:</b> {crit_text}")
+    crit_tip = rtexts.get(
+        "criterion_tooltip",
+        "Candidates: principal-branch roots only, Re(√ε) > 0"
+        "  ·  Anchor: among the frequencies where the root closest to the"
+        " simplified-method curve (available as the cross-check overlay) is"
+        " unambiguous, the one with the smallest |Gn| (running median, confirmed by"
+        " its neighbours, so a glitch cannot take it), where that estimate is most"
+        " reliable; only where that curve has no value is the cruder Gn → 0 limit"
+        " used instead"
+        "  ·  From the anchor the sweep is followed in frequency, each point taking"
+        " the root closest to the last selected one"
+        "  ·  Points with ε″ < 0 (non-passive, attributable to noise) are kept and"
+        " flagged, not discarded"
+        "  ·  Gaps: reference liquids indistinguishable (|S₁₁ʳ¹ − S₁₁ʳ²| < 0.01),"
+        " no principal-branch root, a selected root with ε′ ≤ 0, or no root singled"
+        " out by either continuity or the estimate",
+    )
+    # Rich text (for the bold title): escape the body, or Qt cuts it at "ε″ < 0".
+    crit_lbl = QLabel(f"<b>{html.escape(crit_title)}:</b> {html.escape(crit_text)}")
     crit_lbl.setWordWrap(True)
-    crit_lbl.setStyleSheet("font-size: 11px; color: #555555; padding: 4px 0px 6px 0px;")
+    crit_lbl.setToolTip(_bulleted_tooltip(crit_title, crit_tip))
+    crit_lbl.setStyleSheet(
+        f"font-size: 11px; color: {_secondary_text_color()}; padding: 4px 0px 6px 0px;"
+    )
     layout.addWidget(crit_lbl)
 
     # Frequency selector (decimated).
@@ -724,7 +838,9 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
 
     text_box = QPlainTextEdit()
     text_box.setReadOnly(True)
-    text_box.setMinimumHeight(80)
+    # No wrap: a wrapped root line pushed its tag onto the next line, next to
+    # another root. Long lines scroll horizontally instead.
+    text_box.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
     text_box.setStyleSheet(
         "font-family: Consolas, monospace; font-size: 12px;"
         " background-color: #ffffff; color: #1a1a1a; border: 1px solid #cccccc;"
@@ -735,10 +851,8 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
         i = selector.itemData(idx_in_combo)
         if i is None:
             return
-        content = _format_equation(result, int(i), rtexts)
-        text_box.setPlainText(content)
-        n_lines = content.count('\n') + 1
-        text_box.setFixedHeight(n_lines * 14 + 30)
+        text_box.setPlainText(_format_equation(result, int(i), rtexts))
+        _fit_height_to_text(text_box)
 
     selector.currentIndexChanged.connect(render)
     render(selector.currentIndex())
@@ -764,16 +878,20 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
     combo_row.setContentsMargins(4, 4, 0, 0)
     combo_row.addWidget(QLabel(rtexts.get("branch_label", "Branch:")))
     branch_combo = QComboBox()
+    n_listed = 0
     for b in range(5):
         branch_data = tracked[:, b]
-        valid = np.isfinite(branch_data) & (np.real(branch_data) > 0)
-        if np.any(valid):
-            mean_real = float(np.nanmean(np.real(branch_data[valid])))
-            suffix = f"ε′ ≈ {mean_real:.2f}"
+        finite = np.isfinite(branch_data)
+        if b > 0 and not np.any(finite):
+            continue  # no candidate ever landed in this column: nothing to offer
+        n_listed += 1
+        if np.any(finite):
+            median_real = float(np.median(np.real(branch_data[finite])))
+            suffix = f"ε′ ≈ {median_real:.2f}"
         else:
             suffix = "no valid data"
-        label = f"Branch 1 (Auto) — {suffix}" if b == 0 else f"Branch {b + 1} — {suffix}"
-        branch_combo.addItem(label, b)
+        label = f"Branch 1 (Auto) — {suffix}" if b == 0 else f"Branch {n_listed} — {suffix}"
+        branch_combo.addItem(label, b)  # item data = column in ``tracked``
     branch_combo.setCurrentIndex(0)
     combo_row.addWidget(branch_combo, stretch=1)
     layout.addWidget(combo_container)
@@ -902,26 +1020,63 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
 
 
 
+def _principal_roots(result, i, x_roots) -> np.ndarray:
+    """
+    Bool per x root: True for the principal-branch roots the solver offers.
+
+    ``eps_candidates[i]`` keeps the ``np.roots`` order with NaN in the slots
+    of the extraneous roots (Re x <= 0, they solve eq. 16 with the radiation
+    term's sign flipped). That layout is used when it matches ``x_roots``;
+    otherwise the same Re(x) > 0 test is applied to the roots directly.
+    """
+    by_x = np.real(x_roots) > 0.0
+    cands = getattr(result, "eps_candidates", None)
+    if cands is None or np.shape(cands)[-1] < x_roots.size:
+        return by_x
+    slots = np.asarray(cands[i], dtype=complex)[: x_roots.size]
+    finite = np.isfinite(slots)
+    if np.allclose(slots[finite], np.square(x_roots)[finite], rtol=1e-9, atol=1e-12):
+        return finite
+    logger.warning("[result_screen] eps_candidates order differs from np.roots at %d; "
+                   "using Re(x) > 0", i)
+    return by_x
+
+
 def _format_equation(result, i, rtexts):
+    """Text of the intermediate block at frequency index ``i``.
+
+    One line per x root, never wrapped (the box scrolls horizontally), with
+    the mark at the START of the line: ``_MARK_SELECTED`` on the selected
+    root, ``_MARK_EXTRANEOUS`` on the extraneous ones (Re x <= 0), followed by
+    a one-line legend.
+    """
     coeffs = result.polynomial_coeffs_at(i)
     eps_sel = result.eps_selected[i]
     lines = []
-    lines.append(rtexts.get(
+    lines.extend(rtexts.get(
         "equation_general",
-        "General form:  Gn·x^5 + x^2 + third_term = 0   (x = εr^(1/2),  εr = x^2)",
-    ))
+        "General form:  Gn·x^5 + x^2 + third_term = 0\n(x = εr^(1/2),  εr = x^2)",
+    ).splitlines())
     lines.append("")
     lines.append(f"@ f = {_fmt_hz(result.f_hz[i])}")
-    lines.append(f"  Gn         = {_fmt_c(result.gn[i])}")
+    # Gn is ~1e-5..1e-2: fixed 2 decimals printed it as "-0.00 - 0.00j".
+    lines.append(f"  Gn         = {_fmt_c_sci(result.gn[i])}")
     lines.append(f"  third_term = {_fmt_c(result.third_term[i])}")
     if np.all(np.isfinite(coeffs)):
         x_roots = np.roots(coeffs)
+        eps_roots = np.square(x_roots)
+        principal = _principal_roots(result, i, x_roots)
+        with np.errstate(invalid="ignore"):
+            is_sel = np.isfinite(eps_sel) & np.isclose(eps_roots, eps_sel, rtol=1e-9, atol=1e-12)
         root_strs = [_fmt_c(r) for r in x_roots]
-        eps_strs  = [_fmt_c(r ** 2) for r in x_roots]
         col_w = max(len(s) for s in root_strs)
         lines.append("  x roots:")
-        for rs, es in zip(root_strs, eps_strs):
-            lines.append(f"    {rs.ljust(col_w)}   ->  εr = {es}")
+        for rs, e, ok, sel in zip(root_strs, eps_roots, principal, is_sel):
+            mark = _MARK_EXTRANEOUS if not ok else (_MARK_SELECTED if sel else " ")
+            lines.append(f"  {mark} {rs.ljust(col_w)} -> εr = {_fmt_c(e)}")
+        lines.append("  " + rtexts.get(
+            "roots_legend", "{sel} selected   {ext} extraneous (Re x ≤ 0)",
+        ).format(sel=_MARK_SELECTED, ext=_MARK_EXTRANEOUS))
     else:
         lines.append("  x roots: " + rtexts.get("no_root", "no physical root")
                      + " (non-finite coefficients at this frequency)")
@@ -939,6 +1094,15 @@ def _fmt_c(z):
         return "nan"
     sign = "+" if z.imag >= 0 else "-"
     return f"{z.real:.2f} {sign} {abs(z.imag):.2f}j"
+
+
+def _fmt_c_sci(z):
+    """Like ``_fmt_c`` in scientific notation, for small values such as Gn."""
+    z = complex(z)
+    if not np.isfinite(z.real) or not np.isfinite(z.imag):
+        return "nan"
+    sign = "+" if z.imag >= 0 else "-"
+    return f"{z.real:.2e} {sign} {abs(z.imag):.2e}j"
 
 
 def _fmt_hz(hz):

@@ -16,7 +16,9 @@
     "eps_imag": "ε″",
     "loss_tangent": "tan δ",
     "export_csv": "Exportar CSV",
-    "export_s1p": "Exportar .s1p"
+    "export_s1p": "Exportar .s1p",
+    "legend_no_data": "— : Sin datos (NaN)",
+    "legend_flagged": "† : no físico (ε″ < 0 o ε′ ≤ 0), conservado y marcado"
   },
   "pdf_options_help": {
     "style_help_title": "Estilo de Párrafo",

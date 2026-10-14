@@ -14,6 +14,10 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
+    permittivity_columns,
+    plot_with_gaps,
+)
 
 get_settings = safe_import(
     "NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings"
@@ -68,16 +72,6 @@ def _pick_color(btn: QFrame, on_change):
             )
             on_change()
     return handler
-
-
-def _fill_nans(y: np.ndarray) -> np.ndarray:
-    finite = np.isfinite(y)
-    if finite.all() or not finite.any():
-        return y
-    x = np.arange(len(y))
-    out = y.copy()
-    out[~finite] = np.interp(x[~finite], x[finite], y[finite])
-    return out
 
 
 def _dummy_data():
@@ -248,7 +242,7 @@ def create_tab_real(main_window, texts: Dict):
     result = getattr(main_window, "_result", None)
     if result is not None:
         freqs     = result.f_hz
-        real_data = _fill_nans(np.real(result.eps_selected))
+        real_data, _ = permittivity_columns(result.eps_selected)   # gaps stay NaN
     else:
         freqs, real_data, _ = _dummy_data()
 
@@ -261,7 +255,7 @@ def create_tab_real(main_window, texts: Dict):
         w    = spin_w.value()
         fig.patch.set_facecolor(bg_c)
         ax.set_facecolor(bg_c)
-        ax.plot(freqs / 1e6, real_data, color=c, linewidth=w, label=r"$\varepsilon_r'$")
+        plot_with_gaps(ax, freqs / 1e6, real_data, color=c, linewidth=w, label=r"$\varepsilon_r'$")
         _mk_s = get_settings(_INI_EXE, _INI_DEV, Path(__file__).resolve())
         _idx1 = min(max(int(_mk_s.value("markers/index_1", 0)), 0), len(freqs) - 1)
         ax.plot(freqs[_idx1] / 1e6, real_data[_idx1], "o",
@@ -429,7 +423,7 @@ def create_tab_imag(main_window, texts: Dict):
     result = getattr(main_window, "_result", None)
     if result is not None:
         freqs     = result.f_hz
-        loss_data = _fill_nans(-np.imag(result.eps_selected))
+        _, loss_data = permittivity_columns(result.eps_selected)   # eps'' = -Im, gaps NaN
     else:
         freqs, _, loss_data = _dummy_data()
 
@@ -442,7 +436,7 @@ def create_tab_imag(main_window, texts: Dict):
         w    = spin_w.value()
         fig.patch.set_facecolor(bg_c)
         ax.set_facecolor(bg_c)
-        ax.plot(freqs / 1e6, loss_data, color=c, linewidth=w, label=r"$\varepsilon_r''$")
+        plot_with_gaps(ax, freqs / 1e6, loss_data, color=c, linewidth=w, label=r"$\varepsilon_r''$")
         _mk_s = get_settings(_INI_EXE, _INI_DEV, Path(__file__).resolve())
         _idx2 = min(max(int(_mk_s.value("markers/index_2", 0)), 0), len(freqs) - 1)
         ax.plot(freqs[_idx2] / 1e6, loss_data[_idx2], "o",

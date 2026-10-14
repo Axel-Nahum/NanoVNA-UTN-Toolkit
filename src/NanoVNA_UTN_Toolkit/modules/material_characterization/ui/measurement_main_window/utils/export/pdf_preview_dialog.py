@@ -54,6 +54,11 @@ from NanoVNA_UTN_Toolkit.shared.ui.pdf_export_widgets import (
     enable_drag_annotations as _enable_drag_annotations_shared,
 )
 
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
+    permittivity_columns,
+    plot_with_gaps,
+)
+
 _CHART_INI_EXE = "INI/material_characterization/characterization_chart_config/characterization_chart_config.ini"
 _CHART_INI_DEV = "modules/material_characterization/ui/measurement_main_window/characterization_chart_config/characterization_chart_config.ini"
 
@@ -61,16 +66,6 @@ _CHART_INI_DEV = "modules/material_characterization/ui/measurement_main_window/c
 _GRAPH_MARKER_COUNT = {0: 2, 1: 1}
 
 # --------------------------------------------------------------------------- #
-
-
-def _fill_nans(y: np.ndarray) -> np.ndarray:
-    finite = np.isfinite(y)
-    if finite.all() or not finite.any():
-        return y
-    x = np.arange(len(y))
-    out = y.copy()
-    out[~finite] = np.interp(x[~finite], x[finite], y[finite])
-    return out
 
 
 def _freq_scale(freqs):
@@ -208,12 +203,18 @@ class PermittivityPdfPreviewDialog(QDialog):
       Step 0: Notes / Comments      (text editor, no graph)
       Step 1: Permittivity ε'+ε''  (2 markers)
       Step 2: S11 Smith chart       (1 marker)
+
+    ``nonpassive_mask`` (optional, bool per frequency) is the solver's flag
+    for non-physical points (ε'' < 0, or ε' <= 0 in the simplified method);
+    it only annotates the report (quality note and
+    a dagger in the table), the plotted values are not changed.
     """
 
     def __init__(
         self, parent=None, freqs=None, s11_data=None, eps_selected=None,
         sample_name=None, output_path=None, wizard_window=None,
         include_steps=False, include_notes=False, include_tables=False,
+        nonpassive_mask=None,
     ):
         super().__init__(parent)
 
@@ -222,6 +223,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                          else np.exp(1j * np.linspace(0, 2 * np.pi, 100)))
         self.eps_selected = (np.asarray(eps_selected, dtype=complex) if eps_selected is not None
                              else np.ones(100, dtype=complex) * (2.5 - 0.1j))
+        self.nonpassive_mask = nonpassive_mask
         self.sample_name = sample_name or "sample"
         self.output_path = output_path
         self.wizard_window = wizard_window
@@ -255,9 +257,9 @@ class PermittivityPdfPreviewDialog(QDialog):
             _make_contrast_color(self._loss_color),
         ]
 
-        # Pre-compute permittivity curves
-        self._real_eps = _fill_nans(np.real(self.eps_selected))
-        self._loss_eps = _fill_nans(-np.imag(self.eps_selected))
+        # Pre-compute permittivity curves (ε'' = -Im ε). Gaps stay NaN in both:
+        # the report shows them as breaks, never as interpolated values.
+        self._real_eps, self._loss_eps = permittivity_columns(self.eps_selected)
         self._freq_div, self._freq_unit = _freq_scale(self.freqs)
         self._scaled_freqs = self.freqs / self._freq_div
 
@@ -977,19 +979,19 @@ class PermittivityPdfPreviewDialog(QDialog):
         legend.set_draggable(True)
 
     def _plot_permittivity(self):
-        self.ax.plot(
-            self._scaled_freqs, self._real_eps,
+        plot_with_gaps(
+            self.ax, self._scaled_freqs, self._real_eps,
             color=self._real_color, linewidth=1.5, label=r"$\varepsilon_r'$",
         )
-        self.ax.plot(
-            self._scaled_freqs, self._loss_eps,
+        plot_with_gaps(
+            self.ax, self._scaled_freqs, self._loss_eps,
             color=self._loss_color, linewidth=1.5, label=r"$\varepsilon_r''$",
         )
         self.ax.set_title(r"$\varepsilon_r$ vs Frequency", fontsize=14, pad=14)
         self.ax.set_xlabel(f"Frequency ({self._freq_unit})", fontsize=12)
         self.ax.set_ylabel(r"$\varepsilon_r$", fontsize=12)
         self.ax.grid(True, linestyle="--", alpha=0.5)
-        self.ax.legend(loc="upper right", fontsize=11)
+        self.ax.legend(loc="best", fontsize=11)
         self.fig.subplots_adjust(left=0.13, right=0.92, top=0.87, bottom=0.14)
 
     # ------------------------------------------------------------------ #
@@ -1158,15 +1160,19 @@ class PermittivityPdfPreviewDialog(QDialog):
                     else:
                         y = float(self._loss_eps[idx_f])
                         val_label = "ε''"
+                    # A gap has no value to report: "—" and no dot (y stays NaN).
+                    y_text = f"{y:.2f}" if np.isfinite(y) else "— (no solution)"
                     text = (
                         f"Marker {slot + 1}\n"
                         f"Freq: {nearest_val:.2f} {unit_display}\n"
-                        f"{val_label}: {y:.2f}"
+                        f"{val_label}: {y_text}"
                     )
 
+                # The box needs a finite anchor even when the marker sits on a gap.
+                y_box = y if np.isfinite(y) else 0.5 * (_ylim[0] + _ylim[1])
                 ann_x, ann_y = (
                     self.marker_positions[dgi][slot]
-                    if self.marker_positions[dgi][slot] else (x, y)
+                    if self.marker_positions[dgi][slot] else (x, y_box)
                 )
 
                 mk_line, = ax.plot(x, y, marker="o", color=color, markersize=8)
@@ -1308,6 +1314,7 @@ class PermittivityPdfPreviewDialog(QDialog):
                 include_steps=self.include_steps,
                 notes_doc=notes_doc,
                 include_tables=self.include_tables,
+                nonpassive_mask=self.nonpassive_mask,
             )
 
         def _on_done(success, error_message):

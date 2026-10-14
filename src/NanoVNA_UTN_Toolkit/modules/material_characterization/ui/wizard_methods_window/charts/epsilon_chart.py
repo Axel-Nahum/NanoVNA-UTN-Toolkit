@@ -4,15 +4,19 @@ Permittivity-vs-frequency chart (module-local).
 EN: Plots the complex relative permittivity epsilon_r against frequency:
     the real part (epsilon_r') and the loss (epsilon_r'' = -Im(epsilon_r),
     using the eps' - j*eps'' convention). Optionally overlays the other
-    candidate root branches faintly so the user can compare. Built with the
-    same builder/manager shape as ``utils/smith_chart_utils.py`` but kept
+    candidate root branches faintly so the user can compare. Frequencies
+    without a solution (gaps) are left as breaks in both curves -- never
+    interpolated -- and isolated valid points are drawn as dots. Built with
+    the same builder/manager shape as ``utils/smith_chart_utils.py`` but kept
     inside the module so it does not depend on shared chart utilities.
 
 ES: Grafica la permitividad relativa compleja epsilon_r en funcion de la
     frecuencia: la parte real (epsilon_r') y la perdida
     (epsilon_r'' = -Im(epsilon_r), con la convencion eps' - j*eps''). De forma
     opcional superpone tenuemente las otras ramas candidatas para comparar.
-    Construido con la misma forma builder/manager que
+    Las frecuencias sin solucion (gaps) quedan como cortes en ambas curvas
+    -- nunca se interpolan -- y los puntos validos aislados se dibujan como
+    puntos. Construido con la misma forma builder/manager que
     ``utils/smith_chart_utils.py`` pero dentro del modulo para no depender de
     utilidades compartidas.
 """
@@ -28,6 +32,11 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.ticker import FuncFormatter, MaxNLocator
 from PySide6.QtWidgets import QSizePolicy
 
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
+    permittivity_columns,
+    plot_with_gaps,
+)
+
 logger = logging.getLogger(__name__)
 
 plt.rcParams.update({
@@ -36,17 +45,6 @@ plt.rcParams.update({
     "mathtext.rm":                "serif",
     "axes.formatter.use_mathtext": True,   # y-axis tick numbers in CM font
 })
-
-
-def _fill_nans(y: np.ndarray) -> np.ndarray:
-    """Linearly interpolate over NaN/inf gaps in a 1-D real array."""
-    finite = np.isfinite(y)
-    if finite.all() or not finite.any():
-        return y
-    x = np.arange(len(y))
-    out = y.copy()
-    out[~finite] = np.interp(x[~finite], x[finite], y[finite])
-    return out
 
 
 def _freq_formatter(value, _pos):
@@ -196,36 +194,38 @@ class EpsilonChartManager:
             if candidates is not None:
                 candidates = np.asarray(candidates, dtype=complex)
                 for k in range(candidates.shape[1]):
-                    ax.plot(
-                        freqs, np.real(candidates[:, k]),
+                    cand_real, _ = permittivity_columns(candidates[:, k])
+                    plot_with_gaps(
+                        ax, freqs, cand_real,
                         color=self.config.candidate_color,
                         linewidth=self.config.candidate_linewidth,
                         alpha=self.config.candidate_alpha,
                         zorder=1,
                     )
 
-            real = _fill_nans(np.real(eps_selected))
-            loss = _fill_nans(-np.imag(eps_selected))   # eps'' for eps = eps' - j*eps''
+            # eps'' = -Im(eps) for eps = eps' - j*eps''. Gaps stay NaN in both
+            # curves: a visible break is honest, an interpolated bridge is not.
+            real, loss = permittivity_columns(eps_selected)
 
-            ax.plot(freqs, real, color=self.config.real_color,
-                    linewidth=self.config.real_linewidth,
-                    label=getattr(self, "_real_label", r"$\varepsilon_r'$"), zorder=3)
-            ax.plot(freqs, loss, color=self.config.loss_color,
-                    linewidth=self.config.loss_linewidth,
-                    label=getattr(self, "_loss_label", r"$\varepsilon_r''$"), zorder=3)
+            plot_with_gaps(ax, freqs, real, color=self.config.real_color,
+                           linewidth=self.config.real_linewidth,
+                           label=getattr(self, "_real_label", r"$\varepsilon_r'$"), zorder=3)
+            plot_with_gaps(ax, freqs, loss, color=self.config.loss_color,
+                           linewidth=self.config.loss_linewidth,
+                           label=getattr(self, "_loss_label", r"$\varepsilon_r''$"), zorder=3)
 
             if crosscheck is not None:
-                crosscheck = np.asarray(crosscheck, dtype=complex)
+                cc_real, cc_loss = permittivity_columns(crosscheck)
                 cc_tag = crosscheck_label or "simplified"
                 # Dotted, same colors: reads as "the same quantity, other method".
-                ax.plot(freqs, _fill_nans(np.real(crosscheck)),
-                        color=self.config.real_color, linewidth=1.4,
-                        linestyle=":", alpha=0.85, zorder=2,
-                        label=rf"$\varepsilon_r'$ ({cc_tag})")
-                ax.plot(freqs, _fill_nans(-np.imag(crosscheck)),
-                        color=self.config.loss_color, linewidth=1.4,
-                        linestyle=":", alpha=0.85, zorder=2,
-                        label=rf"$\varepsilon_r''$ ({cc_tag})")
+                plot_with_gaps(ax, freqs, cc_real,
+                               color=self.config.real_color, linewidth=1.4,
+                               linestyle=":", alpha=0.85, zorder=2,
+                               label=rf"$\varepsilon_r'$ ({cc_tag})")
+                plot_with_gaps(ax, freqs, cc_loss,
+                               color=self.config.loss_color, linewidth=1.4,
+                               linestyle=":", alpha=0.85, zorder=2,
+                               label=rf"$\varepsilon_r''$ ({cc_tag})")
 
             ax.legend(loc="upper right")
 

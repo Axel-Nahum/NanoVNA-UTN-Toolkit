@@ -390,7 +390,8 @@ class PermittivityProbeCalibration:
 
         The full technique already measured everything the simplified formula
         needs (open/short/ref1), so the seed comes for free. Best-effort: on
-        any failure the solver falls back to its own seeding, unchanged.
+        any failure the solver falls back to its own Gn -> 0 estimate
+        (-third_term) to pick the root.
         """
         try:
             simplified = solve_epsilon_simplified(
@@ -406,7 +407,7 @@ class PermittivityProbeCalibration:
         except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "[PermittivityProbeCalibration] simplified seed unavailable (%s); "
-                "falling back to unseeded tracking", exc
+                "falling back to the solver's own Gn -> 0 estimate", exc
             )
             return None
 

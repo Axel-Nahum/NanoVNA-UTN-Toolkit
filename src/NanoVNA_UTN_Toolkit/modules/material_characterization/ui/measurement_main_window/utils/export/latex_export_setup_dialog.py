@@ -319,6 +319,9 @@ class PermittivityLatexSetupDialog(QDialog):
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.pdf_preview_dialog import (
             PermittivityPdfPreviewDialog,
         )
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
+            nonpassive_mask_of,
+        )
 
         preview = PermittivityPdfPreviewDialog(
             parent=main_window,
@@ -331,6 +334,7 @@ class PermittivityLatexSetupDialog(QDialog):
             include_steps=self.include_steps_chk.isChecked(),
             include_notes=self.include_notes_chk.isChecked(),
             include_tables=self.include_tables_chk.isChecked(),
+            nonpassive_mask=nonpassive_mask_of(result),
         )
         _geom = self.geometry()
         self.hide()
