@@ -1174,7 +1174,7 @@ class MeasurementMainWindow(QMainWindow):
         legend_text = "  " + t.get("legend_no_data", "— : No data (NaN)")
         if flagged.any():
             legend_text += "     " + t.get(
-                "legend_flagged", "† : non-physical (ε″ < 0 or ε′ ≤ 0), kept and flagged")
+                "legend_flagged", "† : non-physical (ε″ < 0 or ε′ < 1), kept and flagged")
         legend_lbl = QLabel(legend_text)
         legend_lbl.setStyleSheet(
             f"font-size: 10px; color: {legend_color}; border: none;"

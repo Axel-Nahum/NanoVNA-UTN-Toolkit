@@ -67,8 +67,8 @@ def nonpassive_mask_of(result) -> Optional[np.ndarray]:
     """
     The solver's non-physical flag (bool per frequency), or None.
 
-    The full solver flags eps'' < 0; the simplified one eps'' < 0 or
-    eps' <= 0. User-facing texts word it so it holds for both.
+    Both solvers flag eps'' < 0 (non-passive) or eps' < 1 (below vacuum);
+    user-facing texts say so.
 
     Read with ``getattr`` so results without the field keep working. A mask
     whose shape does not match ``eps_selected`` is ignored (logged), never

@@ -38,8 +38,7 @@ def _nonpassive_note(result) -> list[str]:
     """Header line counting the flagged non-physical points kept in the file.
 
     The writer's column legend says eps'' >= 0; points the solver flags carry
-    eps'' < 0 (full and simplified methods) or eps' <= 0 (simplified only)
-    and are written as such, so say so.
+    eps'' < 0 or eps' < 1 (below vacuum) and are written as such, so say so.
     """
     mask = nonpassive_mask_of(result)
     if mask is None:
@@ -48,8 +47,8 @@ def _nonpassive_note(result) -> list[str]:
     n_flag = int(np.count_nonzero(mask & np.isfinite(eps)))
     if n_flag == 0:
         return []
-    return [f"{n_flag} non-physical point(s) (eps'' < 0 or eps' <= 0) kept and flagged / "
-            f"{n_flag} punto(s) no fisico(s) (eps'' < 0 o eps' <= 0) conservados y marcados"]
+    return [f"{n_flag} non-physical point(s) (eps'' < 0 or eps' < 1) kept and flagged / "
+            f"{n_flag} punto(s) no fisico(s) (eps'' < 0 o eps' < 1) conservados y marcados"]
 
 
 def _quality_notes(result) -> list[str]:

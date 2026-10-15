@@ -393,8 +393,7 @@ def _build_summary(wizard, layout, result, rtexts):
             "Sample: {sample}\nMedian ε′ = {er_real:.2f}\nMedian loss tangent = {tand:.3f}",
         ).format(sample=sample, er_real=re_median, tand=tand)
 
-        # Full solver flags eps'' < 0; simplified flags eps'' < 0 or eps' <= 0:
-        # the wording covers both.
+        # Both solvers flag eps'' < 0 or eps' < 1 (below vacuum).
         mask = nonpassive_mask_of(result)
         n_flagged = (int(np.count_nonzero(mask & np.isfinite(eps_real)))
                      if mask is not None else 0)
@@ -423,7 +422,7 @@ def _build_summary(wizard, layout, result, rtexts):
         # Own, smaller line: it must fit in one row of the narrow column.
         flag_lbl = QLabel(rtexts.get(
             "summary_nonpassive",
-            "Non-physical (ε″ < 0 or ε′ ≤ 0): {n} of {total}, flagged",
+            "Non-physical (ε″ < 0 or ε′ < 1): {n} of {total}, flagged",
         ).format(n=n_flagged, total=eps_real.size))
         flag_lbl.setWordWrap(True)
         flag_lbl.setStyleSheet("font-size: 12px;")
@@ -938,7 +937,7 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
         "criterion_text",
         "Principal-branch roots, Re(√ε) > 0  ·  Anchor: smallest-|Gn| point"
         " unambiguously matched to the simplified curve  ·  then continuity in"
-        " frequency  ·  ε″ < 0 kept and flagged  ·  Gaps: indistinguishable"
+        " frequency  ·  ε″ < 0 or ε′ < 1 kept and flagged  ·  Gaps: indistinguishable"
         " references, no valid root, ε′ ≤ 0 or ambiguous step",
     )
     crit_tip = rtexts.get(
@@ -952,8 +951,8 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
         " used instead"
         "  ·  From the anchor the sweep is followed in frequency, each point taking"
         " the root closest to the last selected one"
-        "  ·  Points with ε″ < 0 (non-passive, attributable to noise) are kept and"
-        " flagged, not discarded"
+        "  ·  Points with ε″ < 0 (non-passive, attributable to noise) or 0 < ε′ < 1"
+        " (below vacuum, a measurement error) are kept and flagged, not discarded"
         "  ·  Gaps: reference liquids indistinguishable (|S₁₁ʳ¹ − S₁₁ʳ²| < 0.01),"
         " no principal-branch root, a selected root with ε′ ≤ 0, or no root singled"
         " out by either continuity or the estimate",

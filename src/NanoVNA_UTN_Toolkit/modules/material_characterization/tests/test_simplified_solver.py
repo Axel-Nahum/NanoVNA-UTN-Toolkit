@@ -101,6 +101,23 @@ def test_synthetic_recovery_with_nonwater_reference():
     assert res.ref_liquid_key == "ipa"
 
 
+def test_non_physical_points_are_flagged_not_altered():
+    """eps' < 1 (below vacuum) or eps'' < 0 is flagged; the values are returned
+    as computed. eps' just above vacuum (1.05) is not flagged."""
+    f = np.linspace(100e6, 1.5e9, 5)
+    temp_c = 25.0
+    a, b, c, d = 0.7 - 0.2j, 1.3 + 0.4j, 0.05 + 0.01j, 1.0 - 0.3j
+    water, _, s11_open, s11_short, s11_ref = _synthetic_standards(f, temp_c, a, b, c, d)
+
+    eps_true = np.array([2.0 - 0.1j, 0.7 - 0.2j, 1.05 - 0.1j, 3.0 + 0.2j, -0.5 - 0.1j])
+    res = solve_epsilon_simplified(f, _moebius(eps_true, a, b, c, d), s11_open,
+                                   s11_short, s11_ref, water, temp_c)
+
+    np.testing.assert_allclose(res.eps, eps_true, rtol=1e-9)
+    np.testing.assert_array_equal(res.nonpassive_mask, [False, True, False, True, True])
+    assert any("ε′ < 1 or ε″ < 0" in w for w in res.warnings)
+
+
 def test_golden_ethanol_2026_probe21():
     """
     Real data: 2026 R60 probe-21mm sweeps (tests/data), ethanol as the unknown.

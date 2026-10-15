@@ -259,6 +259,28 @@ def test_nanovna_probe3_cyclohexane_raw_no_spurious_roots():
     assert res.nonpassive_mask[band].any()            # noise is flagged, not hidden
 
 
+def test_nanovna_probe3_cyclohexane_below_vacuum_edge_is_flagged():
+    """Same set: at the 1.5 GHz edge eps' drops to 0.99 and 0.73 (1485, 1500 MHz)
+    with eps'' > 0, impossible for a liquid. They are kept and flagged (eps' < 1),
+    like eps'' < 0, and get their own warning naming the lowest point."""
+    cal = _calibration("nanovna_probe3_2026", 20.0)
+    f, s11 = _load_fixture("cyclohexane_nanovna_probe3_2026")
+    res = cal.compute_epsilon(f, s11)
+    eps = res.eps_selected
+
+    edge = np.isin(f, [1485e6, 1500e6])
+    assert edge.sum() == 2
+    assert np.all((np.real(eps[edge]) > 0.0) & (np.real(eps[edge]) < 1.0))
+    assert np.all(np.imag(eps[edge]) < 0.0)           # passive: only eps' flags them
+    assert res.nonpassive_mask[edge].all()
+
+    finite = np.isfinite(eps)
+    expected = finite & ((np.imag(eps) > 1e-6) | (np.real(eps) < 1.0))
+    np.testing.assert_array_equal(res.nonpassive_mask, expected)
+    below = [w for w in res.warnings if "ε′ < 1" in w]
+    assert len(below) == 1 and below[0].startswith("2 ") and "1500 MHz" in below[0], below
+
+
 def test_nanovna_probe3_acetone_raw_stays_on_physical_branch():
     """Same set, acetone (eps' ~21, nearly flat below 1.5 GHz). Before the fix
     the 1.26-1.5 GHz tail had gaps and radiation-root spikes (1.29-1.34 GHz)."""

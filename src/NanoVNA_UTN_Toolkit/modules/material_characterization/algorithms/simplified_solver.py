@@ -69,6 +69,9 @@ _DENOM_FLOOR = 1e-12
 # formula has no branches to choose from). Small positive Im(eps) can appear
 # from measurement noise on nearly lossless points.
 _IM_TOL = 1e-6
+# No liquid has eps' below vacuum (Debye: eps' >= eps_inf >= 1): a value under
+# it is flagged in the same QUALITY mask. Same threshold as permittivity_solver.
+_EPS_REAL_MIN_PHYSICAL = 1.0
 
 
 @dataclass
@@ -92,9 +95,9 @@ class SimplifiedEpsilonResult:
     gap_mask : np.ndarray
         Bool (n_freq,); True where a denominator collapsed and eps is NaN.
     nonpassive_mask : np.ndarray
-        Bool (n_freq,); True where the result violates passivity
-        (Re(eps) <= 0 or Im(eps) > tolerance). Quality flag only -- the values
-        are still returned.
+        Bool (n_freq,); True where the result is non-physical: Re(eps) < 1
+        (eps' below vacuum) or Im(eps) > tolerance (eps'' < 0). Quality flag
+        only -- the values are still returned.
     ref_liquid_key : str
         Key of the reference liquid used.
     temperature_c : float
@@ -192,16 +195,16 @@ def solve_epsilon_simplified(
         warnings.append(msg)
         logger.warning("[simplified_solver] %s", msg)
 
-    # Passivity QUALITY check (never alters the values: there is no branch to
-    # pick -- a violation means noisy data or the capacitive model breaking).
+    # Physical-range QUALITY check (never alters the values: there is no branch
+    # to pick -- a violation means noisy data or the capacitive model breaking).
     with np.errstate(invalid="ignore"):
         nonpassive_mask = (~gap_mask) & (
-            (np.real(eps) <= 0.0) | (np.imag(eps) > im_tol)
+            (np.real(eps) < _EPS_REAL_MIN_PHYSICAL) | (np.imag(eps) > im_tol)
         )
     if np.any(nonpassive_mask):
         n_bad = int(np.count_nonzero(nonpassive_mask))
         msg = (
-            f"{n_bad} frequency point(s) violate passivity (Re<=0 or Im>0): "
+            f"{n_bad} frequency point(s) are non-physical (ε′ < 1 or ε″ < 0): "
             f"noisy standards or the capacitive (Gn=0) model degrading. "
             f"Consider the full two-liquid method for those frequencies."
         )

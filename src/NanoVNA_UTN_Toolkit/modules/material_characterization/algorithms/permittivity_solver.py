@@ -82,6 +82,10 @@ _ANCHOR_NEIGHBOURS = 2
 # glitch (same 3x rule as the |Gn| quality chart): the root found there keeps
 # its value but does not steer the march. Real 2026 sets stay within 1.8x.
 _GN_OUTLIER_FACTOR = 3.0
+# No liquid has eps' below vacuum (Debye: eps' >= eps_inf >= 1). A selected
+# root under it is a measurement error (e.g. the band edge) and is flagged in
+# ``nonpassive_mask``; same threshold as ``simplified_solver``.
+_EPS_REAL_MIN_PHYSICAL = 1.0
 # Gap causes per frequency (0 = a root was selected).
 _GAP_ILL = 1          # reference liquids nearly indistinguishable
 _GAP_NO_ROOT = 2      # no principal-branch root at all
@@ -120,12 +124,12 @@ class EpsilonResult:
         Bool (n_freq,) marking frequencies without a selected root (causes in
         ``solve_epsilon_r``; each one is counted in its own warning).
     nonpassive_mask : np.ndarray
-        Bool (n_freq,); True where the selected root has Im(eps) > im_tol,
-        i.e. eps'' < 0. Quality flag only -- the value is kept. Re(eps) is not
-        part of it: a root with Re(eps) <= re_min is never selected here (the
-        point is a gap). ``SimplifiedEpsilonResult.nonpassive_mask`` differs:
-        its closed formula has no such gap, so it flags
-        (Re(eps) <= 0) | (Im(eps) > im_tol) on the values it returns.
+        Bool (n_freq,); True where the selected root is non-physical:
+        Im(eps) > im_tol (eps'' < 0, non-passive) or Re(eps) < 1 (eps' below
+        vacuum). Quality flag only -- the value is kept. A root with
+        Re(eps) <= re_min is never selected here (the point is a gap), so only
+        re_min < eps' < 1 reaches the flag. ``SimplifiedEpsilonResult`` flags
+        the same two conditions on the values it returns.
     gn : np.ndarray
         Complex (n_freq,) normalized conductance used per frequency (the x^5
         coefficient of the degree-5 polynomial).
@@ -452,7 +456,11 @@ def solve_epsilon_r(
         physical root of a near-lossless liquid (cyclohexane, acetone) with
         eps'' < 0 at many points; discarding it handed those points to a
         radiation root (|eps| in the hundreds) or to a gap. Such points are
-        kept, marked in ``nonpassive_mask`` and counted in a warning.
+        kept, marked in ``nonpassive_mask`` and counted in a warning. So are
+        points kept with 0 < eps' < 1, below vacuum and impossible for a
+        liquid (seen at the 1.5 GHz edge of a NanoVNA sweep), in their own
+        warning: they are flagged, not turned into gaps, so the selection is
+        the same with or without the flag.
 
     ES: Arma el polinomio de grado 5 por frecuencia y conserva sus raices que
         resuelven la ec. 16: rama principal, Re(sqrt(eps)) > 0 (ver el
@@ -503,7 +511,11 @@ def solve_epsilon_r(
         (ciclohexano, acetona) con eps'' < 0 en muchos puntos; descartarla
         dejaba esos puntos en una raiz de radiacion (|eps| de cientos) o en un
         gap. Esos puntos se conservan, se marcan en ``nonpassive_mask`` y se
-        cuentan en un warning.
+        cuentan en un warning. Lo mismo los puntos que quedan con
+        0 < eps' < 1, por debajo del vacio e imposibles en un liquido (se ven
+        en el borde de 1.5 GHz de un barrido del NanoVNA), con su propio
+        warning: se marcan, no pasan a ser gaps, asi que la seleccion es la
+        misma con o sin la marca.
 
     Parameters
     ----------
@@ -600,7 +612,9 @@ def solve_epsilon_r(
     gap_mask = ~selected
 
     with np.errstate(invalid="ignore"):
-        nonpassive_mask = selected & (np.imag(eps_selected) > im_tol)
+        gain_mask = selected & (np.imag(eps_selected) > im_tol)
+        below_vacuum_mask = selected & (np.real(eps_selected) < _EPS_REAL_MIN_PHYSICAL)
+    nonpassive_mask = gain_mask | below_vacuum_mask
 
     # --- Warnings ----------------------------------------------------------- #
 
@@ -652,14 +666,27 @@ def solve_epsilon_r(
         warnings.append(msg)
         logger.warning("[permittivity_solver] %s", msg)
 
-    n_nonpassive = int(np.count_nonzero(nonpassive_mask))
-    if n_nonpassive > 0:
-        worst = float(np.max(np.imag(eps_selected[nonpassive_mask])))
+    n_gain = int(np.count_nonzero(gain_mask))
+    if n_gain > 0:
+        worst = float(np.max(np.imag(eps_selected[gain_mask])))
         msg = (
-            f"{n_nonpassive} frequency point(s) with ε″ < 0 (non-passive, worst "
+            f"{n_gain} frequency point(s) with ε″ < 0 (non-passive, worst "
             f"ε″ = {-worst:.3f}), attributable to measurement noise on a "
             f"near-lossless liquid. Values kept and flagged, not replaced by "
             f"another root."
+        )
+        warnings.append(msg)
+        logger.warning("[permittivity_solver] %s", msg)
+
+    n_below_vacuum = int(np.count_nonzero(below_vacuum_mask))
+    if n_below_vacuum > 0:
+        lowest = int(np.flatnonzero(below_vacuum_mask)[
+            np.argmin(np.real(eps_selected[below_vacuum_mask]))])
+        msg = (
+            f"{n_below_vacuum} frequency point(s) with ε′ < 1, below vacuum and "
+            f"impossible for a liquid (lowest ε′ = {np.real(eps_selected[lowest]):.3f} "
+            f"at {_fmt_mhz(pc.f_hz[lowest])}): a measurement error, typically at "
+            f"the edge of the sweep. Values kept and flagged."
         )
         warnings.append(msg)
         logger.warning("[permittivity_solver] %s", msg)

@@ -446,10 +446,10 @@ def _quality_note_tex(eps_real: np.ndarray, flagged: np.ndarray, with_table: boo
                  if with_table else "left blank in the plot")
         parts.append(f"Points without a solution: {n_gap} of {n_total} ({where}).")
     if n_flag:
-        # Full solver flags eps'' < 0, simplified also eps' <= 0: cover both.
+        # Both solvers flag eps'' < 0 or eps' < 1 (below vacuum).
         mark = rf" and marked {_TEX_NONPASSIVE} in the table" if with_table else ""
         parts.append(
-            rf"Non-physical points ($\varepsilon_r'' < 0$ or $\varepsilon_r' \le 0$): "
+            rf"Non-physical points ($\varepsilon_r'' < 0$ or $\varepsilon_r' < 1$): "
             rf"{n_flag} of {n_total}, kept{mark}, not discarded."
         )
     if not parts:
@@ -596,7 +596,7 @@ class PermittivityExporter:
         Blocking and Qt-free, so it can be handed to a worker thread. Raises on
         failure instead of showing a dialog. ``nonpassive_mask`` (optional,
         bool per frequency) is the solver's flag for non-physical points
-        (eps'' < 0, or eps' <= 0 in the simplified method).
+        (eps'' < 0 or eps' < 1).
         """
         self._create_latex_document(
             freqs=freqs,

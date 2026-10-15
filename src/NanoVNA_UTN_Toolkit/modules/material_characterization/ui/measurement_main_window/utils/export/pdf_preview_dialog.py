@@ -207,7 +207,7 @@ class PermittivityPdfPreviewDialog(QDialog):
       Step 2: S11 Smith chart       (1 marker)
 
     ``nonpassive_mask`` (optional, bool per frequency) is the solver's flag
-    for non-physical points (ε'' < 0, or ε' <= 0 in the simplified method);
+    for non-physical points (ε'' < 0 or ε' < 1);
     it only annotates the report (quality note and
     a dagger in the table), the plotted values are not changed.
 
