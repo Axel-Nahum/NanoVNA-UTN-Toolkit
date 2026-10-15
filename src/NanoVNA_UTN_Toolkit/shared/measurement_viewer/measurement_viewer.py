@@ -7,7 +7,6 @@ from __future__ import annotations
 import logging
 import os as _os
 import tempfile as _tmp
-import time as _time
 from pathlib import Path
 
 import numpy as np
@@ -177,8 +176,8 @@ class MeasurementViewerWindow(QMainWindow):
         self._cursor_lines    = {(1,0): [], (1,1): [], (2,0): [], (2,1): []}
         self._cursor_markers  = {(1,0): [], (1,1): [], (2,0): [], (2,1): []}
         self._cursor_dragging = None   # (n, row) tuple or None
-        self._cursors_linked  = True   # True = top/bottom of same cursor move together
-        self._last_motion_draw = 0.0   # monotonic time of last canvas update during drag
+        self._cursors_linked  = True   # True = rows of same cursor move together
+        self._blit_bg         = None   # saved background for fast cursor blitting
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -826,6 +825,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._canvas.mpl_connect("button_press_event",   self._on_canvas_press)
         self._canvas.mpl_connect("motion_notify_event",  self._on_canvas_motion)
         self._canvas.mpl_connect("button_release_event", self._on_canvas_release)
+        self._canvas.mpl_connect("resize_event",         self._on_canvas_resize)
 
         self._reset_axes()
         return right
@@ -1183,8 +1183,10 @@ class MeasurementViewerWindow(QMainWindow):
             self._fig.tight_layout(pad=1.4, h_pad=2.0, w_pad=2.0)
         except Exception:
             pass
+        self._canvas.draw()
+        self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
         self._draw_cursors()
-        self._canvas.draw_idle()
+        self._blit_cursors()
 
     def _redraw(self, entries: list[_FileEntry]):
         flat = self._flat_axes()
@@ -1331,8 +1333,10 @@ class MeasurementViewerWindow(QMainWindow):
             self._fig.tight_layout(pad=1.4, h_pad=2.0, w_pad=2.0)
         except Exception:
             pass
+        self._canvas.draw()
+        self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
         self._draw_cursors()
-        self._canvas.draw_idle()
+        self._blit_cursors()
         self._update_cursor_readout()
         self._update_cursor_buttons()
 
@@ -1483,8 +1487,6 @@ class MeasurementViewerWindow(QMainWindow):
                 val.setText("—")
 
     def _update_linked_buttons(self):
-        # In 4-chart mode columns always move independently — linked has no effect
-        is_4chart = self._layout_mode == 4
         linked = self._cursors_linked
         on  = (f"QPushButton {{ font-size:11px; font-weight:600; border:none;"
                f" background:{_ACCENT}; color:#ffffff; border-radius:5px; }}"
@@ -1492,17 +1494,10 @@ class MeasurementViewerWindow(QMainWindow):
         off = (f"QPushButton {{ font-size:11px; border:1px solid {_BORDER};"
                f" background:transparent; color:{_TEXT2}; border-radius:5px; }}"
                f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}")
-        dis = (f"QPushButton {{ font-size:11px; border:1px solid {_BORDER};"
-               f" background:transparent; color:#44445a; border-radius:5px; }}")
-        self._btn_linked.setEnabled(not is_4chart)
-        self._btn_linked.setCursor(
-            Qt.CursorShape.ForbiddenCursor if is_4chart else Qt.CursorShape.PointingHandCursor)
-        if is_4chart:
-            self._btn_linked.setText("—")
-            self._btn_linked.setStyleSheet(dis)
-        else:
-            self._btn_linked.setText("ON" if linked else "OFF")
-            self._btn_linked.setStyleSheet(on if linked else off)
+        self._btn_linked.setEnabled(True)
+        self._btn_linked.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_linked.setText("ON" if linked else "OFF")
+        self._btn_linked.setStyleSheet(on if linked else off)
 
     def _toggle_cursors_linked(self):
         self._cursors_linked = not self._cursors_linked
@@ -1518,6 +1513,22 @@ class MeasurementViewerWindow(QMainWindow):
         all_axes = self._flat_axes()
         mid = max(len(all_axes) // 2, 1)
         return all_axes[:mid] if row == 0 else all_axes[mid:]
+
+    def _blit_cursors(self):
+        """Fast cursor repaint using saved background — no full figure redraw."""
+        if self._blit_bg is None:
+            self._canvas.draw_idle()
+            return
+        self._canvas.restore_region(self._blit_bg)
+        for key in self._cursor_lines:
+            for ln in self._cursor_lines[key]:
+                try: ln.axes.draw_artist(ln)
+                except Exception: pass
+        for key in self._cursor_markers:
+            for dot, _, _ in self._cursor_markers[key]:
+                try: dot.axes.draw_artist(dot)
+                except Exception: pass
+        self._canvas.blit(self._fig.bbox)
 
     def _draw_cursors(self):
         # Remove old artists
@@ -1543,7 +1554,8 @@ class MeasurementViewerWindow(QMainWindow):
                 for ax in self._row_axes(row):
                     ax_idx = all_axes.index(ax)
                     vline = ax.axvline(x, color=color, linewidth=1.2,
-                                       linestyle="--", alpha=0.9, zorder=5)
+                                       linestyle="--", alpha=0.9, zorder=5,
+                                       animated=True)
                     self._cursor_lines[(n, row)].append(vline)
                     for data_line in ax.get_lines():
                         if data_line is vline:
@@ -1555,7 +1567,8 @@ class MeasurementViewerWindow(QMainWindow):
                         yi = float(np.interp(x, xd, yd))
                         dot, = ax.plot([x], [yi], "o",
                                        markerfacecolor=color, markeredgecolor=color,
-                                       markersize=8, zorder=7, markeredgewidth=0)
+                                       markersize=8, zorder=7, markeredgewidth=0,
+                                       animated=True)
                         self._cursor_markers[(n, row)].append((dot, data_line, ax_idx))
 
     def _on_canvas_press(self, event):
@@ -1586,7 +1599,7 @@ class MeasurementViewerWindow(QMainWindow):
         for n in (1, 2):
             if self._cursor_enabled[n] and self._cursor_freq[n][row] is None:
                 self._cursor_freq[n][row] = xdata * self._freq_div
-                if self._cursors_linked and self._layout_mode != 4:
+                if self._cursors_linked:
                     self._cursor_freq[n][1 - row] = self._cursor_freq[n][row]
                 self._cursor_dragging = (n, row)
                 self._draw_cursors()
@@ -1611,9 +1624,9 @@ class MeasurementViewerWindow(QMainWindow):
         n, row = self._cursor_dragging
         self._cursor_freq[n][row] = x * self._freq_div
 
-        # Linked: sync the other slot (2-chart only — 4-chart columns always independent)
+        # Linked: sync the other row of the same cursor
         keys_to_move = [(n, row)]
-        if self._cursors_linked and self._layout_mode != 4:
+        if self._cursors_linked:
             other_row = 1 - row
             self._cursor_freq[n][other_row] = self._cursor_freq[n][row]
             keys_to_move.append((n, other_row))
@@ -1630,16 +1643,14 @@ class MeasurementViewerWindow(QMainWindow):
                     dot.set_visible(True)
                 else:
                     dot.set_visible(False)
-        # Throttle to ~60 fps — skip canvas flush if last draw was <16 ms ago
-        now = _time.monotonic()
-        if now - self._last_motion_draw >= 0.016:
-            self._last_motion_draw = now
-            self._canvas.draw_idle()
+        self._blit_cursors()
 
     def _on_canvas_release(self, event):
         self._cursor_dragging = None
         self._update_cursor_readout()
-        self._canvas.draw_idle()
+
+    def _on_canvas_resize(self, event):
+        self._blit_bg = None   # invalidate — will be rebuilt on next _redraw
 
     def showEvent(self, event):
         super().showEvent(event)
