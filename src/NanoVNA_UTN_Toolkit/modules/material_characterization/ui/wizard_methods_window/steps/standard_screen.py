@@ -43,7 +43,7 @@ from PySide6.QtGui import QCursor, QPixmap
 from PySide6.QtWidgets import (
     QButtonGroup, QCheckBox, QComboBox, QDialog, QFileDialog, QFrame,
     QHBoxLayout, QInputDialog, QLabel, QMessageBox, QPushButton, QRadioButton,
-    QSizePolicy, QToolTip, QVBoxLayout, QWidget,
+    QScrollArea, QSizePolicy, QToolTip, QVBoxLayout, QWidget,
 )
 
 from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_enabled
@@ -808,18 +808,74 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     if already:
         _stored_now = wizard.perm_calibration.get_measurement(standard.key)
-        _status_text, _status_color = _stored_status(
-            wizard, std_texts, name, _stored_now[0], _stored_now[1])
     else:
-        _status_text = std_texts.get("status_ready", "Ready to measure")
-        _status_color = "gray"
-    wizard.status_label = QLabel(_status_text)
+        _stored_now = None
+    wizard.status_label = QLabel(
+        "" if already else std_texts.get("status_ready", "Ready to measure")
+    )
     wizard.status_label.setAlignment(Qt.AlignCenter)
     wizard.status_label.setWordWrap(True)
     wizard.status_label.setStyleSheet(
-        f"font-size: 12px; padding: 4px; color: {_status_color};"
+        "font-size: 12px; padding: 4px; color: gray;"
     )
     mid.addWidget(wizard.status_label)
+
+    # Pre-created warning button — hidden until quality notes exist.
+    # The popup is wired here (main thread) so _apply_stored_status only
+    # needs setText/setVisible — no new QObjects from a callback thread.
+    wizard._warning_notes = []
+    wizard._warning_btn = QPushButton("")
+    wizard._warning_btn.setStyleSheet(
+        "QPushButton { background: transparent; color: #b8860b; border: none;"
+        " font-size: 12px; padding: 2px 0px; }"
+        "QPushButton:hover { color: #7a5800; text-decoration: underline; }"
+    )
+    wizard._warning_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    wizard._warning_btn.setVisible(False)
+    mid.addWidget(wizard._warning_btn, alignment=Qt.AlignCenter)
+
+    def _show_warning_popup():
+        notes = getattr(wizard, "_warning_notes", [])
+        if not notes:
+            return
+        dlg = QDialog(None, Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
+        dlg.setStyleSheet(
+            "QDialog { background: #fffbf0; border: 1px solid #e8c84a; border-radius: 6px; }"
+        )
+        v = QVBoxLayout(dlg)
+        v.setContentsMargins(12, 10, 12, 10)
+        v.setSpacing(4)
+        hdr = QLabel(std_texts.get("warnings_title", "Quality notes:"))
+        hdr.setStyleSheet("font-weight: bold; color: #b8860b; font-size: 12px;")
+        v.addWidget(hdr)
+        body = QWidget()
+        body.setStyleSheet("background: transparent;")
+        body_v = QVBoxLayout(body)
+        body_v.setContentsMargins(0, 0, 4, 0)
+        body_v.setSpacing(6)
+        for note in notes:
+            item = QLabel(f"• {note}")
+            item.setWordWrap(True)
+            item.setStyleSheet("color: #7a5800; font-size: 11px;")
+            item.setFixedWidth(420)
+            body_v.addWidget(item)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; }")
+        scroll.setWidget(body)
+        body.adjustSize()
+        scroll.setFixedWidth(440)
+        scroll.setFixedHeight(min(420, body.sizeHint().height() + 4))
+        v.addWidget(scroll)
+        dlg.adjustSize()
+        dlg.move(wizard._warning_btn.mapToGlobal(wizard._warning_btn.rect().bottomLeft()))
+        dlg.exec()
+
+    wizard._warning_btn.clicked.connect(_show_warning_popup)
+
+    if already:
+        _apply_stored_status(wizard, std_texts, name, _stored_now[0], _stored_now[1])
 
     if is_reference or is_short or is_open or is_dut:
         _lbl_ready     = std_texts.get("status_ready",        "Ready to measure")
@@ -1177,6 +1233,54 @@ def _stored_status(wizard, std_texts, name, freqs, s11):
     return text, "lightgreen"
 
 
+def _sweep_notes_brief(wizard, freqs, s11) -> list:
+    """One-liner summaries of sweep quality issues (for compact inline display)."""
+    freqs = np.asarray(freqs, dtype=float)
+    s11 = np.asarray(s11, dtype=complex)
+    mag = np.abs(s11)
+    notes = []
+    with np.errstate(invalid="ignore"):
+        over = mag > 1.0 + S11_PASSIVE_TOL
+    if np.any(over):
+        i_peak = int(np.nanargmax(mag))
+        notes.append(f"⚠ |S11| = {float(mag[i_peak]):.3f} at {_fmt_freq(freqs[i_peak])}")
+    if getattr(wizard.perm_calibration, "despike_enabled", True):
+        spikes = find_spikes(s11)
+        if spikes.size:
+            notes.append(f"⚠ {int(spikes.size)} spike(s) at {_fmt_freq(freqs[spikes[0]])}")
+    return notes
+
+
+def _apply_stored_status(wizard, std_texts, name, freqs, s11):
+    """Set the status label and warning button after a sweep is stored.
+
+    Quality notes are stored in wizard._warning_notes; the pre-created
+    warning button (wizard._warning_btn) is shown/hidden accordingly.
+    Only plain setText/setStyleSheet/setVisible calls — no new QObjects —
+    so this is safe to invoke from a QueuedConnection callback.
+    """
+    lbl = getattr(wizard, "status_label", None)
+    full_notes = _sweep_notes(wizard, freqs, s11, std_texts)
+    success = _success_text(std_texts, name)
+
+    if lbl is not None:
+        lbl.setText(success)
+        lbl.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
+
+    btn = getattr(wizard, "_warning_btn", None)
+    if btn is None:
+        return
+
+    wizard._warning_notes = full_notes
+    if not full_notes:
+        btn.setVisible(False)
+        return
+
+    n = len(full_notes)
+    btn.setText(f"⚠  {n} quality note{'s' if n > 1 else ''}")
+    btn.setVisible(True)
+
+
 def _ask_s1p_matching_sweep(wizard, std_texts, dialog_title=None):
     """Prompt for a .s1p file and return (freqs, s11) validated against the sweep.
 
@@ -1353,7 +1457,7 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
         return
     freqs, s11 = _store_measurement(wizard, standard.key, imported[0], imported[1],
                                     source="imported")
-    set_status(wizard, *_stored_status(wizard, std_texts, name, freqs, s11))
+    _apply_stored_status(wizard, std_texts, name, freqs, s11)
     button.setText(std_texts.get("reimport_button", "Import again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11),
             state["show_indicative"], state.get("show_raw", False),
@@ -1589,7 +1693,7 @@ def _load_preset_into_step(wizard, standard, name, std_texts, preset_name):
         precal = None
     freqs, s11 = _store_measurement(wizard, standard.key, freqs, s11, source=f"preset:{preset_name}",
                                     temperature_c=meta.temperature_c, precal=precal)
-    set_status(wizard, *_stored_status(wizard, std_texts, name, freqs, s11))
+    _apply_stored_status(wizard, std_texts, name, freqs, s11)
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
     if callable(hook):
@@ -1804,7 +1908,7 @@ def _on_measure(wizard, standard, name, color, button, std_texts, state):
     def _success(freqs_raw, s11_raw):
         button.setEnabled(True)
         freqs, s11 = _store_measurement(wizard, standard.key, freqs_raw, s11_raw)
-        set_status(wizard, *_stored_status(wizard, std_texts, name, freqs, s11))
+        _apply_stored_status(wizard, std_texts, name, freqs, s11)
         button.setText(std_texts.get("remeasure_button", "Measure again"))
         _render(wizard, standard, name, color, std_texts, (freqs, s11),
                 state["show_indicative"], state.get("show_raw", False),
