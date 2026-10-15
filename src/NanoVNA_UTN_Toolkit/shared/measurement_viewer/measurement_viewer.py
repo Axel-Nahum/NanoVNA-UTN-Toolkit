@@ -34,17 +34,18 @@ _PALETTE = [
     "#cc5de8", "#ff922b", "#20c997", "#f06595",
 ]
 
-# ── Theme ─────────────────────────────────────────────────────────────────── #
-_WIN_BG   = "#0f1117"
-_PANEL_BG = "#141b24"
-_BORDER   = "#21262d"
-_CARD_BG  = "#141b24"
-_SPINE    = "#21262d"
-_ACCENT   = "#1f6feb"
-_TEXT     = "#e6edf3"
-_TEXT2    = "#8b949e"
-_GRID     = "#1a2230"
-_BG       = _CARD_BG   # matplotlib compat
+# ── Theme (matches app dark palette: blue-gray/slate) ─────────────────────── #
+_WIN_BG   = "#1e1e2e"
+_PANEL_BG = "#252538"
+_BORDER   = "#383850"
+_CARD_BG  = "#1e1e2e"
+_SPINE    = "#383850"
+_ACCENT   = "#2d5a8e"
+_ACCENT_H = "#3a6fa0"
+_TEXT     = "#ffffff"
+_TEXT2    = "#8888aa"
+_GRID     = "#2a2a3e"
+_BG       = _CARD_BG
 
 
 # ─────────────────────────────────────────────────────────────────────────── #
@@ -89,17 +90,17 @@ class MeasurementViewerWindow(QMainWindow):
     _SEG_ACTIVE = (
         f"QPushButton {{ font-size:11px; padding:3px 14px; border:none;"
         f" background:{_ACCENT}; color:#ffffff; border-radius:5px; }}"
-        f" QPushButton:hover {{ background:#2f7fef; }}"
+        f" QPushButton:hover {{ background:{_ACCENT_H}; }}"
     )
     _SEG_INACTIVE = (
-        "QPushButton { font-size:11px; padding:3px 14px; border:none;"
-        " background:transparent; color:#8b949e; border-radius:5px; }"
-        " QPushButton:hover { background:#1c2433; color:#c9d1d9; }"
+        f"QPushButton {{ font-size:11px; padding:3px 14px; border:none;"
+        f" background:transparent; color:{_TEXT2}; border-radius:5px; }}"
+        f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}"
     )
     _ACTION_BTN = (
         f"QPushButton {{ font-size:11px; padding:4px 14px; border-radius:6px;"
-        f" border:1px solid {_BORDER}; background:transparent; color:#c9d1d9; }}"
-        " QPushButton:hover { background:#1c2433; }"
+        f" border:1px solid {_BORDER}; background:transparent; color:{_TEXT2}; }}"
+        f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}"
     )
 
     def __init__(self, vna_device=None, source_module: str = "menu"):
@@ -197,8 +198,8 @@ class MeasurementViewerWindow(QMainWindow):
         bh = QHBoxLayout(brand)
         bh.setContentsMargins(0, 0, 0, 0)
         bh.setSpacing(10)
-        icon_lbl = QLabel("⌇")
-        icon_lbl.setStyleSheet("font-size:24px; color:#4da6ff; background:transparent;")
+        icon_lbl = QLabel("∿")
+        icon_lbl.setStyleSheet("font-size:22px; color:#7ab3f5; background:transparent;")
         bh.addWidget(icon_lbl)
         tcol = QWidget()
         tcol.setStyleSheet("background:transparent;")
@@ -264,7 +265,7 @@ class MeasurementViewerWindow(QMainWindow):
         gv.addWidget(lbl)
 
         pill = QWidget()
-        pill.setStyleSheet("QWidget { background:#1c2433; border-radius:7px; }")
+        pill.setStyleSheet(f"QWidget {{ background:{_BORDER}; border-radius:7px; }}")
         pl = QHBoxLayout(pill)
         pl.setContentsMargins(3, 3, 3, 3)
         pl.setSpacing(1)
@@ -308,8 +309,8 @@ class MeasurementViewerWindow(QMainWindow):
         add_files.setCursor(Qt.CursorShape.PointingHandCursor)
         add_files.setStyleSheet(
             f"QPushButton {{ font-size:11px; background:{_ACCENT}; color:white;"
-            " border:none; border-radius:5px; }}"
-            " QPushButton:hover { background:#2f7fef; }"
+            " border:none; border-radius:5px; }"
+            f" QPushButton:hover {{ background:{_ACCENT_H}; }}"
         )
         add_files.clicked.connect(self._add_files)
         brow.addWidget(add_files)
@@ -320,7 +321,7 @@ class MeasurementViewerWindow(QMainWindow):
         add_folder.setStyleSheet(
             f"QPushButton {{ font-size:11px; background:transparent; color:{_TEXT2};"
             f" border:1px solid {_BORDER}; border-radius:5px; }}"
-            " QPushButton:hover { background:#1c2433; color:#c9d1d9; }"
+            f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}"
         )
         add_folder.clicked.connect(self._browse_folder)
         brow.addWidget(add_folder)
@@ -331,7 +332,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._filter_edit.setPlaceholderText("Filter files…")
         self._filter_edit.setFixedHeight(30)
         self._filter_edit.setStyleSheet(
-            f"QLineEdit {{ background:#1c2433; color:{_TEXT}; border:1px solid {_BORDER};"
+            f"QLineEdit {{ background:{_PANEL_BG}; color:{_TEXT}; border:1px solid {_BORDER};"
             " border-radius:5px; padding:0 8px; font-size:11px; }"
             f" QLineEdit:focus {{ border-color:{_ACCENT}; }}"
         )
@@ -344,8 +345,8 @@ class MeasurementViewerWindow(QMainWindow):
             "QListWidget { background:transparent; border:none;"
             f" color:{_TEXT}; font-size:11px; outline:none; }}"
             f" QListWidget::item {{ padding:5px 4px; border-bottom:1px solid {_BORDER}; }}"
-            " QListWidget::item:selected { background:#1c2d40; color:#ffffff; }"
-            " QListWidget::item:hover { background:#1a2633; }"
+            f" QListWidget::item:selected {{ background:{_ACCENT}; color:#ffffff; }}"
+            f" QListWidget::item:hover {{ background:{_BORDER}; }}"
             " QScrollBar:vertical { width:5px; background:transparent; }"
             f" QScrollBar::handle:vertical {{ background:{_BORDER}; border-radius:2px; }}"
         )
@@ -654,7 +655,7 @@ class MeasurementViewerWindow(QMainWindow):
             for ax in flat:
                 if ax.get_lines():
                     ax.legend(fontsize=7, loc="best",
-                              facecolor="#1c2433", edgecolor=_BORDER,
+                              facecolor=_PANEL_BG, edgecolor=_BORDER,
                               labelcolor=_TEXT)
 
         self._canvas.draw_idle()
