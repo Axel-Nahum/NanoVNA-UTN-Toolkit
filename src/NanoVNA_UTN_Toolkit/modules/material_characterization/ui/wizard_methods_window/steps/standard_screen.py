@@ -140,6 +140,12 @@ def _remove_spikes(s11, threshold=2.5):
     return result
 
 
+def _raw_trace(wizard, std_key):
+    """Sweep of ``std_key`` before its pre-cal, or None when the step has none applied."""
+    cal = wizard.perm_calibration
+    return cal.get_raw_measurement(std_key) if cal.is_precal_applied(std_key) else None
+
+
 def _render_magnitude(ax, wizard, standard, name, color, std_texts,
                       measured, show_indicative, show_raw) -> None:
     """Render |S11| in dB vs frequency."""
@@ -187,7 +193,7 @@ def _render_magnitude(ax, wizard, standard, name, color, std_texts,
         labels.append(_short_legend_name(standard, name))
 
     if show_raw:
-        raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
+        raw_data = _raw_trace(wizard, standard.key)
         if raw_data is not None:
             _, s11_raw = raw_data
             s11_raw = np.asarray(s11_raw, dtype=complex)
@@ -255,7 +261,7 @@ def _render_phase(ax, wizard, standard, name, color, std_texts,
         labels.append(_short_legend_name(standard, name))
 
     if show_raw:
-        raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
+        raw_data = _raw_trace(wizard, standard.key)
         if raw_data is not None:
             _, s11_raw = raw_data
             s11_raw = np.asarray(s11_raw, dtype=complex)
@@ -324,7 +330,7 @@ def _render_real_imag(fig, wizard, standard, name, color, std_texts,
         labels.append(_short_legend_name(standard, name))
 
     if show_raw:
-        raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
+        raw_data = _raw_trace(wizard, standard.key)
         if raw_data is not None:
             _, s11_raw = raw_data
             s11_raw = np.asarray(s11_raw, dtype=complex)
@@ -399,7 +405,7 @@ def _render_db_phase(fig, wizard, standard, name, color, std_texts,
         labels.append(_short_legend_name(standard, name))
 
     if show_raw:
-        raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
+        raw_data = _raw_trace(wizard, standard.key)
         if raw_data is not None:
             _, s11_raw = raw_data
             s11_raw = np.asarray(s11_raw, dtype=complex)
@@ -462,6 +468,12 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_
     get_reference_liquid, indicative_s11,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import preset_store
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.precal import (
+    KIND_OPEN, KIND_SHORT, PrecalReference,
+)
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.permittivity_probe_calibration import (
+    KEEP_PRECAL,
+)
 from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.permittivity_touchstone import (
     implausible_s11_peak, is_permittivity_touchstone,
 )
@@ -493,14 +505,15 @@ def build_standard_screen(wizard, descriptor, step_def):
     # Clear any hook left over from a previous reference-liquid screen so that
     # non-reference steps (DUT) don't call into already-destroyed widgets.
     wizard._on_measurement_stored_hook = None
-    wizard._on_precal_applied_hook = None
+    wizard._on_precal_changed_hook = None
 
     standard = step_def.standard
     is_reference = standard.kind is StandardKind.REFERENCE_LIQUID
     is_short = standard.key == "short"
     is_open  = standard.key == "open"
     is_dut   = standard.key == "dut"
-    is_precalibrable = is_reference or standard.key in ("open", "short", "dut")
+    # The Open of step 1 is the reference state (c0) every pre-cal refers to.
+    is_precalibrable = is_reference or standard.key in ("short", "dut")
     total = len(descriptor.steps)
     name, instruction_html, is_rich = _resolve_strings(wizard, std_texts, liquids, standard)
     color = SMITH_COLOR_MAP.get(standard.key, "blue")
@@ -523,26 +536,27 @@ def build_standard_screen(wizard, descriptor, step_def):
     mid.setSpacing(0)
     mid.setContentsMargins(10, 8, 10, 6)
 
-    # ── Pre-calibrate bar — líquidos de referencia, short y DUT ─────────── #
+    # ── Pre-calibrate bar — Short, reference liquids and DUT ────────────── #
+    # Each step owns its pre-cal (calibration.precal): it refers THIS step to
+    # the Open of step 1 after the probe was handled; no other step changes.
     if is_precalibrable:
-        _blacklist = getattr(wizard, "_precal_blacklist", set())
-        _has_precal = (
-            standard.key not in _blacklist
-            and (
-                standard.key in getattr(wizard, "_precal_originals", {})
-                or standard.key in getattr(wizard, "_precal_open", {})
-                or "*" in getattr(wizard, "_precal_open", {})
-            )
-        )
-
         precal_row = QHBoxLayout()
         precal_row.setContentsMargins(0, 0, 0, 0)
         precal_row.setSpacing(8)
-        precal_hint = QLabel(std_texts.get(
-            "pre_calibrate_hint",
-            "Normalización con OPEN — corrige cable y conectores"
-        ))
-        precal_hint.setStyleSheet("font-size: 11px; color: #606080; font-style: italic;")
+        # Standards from a kit were measured in another session: the probe was
+        # certainly handled since, so the DUT step asks for a pre-cal.
+        _from_kit = is_dut and (wizard.perm_calibration.get_source("open") or "").startswith("kit:")
+        precal_hint = QLabel(
+            std_texts.get("pre_calibrate_hint_kit",
+                          "Calibración de un kit: si la sonda se manipuló desde entonces, "
+                          "pre-calibrá antes de medir")
+            if _from_kit else
+            std_texts.get("pre_calibrate_hint",
+                          "¿Manipulaste la sonda antes de este paso? Pre-calibrá para corregirlo"))
+        precal_hint.setWordWrap(True)
+        precal_hint.setStyleSheet(
+            "font-size: 11px; font-style: italic; color: "
+            + ("#ffaa44;" if _from_kit else "#606080;"))
         precal_row.addWidget(precal_hint, stretch=1)
 
         _precal_ss_inactive = (
@@ -555,18 +569,8 @@ def build_standard_screen(wizard, descriptor, step_def):
             " border-radius: 4px; padding: 0 10px; }"
             " QPushButton:hover { background: #2a1a00; }"
         )
-        _precal_kind = getattr(wizard, "_precal_type", {}).get(standard.key, "open")
-        if _has_precal:
-            _precal_btn_label = (
-                std_texts.get("recalibrate_short", "⚙  Recalibrar (SHORT)")
-                if _precal_kind == "short"
-                else std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)")
-            )
-        else:
-            _precal_btn_label = std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)")
-        btn_precal = QPushButton(_precal_btn_label)
+        btn_precal = QPushButton()
         btn_precal.setFixedHeight(24)
-        btn_precal.setStyleSheet(_precal_ss_active if _has_precal else _precal_ss_inactive)
         precal_row.addWidget(btn_precal)
 
         btn_delete_precal_top = QPushButton(std_texts.get("delete_precal", "✕ Quitar pre-cal"))
@@ -577,52 +581,59 @@ def build_standard_screen(wizard, descriptor, step_def):
             " QPushButton:hover { background: #3a1a1a; }"
         )
         precal_row.addWidget(btn_delete_precal_top)
-        if not _has_precal:
-            btn_delete_precal_top.hide()
 
-        def _on_precal_clicked():
-            _open_precal_dialog(wizard, standard, name, color, std_texts, state,
-                                btn_delete_precal_top, btn_precal)
+        def _refresh_precal_bar():
+            precal = wizard.perm_calibration.step_precal(standard.key)
+            if precal is None:
+                label = std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)")
+            elif precal.kind == KIND_SHORT:
+                label = std_texts.get("recalibrate_short", "⚙  Recalibrar (SHORT)")
+            else:
+                label = std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)")
+            try:
+                btn_precal.setText(label)
+                btn_precal.setStyleSheet(_precal_ss_active if precal else _precal_ss_inactive)
+                btn_delete_precal_top.setVisible(precal is not None)
+            except RuntimeError:  # widgets already destroyed by a step change
+                pass
 
-        btn_precal.clicked.connect(_on_precal_clicked)
+        def _rerender_stored():
+            _render(wizard, standard, name, color, std_texts,
+                    wizard.perm_calibration.get_measurement(standard.key),
+                    state["show_indicative"], state.get("show_raw", False),
+                    state.get("chart_mode", "reimag"), state.get("mag_linear", False))
+
+        def _on_precal_changed():
+            _refresh_precal_bar()
+            _rerender_stored()
+
+        _refresh_precal_bar()
+        # The step's pre-cal can also change outside this bar (a sweep on
+        # another grid drops it, a preset or an import replaces it).
+        wizard._on_precal_changed_hook = _refresh_precal_bar
+
+        btn_precal.clicked.connect(
+            lambda: _open_precal_dialog(wizard, standard, std_texts, _on_precal_changed))
 
         def _delete_precal():
-            from PySide6.QtWidgets import QMessageBox
             confirm = QMessageBox.question(
                 wizard,
                 std_texts.get("delete_precal_confirm_title", "Quitar pre-calibración"),
                 std_texts.get(
                     "delete_precal_confirm_msg",
-                    "¿Seguro? Se perderá la pre-calibración de {name} y se restaurará la medición original."
+                    "¿Quitar la pre-calibración de {name}?\n\nSe restaura su medición "
+                    "original; los demás pasos no cambian."
                 ).format(name=name),
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No,
             )
             if confirm != QMessageBox.Yes:
                 return
-            getattr(wizard, "_precal_open", {}).pop(standard.key, None)
-            if not hasattr(wizard, "_precal_blacklist"):
-                wizard._precal_blacklist = set()
-            wizard._precal_blacklist.add(standard.key)
-            originals = getattr(wizard, "_precal_originals", {})
-            if standard.key in originals:
-                freqs, s11_orig = originals.pop(standard.key)
-                _src = wizard.perm_calibration.get_source(standard.key) or "measured"
-                wizard.perm_calibration.set_measurement(standard.key, freqs, s11_orig, source=_src)
-                wizard.epsilon_result = None
-                _render(wizard, standard, name, color, std_texts, (freqs, s11_orig),
-                        state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
-            btn_delete_precal_top.setVisible(False)
-            btn_precal.setText(std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)"))
-            btn_precal.setStyleSheet(_precal_ss_inactive)
+            wizard.perm_calibration.clear_step_precal(standard.key)
+            wizard.epsilon_result = None
+            _on_precal_changed()
 
         btn_delete_precal_top.clicked.connect(_delete_precal)
-
-        # Register a hook so _store_measurement can hide this button if a new
-        # measurement arrives with a grid that no longer matches the stored OPEN.
-        if not hasattr(wizard, "_precal_discard_hooks"):
-            wizard._precal_discard_hooks = {}
-        wizard._precal_discard_hooks[standard.key] = btn_delete_precal_top.hide
         mid.addLayout(precal_row)
         mid.addSpacing(8)
 
@@ -1086,7 +1097,7 @@ def build_standard_screen(wizard, descriptor, step_def):
     # the user can still measure over it.
     pending_preset = preset_preload(wizard).get(standard.key)
     if pending_preset and not already:
-        loaded = _load_preset_into_step(wizard, standard, name, std_texts, pending_preset, ask_precal=False)
+        loaded = _load_preset_into_step(wizard, standard, name, std_texts, pending_preset)
         if loaded is not None:
             already = True
             if btn_grp is not None:
@@ -1245,9 +1256,13 @@ def _adopt_sweep_from_file(wizard, freqs, std_texts) -> bool:
     not interpolate. So if something was already measured on the old sweep,
     changing it means dropping those measurements -- ask first.
     """
-    already = [k for k, done in wizard.perm_calibration.get_completion_status().items()
+    cal = wizard.perm_calibration
+    already = [k for k, done in cal.get_completion_status().items()
                if done and k != "calibration_complete"]
     if already:
+        discarded = sorted(already)
+        if any(cal.step_precal(k) is not None for k in cal.measurements):
+            discarded.append(std_texts.get("adopt_sweep_precal_item", "pre-calibration"))
         answer = QMessageBox.question(
             wizard,
             std_texts.get("adopt_sweep_title", "Change the configured sweep?"),
@@ -1258,13 +1273,20 @@ def _adopt_sweep_from_file(wizard, freqs, std_texts) -> bool:
                 "discarded, because every standard must share one frequency grid:\n  {steps}\n\n"
                 "Continue?"
             ).format(n=len(freqs), fs=_fmt_freq(freqs[0]), fe=_fmt_freq(freqs[-1]),
-                     steps=", ".join(sorted(already))),
+                     steps=", ".join(discarded)),
             QMessageBox.Yes | QMessageBox.No)
         if answer != QMessageBox.Yes:
             return False
-        wizard.perm_calibration.clear_all_measurements()
-        wizard._precal_originals = {}
-        wizard._precal_open = {}
+        cal.clear_all_measurements()          # each step's pre-cal goes with them
+    else:
+        # Nothing measured yet, but a pre-cal waiting for its step may belong
+        # to the old sweep.
+        for key in cal.measurements:
+            precal = cal.step_precal(key)
+            if precal is not None and not precal.matches(freqs):
+                logger.info("[standard_screen] pre-cal of %s discarded: taken on the previous sweep", key)
+                cal.clear_step_precal(key)
+    _notify_precal_changed(wizard)
 
     wizard.sweep_start_freq = int(round(float(freqs[0])))
     wizard.sweep_stop_freq = int(round(float(freqs[-1])))
@@ -1275,40 +1297,25 @@ def _adopt_sweep_from_file(wizard, freqs, std_texts) -> bool:
     return True
 
 
-def _ask_apply_precal(wizard, standard, name, std_texts) -> bool:
-    """Return True if the user wants pre-cal applied to an imported/preset measurement.
-
-    Returns True immediately (no prompt) when no pre-cal is active for this step.
-    """
-    precal_active = (
-        standard.key in getattr(wizard, "_precal_open", {})
-        or "*" in getattr(wizard, "_precal_open", {})
-    )
-    if not precal_active:
-        return True
-    from PySide6.QtWidgets import QMessageBox
-    msg = std_texts.get(
-        "precal_import_prompt",
-        "Hay una pre-calibración activa para {name}.\n¿Aplicarla a la medición que estás cargando?"
-    ).format(name=name)
-    reply = QMessageBox.question(
-        wizard,
-        std_texts.get("precal_import_title", "Pre-calibración activa"),
-        msg,
-        QMessageBox.Yes | QMessageBox.No,
-        QMessageBox.Yes,
-    )
-    return reply == QMessageBox.Yes
+def _notify_precal_changed(wizard) -> None:
+    """Let the visible step's pre-cal bar mirror its step's state again."""
+    hook = getattr(wizard, "_on_precal_changed_hook", None)
+    if callable(hook):
+        hook()
 
 
 def _on_import(wizard, standard, name, color, button, std_texts, state):
-    """Open a .s1p file, validate frequencies, store and render."""
+    """Open a .s1p file, validate frequencies, store and render.
+
+    Like a live measurement, an imported file keeps the step's pre-cal (e.g.
+    an OPEN imported in the pre-cal dialog just before): it stays until the
+    user removes it with "Remove pre-cal".
+    """
     imported = _ask_s1p_matching_sweep(wizard, std_texts)
     if imported is None:
         return
-    apply_precal = _ask_apply_precal(wizard, standard, name, std_texts)
     freqs, s11 = _store_measurement(wizard, standard.key, imported[0], imported[1],
-                                    source="imported", apply_precal=apply_precal)
+                                    source="imported")
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     button.setText(std_texts.get("reimport_button", "Import again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11),
@@ -1450,16 +1457,33 @@ def _resample_to_grid(freqs_src, s11_src, grid):
     return grid, re + 1j * im
 
 
-def _load_preset_into_step(wizard, standard, name, std_texts, preset_name, ask_precal=True):
+def _load_preset_into_step(wizard, standard, name, std_texts, preset_name):
     """Load a stored preset into ``standard``, validating the frequency grid.
 
     Returns ``(freqs, s11)`` on success, ``None`` if it could not be applied.
     Unlike the previous version, a preset recorded on a different sweep no
     longer slips in silently to blow up later in ``_common_frequency_grid``:
     the user is offered a resample (or adopting the preset's own sweep).
+    The preset brings the pre-cal of the step it was taken in (or none) and
+    it replaces this step's: a pre-cal measured now describes the probe now,
+    not the session the preset comes from (applying it on top used to give
+    S11 / c(f)^2). A legacy preset already divided by an unknown c(f) is
+    refused.
     """
     try:
-        freqs, s11, meta = preset_store.load_preset(preset_name)
+        freqs, s11, meta, precal = preset_store.load_preset_with_precal(preset_name)
+    except preset_store.PresetPrecalError as exc:
+        logger.warning("[standard_screen] preset '%s' refused: %s", preset_name, exc)
+        QMessageBox.warning(
+            wizard,
+            std_texts.get("preset_precal_missing_title", "Preset pre-calibration"),
+            std_texts.get(
+                "preset_precal_missing_msg",
+                "\"{name}\" cannot be loaded: it was saved with a pre-calibration whose "
+                "reference is not available, so it cannot be referred to this session."
+                "\n\nMeasure this standard again instead."
+            ).format(name=preset_name))
+        return None
     except Exception as exc:  # noqa: BLE001
         QMessageBox.critical(
             wizard,
@@ -1509,6 +1533,10 @@ def _load_preset_into_step(wizard, standard, name, std_texts, preset_name, ask_p
         clicked = box.clickedButton()
         if resample_btn is not None and clicked is resample_btn:
             grid = np.linspace(sw_start, sw_stop, sw_n)
+            if precal is not None:
+                precal = PrecalReference(
+                    freqs=grid, divisor=_resample_to_grid(precal.freqs, precal.divisor, grid)[1],
+                    kind=precal.kind)
             freqs, s11 = _resample_to_grid(freqs, s11, grid)
             logger.info("[standard_screen] preset '%s' resampled to %d pts", preset_name, sw_n)
         elif adopt_btn is not None and clicked is adopt_btn:
@@ -1517,9 +1545,12 @@ def _load_preset_into_step(wizard, standard, name, std_texts, preset_name, ask_p
         else:
             return None
 
-    apply_precal = _ask_apply_precal(wizard, standard, name, std_texts) if ask_precal else True
+    if precal is not None and not wizard.perm_calibration.precal_allowed(standard.key, precal.kind):
+        logger.warning("[standard_screen] preset '%s': its %s pre-cal cannot apply to %s; "
+                       "loaded without it", preset_name, precal.kind, standard.key)
+        precal = None
     freqs, s11 = _store_measurement(wizard, standard.key, freqs, s11, source=f"preset:{preset_name}",
-                                    temperature_c=meta.temperature_c, apply_precal=apply_precal)
+                                    temperature_c=meta.temperature_c, precal=precal)
     set_status(wizard, _success_text(std_texts, name), "lightgreen")
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
@@ -1593,7 +1624,9 @@ def _do_save_measurement(wizard, descriptor, standard, std_texts):
         if answer != QMessageBox.Yes:
             return
 
-    freqs, s11 = data
+    # Stored raw, with the step's pre-cal (if any) so it is corrected again
+    # wherever it is loaded.
+    freqs, s11 = wizard.perm_calibration.get_raw_measurement(standard.key)
     meta = preset_store.PresetMeta(
         name=preset_name,
         display_name=preset_name,
@@ -1606,12 +1639,12 @@ def _do_save_measurement(wizard, descriptor, standard, std_texts):
         # Re-saving a preset must keep the temperature it was recorded at.
         temperature_c=_reference_temp(wizard, standard),
         technique=getattr(descriptor, "id", ""),
-        precal_open_applied=standard.key in getattr(wizard, "_precal_originals", {}),
         origin_note=std_texts.get("preset_saved_from_wizard",
                                   "Guardado desde el asistente de caracterizacion."),
     )
     try:
-        preset_store.save_preset(preset_name, freqs, s11, meta)
+        preset_store.save_preset(preset_name, freqs, s11, meta,
+                                 precal=wizard.perm_calibration.step_precal(standard.key))
     except Exception as exc:  # noqa: BLE001
         QMessageBox.critical(
             wizard, std_texts.get("preset_save_error_title", "Save preset"), str(exc))
@@ -1674,7 +1707,7 @@ def _suggested_preset_name(wizard, descriptor, standard) -> str:
     except Exception:
         logger.debug("[standard_screen] sweep unavailable for the suggested preset name")
 
-    if standard.key in getattr(wizard, "_precal_originals", {}):
+    if wizard.perm_calibration.step_precal(standard.key) is not None:
         parts.append("precal")
 
     parts.append(datetime.now().strftime("%Y%m%d-%H%M%S"))
@@ -1686,66 +1719,39 @@ def _suggested_preset_name(wizard, descriptor, standard) -> str:
 
 
 def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measured",
-                       temperature_c=None, apply_precal: bool = True):
-    """Store a raw S11, applying pre-cal normalization if active for this step.
+                       temperature_c=None, precal=KEEP_PRECAL):
+    """Store a raw S11 in its step; the step's own pre-cal (if any) applies to it.
 
     ``temperature_c`` is the temperature a preset was recorded at (None for
     anything taken in this session, which follows the session temperature).
-
-    If wizard._precal_open[std_key] exists and the OPEN grid matches, the raw
-    value is saved to _precal_originals and the normalized one is written to
-    perm_calibration. On a grid mismatch the pre-cal is discarded (logged) and
-    any registered _precal_discard_hooks[std_key] is called so the UI can hide
-    the "Quitar pre-cal" button.
+    ``precal`` left out keeps the step's pre-cal (live measurement, import);
+    a reference or None replaces it (a preset brings its own, or none).
+    A kept pre-cal on another grid than the sweep is dropped by the model;
+    either way the visible pre-cal bar is told when the step's pre-cal changed.
 
     Returns (freqs, s11_stored) — whatever was actually written.
     """
     freqs_raw = np.asarray(freqs_raw, dtype=float)
     s11_raw   = _remove_spikes(np.asarray(s11_raw, dtype=complex))
 
-    if not hasattr(wizard, "_precal_open"):
-        wizard._precal_open = {}
-    if not hasattr(wizard, "_precal_originals"):
-        wizard._precal_originals = {}
-
-    s11_to_store = s11_raw
-    _blacklisted = std_key in getattr(wizard, "_precal_blacklist", set())
-    _precal_key = (
-        (std_key if std_key in wizard._precal_open
-         else ("*" if "*" in wizard._precal_open else None))
-        if (apply_precal and not _blacklisted) else None
-    )
-    if _precal_key is not None:
-        freqs_open, s11_open = wizard._precal_open[_precal_key]
-        f_tol = 1e-3
-        grid_ok = (
-            len(freqs_open) == len(freqs_raw)
-            and abs(float(freqs_open[0]) - float(freqs_raw[0])) < f_tol
-            and abs(float(freqs_open[-1]) - float(freqs_raw[-1])) < f_tol
-        )
-        if grid_ok:
-            wizard._precal_originals[std_key] = (freqs_raw.copy(), s11_raw.copy())
-            s11_to_store = s11_raw / np.asarray(s11_open, dtype=complex)
-        else:
-            logger.warning(
-                "[standard_screen] pre-cal OPEN grid mismatch for %s — discarding", std_key
-            )
-            wizard._precal_open.pop(_precal_key, None)
-            wizard._precal_originals.pop(std_key, None)
-            hook = getattr(wizard, "_precal_discard_hooks", {}).get(std_key)
-            if callable(hook):
-                try:
-                    hook()
-                except Exception:
-                    pass
-
-    wizard.perm_calibration.set_measurement(std_key, freqs_raw, s11_to_store, source=source,
-                                            temperature_c=temperature_c)
+    cal = wizard.perm_calibration
+    before = cal.step_precal(std_key)
+    stored = None
+    if cal.set_measurement(std_key, freqs_raw, s11_raw, source=source,
+                           temperature_c=temperature_c, precal=precal):
+        stored = cal.get_measurement(std_key)
+    else:
+        logger.error("[standard_screen] could not store %s", std_key)
+    if cal.step_precal(std_key) is not before:
+        if precal is KEEP_PRECAL:
+            logger.warning("[standard_screen] %s is on another grid than its pre-cal: "
+                           "pre-cal removed from this step", std_key)
+        _notify_precal_changed(wizard)
     wizard.epsilon_result = None
     refresh = getattr(wizard, "_step_info_refresh", None)
     if callable(refresh):
         refresh()
-    return freqs_raw, s11_to_store
+    return stored if stored is not None else (freqs_raw, s11_raw)
 
 
 def _on_measure(wizard, standard, name, color, button, std_texts, state):
@@ -1869,7 +1875,7 @@ def _render(wizard, standard, name, color, std_texts, measured,
         labels.append(rf"$S_{{11}}$ — {_short_legend_name(standard, name)}")
 
     if show_raw:
-        raw_data = getattr(wizard, "_precal_originals", {}).get(standard.key)
+        raw_data = _raw_trace(wizard, standard.key)
         if raw_data is not None:
             _, s11_raw = raw_data
             s11_raw = np.asarray(s11_raw, dtype=complex)
@@ -1932,12 +1938,15 @@ def _resolve_strings(wizard, std_texts, liquids, standard):
     return name, instruction, False
 
 
-def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_delete_precal, btn_precal=None):
-    """Open-normalization pre-calibration dialog (vertical single-column layout).
+def _open_precal_dialog(wizard, standard, std_texts, on_applied):
+    """Pre-calibration dialog of ONE step (vertical single-column layout).
 
-    Measures an OPEN (probe in air) and normalizes the stored liquid S11 by
-    dividing element-wise: s11_norm = s11_liquid / s11_open.
-    The original S11 is saved in wizard._precal_originals so it can be restored.
+    Measures an OPEN (probe in air) or a SHORT right after the probe was
+    handled and makes it the pre-cal of ``standard``: its sweep, stored now or
+    measured later, becomes s11 * c0 / c, with c0 the Open of step 1 (or the
+    Short of step 2). No other step changes; the model keeps the raw sweep,
+    so removing the pre-cal restores it. ``on_applied`` refreshes the step.
+    The Short step only offers OPEN: a SHORT one would refer it to itself.
     """
     from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import create_wizard_smith_chart, SmithChartManager
 
@@ -1962,8 +1971,9 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
     _std_sel_lbl = QLabel(std_texts.get("precal_std_label", "Normalizar con:"))
     _std_sel_lbl.setStyleSheet("font-size: 11px; color: #aaaaaa;")
     _std_combo = QComboBox()
-    _std_combo.addItem(std_texts.get("precal_std_open", "OPEN (probe en aire)"))
-    _std_combo.addItem(std_texts.get("precal_std_short", "SHORT (cortocircuito)"))
+    _std_combo.addItem(std_texts.get("precal_std_open", "OPEN (probe en aire)"), KIND_OPEN)
+    if wizard.perm_calibration.precal_allowed(standard.key, KIND_SHORT):
+        _std_combo.addItem(std_texts.get("precal_std_short", "SHORT (cortocircuito)"), KIND_SHORT)
     _std_combo.setFixedHeight(26)
     _std_combo.setFixedWidth(200)
     _std_row.addWidget(_std_sel_lbl)
@@ -1975,20 +1985,28 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
     # Description (updates with selector)
     _desc_open = std_texts.get(
         "precal_description",
-        "Place the probe in open air (OPEN) and measure. Normalization divides "
-        "the liquid S₁₁ by the OPEN S₁₁, correcting cable and connector effects."
-        "\n\ns₁₁_norm = s₁₁_liquid / s₁₁_OPEN"
+        "Place the probe in open air (OPEN) and measure, right after handling the "
+        "probe. This step's S₁₁ is referred back to the OPEN of step 1, removing the "
+        "change in cable and connectors."
+        "\n\ns₁₁_corr = s₁₁ · s₁₁_OPEN(step 1) / s₁₁_OPEN(now)"
     )
     _desc_short = std_texts.get(
         "precal_description_short",
-        "Short-circuit the probe face and measure. Normalization divides the "
-        "liquid S₁₁ by −S₁₁_SHORT, correcting for the SHORT's ideal Γ = −1."
-        "\n\ns₁₁_norm = s₁₁_liquid / (−s₁₁_SHORT)"
+        "Short-circuit the probe face and measure, right after handling the probe. "
+        "This step's S₁₁ is referred back to the SHORT of step 2."
+        "\n\ns₁₁_corr = s₁₁ · s₁₁_SHORT(step 2) / s₁₁_SHORT(now)"
     )
     desc_lbl = QLabel(_desc_open)
     desc_lbl.setWordWrap(True)
     desc_lbl.setStyleSheet("font-size: 11px; color: #aaaaaa;")
     layout.addWidget(desc_lbl)
+
+    scope_lbl = QLabel(std_texts.get(
+        "precal_scope_note",
+        "Only this step is corrected; the other steps keep their own measurement."))
+    scope_lbl.setWordWrap(True)
+    scope_lbl.setStyleSheet("font-size: 11px; color: #ffaa44;")
+    layout.addWidget(scope_lbl)
 
     # Measure button
     _measure_open_btn = QPushButton(std_texts.get("precal_measure_button", "Measure OPEN"))
@@ -2007,8 +2025,11 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
     layout.addSpacing(4)
     layout.addWidget(_import_open_btn, alignment=Qt.AlignHCenter)
 
+    def _is_short_selected():
+        return _std_combo.currentData() == KIND_SHORT
+
     def _on_std_changed():
-        _is_short = _std_combo.currentIndex() == 1
+        _is_short = _is_short_selected()
         desc_lbl.setText(_desc_short if _is_short else _desc_open)
         _measure_open_btn.setText(
             std_texts.get("precal_measure_button_short", "Measure SHORT")
@@ -2091,7 +2112,7 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         base = builder.create_empty_network(start, stop, points)
         base.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
         builder._configure_smith_chart_appearance()
-        _std_label = "SHORT" if _std_combo.currentIndex() == 1 else "OPEN"
+        _std_label = "SHORT" if _is_short_selected() else "OPEN"
         ax.set_title(rf"$S_{{11}}$ — {_std_label}", fontsize=13, pad=20, color=builder.config.text_color)
         ax.plot(np.real(s11_arr), np.imag(s11_arr), "o-", color=trace_color,
                 linewidth=2, markersize=3, zorder=3)
@@ -2103,8 +2124,8 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         )
         canvas.draw()
 
-        _done_key = "precal_status_done_short" if _std_combo.currentIndex() == 1 else "precal_status_done"
-        _done_default = "SHORT measured ✓" if _std_combo.currentIndex() == 1 else "OPEN measured ✓"
+        _done_key = "precal_status_done_short" if _is_short_selected() else "precal_status_done"
+        _done_default = "SHORT measured ✓" if _is_short_selected() else "OPEN measured ✓"
         _status_lbl.setText(std_texts.get(_done_key, _done_default))
         _status_lbl.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
         apply_btn.setEnabled(True)
@@ -2133,57 +2154,26 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
 
     def _do_apply():
         freqs_open, s11_open = _open_data[0]
-        if not hasattr(wizard, "_precal_open"):
-            wizard._precal_open = {}
-        if not hasattr(wizard, "_precal_originals"):
-            wizard._precal_originals = {}
-        if not hasattr(wizard, "_precal_type"):
-            wizard._precal_type = {}
-        getattr(wizard, "_precal_blacklist", set()).discard(standard.key)
-        _using_short = _std_combo.currentIndex() == 1
-        wizard._precal_type[standard.key] = "short" if _using_short else "open"
-        # For SHORT: store the negated S11 so the division formula (s11 / stored)
-        # yields s11 / (−s11_short) = correct normalization for Γ_ref = −1.
-        _s11_ref_raw = _remove_spikes(np.asarray(s11_open, dtype=complex))
-        _s11_ref_stored = -_s11_ref_raw if _using_short else _s11_ref_raw
-        _precal_entry = (
-            np.asarray(freqs_open, dtype=float).copy(),
-            _s11_ref_stored,
-        )
-        wizard._precal_open[standard.key] = _precal_entry
-        if "*" not in wizard._precal_open:  # set global only once — per-step overrides don't replace it
-            wizard._precal_open["*"] = _precal_entry
-            wizard._precal_type["*"] = wizard._precal_type[standard.key]
-        btn_delete_precal.setVisible(True)
-        if btn_precal is not None:
-            _recal_text = (
-                std_texts.get("recalibrate_short", "⚙  Recalibrar (SHORT)")
-                if _using_short
-                else std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)")
-            )
-            btn_precal.setText(_recal_text)
-            btn_precal.setStyleSheet(
-                "QPushButton { font-size: 11px; color: #ffaa44; border: 1px solid #ffaa44;"
-                " border-radius: 4px; padding: 0 10px; }"
-                " QPushButton:hover { background: #2a1a00; }"
-            )
-        _liq = wizard.perm_calibration.get_measurement(standard.key)
-        if _liq is not None:
-            # Liquid already measured — apply normalization immediately.
-            # If a previous pre-cal was already applied, _precal_originals holds the
-            # true raw S11. Use that as the base so we don't double-normalize.
-            _prev_orig = getattr(wizard, "_precal_originals", {}).get(standard.key)
-            freqs_liq, s11_liq = _prev_orig if _prev_orig is not None else _liq
-            wizard._precal_originals[standard.key] = (
-                np.asarray(freqs_liq, dtype=float).copy(),
-                np.asarray(s11_liq, dtype=complex).copy(),
-            )
-            s11_norm = np.asarray(s11_liq, dtype=complex) / wizard._precal_open[standard.key][1]
-            _src = wizard.perm_calibration.get_source(standard.key) or "measured"
-            wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm, source=_src)
-            wizard.epsilon_result = None
-            _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm),
-                    state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
+        kind = KIND_SHORT if _is_short_selected() else KIND_OPEN
+        try:
+            reference = PrecalReference.from_sweep(
+                freqs_open, _remove_spikes(np.asarray(s11_open, dtype=complex)), kind)
+            # Only this step: recomputed from its raw sweep, keeping its source
+            # and preset temperature (or waiting for the measurement).
+            wizard.perm_calibration.set_step_precal(standard.key, reference)
+        except ValueError as exc:
+            logger.warning("[standard_screen] pre-cal not applied: %s", exc)
+            QMessageBox.warning(
+                dlg,
+                std_texts.get("precal_dialog_title", "Pre-calibración — Normalización con OPEN"),
+                std_texts.get(
+                    "precal_grid_mismatch_msg",
+                    "The pre-calibration was not applied: it must be on the same "
+                    "frequency grid as this step's measurement.\n\n{err}"
+                ).format(err=exc))
+            return
+        wizard.epsilon_result = None
+        on_applied()
         dlg.accept()
 
     _measure_open_btn.clicked.connect(_do_measure_open)
