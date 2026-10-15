@@ -11,11 +11,14 @@ import numpy as np
 from matplotlib.figure import Figure as _Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QColor, QGuiApplication
+from PySide6.QtGui import (
+    QAction, QColor, QGuiApplication,
+    QPainter, QPainterPath, QPen, QPixmap,
+)
 from PySide6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QListWidget, QListWidgetItem, QMainWindow, QPushButton,
-    QSizePolicy, QVBoxLayout, QWidget,
+    QSizePolicy, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
@@ -44,7 +47,7 @@ _ACCENT   = "#2d5a8e"
 _ACCENT_H = "#3a6fa0"
 _TEXT     = "#ffffff"
 _TEXT2    = "#8888aa"
-_GRID     = "#1e1e2e"
+_GRID     = "#2a2a42"
 _BG       = _CARD_BG
 
 
@@ -83,6 +86,33 @@ class _FileEntry:
         self.s21   = s21
 
 
+def _make_signal_pixmap(size: int = 36, color: str = "#4da6ff") -> QPixmap:
+    import math
+    px = QPixmap(size, size)
+    px.fill(Qt.GlobalColor.transparent)
+    p = QPainter(px)
+    p.setRenderHint(QPainter.RenderHint.Antialiasing)
+    pen = QPen(QColor(color), size * 0.075)
+    pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+    pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+    p.setPen(pen)
+    path = QPainterPath()
+    steps, margin, amp = 120, size * 0.08, size * 0.36
+    cy = size / 2.0
+    w = size - 2 * margin
+    for i in range(steps + 1):
+        t = i / steps
+        x = margin + t * w
+        y = cy - amp * math.sin(t * 2 * math.pi)
+        if i == 0:
+            path.moveTo(x, y)
+        else:
+            path.lineTo(x, y)
+    p.drawPath(path)
+    p.end()
+    return px
+
+
 # ─────────────────────────────────────────────────────────────────────────── #
 class MeasurementViewerWindow(QMainWindow):
 
@@ -110,8 +140,10 @@ class MeasurementViewerWindow(QMainWindow):
         self._cache: dict[str, _FileEntry] = {}
         self._color_map: dict[str, str]    = {}
         self._color_idx   = 0
-        self._layout_mode = 2
-        self._format_mode = "db"
+        self._layout_mode  = 2
+        self._param_mode   = "s11"        # "s11" | "s21" | "split"
+        self._display2     = "mag_phase"  # "mag_phase" | "real_imag"
+        self._compare_mode = False        # False = single file, True = overlay
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -184,25 +216,21 @@ class MeasurementViewerWindow(QMainWindow):
     # ── Header ────────────────────────────────────────────────────────────── #
     def _build_header(self) -> QWidget:
         hdr = QWidget()
-        hdr.setFixedHeight(72)
+        hdr.setFixedHeight(92)
         h = QHBoxLayout(hdr)
-        h.setContentsMargins(20, 0, 16, 0)
+        h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(0)
 
-        # Branding
+        # ── Left section: branding, fixed width matching left panel ────────── #
         brand = QWidget()
+        brand.setFixedWidth(275)
         brand.setStyleSheet("background:transparent;")
         bh = QHBoxLayout(brand)
-        bh.setContentsMargins(0, 0, 0, 0)
+        bh.setContentsMargins(20, 0, 12, 0)
         bh.setSpacing(10)
         icon_lbl = QLabel()
         icon_lbl.setStyleSheet("background:transparent;")
-        _ico = self.windowIcon()
-        if not _ico.isNull():
-            icon_lbl.setPixmap(_ico.pixmap(32, 32))
-        else:
-            icon_lbl.setText("~")
-            icon_lbl.setStyleSheet("font-size:22px; color:#7ab3f5; background:transparent;")
+        icon_lbl.setPixmap(_make_signal_pixmap(36, "#4da6ff"))
         bh.addWidget(icon_lbl)
         tcol = QWidget()
         tcol.setStyleSheet("background:transparent;")
@@ -219,9 +247,55 @@ class MeasurementViewerWindow(QMainWindow):
         tv.addWidget(t2)
         bh.addWidget(tcol)
         h.addWidget(brand)
-        h.addStretch(1)
 
-        # Layout group
+        # ── Right section: tab bar + tab content over chart area ───────────── #
+        chart_hdr = QWidget()
+        chart_hdr.setStyleSheet("background:transparent;")
+        cv = QVBoxLayout(chart_hdr)
+        cv.setContentsMargins(0, 6, 16, 0)
+        cv.setSpacing(0)
+        h.addWidget(chart_hdr, stretch=1)
+
+        # ── Tab bar ─────────────────────────────────────────────────────────── #
+        _TAB_ACTIVE = (
+            f"QPushButton {{ font-size:10px; padding:2px 12px; border:none;"
+            f" background:{_ACCENT}; color:#ffffff; border-radius:4px; }}"
+        )
+        _TAB_INACTIVE = (
+            f"QPushButton {{ font-size:10px; padding:2px 12px; border:none;"
+            f" background:transparent; color:{_TEXT2}; border-radius:4px; }}"
+            f" QPushButton:hover {{ color:{_TEXT}; background:{_BORDER}; }}"
+        )
+        tab_row = QHBoxLayout()
+        tab_row.setContentsMargins(0, 0, 0, 0)
+        tab_row.setSpacing(2)
+        tab_row.addStretch(1)
+
+        self._tab_btns: list[QPushButton] = []
+        for i, name in enumerate(("Graphics", "Cursors", "Range")):
+            btn = QPushButton(name)
+            btn.setFixedHeight(20)
+            btn.setCursor(Qt.CursorShape.PointingHandCursor)
+            btn.clicked.connect(lambda _=False, idx=i: self._set_tab(idx))
+            self._tab_btns.append(btn)
+            tab_row.addWidget(btn)
+
+        tab_row.addStretch(1)
+        cv.addLayout(tab_row)
+
+        # ── Tab content stack ────────────────────────────────────────────────── #
+        self._tab_stack = QStackedWidget()
+        self._tab_stack.setStyleSheet("background:transparent;")
+        cv.addWidget(self._tab_stack, stretch=1)
+
+        # ── Page 0 — Graphics ───────────────────────────────────────────────── #
+        graphics_page = QWidget()
+        graphics_page.setStyleSheet("background:transparent;")
+        gph = QHBoxLayout(graphics_page)
+        gph.setContentsMargins(0, 0, 0, 0)
+        gph.setSpacing(0)
+        gph.addStretch(1)
+
         self._btn_2 = QPushButton("2 charts")
         self._btn_2.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_2.clicked.connect(lambda: self._set_layout(2))
@@ -229,30 +303,94 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_4.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_4.clicked.connect(lambda: self._set_layout(4))
         self._update_layout_buttons()
-        h.addWidget(self._labeled_seg("Layout", self._btn_2, self._btn_4))
-        h.addSpacing(16)
+        gph.addWidget(self._labeled_seg("Layout", self._btn_2, self._btn_4))
 
-        # Display group
-        self._fmt_btns: dict[str, QPushButton] = {}
-        for fk, fl in [("db","dB"),("phase","Phase"),("real","Real"),("imag","Imag")]:
-            b = QPushButton(fl)
-            b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.clicked.connect(lambda _=False, f=fk: self._set_format(f))
-            self._fmt_btns[fk] = b
-        self._update_format_buttons()
-        h.addWidget(self._labeled_seg("Display", *self._fmt_btns.values()))
+        gph.addSpacing(20)
+        gph.addWidget(self._vsep())
+        gph.addSpacing(20)
 
-        h.addStretch(1)
+        self._btn_p2_s11 = QPushButton("S11")
+        self._btn_p2_s11.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_p2_s11.clicked.connect(lambda: self._set_param("s11"))
+        self._btn_p2_s21 = QPushButton("S21")
+        self._btn_p2_s21.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_p2_s21.clicked.connect(lambda: self._set_param("s21"))
+        self._grp_param2 = self._labeled_seg("Parameter", self._btn_p2_s11, self._btn_p2_s21)
 
-        # Fit view
-        fit_btn = QPushButton("Fit view")
-        fit_btn.setStyleSheet(self._ACTION_BTN)
-        fit_btn.setFixedHeight(32)
-        fit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        fit_btn.clicked.connect(self._fit_view)
-        h.addWidget(fit_btn)
+        self._btn_p4_s11 = QPushButton("S11")
+        self._btn_p4_s11.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_p4_s11.clicked.connect(self._toggle_p4_s11)
+        self._btn_p4_s21 = QPushButton("S21")
+        self._btn_p4_s21.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_p4_s21.clicked.connect(self._toggle_p4_s21)
+        self._grp_param4 = self._labeled_seg("Parameter", self._btn_p4_s11, self._btn_p4_s21)
+
+        self._param_stack = QStackedWidget()
+        self._param_stack.addWidget(self._grp_param2)
+        self._param_stack.addWidget(self._grp_param4)
+        self._param_stack.setStyleSheet("background:transparent;")
+        gph.addWidget(self._param_stack)
+
+        gph.addSpacing(20)
+        gph.addWidget(self._vsep())
+        gph.addSpacing(20)
+
+        self._btn_mag_ph = QPushButton("Mag+Phase")
+        self._btn_mag_ph.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_mag_ph.clicked.connect(lambda: self._set_display2("mag_phase"))
+        self._btn_re_im = QPushButton("Real+Imag")
+        self._btn_re_im.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_re_im.clicked.connect(lambda: self._set_display2("real_imag"))
+        self._grp_display2 = self._labeled_seg("Display", self._btn_mag_ph, self._btn_re_im)
+        gph.addWidget(self._grp_display2)
+        self._update_display2_buttons()
+
+        self._update_param_buttons()
+        self._update_header_groups()
+        gph.addStretch(1)
+        self._tab_stack.addWidget(graphics_page)
+
+        # ── Page 1 — Cursors (placeholder) ──────────────────────────────────── #
+        cursors_page = QWidget()
+        cursors_page.setStyleSheet("background:transparent;")
+        cph = QHBoxLayout(cursors_page)
+        cph.setContentsMargins(0, 0, 0, 0)
+        cph.addStretch(1)
+        _lbl_cur = QLabel("Cursors — coming soon")
+        _lbl_cur.setStyleSheet(f"font-size:11px; color:{_TEXT2}; background:transparent;")
+        cph.addWidget(_lbl_cur)
+        cph.addStretch(1)
+        self._tab_stack.addWidget(cursors_page)
+
+        # ── Page 2 — Range (placeholder) ────────────────────────────────────── #
+        range_page = QWidget()
+        range_page.setStyleSheet("background:transparent;")
+        rph = QHBoxLayout(range_page)
+        rph.setContentsMargins(0, 0, 0, 0)
+        rph.addStretch(1)
+        _lbl_rng = QLabel("Range — coming soon")
+        _lbl_rng.setStyleSheet(f"font-size:11px; color:{_TEXT2}; background:transparent;")
+        rph.addWidget(_lbl_rng)
+        rph.addStretch(1)
+        self._tab_stack.addWidget(range_page)
+
+        self._tab_idx = 0
+        self._tab_stack.setCurrentIndex(0)
+        self._update_tab_buttons(_TAB_ACTIVE, _TAB_INACTIVE)
+
+        # store styles for _set_tab
+        self._TAB_ACTIVE   = _TAB_ACTIVE
+        self._TAB_INACTIVE = _TAB_INACTIVE
 
         return hdr
+
+    def _vsep(self) -> QFrame:
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.VLine)
+        sep.setFixedWidth(1)
+        sep.setFixedHeight(48)
+        sep.setStyleSheet(f"background:{_BORDER};")
+        return sep
 
     def _labeled_seg(self, label: str, *buttons) -> QWidget:
         """Labeled segmented-pill group: label above, pill container below."""
@@ -300,6 +438,30 @@ class MeasurementViewerWindow(QMainWindow):
             " border-radius:8px; padding:1px 7px;")
         hrow.addWidget(self._badge)
         lv.addLayout(hrow)
+
+        # Single / Compare toggle
+        mode_row = QHBoxLayout()
+        mode_row.setContentsMargins(0, 0, 0, 0)
+        mode_row.setSpacing(0)
+        self._btn_single = QPushButton("Single")
+        self._btn_single.setFixedHeight(24)
+        self._btn_single.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_single.clicked.connect(lambda: self._set_compare_mode(False))
+        self._btn_compare = QPushButton("Compare")
+        self._btn_compare.setFixedHeight(24)
+        self._btn_compare.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_compare.clicked.connect(lambda: self._set_compare_mode(True))
+        pill_mode = QWidget()
+        pill_mode.setStyleSheet("QWidget { background:#2e2e42; border-radius:6px; }")
+        pm = QHBoxLayout(pill_mode)
+        pm.setContentsMargins(2, 2, 2, 2)
+        pm.setSpacing(1)
+        pm.addWidget(self._btn_single)
+        pm.addWidget(self._btn_compare)
+        mode_row.addWidget(pill_mode)
+        mode_row.addStretch()
+        self._update_compare_buttons()
+        lv.addLayout(mode_row)
 
         # Buttons
         brow = QHBoxLayout()
@@ -352,7 +514,7 @@ class MeasurementViewerWindow(QMainWindow):
             " QScrollBar:vertical { width:5px; background:transparent; }"
             f" QScrollBar::handle:vertical {{ background:{_BORDER}; border-radius:2px; }}"
         )
-        self._file_list.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        self._file_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
         self._file_list.itemSelectionChanged.connect(self._on_selection_changed)
         self._file_list.setVisible(False)
         lv.addWidget(self._file_list, stretch=1)
@@ -408,24 +570,104 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_4.setStyleSheet(
             self._SEG_ACTIVE if self._layout_mode == 4 else self._SEG_INACTIVE)
 
-    def _update_format_buttons(self):
-        for fmt, btn in self._fmt_btns.items():
-            btn.setStyleSheet(
-                self._SEG_ACTIVE if fmt == self._format_mode else self._SEG_INACTIVE)
+    def _update_display2_buttons(self):
+        self._btn_mag_ph.setStyleSheet(
+            self._SEG_ACTIVE if self._display2 == "mag_phase" else self._SEG_INACTIVE)
+        self._btn_re_im.setStyleSheet(
+            self._SEG_ACTIVE if self._display2 == "real_imag" else self._SEG_INACTIVE)
+
+    def _update_param_buttons(self):
+        # 2-chart: mutually exclusive
+        self._btn_p2_s11.setStyleSheet(
+            self._SEG_ACTIVE if self._param_mode == "s11" else self._SEG_INACTIVE)
+        self._btn_p2_s21.setStyleSheet(
+            self._SEG_ACTIVE if self._param_mode == "s21" else self._SEG_INACTIVE)
+        # 4-chart: both active when split
+        s11_on = self._param_mode in ("s11", "split")
+        s21_on = self._param_mode in ("s21", "split")
+        self._btn_p4_s11.setStyleSheet(
+            self._SEG_ACTIVE if s11_on else self._SEG_INACTIVE)
+        self._btn_p4_s21.setStyleSheet(
+            self._SEG_ACTIVE if s21_on else self._SEG_INACTIVE)
+
+    def _update_header_groups(self):
+        self._grp_display2.setVisible(True)
+        self._param_stack.setCurrentIndex(0 if self._layout_mode == 2 else 1)
 
     def _set_layout(self, mode: int):
         if self._layout_mode == mode:
             return
         self._layout_mode = mode
+        # "split" is only valid in 4-chart; reset to s11 if switching to 2-chart
+        if mode == 2 and self._param_mode == "split":
+            self._param_mode = "s11"
         self._update_layout_buttons()
+        self._update_param_buttons()
+        self._update_header_groups()
         self._rebuild_figure()
 
-    def _set_format(self, mode: str):
-        if self._format_mode == mode:
+    def _set_display2(self, mode: str):
+        if self._display2 == mode:
             return
-        self._format_mode = mode
-        self._update_format_buttons()
+        self._display2 = mode
+        self._update_display2_buttons()
         self._redraw(self._current_entries())
+
+    def _set_param(self, mode: str):
+        if self._param_mode == mode:
+            return
+        self._param_mode = mode
+        self._update_param_buttons()
+        self._redraw(self._current_entries())
+
+    def _toggle_p4_s11(self):
+        if self._param_mode == "s11":
+            return          # already the only one active, can't turn off
+        self._param_mode = "s21" if self._param_mode == "split" else "split"
+        self._update_param_buttons()
+        self._redraw(self._current_entries())
+
+    def _toggle_p4_s21(self):
+        if self._param_mode == "s21":
+            return          # already the only one active, can't turn off
+        self._param_mode = "s11" if self._param_mode == "split" else "split"
+        self._update_param_buttons()
+        self._redraw(self._current_entries())
+
+    def _update_tab_buttons(self, active_style: str, inactive_style: str):
+        for i, btn in enumerate(self._tab_btns):
+            btn.setStyleSheet(active_style if i == self._tab_idx else inactive_style)
+
+    def _set_tab(self, idx: int):
+        self._tab_idx = idx
+        self._tab_stack.setCurrentIndex(idx)
+        self._update_tab_buttons(self._TAB_ACTIVE, self._TAB_INACTIVE)
+
+    def _update_compare_buttons(self):
+        self._btn_single.setStyleSheet(
+            self._SEG_ACTIVE if not self._compare_mode else self._SEG_INACTIVE)
+        self._btn_compare.setStyleSheet(
+            self._SEG_ACTIVE if self._compare_mode else self._SEG_INACTIVE)
+
+    def _set_compare_mode(self, compare: bool):
+        if self._compare_mode == compare:
+            return
+        self._compare_mode = compare
+        self._update_compare_buttons()
+        if compare:
+            self._file_list.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
+        else:
+            self._file_list.setSelectionMode(QListWidget.SelectionMode.SingleSelection)
+            # keep at most the first selected item
+            selected = self._file_list.selectedItems()
+            if len(selected) > 1:
+                self._file_list.blockSignals(True)
+                keep = selected[0]
+                for item in selected[1:]:
+                    item.setSelected(False)
+                self._file_list.blockSignals(False)
+                self._redraw([self._cache[keep.data(Qt.ItemDataRole.UserRole)]]
+                             if keep.data(Qt.ItemDataRole.UserRole) in self._cache else [])
 
     def _rebuild_figure(self):
         self._fig.clear()
@@ -536,6 +778,23 @@ class MeasurementViewerWindow(QMainWindow):
         self._redraw(entries)
 
     # ── Drawing ───────────────────────────────────────────────────────────── #
+    def _chart_titles(self) -> list[str]:
+        p = self._param_mode
+        if self._layout_mode == 4:
+            if p == "s11":
+                return ["S11 Magnitude", "S11 Phase", "S11 Real", "S11 Imag"]
+            if p == "s21":
+                return ["S21 Magnitude", "S21 Phase", "S21 Real", "S21 Imag"]
+            # split — columns driven by _display2
+            if self._display2 == "real_imag":
+                return ["S11 Real", "S11 Imag", "S21 Real", "S21 Imag"]
+            return ["S11 Magnitude", "S11 Phase", "S21 Magnitude", "S21 Phase"]
+        # 2-chart
+        name = "S11" if p == "s11" else "S21"
+        if self._display2 == "real_imag":
+            return [f"{name} Real", f"{name} Imag"]
+        return [f"{name} Magnitude", f"{name} Phase"]
+
     def _flat_axes(self) -> list:
         if self._layout_mode == 4:
             return [self._axes[0][0], self._axes[0][1],
@@ -543,10 +802,8 @@ class MeasurementViewerWindow(QMainWindow):
         return list(self._axes)
 
     def _reset_axes(self):
-        titles = (
-            ["S11 Magnitude", "S11 Phase", "S21 Magnitude", "S21 Phase"]
-            if self._layout_mode == 4 else ["S11", "S21"]
-        )
+        titles = self._chart_titles()
+
         for ax, title in zip(self._flat_axes(), titles):
             ax.set_facecolor(_CARD_BG)
             ax.set_title(title, fontsize=11, color=_TEXT, pad=10)
@@ -570,7 +827,7 @@ class MeasurementViewerWindow(QMainWindow):
             ax.cla()
             ax.set_facecolor(_CARD_BG)
             ax.tick_params(colors=_TEXT2, labelsize=8)
-            ax.grid(True, linestyle=":", alpha=0.3, color=_GRID)
+            ax.grid(True, linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
             for spine in ax.spines.values():
                 spine.set_color(_SPINE)
                 spine.set_linewidth(0.8)
@@ -582,67 +839,114 @@ class MeasurementViewerWindow(QMainWindow):
         all_f = np.concatenate([e.freqs for e in entries])
         div, unit = _freq_axis_unit(all_f)
 
+        p = self._param_mode
+
         if self._layout_mode == 4:
-            ax_s11_mag, ax_s11_ph, ax_s21_mag, ax_s21_ph = flat
-            has_s21 = any(e.s21 is not None for e in entries)
-            for e in entries:
-                f, lw = e.freqs / div, 1.6
-                if e.s11 is not None:
-                    ax_s11_mag.plot(f, 20*np.log10(np.abs(e.s11)+1e-15),
-                                    color=e.color, linewidth=lw, label=e.name)
-                    ax_s11_ph.plot(f, np.angle(e.s11, deg=True),
-                                   color=e.color, linewidth=lw, label=e.name)
-                if e.s21 is not None:
-                    ax_s21_mag.plot(f, 20*np.log10(np.abs(e.s21)+1e-15),
-                                    color=e.color, linewidth=lw, label=e.name)
-                    ax_s21_ph.plot(f, np.angle(e.s21, deg=True),
-                                   color=e.color, linewidth=lw, label=e.name)
-            specs = [
-                (ax_s11_mag, "S11 Magnitude", "|S11| (dB)"),
-                (ax_s11_ph,  "S11 Phase",     "∠S11 (°)"),
-                (ax_s21_mag, "S21 Magnitude", "|S21| (dB)"),
-                (ax_s21_ph,  "S21 Phase",     "∠S21 (°)"),
-            ]
-            if not has_s21:
-                for ax in (ax_s21_mag, ax_s21_ph):
-                    ax.text(0.5, 0.5, "No S21 data", transform=ax.transAxes,
-                            ha="center", va="center", fontsize=9,
-                            color=_TEXT2, fontstyle="italic")
+            ax0, ax1, ax2, ax3 = flat
+            if p == "split":
+                has_s21 = any(e.s21 is not None for e in entries)
+                ri = self._display2 == "real_imag"
+
+                def _col0(s): return s.real if ri else 20*np.log10(np.abs(s)+1e-15)
+                def _col1(s): return s.imag if ri else np.angle(s, deg=True)
+
+                for e in entries:
+                    f, lw = e.freqs / div, 1.6
+                    if e.s11 is not None:
+                        ax0.plot(f, _col0(e.s11), color=e.color, linewidth=lw, label=e.name)
+                        ax1.plot(f, _col1(e.s11), color=e.color, linewidth=lw, label=e.name)
+                    if e.s21 is not None:
+                        ax2.plot(f, _col0(e.s21), color=e.color, linewidth=lw, label=e.name)
+                        ax3.plot(f, _col1(e.s21), color=e.color, linewidth=lw, label=e.name)
+
+                if ri:
+                    specs = [
+                        (ax0, "S11 Real", "Re(S11)"),
+                        (ax1, "S11 Imag", "Im(S11)"),
+                        (ax2, "S21 Real", "Re(S21)"),
+                        (ax3, "S21 Imag", "Im(S21)"),
+                    ]
+                else:
+                    specs = [
+                        (ax0, "S11 Magnitude", "|S11| (dB)"),
+                        (ax1, "S11 Phase",     "∠S11 (°)"),
+                        (ax2, "S21 Magnitude", "|S21| (dB)"),
+                        (ax3, "S21 Phase",     "∠S21 (°)"),
+                    ]
+                if not has_s21:
+                    for ax in (ax2, ax3):
+                        ax.text(0.5, 0.5, "No S21 data", transform=ax.transAxes,
+                                ha="center", va="center", fontsize=9,
+                                color=_TEXT2, fontstyle="italic")
+            else:
+                # s11 or s21: 4 charts — Mag, Phase, Real, Imag for chosen param
+                def _get_s(e):
+                    return e.s11 if p == "s11" else e.s21
+
+                pname = p.upper()
+                no_data = not any(_get_s(e) is not None for e in entries)
+                for e in entries:
+                    s = _get_s(e)
+                    if s is None:
+                        continue
+                    f, lw = e.freqs / div, 1.6
+                    ax0.plot(f, 20*np.log10(np.abs(s)+1e-15), color=e.color, linewidth=lw, label=e.name)
+                    ax1.plot(f, np.angle(s, deg=True),         color=e.color, linewidth=lw, label=e.name)
+                    ax2.plot(f, s.real,                        color=e.color, linewidth=lw, label=e.name)
+                    ax3.plot(f, s.imag,                        color=e.color, linewidth=lw, label=e.name)
+                specs = [
+                    (ax0, f"{pname} Magnitude", f"|{pname}| (dB)"),
+                    (ax1, f"{pname} Phase",     f"∠{pname} (°)"),
+                    (ax2, f"{pname} Real",      f"Re({pname})"),
+                    (ax3, f"{pname} Imag",      f"Im({pname})"),
+                ]
+                if no_data:
+                    for ax in flat:
+                        ax.text(0.5, 0.5, f"No {pname} data", transform=ax.transAxes,
+                                ha="center", va="center", fontsize=9,
+                                color=_TEXT2, fontstyle="italic")
         else:
             ax_top, ax_bot = flat
-            _fmt_meta = {
-                "db":    ("Magnitude (dB)", "|S| (dB)"),
-                "phase": ("Phase (°)",      "∠S (°)"),
-                "real":  ("Real Part",      "Re(S)"),
-                "imag":  ("Imag Part",      "Im(S)"),
-            }
-            fmt_title, fmt_ylabel = _fmt_meta[self._format_mode]
+            pname = p.upper()
 
-            def _yvals(s):
-                if self._format_mode == "db":
-                    return 20*np.log10(np.abs(s)+1e-15)
-                if self._format_mode == "phase":
-                    return np.angle(s, deg=True)
-                if self._format_mode == "real":
+            def _yvals_top(s):
+                if self._display2 == "real_imag":
                     return s.real
-                return s.imag
+                return 20*np.log10(np.abs(s)+1e-15)
 
+            def _yvals_bot(s):
+                if self._display2 == "real_imag":
+                    return s.imag
+                return np.angle(s, deg=True)
+
+            def _get_s(e):
+                return e.s11 if p == "s11" else e.s21
+
+            no_data = not any(_get_s(e) is not None for e in entries)
             for e in entries:
+                s = _get_s(e)
+                if s is None:
+                    continue
                 f, lw = e.freqs / div, 1.6
-                if e.s11 is not None:
-                    ax_top.plot(f, _yvals(e.s11), color=e.color, linewidth=lw, label=e.name)
-                if e.s21 is not None:
-                    ax_bot.plot(f, _yvals(e.s21), color=e.color, linewidth=lw, label=e.name)
+                ax_top.plot(f, _yvals_top(s), color=e.color, linewidth=lw, label=e.name)
+                ax_bot.plot(f, _yvals_bot(s), color=e.color, linewidth=lw, label=e.name)
 
-            if not any(e.s21 is not None for e in entries):
-                ax_bot.text(0.5, 0.5, "No S21 data", transform=ax_bot.transAxes,
+            if no_data:
+                for ax in (ax_top, ax_bot):
+                    ax.text(0.5, 0.5, f"No {pname} data", transform=ax.transAxes,
                             ha="center", va="center", fontsize=9,
                             color=_TEXT2, fontstyle="italic")
 
-            specs = [
-                (ax_top, f"S11 — {fmt_title}", fmt_ylabel),
-                (ax_bot, f"S21 — {fmt_title}", fmt_ylabel),
-            ]
+            if self._display2 == "real_imag":
+                specs = [
+                    (ax_top, f"{pname} Real", f"Re({pname})"),
+                    (ax_bot, f"{pname} Imag", f"Im({pname})"),
+                ]
+            else:
+                specs = [
+                    (ax_top, f"{pname} Magnitude", f"|{pname}| (dB)"),
+                    (ax_bot, f"{pname} Phase",     f"∠{pname} (°)"),
+                ]
 
         for ax, title, ylabel in specs:
             ax.set_title(title, fontsize=11, color=_TEXT, pad=10)
@@ -661,6 +965,10 @@ class MeasurementViewerWindow(QMainWindow):
         except Exception:
             pass
         self._canvas.draw_idle()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._reset_axes()
 
     # ── Navigation ────────────────────────────────────────────────────────── #
     def return_to_menu_window(self):
