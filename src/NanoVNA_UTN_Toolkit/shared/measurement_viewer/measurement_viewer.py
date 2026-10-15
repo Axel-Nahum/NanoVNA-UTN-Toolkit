@@ -285,6 +285,7 @@ class MeasurementViewerWindow(QMainWindow):
         t2.setStyleSheet(
             f"font-size:10px; color:{_TEXT2}; background:transparent;"
             " margin:0; padding:0;")
+        t2.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         tv.addWidget(t1)
         tv.addWidget(t2)
         bh.addWidget(tcol)
