@@ -183,7 +183,9 @@ class MeasurementViewerWindow(QMainWindow):
         screen = QGuiApplication.primaryScreen().availableGeometry()
         W = min(1280, max(960, int(screen.width()  * 0.85)))
         H = min(780,  max(600, int(screen.height() * 0.82)))
-        self.setGeometry(120, 80, W, H)
+        x = screen.x() + (screen.width()  - W) // 2
+        y = screen.y() + (screen.height() - H) // 2
+        self.setGeometry(x, y, W, H)
         self.setMinimumSize(800, 520)
 
         if apply_window_icon:
