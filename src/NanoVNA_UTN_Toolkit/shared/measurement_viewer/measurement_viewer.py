@@ -182,6 +182,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._y_autoscale     = [True] * 4   # per-chart autoscale flag
         self._y_range         = [(None, None)] * 4  # (ymin, ymax) when manual
         self._y_grid          = [True] * 4   # per-chart grid visibility
+        self._export_fmt      = "png"
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -326,7 +327,7 @@ class MeasurementViewerWindow(QMainWindow):
 
         self._tab_btns: list[QPushButton] = []
         for i, (icon, name) in enumerate((
-            ("∿", "Graphics"), ("⊕", "Cursors"), ("⇔", "Range")
+            ("∿", "Graphics"), ("⊕", "Cursors"), ("⇔", "Range"), ("↓", "Export")
         )):
             btn = QPushButton(f"{icon}  {name}")
             btn.setFixedHeight(30)
@@ -702,6 +703,108 @@ class MeasurementViewerWindow(QMainWindow):
             })
 
         self._tab_stack.addWidget(range_page)
+
+        # ── Page 3 — Export ─────────────────────────────────────────────────── #
+        export_page = QWidget()
+        export_page.setStyleSheet("background:transparent;")
+        eph = QHBoxLayout(export_page)
+        eph.setContentsMargins(12, 0, 12, 0)
+        eph.setSpacing(0)
+
+        _EXP_ACT = (f"QPushButton {{ font-size:10px; font-weight:600; padding:2px 9px;"
+                    f" border:none; background:{_ACCENT}; color:#ffffff; border-radius:4px; }}"
+                    f" QPushButton:hover {{ background:{_ACCENT_H}; }}")
+        _EXP_OFF = (f"QPushButton {{ font-size:10px; padding:2px 9px;"
+                    f" border:1px solid {_BORDER}; background:transparent;"
+                    f" color:{_TEXT2}; border-radius:4px; }}"
+                    f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}")
+        _EXP_GO  = (f"QPushButton {{ font-size:10px; font-weight:600; padding:2px 10px;"
+                    f" border:1px solid {_BORDER}; background:transparent;"
+                    f" color:{_TEXT}; border-radius:4px; }}"
+                    f" QPushButton:hover {{ background:{_BORDER}; }}")
+        self._EXP_ACT_STYLE = _EXP_ACT
+        self._EXP_OFF_STYLE = _EXP_OFF
+
+        def _exp_sep():
+            s = QFrame(); s.setFrameShape(QFrame.Shape.VLine)
+            s.setFixedWidth(1); s.setStyleSheet(f"background:{_BORDER}; border:none;")
+            return s
+
+        def _exp_section(label_text, *btns):
+            w = QWidget(); w.setStyleSheet("background:transparent;")
+            v = QVBoxLayout(w); v.setContentsMargins(12, 5, 12, 5); v.setSpacing(4)
+            lbl = QLabel(label_text)
+            lbl.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px; font-weight:600;")
+            v.addWidget(lbl)
+            row = QHBoxLayout(); row.setSpacing(4); row.setContentsMargins(0,0,0,0)
+            for b in btns:
+                b.setFixedHeight(22)
+                row.addWidget(b)
+            v.addLayout(row)
+            return w
+
+        # ── Format + DPI ─────────────────────────────────────────────────────── #
+        self._btn_fmt: dict[str, QPushButton] = {}
+        for fmt in ("png", "pdf", "svg"):
+            b = QPushButton(fmt.upper())
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.clicked.connect(lambda _=False, f=fmt: self._set_export_fmt(f))
+            self._btn_fmt[fmt] = b
+        _dpi_lbl = QLabel("DPI")
+        _dpi_lbl.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px;")
+        self._export_dpi = QLineEdit("150")
+        self._export_dpi.setFixedSize(42, 22)
+        self._export_dpi.setStyleSheet(
+            f"QLineEdit {{ font-size:10px; padding:1px 4px; border-radius:3px;"
+            f" border:1px solid {_BORDER}; background:{_CARD_BG}; color:{_TEXT}; }}")
+        fmt_dpi_w = QWidget(); fmt_dpi_w.setStyleSheet("background:transparent;")
+        fmt_dpi_v = QVBoxLayout(fmt_dpi_w)
+        fmt_dpi_v.setContentsMargins(12, 5, 12, 5); fmt_dpi_v.setSpacing(4)
+        fmt_lbl2 = QLabel("Format & DPI")
+        fmt_lbl2.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px; font-weight:600;")
+        fmt_dpi_v.addWidget(fmt_lbl2)
+        fmt_row = QHBoxLayout(); fmt_row.setSpacing(4); fmt_row.setContentsMargins(0,0,0,0)
+        for b in self._btn_fmt.values():
+            b.setFixedHeight(22); fmt_row.addWidget(b)
+        fmt_row.addSpacing(6)
+        fmt_row.addWidget(_dpi_lbl)
+        fmt_row.addWidget(self._export_dpi)
+        fmt_dpi_v.addLayout(fmt_row)
+        eph.addWidget(fmt_dpi_w)
+        self._update_export_fmt_buttons()
+
+        eph.addWidget(_exp_sep())
+
+        # ── Individual ───────────────────────────────────────────────────────── #
+        def _ebt(label, mode):
+            b = QPushButton(label); b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.setStyleSheet(_EXP_GO)
+            b.clicked.connect(lambda _=False, m=mode: self._run_export(m))
+            return b
+        eph.addWidget(_exp_section("Individual",
+            _ebt("Mag [dB]", "ind_mag"),
+            _ebt("Phase [°]", "ind_phase"),
+            _ebt("Real", "ind_real"),
+            _ebt("Imag", "ind_imag"),
+        ), stretch=2)
+
+        eph.addWidget(_exp_sep())
+
+        # ── Pairs ─────────────────────────────────────────────────────────────── #
+        eph.addWidget(_exp_section("Pairs",
+            _ebt("Mag + Phase", "pair_mp"),
+            _ebt("Real + Imag", "pair_ri"),
+        ), stretch=1)
+
+        eph.addWidget(_exp_sep())
+
+        # ── 4-chart ───────────────────────────────────────────────────────────── #
+        eph.addWidget(_exp_section("4-chart",
+            _ebt("S11", "4ch_s11"),
+            _ebt("S21", "4ch_s21"),
+        ), stretch=1)
+
+        self._tab_stack.addWidget(export_page)
 
         self._tab_idx = 0
         self._tab_stack.setCurrentIndex(0)
@@ -1103,6 +1206,142 @@ class MeasurementViewerWindow(QMainWindow):
             self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
             self._draw_cursors()
             self._blit_cursors()
+
+    # ── Export helpers ────────────────────────────────────────────────────── #
+    def _update_export_fmt_buttons(self):
+        if not hasattr(self, "_btn_fmt"):
+            return
+        for fmt, btn in self._btn_fmt.items():
+            btn.setStyleSheet(self._EXP_ACT_STYLE if fmt == self._export_fmt
+                              else self._EXP_OFF_STYLE)
+
+    def _set_export_fmt(self, fmt: str):
+        self._export_fmt = fmt
+        self._update_export_fmt_buttons()
+
+    def _build_export_fig(self, mode: str):
+        from matplotlib.figure import Figure as _MplFig
+        entries = self._current_entries()
+        if not entries:
+            return None, ""
+        div, unit = self._freq_div, self._freq_unit
+
+        p = self._param_mode
+        if p == "split":
+            p = "s11"
+
+        def _style(ax, title, ylabel):
+            ax.set_facecolor(_CARD_BG)
+            ax.set_title(title, fontsize=12, color=_TEXT, pad=10)
+            ax.set_ylabel(ylabel, fontsize=9, color=_TEXT2)
+            ax.set_xlabel(f"Frequency ({unit})", fontsize=9, color=_TEXT2)
+            ax.tick_params(colors=_TEXT2, labelsize=8)
+            ax.grid(True, linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
+            for sp in ax.spines.values():
+                sp.set_color(_SPINE); sp.set_linewidth(0.8)
+
+        def _plot(ax, entries, get_y):
+            for e in entries:
+                y = get_y(e)
+                if y is None: continue
+                ax.plot(e.freqs / div, y, color=e.color, linewidth=1.6, label=e.name)
+            if len(entries) > 1 and ax.get_lines():
+                ax.legend(fontsize=7, facecolor=_PANEL_BG, edgecolor=_BORDER, labelcolor=_TEXT)
+
+        def _s(e, param): return e.s11 if param == "s11" else e.s21
+
+        pname = p.upper()
+
+        if mode in ("ind_mag", "ind_phase", "ind_real", "ind_imag"):
+            fig = _MplFig(figsize=(9, 5), facecolor=_CARD_BG)
+            ax = fig.add_subplot(111)
+            if mode == "ind_mag":
+                _plot(ax, entries, lambda e: 20*np.log10(np.abs(_s(e,p))+1e-15) if _s(e,p) is not None else None)
+                _style(ax, f"{pname} Magnitude", f"|{pname}| (dB)")
+                fname = f"{pname}_magnitude"
+            elif mode == "ind_phase":
+                _plot(ax, entries, lambda e: np.angle(_s(e,p), deg=True) if _s(e,p) is not None else None)
+                _style(ax, f"{pname} Phase", f"∠{pname} (°)")
+                fname = f"{pname}_phase"
+            elif mode == "ind_real":
+                _plot(ax, entries, lambda e: _s(e,p).real if _s(e,p) is not None else None)
+                _style(ax, f"{pname} Real", f"Re({pname})")
+                fname = f"{pname}_real"
+            else:
+                _plot(ax, entries, lambda e: _s(e,p).imag if _s(e,p) is not None else None)
+                _style(ax, f"{pname} Imaginary", f"Im({pname})")
+                fname = f"{pname}_imag"
+            fig.tight_layout(pad=1.4)
+            return fig, fname
+
+        if mode in ("pair_mp", "pair_ri"):
+            fig = _MplFig(figsize=(9, 8), facecolor=_CARD_BG)
+            ax1, ax2 = fig.subplots(2, 1)
+            if mode == "pair_mp":
+                _plot(ax1, entries, lambda e: 20*np.log10(np.abs(_s(e,p))+1e-15) if _s(e,p) is not None else None)
+                _plot(ax2, entries, lambda e: np.angle(_s(e,p), deg=True) if _s(e,p) is not None else None)
+                _style(ax1, f"{pname} Magnitude", f"|{pname}| (dB)")
+                _style(ax2, f"{pname} Phase", f"∠{pname} (°)")
+                fname = f"{pname}_mag_phase"
+            else:
+                _plot(ax1, entries, lambda e: _s(e,p).real if _s(e,p) is not None else None)
+                _plot(ax2, entries, lambda e: _s(e,p).imag if _s(e,p) is not None else None)
+                _style(ax1, f"{pname} Real", f"Re({pname})")
+                _style(ax2, f"{pname} Imaginary", f"Im({pname})")
+                fname = f"{pname}_real_imag"
+            fig.tight_layout(pad=1.4, h_pad=2.0)
+            return fig, fname
+
+        if mode in ("4ch_s11", "4ch_s21"):
+            param = "s11" if mode == "4ch_s11" else "s21"
+            pn = param.upper()
+            fig = _MplFig(figsize=(12, 8), facecolor=_CARD_BG)
+            ((ax0, ax1), (ax2, ax3)) = fig.subplots(2, 2)
+            for e in entries:
+                s = _s(e, param)
+                if s is None: continue
+                f = e.freqs / div
+                ax0.plot(f, 20*np.log10(np.abs(s)+1e-15), color=e.color, lw=1.6, label=e.name)
+                ax1.plot(f, np.angle(s, deg=True),         color=e.color, lw=1.6, label=e.name)
+                ax2.plot(f, s.real,                        color=e.color, lw=1.6, label=e.name)
+                ax3.plot(f, s.imag,                        color=e.color, lw=1.6, label=e.name)
+            _style(ax0, f"{pn} Magnitude",  f"|{pn}| (dB)")
+            _style(ax1, f"{pn} Phase",      f"∠{pn} (°)")
+            _style(ax2, f"{pn} Real",       f"Re({pn})")
+            _style(ax3, f"{pn} Imaginary",  f"Im({pn})")
+            if len(entries) > 1:
+                for ax in (ax0, ax1, ax2, ax3):
+                    if ax.get_lines():
+                        ax.legend(fontsize=7, facecolor=_PANEL_BG, edgecolor=_BORDER, labelcolor=_TEXT)
+            fig.tight_layout(pad=1.4, h_pad=2.0, w_pad=2.0)
+            return fig, f"{pn}_4chart"
+
+        return None, ""
+
+    def _run_export(self, mode: str):
+        from PySide6.QtWidgets import QMessageBox
+        import matplotlib.pyplot as _plt
+        if not self._current_entries():
+            QMessageBox.warning(self, "No data", "Select at least one measurement file first.")
+            return
+        fig, hint = self._build_export_fig(mode)
+        if fig is None:
+            return
+        fmt = self._export_fmt
+        try:
+            dpi = max(72, min(600, int(self._export_dpi.text())))
+        except ValueError:
+            dpi = 150
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Export Chart", f"{hint}.{fmt}",
+            f"{fmt.upper()} Files (*.{fmt});;All Files (*.*)"
+        )
+        if path:
+            try:
+                fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor=_CARD_BG)
+            except Exception as exc:
+                QMessageBox.critical(self, "Export Error", str(exc))
+        _plt.close(fig)
 
     def _update_tab_buttons(self, active_style: str, inactive_style: str):
         for i, btn in enumerate(self._tab_btns):
