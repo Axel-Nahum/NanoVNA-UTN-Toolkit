@@ -2146,13 +2146,6 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
     layout.addWidget(formula_lbl, alignment=Qt.AlignHCenter)
     layout.addSpacing(16)
 
-    scope_lbl = QLabel(std_texts.get(
-        "precal_scope_note",
-        "Only this step is corrected; the other steps keep their own measurement."))
-    scope_lbl.setWordWrap(True)
-    scope_lbl.setStyleSheet("font-size: 11px; color: #ffaa44;")
-    layout.addWidget(scope_lbl)
-
     # Measure button
     _measure_open_btn = QPushButton(std_texts.get("precal_measure_button", "Measure OPEN"))
     _measure_open_btn.setFixedHeight(34)
