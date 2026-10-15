@@ -554,6 +554,7 @@ def build_standard_screen(wizard, descriptor, step_def):
             _precal_btn_label = std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)")
         btn_precal = QPushButton(_precal_btn_label)
         btn_precal.setFixedHeight(24)
+        btn_precal.setStyleSheet(_precal_ss_active if _has_precal else _precal_ss_inactive)
         precal_row.addWidget(btn_precal)
 
         btn_delete_precal_top = QPushButton(std_texts.get("delete_precal", "✕ Quitar pre-cal"))
