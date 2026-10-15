@@ -102,7 +102,7 @@ class MeasurementViewerWindow(QMainWindow):
         # path → colour index (persistent across folder changes)
         self._color_map: dict[str, str] = {}
         self._color_idx = 0
-        self._layout_mode = 4  # 4 = 2×2 grid,  2 = S11 Mag/Phase stacked
+        self._layout_mode = 2  # 2 = S11 Mag/Phase stacked (default),  4 = 2×2 grid
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -217,47 +217,76 @@ class MeasurementViewerWindow(QMainWindow):
         rv.setContentsMargins(0, 0, 0, 0)
         rv.setSpacing(0)
 
-        # Toolbar
+        # Toolbar — Word/Altium style: labeled groups separated by dividers
         toolbar = QWidget()
-        toolbar.setFixedHeight(36)
-        toolbar.setStyleSheet("background: #161622; border-bottom: 1px solid #2a2a3a;")
+        toolbar.setFixedHeight(52)
+        toolbar.setStyleSheet("background: #161622; border-bottom: 1px solid #252535;")
         tb = QHBoxLayout(toolbar)
-        tb.setContentsMargins(10, 0, 10, 0)
+        tb.setContentsMargins(8, 0, 8, 0)
         tb.setSpacing(0)
 
-        # Segmented layout toggle — single rounded container, active gets fill
-        self._btn_4 = QPushButton("4 Charts")
-        self._btn_4.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_4.clicked.connect(lambda: self._set_layout(4))
+        def _group(label_text: str, *widgets) -> QWidget:
+            """Labeled group: controls on top, tiny label centred below."""
+            grp = QWidget()
+            grp.setStyleSheet("QWidget { background: transparent; }")
+            gv = QVBoxLayout(grp)
+            gv.setContentsMargins(6, 4, 6, 2)
+            gv.setSpacing(2)
 
+            ctrl_row = QWidget()
+            ctrl_row.setStyleSheet("QWidget { background: transparent; }")
+            cr = QHBoxLayout(ctrl_row)
+            cr.setContentsMargins(0, 0, 0, 0)
+            cr.setSpacing(2)
+            for w in widgets:
+                cr.addWidget(w)
+            gv.addWidget(ctrl_row, alignment=Qt.AlignmentFlag.AlignHCenter)
+
+            lbl = QLabel(label_text)
+            lbl.setStyleSheet("font-size: 9px; color: #44445a;")
+            lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+            gv.addWidget(lbl)
+            return grp
+
+        def _vsep() -> QFrame:
+            sep = QFrame()
+            sep.setFrameShape(QFrame.Shape.VLine)
+            sep.setFixedHeight(36)
+            sep.setStyleSheet("color: #252535;")
+            return sep
+
+        # ── Group: Layout ────────────────────────────────────────────────── #
         self._btn_2 = QPushButton("2 Charts")
         self._btn_2.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_2.clicked.connect(lambda: self._set_layout(2))
 
+        self._btn_4 = QPushButton("4 Charts")
+        self._btn_4.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_4.clicked.connect(lambda: self._set_layout(4))
+
         self._update_layout_buttons()
 
         seg = QWidget()
-        seg.setFixedHeight(26)
         seg.setStyleSheet(
-            "QWidget { background: #1a1a2e; border: 1px solid #2e2e4e;"
-            " border-radius: 5px; }"
+            "QWidget { background: #1a1a2e; border: 1px solid #2e2e4e; border-radius: 4px; }"
         )
         seg_lay = QHBoxLayout(seg)
         seg_lay.setContentsMargins(2, 2, 2, 2)
         seg_lay.setSpacing(1)
-        seg_lay.addWidget(self._btn_4)
         seg_lay.addWidget(self._btn_2)
+        seg_lay.addWidget(self._btn_4)
 
-        tb.addWidget(seg)
-        tb.addStretch(1)  # space for future control groups
+        tb.addWidget(_group("Layout", seg))
+        tb.addWidget(_vsep())
+        tb.addStretch(1)  # future groups go here
 
         rv.addWidget(toolbar)
 
         # Canvas
         self._fig = _Figure(facecolor=_BG)
-        self._axes = self._fig.subplots(2, 2)
+        self._axes = self._fig.subplots(2, 1)   # default: 2-chart mode
         self._fig.subplots_adjust(left=0.09, right=0.97, top=0.93,
-                                  bottom=0.09, hspace=0.48, wspace=0.32)
+                                  bottom=0.09, hspace=0.45)
         self._canvas = FigureCanvas(self._fig)
         self._canvas.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
