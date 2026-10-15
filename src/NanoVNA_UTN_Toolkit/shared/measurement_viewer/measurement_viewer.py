@@ -871,6 +871,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._update_header_groups()
         self._rebuild_figure()
         self._update_cursor_readout()
+        self._update_linked_buttons()
 
     def _set_display2(self, mode: str):
         if self._display2 == mode:
@@ -1407,9 +1408,12 @@ class MeasurementViewerWindow(QMainWindow):
 
     def _cursor_y_val_at(self, n: int, ax_idx: int):
         """Return (float_value, unit_str) for cursor n at a specific axis index."""
-        all_ax = self._flat_axes()
-        mid = max(len(all_ax) // 2, 1)
-        row = 0 if ax_idx < mid else 1
+        if self._layout_mode == 4:
+            row = ax_idx % 2   # 0 = left column, 1 = right column
+        else:
+            all_ax = self._flat_axes()
+            mid = max(len(all_ax) // 2, 1)
+            row = 0 if ax_idx < mid else 1
         for dot, _, a_idx in self._cursor_markers[(n, row)]:
             if a_idx == ax_idx:
                 yi = dot.get_ydata()
@@ -1480,6 +1484,8 @@ class MeasurementViewerWindow(QMainWindow):
                 val.setText("—")
 
     def _update_linked_buttons(self):
+        # In 4-chart mode columns always move independently — linked has no effect
+        is_4chart = self._layout_mode == 4
         linked = self._cursors_linked
         on  = (f"QPushButton {{ font-size:11px; font-weight:600; border:none;"
                f" background:{_ACCENT}; color:#ffffff; border-radius:5px; }}"
@@ -1487,16 +1493,32 @@ class MeasurementViewerWindow(QMainWindow):
         off = (f"QPushButton {{ font-size:11px; border:1px solid {_BORDER};"
                f" background:transparent; color:{_TEXT2}; border-radius:5px; }}"
                f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}")
-        self._btn_linked.setText("ON" if linked else "OFF")
-        self._btn_linked.setStyleSheet(on if linked else off)
+        dis = (f"QPushButton {{ font-size:11px; border:1px solid {_BORDER};"
+               f" background:transparent; color:#44445a; border-radius:5px; }}")
+        self._btn_linked.setEnabled(not is_4chart)
+        self._btn_linked.setCursor(
+            Qt.CursorShape.ForbiddenCursor if is_4chart else Qt.CursorShape.PointingHandCursor)
+        if is_4chart:
+            self._btn_linked.setText("—")
+            self._btn_linked.setStyleSheet(dis)
+        else:
+            self._btn_linked.setText("ON" if linked else "OFF")
+            self._btn_linked.setStyleSheet(on if linked else off)
 
     def _toggle_cursors_linked(self):
         self._cursors_linked = not self._cursors_linked
         self._update_linked_buttons()
 
     def _row_axes(self, row: int) -> list:
-        """Return axes for row 0 (top) or row 1 (bottom)."""
+        """Return axes for a cursor slot.
+
+        2-chart: row 0 = top, row 1 = bottom.
+        4-chart: row 0 = left column (indices 0,2), row 1 = right column (1,3).
+        In 4-chart mode cursors always move in column pairs — never all 4 at once.
+        """
         all_axes = self._flat_axes()
+        if self._layout_mode == 4:
+            return [all_axes[0], all_axes[2]] if row == 0 else [all_axes[1], all_axes[3]]
         mid = max(len(all_axes) // 2, 1)
         return all_axes[:mid] if row == 0 else all_axes[mid:]
 
@@ -1547,8 +1569,12 @@ class MeasurementViewerWindow(QMainWindow):
 
         ax = event.inaxes
         all_ax = self._flat_axes()
-        mid = max(len(all_ax) // 2, 1)
-        row = 0 if ax in all_ax[:mid] else 1
+        if self._layout_mode == 4:
+            ax_idx = all_ax.index(ax) if ax in all_ax else 0
+            row = ax_idx % 2   # 0 = left column, 1 = right column
+        else:
+            mid = max(len(all_ax) // 2, 1)
+            row = 0 if ax in all_ax[:mid] else 1
 
         xlim = ax.get_xlim()
         thresh = (xlim[1] - xlim[0]) * 0.025
@@ -1567,7 +1593,7 @@ class MeasurementViewerWindow(QMainWindow):
         for n in (1, 2):
             if self._cursor_enabled[n] and self._cursor_freq[n][row] is None:
                 self._cursor_freq[n][row] = xdata * self._freq_div
-                if self._cursors_linked:
+                if self._cursors_linked and self._layout_mode != 4:
                     self._cursor_freq[n][1 - row] = self._cursor_freq[n][row]
                 self._cursor_dragging = (n, row)
                 self._draw_cursors()
@@ -1592,9 +1618,9 @@ class MeasurementViewerWindow(QMainWindow):
         n, row = self._cursor_dragging
         self._cursor_freq[n][row] = x * self._freq_div
 
-        # Linked: sync the other row of the same cursor
+        # Linked: sync the other slot (2-chart only — 4-chart columns always independent)
         keys_to_move = [(n, row)]
-        if self._cursors_linked:
+        if self._cursors_linked and self._layout_mode != 4:
             other_row = 1 - row
             self._cursor_freq[n][other_row] = self._cursor_freq[n][row]
             keys_to_move.append((n, other_row))
