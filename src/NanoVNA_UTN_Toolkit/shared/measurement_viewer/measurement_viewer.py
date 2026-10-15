@@ -1330,7 +1330,8 @@ class MeasurementViewerWindow(QMainWindow):
             path = item.data(0, Qt.ItemDataRole.UserRole)
             col  = self._color_map.get(path) if item.isSelected() else None
             item.setForeground(0, QColor(col) if col else QColor(_TEXT))
-            item.setIcon(0, self._color_swatch(col))
+            swatch_col = col if (self._compare_mode and col) else None
+            item.setIcon(0, self._color_swatch(swatch_col))
 
         self._redraw(entries)
 
