@@ -38,7 +38,7 @@ _PALETTE = [
 _WIN_BG   = "#1e1e2e"
 _PANEL_BG = "#252538"
 _BORDER   = "#383850"
-_CARD_BG  = "#1e1e2e"
+_CARD_BG  = "#0d1219"
 _SPINE    = "#383850"
 _ACCENT   = "#2d5a8e"
 _ACCENT_H = "#3a6fa0"
@@ -195,8 +195,14 @@ class MeasurementViewerWindow(QMainWindow):
         bh = QHBoxLayout(brand)
         bh.setContentsMargins(0, 0, 0, 0)
         bh.setSpacing(10)
-        icon_lbl = QLabel("∿")
-        icon_lbl.setStyleSheet("font-size:22px; color:#7ab3f5; background:transparent;")
+        icon_lbl = QLabel()
+        icon_lbl.setStyleSheet("background:transparent;")
+        _ico = self.windowIcon()
+        if not _ico.isNull():
+            icon_lbl.setPixmap(_ico.pixmap(32, 32))
+        else:
+            icon_lbl.setText("~")
+            icon_lbl.setStyleSheet("font-size:22px; color:#7ab3f5; background:transparent;")
         bh.addWidget(icon_lbl)
         tcol = QWidget()
         tcol.setStyleSheet("background:transparent;")
@@ -213,7 +219,7 @@ class MeasurementViewerWindow(QMainWindow):
         tv.addWidget(t2)
         bh.addWidget(tcol)
         h.addWidget(brand)
-        h.addSpacing(28)
+        h.addStretch(1)
 
         # Layout group
         self._btn_2 = QPushButton("2 charts")
@@ -224,7 +230,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_4.clicked.connect(lambda: self._set_layout(4))
         self._update_layout_buttons()
         h.addWidget(self._labeled_seg("Layout", self._btn_2, self._btn_4))
-        h.addSpacing(12)
+        h.addSpacing(16)
 
         # Display group
         self._fmt_btns: dict[str, QPushButton] = {}
@@ -387,8 +393,8 @@ class MeasurementViewerWindow(QMainWindow):
 
         self._fig = _Figure(facecolor=_BG)
         self._axes = self._fig.subplots(2, 1)
-        self._fig.subplots_adjust(left=0.09, right=0.97, top=0.93,
-                                  bottom=0.08, hspace=0.58)
+        self._fig.subplots_adjust(left=0.08, right=0.98, top=0.95,
+                                  bottom=0.06, hspace=0.45)
         self._canvas = FigureCanvas(self._fig)
         self._canvas.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -427,12 +433,12 @@ class MeasurementViewerWindow(QMainWindow):
         self._fig.clear()
         if self._layout_mode == 4:
             self._axes = self._fig.subplots(2, 2)
-            self._fig.subplots_adjust(left=0.08, right=0.97, top=0.93,
-                                      bottom=0.08, hspace=0.58, wspace=0.3)
+            self._fig.subplots_adjust(left=0.08, right=0.98, top=0.95,
+                                      bottom=0.06, hspace=0.45, wspace=0.28)
         else:
             self._axes = self._fig.subplots(2, 1)
-            self._fig.subplots_adjust(left=0.09, right=0.97, top=0.93,
-                                      bottom=0.08, hspace=0.58)
+            self._fig.subplots_adjust(left=0.08, right=0.98, top=0.95,
+                                      bottom=0.06, hspace=0.45)
         self._redraw(self._current_entries())
 
     def _current_entries(self) -> list[_FileEntry]:
