@@ -1501,18 +1501,28 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_linked.setStyleSheet(on if linked else off)
 
     def _toggle_cursors_linked(self):
-        self._cursors_linked = not self._cursors_linked
-        if self._cursors_linked and self._layout_mode == 4:
-            # switching to linked: collapse slots 2,3 into 0,1
-            for n in (1, 2):
-                # copy bottom positions to slot 1 if slot 0 already has data
-                if self._cursor_freq[n][2] is not None and self._cursor_freq[n][1] is None:
-                    self._cursor_freq[n][1] = self._cursor_freq[n][2]
-                self._cursor_freq[n][2] = None
-                self._cursor_freq[n][3] = None
-                for s in (2, 3):
-                    self._cursor_lines[(n, s)] = []
-                    self._cursor_markers[(n, s)] = []
+        was_linked = self._cursors_linked
+        self._cursors_linked = not was_linked
+        if self._layout_mode == 4:
+            if not self._cursors_linked:
+                # linked→unlinked: expand slot 0→(0,1) and slot 1→(2,3)
+                for n in (1, 2):
+                    f_top = self._cursor_freq[n][0]  # top pair freq
+                    f_bot = self._cursor_freq[n][1]  # bottom pair freq
+                    self._cursor_freq[n][1] = f_top  # ax1 keeps top freq
+                    self._cursor_freq[n][2] = f_bot  # ax2 gets bottom freq
+                    self._cursor_freq[n][3] = f_bot  # ax3 gets bottom freq
+            else:
+                # unlinked→linked: collapse (0,1)→slot 0, (2,3)→slot 1
+                for n in (1, 2):
+                    # slot 1 now becomes the bottom pair freq (use slot 2 if available)
+                    if self._cursor_freq[n][2] is not None:
+                        self._cursor_freq[n][1] = self._cursor_freq[n][2]
+                    self._cursor_freq[n][2] = None
+                    self._cursor_freq[n][3] = None
+                    for s in (2, 3):
+                        self._cursor_lines[(n, s)] = []
+                        self._cursor_markers[(n, s)] = []
         self._update_linked_buttons()
         self._redraw(self._current_entries())
 
