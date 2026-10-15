@@ -1371,7 +1371,10 @@ class MeasurementViewerWindow(QMainWindow):
             if axes:
                 xlim = axes[0].get_xlim()
                 center_hz = (xlim[0] + xlim[1]) / 2.0 * self._freq_div
-                self._cursor_freq[n] = [center_hz, center_hz, None, None]
+                if self._layout_mode == 4 and not self._cursors_linked:
+                    self._cursor_freq[n] = [center_hz] * 4   # all 4 individual
+                else:
+                    self._cursor_freq[n] = [center_hz, center_hz, None, None]
         self._update_cursor_buttons()
         self._redraw(self._current_entries())
         self._update_cursor_readout()
@@ -1516,21 +1519,28 @@ class MeasurementViewerWindow(QMainWindow):
     def _cursor_slot(self, ax_idx: int) -> int:
         """Map an axis index to its cursor slot.
 
-        2-chart: ax 0 → slot 0, ax 1 → slot 1.
-        4-chart: always row pairs — top (ax 0,1) → slot 0; bottom (ax 2,3) → slot 1.
+        2-chart:          ax 0 → slot 0, ax 1 → slot 1.
+        4-chart linked:   row pairs — top (ax 0,1) → slot 0; bottom (ax 2,3) → slot 1.
+        4-chart unlinked: each axis is its own slot (ax_idx = slot).
         """
         if self._layout_mode != 4:
-            return ax_idx   # 0 or 1
-        return 0 if ax_idx < 2 else 1
+            return ax_idx
+        if self._cursors_linked:
+            return 0 if ax_idx < 2 else 1
+        return ax_idx   # 0,1,2,3 individual
 
     def _row_axes(self, slot: int) -> list:
         """Return the axes that belong to a cursor slot.
 
-        2-chart: one axis per slot. 4-chart: always a pair of two axes per slot.
+        2-chart: one axis per slot.
+        4-chart linked:   slot 0 → [ax0,ax1], slot 1 → [ax2,ax3].
+        4-chart unlinked: one axis per slot (individual).
         """
         all_axes = self._flat_axes()
         if self._layout_mode == 4:
-            return all_axes[:2] if slot == 0 else all_axes[2:]
+            if self._cursors_linked:
+                return all_axes[:2] if slot == 0 else all_axes[2:]
+            return [all_axes[slot]]
         return [all_axes[slot]]
 
     def _blit_cursors(self):
@@ -1619,9 +1629,8 @@ class MeasurementViewerWindow(QMainWindow):
         for n in (1, 2):
             if self._cursor_enabled[n] and self._cursor_freq[n][slot] is None:
                 self._cursor_freq[n][slot] = xdata * self._freq_div
-                if self._cursors_linked:
-                    other = 1 - slot   # 0↔1 works for both 2-chart and 4-chart-linked
-                    self._cursor_freq[n][other] = self._cursor_freq[n][slot]
+                if self._cursors_linked and self._layout_mode != 4:
+                    self._cursor_freq[n][1 - slot] = self._cursor_freq[n][slot]
                 self._cursor_dragging = (n, slot)
                 self._draw_cursors()
                 self._update_cursor_readout()
@@ -1646,9 +1655,9 @@ class MeasurementViewerWindow(QMainWindow):
         n, slot = self._cursor_dragging
         self._cursor_freq[n][slot] = x * self._freq_div
 
-        # Linked: sync the paired slot (0↔1 for both 2-chart and 4-chart-linked)
+        # Linked syncs slots only in 2-chart; in 4-chart pairing is via _row_axes
         keys_to_move = [(n, slot)]
-        if self._cursors_linked:
+        if self._cursors_linked and self._layout_mode != 4:
             other = 1 - slot
             self._cursor_freq[n][other] = self._cursor_freq[n][slot]
             keys_to_move.append((n, other))
