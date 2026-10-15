@@ -281,11 +281,14 @@ class MeasurementViewerWindow(QMainWindow):
         t1.setStyleSheet(
             f"font-size:14px; font-weight:bold; color:{_TEXT}; background:transparent;"
             " margin:0; padding:0;")
+        t1.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        t1.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         t2 = QLabel("Compare and inspect measurement files")
         t2.setStyleSheet(
             f"font-size:10px; color:{_TEXT2}; background:transparent;"
             " margin:0; padding:0;")
         t2.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        t2.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tv.addWidget(t1)
         tv.addWidget(t2)
         bh.addWidget(tcol)
