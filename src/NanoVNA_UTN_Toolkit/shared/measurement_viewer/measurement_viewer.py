@@ -102,7 +102,8 @@ class MeasurementViewerWindow(QMainWindow):
         # path → colour index (persistent across folder changes)
         self._color_map: dict[str, str] = {}
         self._color_idx = 0
-        self._layout_mode = 2  # 2 = S11 Mag/Phase stacked (default),  4 = 2×2 grid
+        self._layout_mode  = 2      # 2 = S11/S21 stacked (default),  4 = 2×2 grid
+        self._format_mode  = "db"   # "db" | "phase" | "real" | "imag"
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -278,7 +279,29 @@ class MeasurementViewerWindow(QMainWindow):
 
         tb.addWidget(_group("Layout", seg))
         tb.addWidget(_vsep())
-        tb.addStretch(1)  # future groups go here
+
+        # ── Group: Format ────────────────────────────────────────────────── #
+        self._fmt_btns: dict[str, QPushButton] = {}
+        for _fk, _fl in [("db", "dB"), ("phase", "Phase"), ("real", "Real"), ("imag", "Imag")]:
+            _fb = QPushButton(_fl)
+            _fb.setCursor(Qt.CursorShape.PointingHandCursor)
+            _fb.clicked.connect(lambda _=False, f=_fk: self._set_format(f))
+            self._fmt_btns[_fk] = _fb
+        self._update_format_buttons()
+
+        fmt_seg = QWidget()
+        fmt_seg.setStyleSheet(
+            "QWidget { background: #1a1a2e; border: 1px solid #2e2e4e; border-radius: 4px; }"
+        )
+        fmt_lay = QHBoxLayout(fmt_seg)
+        fmt_lay.setContentsMargins(2, 2, 2, 2)
+        fmt_lay.setSpacing(1)
+        for _fb in self._fmt_btns.values():
+            fmt_lay.addWidget(_fb)
+
+        tb.addWidget(_group("Format", fmt_seg))
+        tb.addWidget(_vsep())
+        tb.addStretch(1)
 
         rv.addWidget(toolbar)
 
@@ -310,6 +333,23 @@ class MeasurementViewerWindow(QMainWindow):
             self._SEG_ACTIVE if self._layout_mode == 4 else self._SEG_INACTIVE)
         self._btn_2.setStyleSheet(
             self._SEG_ACTIVE if self._layout_mode == 2 else self._SEG_INACTIVE)
+
+    def _update_format_buttons(self):
+        for fmt, btn in self._fmt_btns.items():
+            btn.setStyleSheet(
+                self._SEG_ACTIVE if fmt == self._format_mode else self._SEG_INACTIVE)
+
+    def _set_format(self, mode: str):
+        if self._format_mode == mode:
+            return
+        self._format_mode = mode
+        self._update_format_buttons()
+        selected_paths = [
+            item.data(Qt.ItemDataRole.UserRole)
+            for item in self._file_list.selectedItems()
+        ]
+        entries = [self._cache[p] for p in selected_paths if p in self._cache]
+        self._redraw(entries)
 
     def _set_layout(self, mode: int):
         if self._layout_mode == mode:
@@ -430,7 +470,7 @@ class MeasurementViewerWindow(QMainWindow):
     def _reset_axes(self):
         titles = (["S11 Magnitude", "S11 Phase", "S21 Magnitude", "S21 Phase"]
                   if self._layout_mode == 4 else
-                  ["S11 Magnitude", "S11 Phase"])
+                  ["S11", "S21"])
         for ax, title in zip(self._flat_axes(), titles):
             ax.set_facecolor(_BG)
             ax.set_title(title, fontsize=10, color=_TEXT, pad=4)
@@ -489,17 +529,40 @@ class MeasurementViewerWindow(QMainWindow):
                             ha="center", va="center", fontsize=9,
                             color="#666688", fontstyle="italic")
         else:
-            ax_mag, ax_ph = flat
+            ax_top, ax_bot = flat
+            _fmt_meta = {
+                "db":    ("Magnitude (dB)", "|S| (dB)"),
+                "phase": ("Phase (°)",      "∠S (°)"),
+                "real":  ("Real Part",      "Re(S)"),
+                "imag":  ("Imag Part",      "Im(S)"),
+            }
+            fmt_title, fmt_ylabel = _fmt_meta[self._format_mode]
+
+            def _yvals(s):
+                if self._format_mode == "db":
+                    return 20 * np.log10(np.abs(s) + 1e-15)
+                if self._format_mode == "phase":
+                    return np.angle(s, deg=True)
+                if self._format_mode == "real":
+                    return s.real
+                return s.imag
+
             for e in entries:
                 f, lw = e.freqs / div, 1.6
                 if e.s11 is not None:
-                    ax_mag.plot(f, 20 * np.log10(np.abs(e.s11) + 1e-15),
-                                color=e.color, linewidth=lw, label=e.name)
-                    ax_ph.plot(f, np.angle(e.s11, deg=True),
-                               color=e.color, linewidth=lw, label=e.name)
+                    ax_top.plot(f, _yvals(e.s11), color=e.color, linewidth=lw, label=e.name)
+                if e.s21 is not None:
+                    ax_bot.plot(f, _yvals(e.s21), color=e.color, linewidth=lw, label=e.name)
+
+            has_s21 = any(e.s21 is not None for e in entries)
+            if not has_s21:
+                ax_bot.text(0.5, 0.5, "No S21 data", transform=ax_bot.transAxes,
+                            ha="center", va="center", fontsize=9,
+                            color="#666688", fontstyle="italic")
+
             specs = [
-                (ax_mag, "S11 Magnitude", "|S11| (dB)"),
-                (ax_ph,  "S11 Phase",     "∠S11 (°)"),
+                (ax_top, f"S11 — {fmt_title}", fmt_ylabel),
+                (ax_bot, f"S21 — {fmt_title}", fmt_ylabel),
             ]
 
         for ax, title, ylabel in specs:
