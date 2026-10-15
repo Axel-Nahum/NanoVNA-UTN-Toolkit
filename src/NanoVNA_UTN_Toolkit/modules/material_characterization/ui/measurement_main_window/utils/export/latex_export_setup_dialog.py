@@ -321,7 +321,9 @@ class PermittivityLatexSetupDialog(QDialog):
         )
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
             nonpassive_mask_of,
+            usable_band_of,
         )
+        usable_mask, f_min_hz = usable_band_of(result)
 
         preview = PermittivityPdfPreviewDialog(
             parent=main_window,
@@ -335,6 +337,8 @@ class PermittivityLatexSetupDialog(QDialog):
             include_notes=self.include_notes_chk.isChecked(),
             include_tables=self.include_tables_chk.isChecked(),
             nonpassive_mask=nonpassive_mask_of(result),
+            usable_mask=usable_mask,
+            f_min_hz=f_min_hz,
         )
         _geom = self.geometry()
         self.hide()

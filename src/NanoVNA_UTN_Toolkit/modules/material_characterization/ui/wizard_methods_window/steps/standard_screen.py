@@ -119,27 +119,6 @@ def _freq_unit_for_range(start_hz: float, stop_hz: float):
     return 1e9, "GHz"   # kHz + GHz → GHz
 
 
-def _remove_spikes(s11, threshold=2.5):
-    """Replace isolated spikes with the average of adjacent neighbors (complex).
-
-    A point is a spike when its deviation from the linear interpolation of its
-    neighbors exceeds `threshold` times the variation between those neighbors.
-    Smooth gradients are untouched — only truly isolated outliers are removed.
-    """
-    s11 = np.asarray(s11, dtype=complex)
-    n = len(s11)
-    if n < 3:
-        return s11
-    result = s11.copy()
-    for i in range(1, n - 1):
-        expected = (s11[i - 1] + s11[i + 1]) / 2.0
-        residual = abs(s11[i] - expected)
-        neighbor_spread = abs(s11[i + 1] - s11[i - 1])
-        if residual > threshold * max(neighbor_spread, 1e-9):
-            result[i] = expected
-    return result
-
-
 def _render_magnitude(ax, wizard, standard, name, color, std_texts,
                       measured, show_indicative, show_raw) -> None:
     """Render |S11| in dB vs frequency."""
@@ -464,6 +443,9 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_
 from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import preset_store
 from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.permittivity_touchstone import (
     implausible_s11_peak, is_permittivity_touchstone,
+)
+from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.measurement_quality import (
+    S11_PASSIVE_TOL, find_spikes,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
     preset_preload, selected_liquid_key, selected_probe, set_preset_preload,
@@ -808,14 +790,18 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     mid.addSpacing(6)
 
-    wizard.status_label = QLabel(
-        _success_text(std_texts, name) if already
-        else std_texts.get("status_ready", "Ready to measure")
-    )
+    if already:
+        _stored_now = wizard.perm_calibration.get_measurement(standard.key)
+        _status_text, _status_color = _stored_status(
+            wizard, std_texts, name, _stored_now[0], _stored_now[1])
+    else:
+        _status_text = std_texts.get("status_ready", "Ready to measure")
+        _status_color = "gray"
+    wizard.status_label = QLabel(_status_text)
     wizard.status_label.setAlignment(Qt.AlignCenter)
     wizard.status_label.setWordWrap(True)
     wizard.status_label.setStyleSheet(
-        f"font-size: 12px; padding: 4px; color: {'lightgreen' if already else 'gray'};"
+        f"font-size: 12px; padding: 4px; color: {_status_color};"
     )
     mid.addWidget(wizard.status_label)
 
@@ -1129,6 +1115,52 @@ def _success_text(std_texts, name):
     return std_texts.get("status_success", "{name} successfully measured").format(name=name)
 
 
+def _sweep_notes(wizard, freqs, s11, std_texts) -> list:
+    """Non-blocking notes on a stored sweep: |S11| > 1 + tol and isolated spikes.
+
+    EN: The sweep is stored as it came (measured or imported): these notes
+        only say what the computation will flag or do with it.
+    ES: El barrido se guarda tal como vino (medido o importado): estas notas
+        solo dicen que va a marcar o hacer el calculo con el.
+    """
+    notes = []
+    freqs = np.asarray(freqs, dtype=float)
+    s11 = np.asarray(s11, dtype=complex)
+    mag = np.abs(s11)
+    with np.errstate(invalid="ignore"):
+        over = mag > 1.0 + S11_PASSIVE_TOL
+    if np.any(over):
+        i_peak = int(np.nanargmax(mag))
+        notes.append(std_texts.get(
+            "note_nonpassive",
+            "⚠ |S11| reaches {peak:.3f} at {freq} ({n} point(s) above {limit:g}): a "
+            "passive load cannot reflect more than it receives — check the VNA "
+            "calibration (SOL) there. Stored anyway."
+        ).format(peak=float(mag[i_peak]), freq=_fmt_freq(freqs[i_peak]),
+                 n=int(np.count_nonzero(over)), limit=1.0 + S11_PASSIVE_TOL))
+    if getattr(wizard.perm_calibration, "despike_enabled", True):
+        spikes = find_spikes(s11)
+        if spikes.size:
+            notes.append(std_texts.get(
+                "note_spikes",
+                "⚠ {n} isolated spike(s) at {freqs}: spike removal will replace them "
+                "in the computation unless another sweep shares them. The stored "
+                "sweep is unchanged."
+            ).format(n=int(spikes.size),
+                     freqs=", ".join(_fmt_freq(freqs[i]) for i in spikes[:4])
+                     + (" …" if spikes.size > 4 else "")))
+    return notes
+
+
+def _stored_status(wizard, std_texts, name, freqs, s11):
+    """(text, color) for the status line after a sweep is stored."""
+    notes = _sweep_notes(wizard, freqs, s11, std_texts)
+    text = _success_text(std_texts, name)
+    if notes:
+        return text + "\n" + "\n".join(notes), "orange"
+    return text, "lightgreen"
+
+
 def _ask_s1p_matching_sweep(wizard, std_texts, dialog_title=None):
     """Prompt for a .s1p file and return (freqs, s11) validated against the sweep.
 
@@ -1309,7 +1341,7 @@ def _on_import(wizard, standard, name, color, button, std_texts, state):
     apply_precal = _ask_apply_precal(wizard, standard, name, std_texts)
     freqs, s11 = _store_measurement(wizard, standard.key, imported[0], imported[1],
                                     source="imported", apply_precal=apply_precal)
-    set_status(wizard, _success_text(std_texts, name), "lightgreen")
+    set_status(wizard, *_stored_status(wizard, std_texts, name, freqs, s11))
     button.setText(std_texts.get("reimport_button", "Import again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11),
             state["show_indicative"], state.get("show_raw", False),
@@ -1520,7 +1552,7 @@ def _load_preset_into_step(wizard, standard, name, std_texts, preset_name, ask_p
     apply_precal = _ask_apply_precal(wizard, standard, name, std_texts) if ask_precal else True
     freqs, s11 = _store_measurement(wizard, standard.key, freqs, s11, source=f"preset:{preset_name}",
                                     temperature_c=meta.temperature_c, apply_precal=apply_precal)
-    set_status(wizard, _success_text(std_texts, name), "lightgreen")
+    set_status(wizard, *_stored_status(wizard, std_texts, name, freqs, s11))
     wizard.next_button.setEnabled(True)
     hook = getattr(wizard, "_on_measurement_stored_hook", None)
     if callable(hook):
@@ -1698,10 +1730,15 @@ def _store_measurement(wizard, std_key, freqs_raw, s11_raw, source: str = "measu
     any registered _precal_discard_hooks[std_key] is called so the UI can hide
     the "Quitar pre-cal" button.
 
+    The sweep is stored as it came: spike removal no longer runs here (it
+    silently altered every sweep, imported files included). It runs, optional
+    and recorded, when the permittivity is computed
+    (``PermittivityProbeCalibration.despike_enabled``).
+
     Returns (freqs, s11_stored) — whatever was actually written.
     """
     freqs_raw = np.asarray(freqs_raw, dtype=float)
-    s11_raw   = _remove_spikes(np.asarray(s11_raw, dtype=complex))
+    s11_raw   = np.asarray(s11_raw, dtype=complex)
 
     if not hasattr(wizard, "_precal_open"):
         wizard._precal_open = {}
@@ -1753,7 +1790,7 @@ def _on_measure(wizard, standard, name, color, button, std_texts, state):
     if result is None:
         return
     freqs, s11 = _store_measurement(wizard, standard.key, result[0], result[1])
-    set_status(wizard, _success_text(std_texts, name), "lightgreen")
+    set_status(wizard, *_stored_status(wizard, std_texts, name, freqs, s11))
     button.setText(std_texts.get("remeasure_button", "Measure again"))
     _render(wizard, standard, name, color, std_texts, (freqs, s11),
             state["show_indicative"], state.get("show_raw", False),
@@ -2144,7 +2181,10 @@ def _open_precal_dialog(wizard, standard, name, color, std_texts, state, btn_del
         wizard._precal_type[standard.key] = "short" if _using_short else "open"
         # For SHORT: store the negated S11 so the division formula (s11 / stored)
         # yields s11 / (−s11_short) = correct normalization for Γ_ref = −1.
-        _s11_ref_raw = _remove_spikes(np.asarray(s11_open, dtype=complex))
+        # Not despiked: this one reference divides every normalized sweep, so
+        # its outliers are common to all of them and the calibration cancels
+        # them (spike removal leaves shared outliers alone for the same reason).
+        _s11_ref_raw = np.asarray(s11_open, dtype=complex)
         _s11_ref_stored = -_s11_ref_raw if _using_short else _s11_ref_raw
         _precal_entry = (
             np.asarray(freqs_open, dtype=float).copy(),

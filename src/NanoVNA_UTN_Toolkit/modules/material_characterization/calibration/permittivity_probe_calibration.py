@@ -28,7 +28,17 @@ import numpy as np
 import skrf as rf
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
+from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.measurement_quality import (
+    SPIKE_K,
+    QualityReport,
+    assess_quality,
+    despike_sweeps,
+)
+from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.probe_models import (
+    get_probe,
+)
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
+    evaluate_epsilon_r,
     get_reference_liquid,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.pattern_constants import (
@@ -92,6 +102,15 @@ class PermittivityProbeCalibration:
         # the indicative model and which presets apply, never the solver math.
         self.probe_key: Optional[str] = None
 
+        # Noise-based spike removal (``measurement_quality.despike_sweeps``).
+        # Stored sweeps always stay as measured / imported: the removal runs
+        # on copies when computing, jointly over the sweeps, and what it did is
+        # recorded in each measurement's ``processing`` and in the result.
+        self.despike_enabled: bool = True
+        # Standards as fed to the calibration (despiked copies or the stored
+        # arrays); None until computed, reset whenever a standard changes.
+        self._calibration_sweeps: Optional[Dict[str, np.ndarray]] = None
+
         # Computed results.
         self.pattern_constants: Optional[PatternConstants] = None
         self.epsilon_result: Optional[EpsilonResult] = None
@@ -102,7 +121,7 @@ class PermittivityProbeCalibration:
     @staticmethod
     def _empty_measurement() -> Dict:
         return {"freqs": None, "s11": None, "measured": False, "source": None,
-                "temperature_c": None}
+                "temperature_c": None, "processing": None}
 
     # --------------------------------------------------------------------- #
     # Configuration
@@ -132,6 +151,8 @@ class PermittivityProbeCalibration:
         except KeyError as exc:
             logger.error("[PermittivityProbeCalibration] %s", exc)
             return False
+        if (ref1_key, ref2_key) != (self.ref1_key, self.ref2_key):
+            self._invalidate(standards_changed=True)
         self.ref1_key = ref1_key
         self.ref2_key = ref2_key
         return True
@@ -152,6 +173,8 @@ class PermittivityProbeCalibration:
         for the currently-selected reference liquids, each checked at the
         temperature its known eps_r is actually evaluated at.
         """
+        if self.temperature_c != float(temp_c):
+            self._invalidate(standards_changed=True)  # the reference eps_r move
         self.temperature_c = float(temp_c)
         warnings: List[str] = []
         for std_key, liq_key in (("ref1", self.ref1_key), ("ref2", self.ref2_key)):
@@ -214,6 +237,8 @@ class PermittivityProbeCalibration:
             self.measurements[key]["source"] = source
             self.measurements[key]["temperature_c"] = (
                 float(temperature_c) if temperature_c is not None else None)
+            self.measurements[key]["processing"] = None
+            self._invalidate(standards_changed=key in STANDARD_KEYS)
 
             path = os.path.join(self.results_path, f"{key}.s1p")
             self._save_as_touchstone(freqs, s11, path)
@@ -223,10 +248,41 @@ class PermittivityProbeCalibration:
             logger.error("[PermittivityProbeCalibration] Error storing %s: %s", key, exc)
             return False
 
+    def _invalidate(self, standards_changed: bool) -> None:
+        """Drop computed results that depend on a sweep that just changed.
+
+        A new standard used to leave the old pattern constants in place:
+        ``compute_epsilon`` only recalibrates when they are None, so a
+        re-measured standard was silently ignored until the session restarted.
+        """
+        self.epsilon_result = None
+        if standards_changed:
+            self.pattern_constants = None
+            self._calibration_sweeps = None
+
+    def set_despike_enabled(self, enabled: bool) -> None:
+        """Turn the noise-based spike removal on or off (results are recomputed)."""
+        enabled = bool(enabled)
+        if enabled != self.despike_enabled:
+            self.despike_enabled = enabled
+            self._invalidate(standards_changed=True)
+
     def get_source(self, standard_key: str) -> Optional[str]:
         """Return the data source tag for a standard, or None if not measured."""
         data = self.measurements.get(standard_key.lower())
         return data.get("source") if data else None
+
+    def get_processing(self, standard_key: str) -> Optional[Dict]:
+        """What the last computation did to a stored sweep (None: not processed).
+
+        EN: ``{"despike": {"replaced_hz": [...], "changes": [...],
+            "kept_common_hz": [...]}}`` once a computation ran with spike
+            removal enabled; ``{"despike": None}`` when it ran with it off.
+        ES: ``{"despike": {...}}`` cuando un calculo corrio con la remocion de
+            picos activada; ``{"despike": None}`` cuando corrio desactivada.
+        """
+        data = self.measurements.get(standard_key.lower())
+        return data.get("processing") if data else None
 
     def import_standard_from_touchstone(self, standard_key: str, filepath: str) -> bool:
         """
@@ -301,11 +357,55 @@ class PermittivityProbeCalibration:
                 )
         return ref
 
+    def _prepare_standards(self, f_hz: np.ndarray) -> Dict[str, np.ndarray]:
+        """
+        Sweeps of the required standards as the calibration consumes them.
+
+        EN: With spike removal on, copies despiked jointly (an outlier shared
+            by several standards is an instrument artefact the calibration
+            cancels, so it stays); each measurement's ``processing`` records
+            what was done. The stored sweeps are never modified.
+        ES: Con la remocion de picos activada, copias procesadas en conjunto
+            (un outlier que comparten varios patrones es un artefacto del
+            instrumento que la calibracion cancela, asi que se conserva); el
+            ``processing`` de cada medicion registra lo que se hizo. Los
+            barridos guardados nunca se modifican.
+        """
+        raw = {key: np.asarray(self.measurements[key]["s11"], dtype=complex)
+               for key in self.required_standards}
+        if self.despike_enabled:
+            records = despike_sweeps(raw)
+            sweeps = {key: rec.s11 for key, rec in records.items()}
+            for key, rec in records.items():
+                self.measurements[key]["processing"] = {"despike": rec.to_metadata(f_hz)}
+                if rec.replaced.size:
+                    logger.info("[PermittivityProbeCalibration] spike removal: %s at %s MHz",
+                                key, ", ".join(f"{f_hz[i] / 1e6:.4g}" for i in rec.replaced))
+        else:
+            sweeps = raw
+            for key in raw:
+                self.measurements[key]["processing"] = {"despike": None}
+        self._calibration_sweeps = sweeps
+        return sweeps
+
+    def _prepare_dut(self, f_hz: np.ndarray, s11: np.ndarray) -> Tuple[np.ndarray, Dict]:
+        """Sample sweep as solved, plus its processing record (see ``_prepare_standards``).
+
+        The stored (raw) standards are the context: a sample spike that sits
+        where a standard has one too is shared, not removed.
+        """
+        if not self.despike_enabled:
+            return s11, {"despike": None}
+        context = {key: self.measurements[key]["s11"] for key in self.required_standards}
+        rec = despike_sweeps({MUT_KEY: s11}, context=context)[MUT_KEY]
+        return rec.s11, {"despike": rec.to_metadata(f_hz)}
+
     def compute_calibration(self) -> bool:
         """Compute the pattern constants (Gn, reference admittances).
 
         The simplified technique has no pattern constants (its closed formula
-        needs none): there it only validates the shared frequency grid.
+        needs none): there it only validates the shared frequency grid and
+        prepares the standards.
         """
         if self.ref1_key is None:
             logger.error("[PermittivityProbeCalibration] Reference liquid not set")
@@ -316,7 +416,8 @@ class PermittivityProbeCalibration:
 
         if self.is_simplified:
             try:
-                self._common_frequency_grid(self.required_standards)
+                f_hz = self._common_frequency_grid(self.required_standards)
+                self._prepare_standards(f_hz)
                 self.last_error = None
                 logger.info(
                     "[PermittivityProbeCalibration] Simplified technique: grid "
@@ -330,15 +431,16 @@ class PermittivityProbeCalibration:
 
         try:
             f_hz = self._common_frequency_grid(STANDARD_KEYS)
+            sweeps = self._prepare_standards(f_hz)
             self.pattern_constants = compute_pattern_constants(
                 f_hz=f_hz,
                 temp_c=self.temperature_c,
                 temp_ref1_c=self.reference_temperature("ref1"),
                 temp_ref2_c=self.reference_temperature("ref2"),
-                s11_short=self.measurements["short"]["s11"],
-                s11_ref1=self.measurements["ref1"]["s11"],
-                s11_ref2=self.measurements["ref2"]["s11"],
-                s11_open=self.measurements["open"]["s11"],
+                s11_short=sweeps["short"],
+                s11_ref1=sweeps["ref1"],
+                s11_ref2=sweeps["ref2"],
+                s11_open=sweeps["open"],
                 ref1=get_reference_liquid(self.ref1_key),
                 ref2=get_reference_liquid(self.ref2_key),
             )
@@ -358,9 +460,12 @@ class PermittivityProbeCalibration:
         Returns an ``EpsilonResult`` (full two-liquid technique, degree-5
         solver) or a ``SimplifiedEpsilonResult`` (single-reference technique,
         closed formula). Both expose ``f_hz`` / ``eps_selected`` / ``warnings``,
-        which is all the downstream UI consumes.
+        which is all the downstream UI consumes, plus ``quality`` (the
+        measurement-quality checks, whose warnings lead ``warnings``) and
+        ``processing`` (what spike removal did to each sweep).
         """
-        if s11 is None:
+        stored_dut = s11 is None
+        if stored_dut:
             dut = self.get_measurement(MUT_KEY)
             if dut is None:
                 logger.error("[PermittivityProbeCalibration] No DUT measurement")
@@ -369,20 +474,27 @@ class PermittivityProbeCalibration:
         freqs = np.asarray(freqs, dtype=float)
         s11 = np.asarray(s11, dtype=complex)
 
-        if self.is_simplified:
-            return self._compute_epsilon_simplified(freqs, s11)
-
-        if self.pattern_constants is None and not self.compute_calibration():
+        stale = self._calibration_sweeps is None or (
+            not self.is_simplified and self.pattern_constants is None)
+        if stale and not self.compute_calibration():
             return None
 
-        cal_f = self.pattern_constants.f_hz
+        cal_f = self._common_frequency_grid(self.required_standards)
         if freqs.shape != cal_f.shape or not np.allclose(freqs, cal_f, rtol=0, atol=_FREQ_ATOL_HZ):
             logger.error("[PermittivityProbeCalibration] DUT grid != calibration grid")
             return None
 
-        self.epsilon_result = solve_epsilon_r(
-            s11, self.pattern_constants, eps_seed=self._simplified_seed(cal_f, s11)
-        )
+        s11, dut_processing = self._prepare_dut(cal_f, s11)
+        if stored_dut:
+            self.measurements[MUT_KEY]["processing"] = dut_processing
+
+        if self.is_simplified:
+            result = self._compute_epsilon_simplified(cal_f, s11)
+        else:
+            result = solve_epsilon_r(
+                s11, self.pattern_constants, eps_seed=self._simplified_seed(cal_f, s11)
+            )
+        self.epsilon_result = self._attach_quality(result, cal_f, s11, dut_processing)
         return self.epsilon_result
 
     def _simplified_seed(self, cal_f, s11_dut) -> Optional[np.ndarray]:
@@ -394,12 +506,13 @@ class PermittivityProbeCalibration:
         (-third_term) to pick the root.
         """
         try:
+            sweeps = self._calibration_sweeps
             simplified = solve_epsilon_simplified(
                 cal_f,
                 s11_dut,
-                self.measurements["open"]["s11"],
-                self.measurements["short"]["s11"],
-                self.measurements["ref1"]["s11"],
+                sweeps["open"],
+                sweeps["short"],
+                sweeps["ref1"],
                 get_reference_liquid(self.ref1_key),
                 self.reference_temperature("ref1"),
             )
@@ -411,35 +524,133 @@ class PermittivityProbeCalibration:
             )
             return None
 
-    def _compute_epsilon_simplified(self, freqs, s11) -> Optional[SimplifiedEpsilonResult]:
+    def _compute_epsilon_simplified(self, cal_f, s11) -> SimplifiedEpsilonResult:
         """Closed-form path: Short + Open(air) + one reference liquid."""
-        if self.temperature_c is None:
-            logger.error("[PermittivityProbeCalibration] Temperature not set")
-            return None
-        try:
-            cal_f = self._common_frequency_grid(self.required_standards)
-        except Exception as exc:  # noqa: BLE001
-            self.last_error = str(exc)
-            logger.error("[PermittivityProbeCalibration] %s", exc)
-            return None
-
-        if freqs.shape != cal_f.shape or not np.allclose(freqs, cal_f, rtol=0, atol=_FREQ_ATOL_HZ):
-            logger.error("[PermittivityProbeCalibration] DUT grid != calibration grid")
-            return None
-
-        self.epsilon_result = solve_epsilon_simplified(
+        sweeps = self._calibration_sweeps
+        return solve_epsilon_simplified(
             cal_f,
             s11,
-            self.measurements["open"]["s11"],
-            self.measurements["short"]["s11"],
-            self.measurements["ref1"]["s11"],
+            sweeps["open"],
+            sweeps["short"],
+            sweeps["ref1"],
             get_reference_liquid(self.ref1_key),
             self.reference_temperature("ref1"),
         )
-        return self.epsilon_result
+
+    # --------------------------------------------------------------------- #
+    # Quality checks and processing record
+    # --------------------------------------------------------------------- #
+
+    def sweep_labels(self) -> Dict[str, str]:
+        """Names of the sweeps in quality messages ("Ref 1 (Water)", ...)."""
+        labels = {"open": "Open", "short": "Short", MUT_KEY: "sample"}
+        for std_key, liq_key, tag in (("ref1", self.ref1_key, "Ref 1"),
+                                      ("ref2", self.ref2_key, "Ref 2")):
+            if liq_key is None:
+                continue
+            try:
+                labels[std_key] = f"{tag} ({get_reference_liquid(liq_key).display_name})"
+            except KeyError:
+                labels[std_key] = tag
+        return labels
+
+    def assess_quality(self, f_hz: np.ndarray, s11_dut: Optional[np.ndarray],
+                       gn: Optional[np.ndarray] = None) -> QualityReport:
+        """
+        Measurement-quality checks of the current calibration (+ sample).
+
+        EN: Runs ``measurement_quality.assess_quality`` on the standards as
+            the calibration uses them. The probe's C0 caps the reference
+            separation only for a KNOWN probe (the generic C0 is an order of
+            magnitude). Call after ``compute_calibration``.
+        ES: Corre ``measurement_quality.assess_quality`` sobre los patrones tal
+            como los usa la calibracion. El C0 de la sonda acota la separacion
+            de referencias solo con una sonda CONOCIDA (el C0 generico es un
+            orden de magnitud). Llamar despues de ``compute_calibration``.
+        """
+        sweeps = self._calibration_sweeps
+        probe = get_probe(self.probe_key)
+        known_probe = bool(probe.preset_probe)
+        eps1, _ = evaluate_epsilon_r(get_reference_liquid(self.ref1_key), f_hz,
+                                     self.reference_temperature("ref1"))
+        eps2 = None
+        if not self.is_simplified:
+            eps2, _ = evaluate_epsilon_r(get_reference_liquid(self.ref2_key), f_hz,
+                                         self.reference_temperature("ref2"))
+        return assess_quality(
+            f_hz,
+            s11_open=sweeps["open"],
+            s11_short=sweeps["short"],
+            s11_ref1=sweeps["ref1"],
+            eps_ref1=eps1,
+            s11_ref2=sweeps.get("ref2"),
+            eps_ref2=eps2,
+            s11_dut=s11_dut,
+            gn=gn,
+            c0_f=probe.c0_f if known_probe else None,
+            probe_label=probe.display_name if known_probe else "",
+            labels=self.sweep_labels(),
+        )
+
+    def processing_record(self, dut_processing: Optional[Dict] = None) -> Dict:
+        """
+        JSON-friendly record of the sweep processing of the last computation.
+
+        ``{"despike": {"enabled": bool, "criterion": str, "sweeps": {key:
+        {"replaced_hz": [...], "changes": [...], "kept_common_hz": [...]}}}}``;
+        ``sweeps`` is empty when spike removal is off.
+        """
+        sweeps = {}
+        for key in self.required_standards:
+            proc = (self.get_processing(key) or {}).get("despike")
+            if proc:
+                sweeps[key] = proc
+        dut = (dut_processing or self.get_processing(MUT_KEY) or {}).get("despike")
+        if dut:
+            sweeps[MUT_KEY] = dut
+        return {"despike": {
+            "enabled": bool(self.despike_enabled),
+            "criterion": (f"isolated point, 2nd difference > {SPIKE_K:g} x local noise "
+                          f"and > S11 error budget, not shared with another sweep"),
+            "sweeps": sweeps,
+        }}
+
+    def _despike_warning(self, record: Dict) -> List[str]:
+        """Warning naming every point spike removal replaced (empty if none)."""
+        labels = self.sweep_labels()
+        items = []
+        for key, proc in record["despike"]["sweeps"].items():
+            for f, change in zip(proc.get("replaced_hz", []), proc.get("changes", [])):
+                items.append(f"{labels.get(key, key)} at {f / 1e6:.4g} MHz "
+                             f"(|ΔS11| = {change:.1e})")
+        if not items:
+            return []
+        return [f"Spike removal (noise-based) replaced {len(items)} isolated point(s) "
+                f"with the mean of their neighbours: " + "; ".join(items)
+                + ". The stored sweeps are unchanged; turn spike removal off in the "
+                  "result screen to compute with them as measured."]
+
+    def _attach_quality(self, result, f_hz, s11_dut, dut_processing):
+        """Attach ``processing`` and ``quality`` to ``result``; quality warnings go first.
+
+        Best-effort: a failing check is logged and never breaks the result.
+        """
+        if result is None:
+            return None
+        record = self.processing_record(dut_processing)
+        result.processing = record
+        extra = []
+        try:
+            quality = self.assess_quality(f_hz, s11_dut, gn=getattr(result, "gn", None))
+            result.quality = quality
+            extra += quality.warnings
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[PermittivityProbeCalibration] quality checks failed: %s", exc)
+        extra += self._despike_warning(record)
+        result.warnings[:0] = extra
+        return result
 
     def clear_all_measurements(self) -> None:
         for key in self.measurements:
             self.measurements[key] = self._empty_measurement()
-        self.pattern_constants = None
-        self.epsilon_result = None
+        self._invalidate(standards_changed=True)

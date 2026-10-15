@@ -62,6 +62,9 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_colum
     loss_tangent,
     nonpassive_mask_of,
     permittivity_columns,
+    scale_limits,
+    shade_unusable_band,
+    usable_band_of,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.charts.epsilon_chart import (
     EpsilonChartManager,
@@ -114,6 +117,7 @@ def build_result_screen(wizard, descriptor, step_def):
         _build_summary(wizard, mid, result, rtexts)
         _build_sources(wizard, mid, rtexts)
         _build_warnings(wizard, mid, result, rtexts)
+        _build_processing(wizard, mid, result, rtexts)
         # _build_intermediate is called after right half so it gets manager/ax/canvas
 
     mid_container = QWidget()
@@ -143,9 +147,15 @@ def build_result_screen(wizard, descriptor, step_def):
             title=title, real_label=real_label, loss_label=loss_label,
         )
         manager.update_epsilon_curves(
-            ax, result.f_hz, result.eps_selected, canvas=canvas,
+            ax, result.f_hz, result.eps_selected, canvas=None,
             autoscale=False,
         )
+        _mark_low_sensitivity(ax, result, rtexts)
+        # Unreliable points stay drawn but never set the scale.
+        limits = scale_limits(result.eps_selected, usable_band_of(result)[0])
+        if limits is not None:
+            ax.set_ylim(limits)
+        canvas.draw()
         fixed_ylim = ax.get_ylim()
         wizard.result_epsilon_manager = manager
 
@@ -352,16 +362,28 @@ def _sample_name(wizard, rtexts):
     )
 
 
+def _usable_f_min(result):
+    """Start of the usable band from the sensitivity check, or None (whole sweep)."""
+    return usable_band_of(result)[1]
+
+
 def _build_summary(wizard, layout, result, rtexts):
     # eps'' = -Im(eps); gaps are NaN in both columns and ignored below.
     eps_real, eps_loss = permittivity_columns(result.eps_selected)
     sample = _sample_name(wizard, rtexts)
+    # Unreliable points stay out of the medians (they stay on the chart,
+    # shaded, and in every export).
+    usable, f_min = usable_band_of(result)
+    in_band = usable if usable is not None else np.ones(eps_real.shape, bool)
+    if not np.any(np.isfinite(eps_real[in_band])):
+        in_band = np.ones(eps_real.shape, bool)
+        f_min = None
     if np.any(np.isfinite(eps_real)):
         # Median, not mean: robust to a few outlier points (a root on the
         # wrong branch, a noisy band edge) that would drag a mean away from
         # the bulk of the sweep.
-        re_median = float(np.nanmedian(eps_real))
-        tand_all = loss_tangent(eps_real, eps_loss)
+        re_median = float(np.nanmedian(eps_real[in_band]))
+        tand_all = loss_tangent(eps_real, eps_loss)[in_band]
         tand_ok = tand_all[np.isfinite(tand_all)]
         tand = float(np.median(tand_ok)) if tand_ok.size else float("nan")
         text = rtexts.get(
@@ -384,6 +406,16 @@ def _build_summary(wizard, layout, result, rtexts):
     label.setWordWrap(True)
     label.setStyleSheet("font-size: 15px;")
     layout.addWidget(label)
+
+    if f_min is not None:
+        band_lbl = QLabel(rtexts.get(
+            "summary_usable_band",
+            "Medians over the reliable points (≥ {fmin}); the unreliable ones are "
+            "left out: see warnings",
+        ).format(fmin=_fmt_hz(f_min)))
+        band_lbl.setWordWrap(True)
+        band_lbl.setStyleSheet("font-size: 12px;")
+        layout.addWidget(band_lbl)
 
     if n_flagged:
         # Own, smaller line: it must fit in one row of the narrow column.
@@ -426,6 +458,12 @@ def _build_sources(wizard, layout, rtexts):
             tag = prefix + src[len("preset:"):]
         else:
             tag = src
+        replaced = _despike_replaced_hz(cal, key)
+        if replaced:
+            tag += " · " + rtexts.get(
+                "source_despiked", "{n} spike(s) replaced in the computation ({freqs})"
+            ).format(n=len(replaced), freqs=", ".join(_fmt_hz(f) for f in replaced[:3])
+                     + (" …" if len(replaced) > 3 else ""))
         rows.append((label, tag))
 
     if not rows:
@@ -493,6 +531,13 @@ def _detect_branch_jumps(result, threshold=0.50):
         return []
 
 
+def _despike_replaced_hz(cal, key):
+    """Frequencies spike removal replaced in ``key`` in the last computation."""
+    getter = getattr(cal, "get_processing", None)
+    proc = (getter(key) or {}).get("despike") if callable(getter) else None
+    return list((proc or {}).get("replaced_hz") or [])
+
+
 def _build_warnings(wizard, layout, result, rtexts):
     warns = list(result.warnings) + list(getattr(wizard, "temperature_warnings", []) or [])
     warns += _detect_branch_jumps(result)
@@ -510,12 +555,28 @@ def _build_warnings(wizard, layout, result, rtexts):
         hdr = QLabel(rtexts.get("warnings_title", "Warnings:"))
         hdr.setStyleSheet("font-weight: bold; color: #b8860b; font-size: 12px;")
         v.addWidget(hdr)
-        for w in warns[:8]:
+        # Every warning, scrolled: the quality checks come first and their
+        # messages are long, so a fixed cut used to hide the solver's ones.
+        body = QWidget()
+        body.setStyleSheet("background: transparent;")
+        body_layout = QVBoxLayout(body)
+        body_layout.setContentsMargins(0, 0, 4, 0)
+        body_layout.setSpacing(6)
+        for w in warns:
             item = QLabel(f"• {w}")
             item.setWordWrap(True)
             item.setStyleSheet("color: #7a5800; font-size: 11px;")
-            item.setMaximumWidth(420)
-            v.addWidget(item)
+            item.setFixedWidth(420)
+            body_layout.addWidget(item)
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; }")
+        scroll.setWidget(body)
+        body.adjustSize()
+        scroll.setFixedWidth(440)
+        scroll.setFixedHeight(min(420, body.sizeHint().height() + 4))
+        v.addWidget(scroll)
         dlg.adjustSize()
         dlg.move(btn.mapToGlobal(btn.rect().bottomLeft()))
         dlg.exec()
@@ -531,6 +592,84 @@ def _build_warnings(wizard, layout, result, rtexts):
     btn.clicked.connect(_show_popup)
     layout.addSpacing(4)
     layout.addWidget(btn)
+
+
+def _build_processing(wizard, layout, result, rtexts):
+    """
+    Spike-removal toggle plus what it did in this computation.
+
+    EN: Spike removal runs on copies when computing (the stored sweeps stay
+        as measured/imported). Unticking it recomputes with the sweeps as
+        they are; the line under the box lists every replaced point and the
+        outliers left alone because several sweeps share them.
+    ES: La remocion de picos corre sobre copias al calcular (los barridos
+        guardados quedan como se midieron/importaron). Destildarla recalcula
+        con los barridos tal cual; la linea bajo la casilla lista cada punto
+        reemplazado y los outliers que se dejan porque los comparten varios
+        barridos.
+    """
+    cal = getattr(wizard, "perm_calibration", None)
+    if cal is None or not hasattr(cal, "set_despike_enabled"):
+        return
+    record = (getattr(result, "processing", None) or {}).get("despike") or {}
+    enabled = bool(getattr(cal, "despike_enabled", True))
+
+    chk = QCheckBox(rtexts.get("despike_label", "Remove isolated spikes (noise-based)"))
+    chk.setChecked(enabled)
+    chk.setToolTip(rtexts.get(
+        "despike_tooltip",
+        "A point is replaced by the mean of its neighbours only if its second "
+        "difference is more than 6× the local noise, larger than the S11 error "
+        "budget (0.001) and isolated. An outlier shared by several sweeps at the "
+        "same frequency is an instrument artefact that the calibration cancels, so "
+        "it is left alone. The stored sweeps are never modified.",
+    ))
+    chk.setStyleSheet("font-size: 12px;")
+
+    names = {"open": "Open", "short": "Short", "ref1": "Ref 1", "ref2": "Ref 2", "dut": "DUT"}
+    replaced, shared = [], set()
+    for key, proc in (record.get("sweeps") or {}).items():
+        for f in proc.get("replaced_hz") or []:
+            replaced.append(f"{names.get(key, key)} @ {_fmt_hz(f)}")
+        shared.update(proc.get("kept_common_hz") or [])
+    if not enabled:
+        detail = rtexts.get("despike_off", "Off: the sweeps are used as measured.")
+    elif replaced:
+        detail = rtexts.get("despike_replaced", "Replaced: {items}").format(items="; ".join(replaced))
+    else:
+        detail = rtexts.get("despike_none", "No isolated spike found.")
+    if enabled and shared:
+        detail += "  " + rtexts.get(
+            "despike_shared", "Left alone (shared by several sweeps): {freqs}"
+        ).format(freqs=", ".join(_fmt_hz(f) for f in sorted(shared)))
+    detail_lbl = QLabel(detail)
+    detail_lbl.setWordWrap(True)
+    detail_lbl.setStyleSheet(f"font-size: 11px; color: {_secondary_text_color()};")
+
+    def _on_toggled(checked):
+        from PySide6.QtCore import QTimer
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import (
+            update_step_screen,
+        )
+        cal.set_despike_enabled(checked)
+        wizard.epsilon_result = None
+        # Rebuild after this slot returns: the rebuild destroys this checkbox.
+        QTimer.singleShot(0, lambda: update_step_screen(wizard))
+
+    chk.toggled.connect(_on_toggled)
+    layout.addSpacing(4)
+    layout.addWidget(chk)
+    layout.addWidget(detail_lbl)
+
+
+def _mark_low_sensitivity(ax, result, rtexts):
+    """Shade the band below the usable start (sensitivity check) on ``ax``."""
+    f_min = _usable_f_min(result)
+    if f_min is None:
+        return
+    shade_unusable_band(ax, float(result.f_hz[0]), f_min,
+                        label=rtexts.get("low_sensitivity_label", "unreliable"))
+    ax.legend(loc="upper right")
 
 
 _NAN_C = complex(np.nan, np.nan)
@@ -913,6 +1052,7 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
                 ax, result.f_hz, result.eps_selected, canvas=None,
                 autoscale=False, crosscheck=cc, crosscheck_label=cc_label,
             )
+        _mark_low_sensitivity(ax, result, rtexts)
         if fixed_ylim is not None:
             ax.set_ylim(fixed_ylim)
         canvas.draw()

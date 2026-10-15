@@ -11,6 +11,9 @@ Subpackage layout / Estructura del subpaquete:
     pattern_constants   - VNA + probe calibration constants (Gn, Y refs).
     permittivity_solver - 5th-order solver + continuity tracking of the
                           physical (principal-branch) root.
+    measurement_quality - Non-blocking quality checks (low-frequency
+                          sensitivity, Gn physicality, |S11| > 1) and
+                          noise-based spike removal.
 
 Algorithm source / Fuente del algoritmo:
     "Mediciones de permitividad mediante una sonda coaxial", Medidas

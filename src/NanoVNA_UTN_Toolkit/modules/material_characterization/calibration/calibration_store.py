@@ -76,6 +76,12 @@ class CalibrationMeta:
     standard_temperatures: Dict[str, float] = field(default_factory=dict)
     # Probe the standards were taken with (algorithms.probe_models key).
     probe_key: Optional[str] = None
+    # Spike removal of the session that saved the kit, and what it did to each
+    # standard in its last computation ({"despike": {...} | None} per key).
+    # The .s1p files are always the sweeps as stored (never despiked): the
+    # removal runs again on them when a computation uses the kit.
+    despike_enabled: Optional[bool] = None
+    processing: Dict[str, Dict] = field(default_factory=dict)
 
     @property
     def is_simplified(self) -> bool:
@@ -185,6 +191,7 @@ def save_calibration(
     standards = []
     sources: Dict[str, str] = {}
     temps: Dict[str, float] = {}
+    processing: Dict[str, Dict] = {}
     f_start = f_stop = points = None
 
     for key in required:
@@ -196,6 +203,8 @@ def save_calibration(
         sources[key] = meas.get("source") or "measured"
         if meas.get("temperature_c") is not None:
             temps[key] = float(meas["temperature_c"])
+        if meas.get("processing"):
+            processing[key] = meas["processing"]
         if f_start is None:
             f_start = float(freqs[0])
             f_stop = float(freqs[-1])
@@ -217,6 +226,8 @@ def save_calibration(
         points=points,
         standard_temperatures=temps,
         probe_key=getattr(cal, "probe_key", None),
+        despike_enabled=getattr(cal, "despike_enabled", None),
+        processing=processing,
     )
 
     _manifest_path(name).write_text(
@@ -314,6 +325,7 @@ def export_calibration(
         standards: List[str] = []
         sources: Dict[str, str] = {}
         temps: Dict[str, float] = {}
+        processing: Dict[str, Dict] = {}
         f_start = f_stop = points = None
 
         for key in required:
@@ -325,6 +337,8 @@ def export_calibration(
             sources[key] = meas.get("source") or "measured"
             if meas.get("temperature_c") is not None:
                 temps[key] = float(meas["temperature_c"])
+            if meas.get("processing"):
+                processing[key] = meas["processing"]
             if f_start is None:
                 f_start = float(freqs[0])
                 f_stop = float(freqs[-1])
@@ -346,6 +360,8 @@ def export_calibration(
             points=points,
             standard_temperatures=temps,
             probe_key=getattr(cal, "probe_key", None),
+            despike_enabled=getattr(cal, "despike_enabled", None),
+            processing=processing,
         )
         (tmp_path / "manifest.json").write_text(
             json.dumps(asdict(meta), indent=2, ensure_ascii=False),

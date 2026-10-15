@@ -48,7 +48,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 
@@ -101,6 +101,10 @@ class SimplifiedEpsilonResult:
         Temperature the reference model was evaluated at.
     warnings : list[str]
         Non-fatal issues collected during the computation.
+    quality, processing
+        Measurement-quality checks and sweep-processing record attached by
+        the calibration manager (see ``EpsilonResult``); None when the solver
+        is called directly.
     """
 
     f_hz: np.ndarray
@@ -113,6 +117,8 @@ class SimplifiedEpsilonResult:
     ref_liquid_key: str
     temperature_c: float
     warnings: List[str]
+    quality: Any = None
+    processing: Optional[Dict[str, Any]] = None
 
     @property
     def eps_selected(self) -> np.ndarray:

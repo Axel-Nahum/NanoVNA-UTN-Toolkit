@@ -56,7 +56,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -139,6 +139,15 @@ class EpsilonResult:
         cross-check overlay in the result screen: a large divergence between
         the two methods at low frequency flags a problem with the second
         reference liquid (the only standard that enters solely through Gn).
+    quality : measurement_quality.QualityReport | None
+        Measurement-quality checks (low-frequency sensitivity, Gn physicality,
+        |S11| > 1). Attached by the calibration manager, which has the probe
+        and the Open sweep the solver does not see; its warnings are also in
+        ``warnings``. None when the solver is called directly.
+    processing : dict | None
+        Record of what was done to the sweeps before solving (spike removal:
+        enabled flag and, per sweep key, the frequencies replaced). Attached by
+        the calibration manager; None when the solver is called directly.
     """
 
     f_hz: np.ndarray
@@ -152,6 +161,8 @@ class EpsilonResult:
     third_term: np.ndarray
     warnings: List[str]
     eps_crosscheck: np.ndarray | None = None
+    quality: Any = None
+    processing: Dict[str, Any] | None = None
 
     def polynomial_coeffs_at(self, index: int) -> np.ndarray:
         """Return the degree-5 polynomial coefficients [Gn,0,0,1,0,third] at a frequency."""
@@ -509,7 +520,11 @@ def solve_epsilon_r(
         pre-filter the candidates, so it never swaps in another root.
     cond_floor : float
         Threshold for |S11_ref1 - S11_ref2| below which a frequency point is
-        considered ill-conditioned and left as a gap (default 1e-2).
+        considered ill-conditioned and left as a gap (default 1e-2). It is
+        absolute and blind to smoothing: the 3 mm NanoVNA set reads 0.0165 at
+        50 kHz, where the probe allows 4e-5. The per-probe sensitivity check
+        of ``measurement_quality`` (run by the calibration manager) is what
+        flags such points.
     eps_seed : np.ndarray | None
         Optional Gn = 0 estimate on the same grid (the simplified curve);
         non-finite entries fall back to ``-third_term``. Stored in the result

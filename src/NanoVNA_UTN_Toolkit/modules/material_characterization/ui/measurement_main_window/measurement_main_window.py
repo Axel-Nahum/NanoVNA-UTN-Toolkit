@@ -50,6 +50,9 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_colum
     loss_tangent,
     nonpassive_mask_of,
     permittivity_columns,
+    scale_limits,
+    shade_unusable_band,
+    usable_band_of,
     write_permittivity_csv,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
@@ -319,6 +322,7 @@ class MeasurementMainWindow(QMainWindow):
         self._grid_enabled = _pm.value("grid/current_state", True, type=bool)
         if not self._grid_enabled:
             ax.grid(False)
+        self._apply_reliable_band(ax, _pm.value("auto_scale/current_state", True, type=bool))
         if not _pm.value("auto_scale/current_state", True, type=bool):
             _ymin = _pm.value("set_range/ymin", None, type=float)
             _ymax = _pm.value("set_range/ymax", None, type=float)
@@ -1270,6 +1274,28 @@ class MeasurementMainWindow(QMainWindow):
         self._edit_chart_window = EditCharacterization(self)
         self._edit_chart_window.show()
 
+    def _apply_reliable_band(self, ax, auto_scale: bool) -> None:
+        """
+        Shade the unreliable band and, with auto-scale, fit y to reliable points.
+
+        EN: Same rule as the wizard's result chart: points that failed the
+            quality checks stay drawn but never set the y-scale (a manual
+            range from the plot manager still wins).
+        ES: La misma regla que el grafico de resultado del asistente: los
+            puntos que no pasaron los controles se dibujan pero nunca fijan la
+            escala en y (un rango manual del plot manager sigue mandando).
+        """
+        usable, f_min = usable_band_of(self._result)
+        if f_min is not None:
+            label = load_text("characterization_wizard.json").get("result", {}).get(
+                "low_sensitivity_label", "unreliable")
+            shade_unusable_band(ax, float(self._result.f_hz[0]), f_min, label=label)
+            ax.legend(loc="upper right")
+        if auto_scale:
+            limits = scale_limits(self._result.eps_selected, usable)
+            if limits is not None:
+                ax.set_ylim(limits)
+
     def redraw_chart(self):
         if not hasattr(self, "_epsilon_ax") or self._epsilon_ax is None:
             return
@@ -1291,6 +1317,8 @@ class MeasurementMainWindow(QMainWindow):
             if not getattr(self, "_grid_enabled", True):
                 self._epsilon_ax.grid(False)
             _pm2 = get_settings(_PM_INI_EXE, _PM_INI_DEV, Path(__file__).resolve())
+            self._apply_reliable_band(
+                self._epsilon_ax, _pm2.value("auto_scale/current_state", True, type=bool))
             if not _pm2.value("auto_scale/current_state", True, type=bool):
                 _ymin = _pm2.value("set_range/ymin", None, type=float)
                 _ymax = _pm2.value("set_range/ymax", None, type=float)

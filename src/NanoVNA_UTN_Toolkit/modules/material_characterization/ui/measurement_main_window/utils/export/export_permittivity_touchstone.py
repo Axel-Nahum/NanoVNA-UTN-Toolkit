@@ -52,6 +52,28 @@ def _nonpassive_note(result) -> list[str]:
             f"{n_flag} punto(s) no fisico(s) (eps'' < 0 o eps' <= 0) conservados y marcados"]
 
 
+def _quality_notes(result) -> list[str]:
+    """Header lines with the usable band and what spike removal replaced.
+
+    A file outlives the session that wrote it: whoever plots it later must
+    still see where the probe could not resolve the sample.
+    """
+    lines = []
+    quality = getattr(result, "quality", None)
+    f_min = getattr(quality, "f_min_hz", None) if quality is not None else None
+    f_hz = np.asarray(result.f_hz, dtype=float)
+    if f_min is not None and f_hz.size and f_min > float(f_hz[0]):
+        lines.append(f"Reliable from {f_min / 1e6:.4g} MHz: points below are not reliable / "
+                     f"Confiable desde {f_min / 1e6:.4g} MHz: los puntos inferiores no son "
+                     f"confiables")
+    record = (getattr(result, "processing", None) or {}).get("despike") or {}
+    n_replaced = sum(len(p.get("replaced_hz") or []) for p in (record.get("sweeps") or {}).values())
+    if n_replaced:
+        lines.append(f"Spike removal replaced {n_replaced} isolated S11 point(s) before solving / "
+                     f"La remocion de picos reemplazo {n_replaced} punto(s) aislado(s) de S11")
+    return lines
+
+
 def export_permittivity_touchstone(parent, result, sample_name: str = "", notes=()) -> None:
     """Ask for a path and write ``result`` (eps_selected over f_hz) as ``<sample>_er.s1p``."""
     t = load_text("characterization_measurement_main.json").get("export", {})
@@ -76,7 +98,7 @@ def export_permittivity_touchstone(parent, result, sample_name: str = "", notes=
             np.asarray(result.f_hz, dtype=float),
             np.asarray(result.eps_selected, dtype=complex),
             sample_name=sample_name,
-            notes=list(notes) + _nonpassive_note(result),
+            notes=list(notes) + _nonpassive_note(result) + _quality_notes(result),
         )
     except Exception as exc:  # noqa: BLE001 - report to the user
         logger.error("[export_permittivity_touchstone] %s", exc)

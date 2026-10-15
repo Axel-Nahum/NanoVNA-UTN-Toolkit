@@ -73,6 +73,8 @@ def _load_calibration_into_wizard(wizard, cal_name):
         wizard.sweep_steps = meta.points
     wizard.perm_calibration.set_reference_liquids(meta.ref1_key, meta.ref2_key)
     wizard.perm_calibration.set_temperature(meta.temperature_c)
+    if meta.despike_enabled is not None:
+        wizard.perm_calibration.set_despike_enabled(meta.despike_enabled)
 
     for key, (freqs, s11) in cal_data.items():
         wizard.perm_calibration.set_measurement(

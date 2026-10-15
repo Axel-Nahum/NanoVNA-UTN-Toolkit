@@ -36,6 +36,9 @@ from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_ena
 from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.probe_models import list_probes
+from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.measurement_quality import (
+    EPS_RESOLUTION_MAX,
+)
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
     get_reference_liquid, list_reference_liquids,
 )
@@ -255,6 +258,14 @@ def build_config_screen(wizard, descriptor, step_def):
                 "probe_hint",
                 "Presets and indicative reference for: {probe} (C0 = {c0} pF)."
             ).format(probe=probe_combo.currentText(), c0=f"{probe.c0_f * 1e12:.4g}")
+            # Per-probe low-frequency limit (measurement_quality sensitivity
+            # check): below it 0.001 of S11 error costs more than
+            # EPS_RESOLUTION_MAX in eps.
+            text += " " + cfg.get(
+                "probe_hint_fmin",
+                "Usable from ≈ {fmin}: below it an S11 error of 0.001 costs more than ±{res:g} in εr."
+            ).format(fmin=_fmt_hz(probe.min_usable_hz(eps_resolution=EPS_RESOLUTION_MAX)),
+                     res=EPS_RESOLUTION_MAX)
         else:
             text = cfg.get(
                 "probe_hint_generic",

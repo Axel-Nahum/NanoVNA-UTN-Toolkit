@@ -88,6 +88,66 @@ def nonpassive_mask_of(result) -> Optional[np.ndarray]:
     return mask
 
 
+def usable_band_of(result) -> Tuple[Optional[np.ndarray], Optional[float]]:
+    """
+    ``(usable_mask, f_min_hz)`` from the result's measurement-quality checks.
+
+    EN: ``usable_mask`` is True where the point passed the sensitivity check
+        (None without checks or on a shape mismatch); ``f_min_hz`` is the
+        start of the usable band, or None when it is the first point (nothing
+        to shade). Read with ``getattr`` so older results keep working.
+    ES: ``usable_mask`` es True donde el punto paso el control de
+        sensibilidad (None sin controles o si la forma no coincide);
+        ``f_min_hz`` es el comienzo de la banda util, o None cuando es el
+        primer punto (no hay nada que sombrear).
+    """
+    sens = getattr(getattr(result, "quality", None), "sensitivity", None)
+    if sens is None:
+        return None, None
+    mask = np.asarray(sens.usable, dtype=bool)
+    f_hz = np.asarray(getattr(result, "f_hz", sens.f_hz), dtype=float)
+    if mask.shape != f_hz.shape:
+        logger.warning("[permittivity_columns] usable mask shape %s != f_hz %s; ignored",
+                       mask.shape, f_hz.shape)
+        return None, None
+    f_min = sens.f_min_hz
+    if f_min is None or f_min <= float(f_hz[0]):
+        f_min = None
+    return mask, (None if f_min is None else float(f_min))
+
+
+def scale_limits(eps, usable: Optional[np.ndarray] = None,
+                 margin: float = 0.06) -> Optional[Tuple[float, float]]:
+    """
+    y-limits that fit eps' and eps'' of the usable points only.
+
+    EN: Points that failed the quality checks stay on the chart (they may run
+        off it) but never set its scale: one diverging value at 50 kHz must
+        not flatten the rest of the curve. None when no usable point is
+        finite (the caller then keeps its own limits).
+    ES: Los puntos que no pasaron los controles quedan en el grafico (pueden
+        salirse) pero nunca fijan su escala: un valor divergente a 50 kHz no
+        tiene que aplastar el resto de la curva. None cuando ningun punto
+        utilizable es finito (el llamador conserva sus propios limites).
+    """
+    eps_real, eps_loss = permittivity_columns(eps)
+    keep = np.ones(eps_real.shape, dtype=bool) if usable is None else np.asarray(usable, bool)
+    if keep.shape != eps_real.shape:
+        keep = np.ones(eps_real.shape, dtype=bool)
+    values = np.concatenate([eps_real[keep], eps_loss[keep]])
+    values = values[np.isfinite(values)]
+    if values.size == 0:
+        return None
+    lo, hi = float(values.min()), float(values.max())
+    pad = (hi - lo) * margin if hi > lo else max(1.0, abs(hi) * margin)
+    return lo - pad, hi + pad
+
+
+def shade_unusable_band(ax, x_start: float, x_end: float, label: str = "_nolegend_"):
+    """Grey band over ``[x_start, x_end]`` (chart units) behind the curves."""
+    return ax.axvspan(x_start, x_end, color="#9a9a9a", alpha=0.18, zorder=0, label=label)
+
+
 def isolated_points(y: np.ndarray) -> np.ndarray:
     """Bool mask of finite samples whose two neighbours are both NaN/missing.
 

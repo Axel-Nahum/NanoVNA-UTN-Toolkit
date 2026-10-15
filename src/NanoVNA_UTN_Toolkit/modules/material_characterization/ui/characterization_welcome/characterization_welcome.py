@@ -588,6 +588,8 @@ class MaterialCharacterizationWelcome(QMainWindow):
                     wizard.sweep_steps = meta.points
                 wizard.perm_calibration.set_reference_liquids(meta.ref1_key, meta.ref2_key)
                 wizard.perm_calibration.probe_key = meta.probe_key
+                if meta.despike_enabled is not None:
+                    wizard.perm_calibration.set_despike_enabled(meta.despike_enabled)
 
                 std_temps = meta.standard_temperatures or {}
                 for key, (freqs, s11) in cal_data.items():

@@ -67,6 +67,23 @@ class ProbeModel:
     c0_source: str
     fit_band_hz: Optional[Tuple[float, float]] = None
 
+    def min_usable_hz(self, s11_error: float = 1e-3, eps_resolution: float = 1.0) -> float:
+        """
+        Lowest frequency where an S11 error ``s11_error`` costs at most ``eps_resolution`` in eps.
+
+        EN: In the capacitive model S11 moves by about 2*w*C0*Z0 per unit of
+            eps at low frequency, so an S11 error sigma becomes an eps error
+            sigma / (2*w*C0*Z0); this is the frequency where that equals
+            ``eps_resolution``. The 3 mm probe (19 fF) needs ~84 MHz and the
+            21 mm one (117 fF) ~14 MHz for +-1 per 0.001 of S11.
+        ES: En el modelo capacitivo el S11 se mueve unos 2*w*C0*Z0 por unidad
+            de eps en baja frecuencia, asi que un error sigma en S11 se vuelve
+            un error sigma / (2*w*C0*Z0) en eps; esta es la frecuencia donde
+            eso vale ``eps_resolution``. La sonda de 3 mm (19 fF) necesita
+            ~84 MHz y la de 21 mm (117 fF) ~14 MHz para +-1 por 0.001 de S11.
+        """
+        return s11_error / (4.0 * np.pi * self.c0_f * Z0_OHM * eps_resolution)
+
 
 GENERIC_PROBE_KEY = "generic"
 

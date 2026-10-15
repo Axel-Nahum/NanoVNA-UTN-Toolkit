@@ -57,6 +57,8 @@ from NanoVNA_UTN_Toolkit.shared.ui.pdf_export_widgets import (
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
     permittivity_columns,
     plot_with_gaps,
+    scale_limits,
+    shade_unusable_band,
 )
 
 _CHART_INI_EXE = "INI/material_characterization/characterization_chart_config/characterization_chart_config.ini"
@@ -208,13 +210,18 @@ class PermittivityPdfPreviewDialog(QDialog):
     for non-physical points (ε'' < 0, or ε' <= 0 in the simplified method);
     it only annotates the report (quality note and
     a dagger in the table), the plotted values are not changed.
+
+    ``usable_mask`` / ``f_min_hz`` (optional, from
+    ``permittivity_columns.usable_band_of``) come from the quality checks:
+    the band below ``f_min_hz`` is shaded and only the usable points set the
+    y-scale of the permittivity figure, as on screen.
     """
 
     def __init__(
         self, parent=None, freqs=None, s11_data=None, eps_selected=None,
         sample_name=None, output_path=None, wizard_window=None,
         include_steps=False, include_notes=False, include_tables=False,
-        nonpassive_mask=None,
+        nonpassive_mask=None, usable_mask=None, f_min_hz=None,
     ):
         super().__init__(parent)
 
@@ -224,6 +231,8 @@ class PermittivityPdfPreviewDialog(QDialog):
         self.eps_selected = (np.asarray(eps_selected, dtype=complex) if eps_selected is not None
                              else np.ones(100, dtype=complex) * (2.5 - 0.1j))
         self.nonpassive_mask = nonpassive_mask
+        self.usable_mask = usable_mask
+        self.f_min_hz = f_min_hz
         self.sample_name = sample_name or "sample"
         self.output_path = output_path
         self.wizard_window = wizard_window
@@ -987,6 +996,12 @@ class PermittivityPdfPreviewDialog(QDialog):
             self.ax, self._scaled_freqs, self._loss_eps,
             color=self._loss_color, linewidth=1.5, label=r"$\varepsilon_r''$",
         )
+        if self.f_min_hz is not None:
+            shade_unusable_band(self.ax, float(self._scaled_freqs[0]),
+                                self.f_min_hz / self._freq_div, label="unreliable")
+        limits = scale_limits(self.eps_selected, self.usable_mask)
+        if limits is not None:
+            self.ax.set_ylim(limits)
         self.ax.set_title(r"$\varepsilon_r$ vs Frequency", fontsize=14, pad=14)
         self.ax.set_xlabel(f"Frequency ({self._freq_unit})", fontsize=12)
         self.ax.set_ylabel(r"$\varepsilon_r$", fontsize=12)

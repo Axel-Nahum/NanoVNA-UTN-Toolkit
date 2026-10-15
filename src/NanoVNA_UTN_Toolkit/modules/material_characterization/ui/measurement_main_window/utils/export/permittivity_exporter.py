@@ -8,6 +8,7 @@ characterization-specific metadata.
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
 import os
+import re
 import tempfile
 import subprocess
 import shutil
@@ -456,6 +457,64 @@ def _quality_note_tex(eps_real: np.ndarray, flagged: np.ndarray, with_table: boo
     return r"\noindent{\footnotesize\textit{" + " ".join(parts) + r"}}\par"
 
 
+# Plain-text warnings -> LaTeX. TeX specials first (their escapes add no
+# symbol below), then the symbols the solver and quality messages use, longest
+# first so "ε′" becomes one math group instead of "$\varepsilon$$'$".
+_TEX_SPECIALS = (
+    ("\\", r"\textbackslash{}"), ("&", r"\&"), ("%", r"\%"), ("$", r"\$"),
+    ("#", r"\#"), ("_", r"\_"), ("{", r"\{"), ("}", r"\}"),
+    ("~", r"\textasciitilde{}"), ("^", r"\textasciicircum{}"),
+)
+_TEX_SYMBOLS = (
+    ("ε′", r"$\varepsilon'$"), ("ε″", r"$\varepsilon''$"), ("εr", r"$\varepsilon_r$"),
+    ("ε", r"$\varepsilon$"), ("′", r"$'$"), ("″", r"$''$"), ("σ", r"$\sigma$"),
+    ("Δ", r"$\Delta$"), ("∝", r"$\propto$"), ("±", r"$\pm$"), ("≤", r"$\leq$"),
+    ("≥", r"$\geq$"), ("≈", r"$\approx$"), ("°", r"$^{\circ}$"), ("·", r"$\cdot$"),
+    ("×", r"$\times$"), ("→", r"$\rightarrow$"), ("∞", r"$\infty$"), ("³", r"$^{3}$"),
+    ("|", r"$|$"), ("<", r"$<$"), (">", r"$>$"), ("−", "-"), ("–", "--"),
+    ("—", "---"), ("…", r"\ldots{}"), ("⚠", ""),
+)
+
+
+_TEX_POWER = re.compile(r"\^([−-]?\d+(?:\.\d+)?)")
+
+
+def _plain_to_latex(text: str) -> str:
+    """Escape a plain-text message (warnings, notes) for pdflatex + inputenc utf8.
+
+    Exponents written ``f^3`` / ``f^−0.1`` become real superscripts.
+    """
+    # Exponents are set aside (control chars survive both passes untouched).
+    text = _TEX_POWER.sub(lambda m: "\x00" + m.group(1).replace("−", "-") + "\x01", str(text))
+    for ch, repl in _TEX_SPECIALS:
+        text = text.replace(ch, repl)
+    for ch, repl in _TEX_SYMBOLS:
+        text = text.replace(ch, repl)
+    return re.sub("\x00(.*?)\x01", r"$^{\1}$", text)
+
+
+def _despike_summary(processing, labels) -> list:
+    """Lines describing what spike removal did (from ``result.processing``)."""
+    record = (processing or {}).get("despike")
+    if not record:
+        return []
+    if not record.get("enabled"):
+        return ["Spike removal: off (the sweeps were used as measured)."]
+    replaced, shared = [], set()
+    for key, proc in (record.get("sweeps") or {}).items():
+        for f, change in zip(proc.get("replaced_hz") or [], proc.get("changes") or []):
+            replaced.append(f"{labels.get(key, key)} at {f / 1e6:.4g} MHz (|ΔS11| = {change:.1e})")
+        shared.update(proc.get("kept_common_hz") or [])
+    lines = [f"Spike removal: on ({record.get('criterion', 'noise-based')}); "
+             + (f"replaced {len(replaced)} point(s): " + "; ".join(replaced) + "."
+                if replaced else "no isolated spike found.")]
+    if shared:
+        lines.append("Outliers shared by several sweeps, left alone (instrument "
+                     "artefacts cancelled by the calibration): "
+                     + ", ".join(f"{f / 1e6:.4g} MHz" for f in sorted(shared)) + ".")
+    return lines
+
+
 def _freq_scale(freqs):
     max_f = float(np.max(freqs))
     if max_f >= 0.5e9:
@@ -821,6 +880,8 @@ class PermittivityExporter:
                     doc.append(NoEscape(r"\vspace{1.2em}"))
                     self._build_s11_mini_table(doc, freqs, s11_data, NoEscape)
 
+        self._build_quality_section(doc, wizard_window, NoEscape, NewPage, Section)
+
         # Calibration standard measurements (optional)
         if include_steps:
             self._build_step_sections(doc, image_files, wizard_window, NoEscape, NewPage,
@@ -861,6 +922,50 @@ class PermittivityExporter:
             os.environ["PATH"] = original_path
 
     # ------------------------------------------------------------------ #
+
+    def _build_quality_section(self, doc, wizard_window, NoEscape, NewPage, Section):
+        """
+        "Measurement quality" section: every warning of the result, plus spike removal.
+
+        EN: The same messages the result screen lists (quality checks first:
+            low-frequency sensitivity, |S11| > 1, Gn physicality; then the
+            solver's), so a printed report never hides what the screen showed.
+        ES: Los mismos mensajes que lista la pantalla de resultado (primero
+            los controles de calidad: sensibilidad en baja frecuencia,
+            |S11| > 1, fisica de Gn; despues los del solver), para que un
+            informe impreso nunca oculte lo que mostro la pantalla.
+        """
+        result = getattr(wizard_window, "epsilon_result", None)
+        if result is None:
+            return
+        cal = getattr(wizard_window, "perm_calibration", None)
+        labels = cal.sweep_labels() if hasattr(cal, "sweep_labels") else {}
+        processing = _despike_summary(getattr(result, "processing", None), labels)
+        warnings = list(getattr(result, "warnings", []) or [])
+        if processing:
+            # The processing paragraph already says what spike removal did.
+            warnings = [w for w in warnings if not w.startswith("Spike removal (noise-based)")]
+        warnings += list(getattr(wizard_window, "temperature_warnings", []) or [])
+
+        doc.append(NewPage())
+        with doc.create(Section("Measurement Quality")):
+            quality = getattr(result, "quality", None)
+            f_min = getattr(quality, "f_min_hz", None) if quality is not None else None
+            if f_min is not None and len(result.f_hz) and f_min > float(result.f_hz[0]):
+                doc.append(NoEscape(r"\noindent " + _plain_to_latex(
+                    f"Reliable band: from {f_min / 1e6:.4g} MHz (S11 error σ = "
+                    f"{quality.s11_error:.1e}); the points below it are kept in the "
+                    f"plot (shaded, outside the scale) and in the tables, but are not "
+                    f"reliable.") + r"\par"))
+            for line in processing:
+                doc.append(NoEscape(r"\noindent " + _plain_to_latex(line) + r"\par"))
+            if warnings:
+                doc.append(NoEscape(r"\begin{itemize}"))
+                for w in warnings:
+                    doc.append(NoEscape(r"\item " + _plain_to_latex(w)))
+                doc.append(NoEscape(r"\end{itemize}"))
+            else:
+                doc.append(NoEscape(r"No quality warnings were raised for this measurement.\par"))
 
     def _build_permittivity_mini_table(self, doc, freqs, eps_selected, NoEscape,
                                        nonpassive_mask=None):
@@ -1148,6 +1253,12 @@ class PermittivityExporter:
             for key, label in _LABELS.items():
                 src = cal.get_source(key)
                 if src is not None:
+                    getter = getattr(cal, "get_processing", None)
+                    proc = (getter(key) or {}).get("despike") if callable(getter) else None
+                    replaced = (proc or {}).get("replaced_hz") or []
+                    if replaced:
+                        src += (f" ({len(replaced)} spike(s) replaced in the computation: "
+                                + ", ".join(f"{f / 1e6:.4g} MHz" for f in replaced) + ")")
                     src_parts.append((label, src))
             if src_parts:
                 doc.append(NoEscape(r"\item \textbf{Data sources:}"))
