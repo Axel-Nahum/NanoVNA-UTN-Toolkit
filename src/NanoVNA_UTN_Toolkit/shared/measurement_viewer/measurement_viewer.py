@@ -1070,7 +1070,11 @@ class MeasurementViewerWindow(QMainWindow):
         self._update_range_page()
         axes = self._flat_axes()
         if i < len(axes):
-            axes[i].grid(self._y_grid[i], linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
+            ax = axes[i]
+            if self._y_grid[i]:
+                ax.grid(True, linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
+            else:
+                ax.grid(False)
             self._canvas.draw()
             self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
             self._draw_cursors()
@@ -1348,7 +1352,10 @@ class MeasurementViewerWindow(QMainWindow):
                 spine.set_color(_SPINE)
                 spine.set_linewidth(0.8)
             ax.tick_params(colors=_TEXT2, labelsize=8)
-            ax.grid(self._y_grid[_ri], linestyle="--", alpha=0.35, color=_GRID, linewidth=0.6)
+            if self._y_grid[_ri]:
+                ax.grid(True, linestyle="--", alpha=0.35, color=_GRID, linewidth=0.6)
+            else:
+                ax.grid(False)
 
             t = title.lower()
             if "magnitude" in t:
@@ -1387,7 +1394,10 @@ class MeasurementViewerWindow(QMainWindow):
             ax.cla()
             ax.set_facecolor(_CARD_BG)
             ax.tick_params(colors=_TEXT2, labelsize=8)
-            ax.grid(self._y_grid[_ai], linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
+            if self._y_grid[_ai]:
+                ax.grid(True, linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
+            else:
+                ax.grid(False)
             for spine in ax.spines.values():
                 spine.set_color(_SPINE)
                 spine.set_linewidth(0.8)
