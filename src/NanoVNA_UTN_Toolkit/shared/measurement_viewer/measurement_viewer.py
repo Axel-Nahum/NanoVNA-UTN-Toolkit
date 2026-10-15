@@ -41,8 +41,8 @@ _PALETTE = [
     "#cc5de8", "#ff922b", "#20c997", "#f06595",
 ]
 
-_C1_COLOR = "#ff6b6b"   # cursor 1 — red
-_C2_COLOR = "#63e6be"   # cursor 2 — mint
+_C1_COLOR = "#ffa94d"   # cursor 1 — warm orange (not in graph palette)
+_C2_COLOR = "#66d9e8"   # cursor 2 — light cyan  (not in graph palette)
 
 # ── Theme (app dark palette: blue-gray/slate with violet undertone) ───────── #
 _WIN_BG   = "#1e1e2e"   # fondo principal app
