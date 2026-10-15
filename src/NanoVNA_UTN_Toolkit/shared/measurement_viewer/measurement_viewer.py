@@ -17,6 +17,7 @@ from PySide6.QtGui import (
     QAction, QColor, QGuiApplication, QIcon,
     QPainter, QPainterPath, QPen, QPixmap,
 )
+from PySide6.QtCore import QSize
 from PySide6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QMainWindow, QPushButton,
@@ -1153,6 +1154,7 @@ class MeasurementViewerWindow(QMainWindow):
                 self._file_list.blockSignals(False)
                 p = keep.data(0, Qt.ItemDataRole.UserRole)
                 self._redraw([self._cache[p]] if p in self._cache else [])
+        self._refresh_item_swatches()
 
     def _rebuild_figure(self):
         self._fig.clear()
@@ -1286,6 +1288,15 @@ class MeasurementViewerWindow(QMainWindow):
     def _clear_selection(self):
         self._file_list.clearSelection()
 
+    def _refresh_item_swatches(self):
+        show = self._compare_mode
+        self._file_list.setIconSize(QSize(14, 14) if show else QSize(0, 0))
+        for item in self._all_file_items():
+            path = item.data(0, Qt.ItemDataRole.UserRole)
+            col  = self._color_map.get(path) if item.isSelected() else None
+            item.setForeground(0, QColor(col) if col else QColor(_TEXT))
+            item.setIcon(0, self._color_swatch(col if show and col else None))
+
     @staticmethod
     def _color_swatch(color: str | None, size: int = 12) -> QIcon:
         px = QPixmap(size, size)
@@ -1326,13 +1337,7 @@ class MeasurementViewerWindow(QMainWindow):
                 self._cache[path].color = self._color_map[path]
             entries.append(self._cache[path])
 
-        for item in self._all_file_items():
-            path = item.data(0, Qt.ItemDataRole.UserRole)
-            col  = self._color_map.get(path) if item.isSelected() else None
-            item.setForeground(0, QColor(col) if col else QColor(_TEXT))
-            swatch_col = col if (self._compare_mode and col) else None
-            item.setIcon(0, self._color_swatch(swatch_col))
-
+        self._refresh_item_swatches()
         self._redraw(entries)
 
     # ── Drawing ───────────────────────────────────────────────────────────── #
