@@ -466,12 +466,13 @@ class MeasurementViewerWindow(QMainWindow):
         _fv.addWidget(_cap_lbl("Freq")); _fv.addWidget(self._lbl_c1_freq)
         c1d.addWidget(_fw)
         self._c1_vcols: list[tuple] = []
-        for _ in range(4):
+        for _i in range(4):
             _cap = _cap_lbl("—"); _val = _val_lbl()
             _cw = QWidget(); _cw.setStyleSheet("background:transparent;")
             _cv = QVBoxLayout(_cw); _cv.setContentsMargins(0,0,0,0); _cv.setSpacing(1)
             _cv.addWidget(_cap); _cv.addWidget(_val)
             c1d.addWidget(_cw)
+            _cw.setVisible(_i < 2)
             self._c1_vcols.append((_cw, _cap, _val))
         c1v.addLayout(c1d)
         cph.addWidget(c1_sec, stretch=2)
@@ -509,12 +510,13 @@ class MeasurementViewerWindow(QMainWindow):
         _fv.addWidget(_cap_lbl("Freq")); _fv.addWidget(self._lbl_c2_freq)
         c2d.addWidget(_fw)
         self._c2_vcols: list[tuple] = []
-        for _ in range(4):
+        for _i in range(4):
             _cap = _cap_lbl("—"); _val = _val_lbl()
             _cw = QWidget(); _cw.setStyleSheet("background:transparent;")
             _cv = QVBoxLayout(_cw); _cv.setContentsMargins(0,0,0,0); _cv.setSpacing(1)
             _cv.addWidget(_cap); _cv.addWidget(_val)
             c2d.addWidget(_cw)
+            _cw.setVisible(_i < 2)
             self._c2_vcols.append((_cw, _cap, _val))
         c2v.addLayout(c2d)
         cph.addWidget(c2_sec, stretch=2)
@@ -539,12 +541,13 @@ class MeasurementViewerWindow(QMainWindow):
         _fv.addWidget(_cap_lbl("ΔF")); _fv.addWidget(self._lbl_df)
         dfd.addWidget(_fw)
         self._df_vcols: list[tuple] = []
-        for _ in range(4):
+        for _i in range(4):
             _cap = _cap_lbl("—"); _val = _val_lbl()
             _cw = QWidget(); _cw.setStyleSheet("background:transparent;")
             _cv = QVBoxLayout(_cw); _cv.setContentsMargins(0,0,0,0); _cv.setSpacing(1)
             _cv.addWidget(_cap); _cv.addWidget(_val)
             dfd.addWidget(_cw)
+            _cw.setVisible(_i < 2)
             self._df_vcols.append((_cw, _cap, _val))
         dfv.addLayout(dfd)
         cph.addWidget(df_sec, stretch=2)
@@ -863,6 +866,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._update_param_buttons()
         self._update_header_groups()
         self._rebuild_figure()
+        self._update_cursor_readout()
 
     def _set_display2(self, mode: str):
         if self._display2 == mode:
