@@ -172,11 +172,11 @@ class MeasurementViewerWindow(QMainWindow):
         self._freq_unit    = "GHz"
         self._cursor_enabled  = {1: False, 2: False}
         # Per-cursor, per-row frequency: _cursor_freq[n][row]  row 0=top, 1=bottom
-        self._cursor_freq     = {1: [None, None], 2: [None, None]}
-        self._cursor_lines    = {(1,0): [], (1,1): [], (2,0): [], (2,1): []}
-        self._cursor_markers  = {(1,0): [], (1,1): [], (2,0): [], (2,1): []}
-        self._cursor_dragging = None   # (n, row) tuple or None
-        self._cursors_linked  = True   # True = rows of same cursor move together
+        self._cursor_freq     = {1: [None]*4, 2: [None]*4}   # 4 slots (0-3)
+        self._cursor_lines    = {(n,s): [] for n in (1,2) for s in range(4)}
+        self._cursor_markers  = {(n,s): [] for n in (1,2) for s in range(4)}
+        self._cursor_dragging = None   # (n, slot) or None
+        self._cursors_linked  = True   # True = paired (top+top or top+bot in 2-chart)
         self._blit_bg         = None   # saved background for fast cursor blitting
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
@@ -1359,10 +1359,10 @@ class MeasurementViewerWindow(QMainWindow):
     def _toggle_cursor(self, n: int):
         self._cursor_enabled[n] = not self._cursor_enabled[n]
         if not self._cursor_enabled[n]:
-            self._cursor_freq[n] = [None, None]
-            for row in (0, 1):
-                self._cursor_lines[(n, row)] = []
-                self._cursor_markers[(n, row)] = []
+            self._cursor_freq[n] = [None] * 4
+            for s in range(4):
+                self._cursor_lines[(n, s)] = []
+                self._cursor_markers[(n, s)] = []
             if self._cursor_dragging is not None and self._cursor_dragging[0] == n:
                 self._cursor_dragging = None
         else:
@@ -1371,7 +1371,11 @@ class MeasurementViewerWindow(QMainWindow):
             if axes:
                 xlim = axes[0].get_xlim()
                 center_hz = (xlim[0] + xlim[1]) / 2.0 * self._freq_div
-                self._cursor_freq[n] = [center_hz, center_hz]
+                # 4-chart unlinked: each axis gets its own slot
+                if self._layout_mode == 4 and not self._cursors_linked:
+                    self._cursor_freq[n] = [center_hz] * 4
+                else:
+                    self._cursor_freq[n] = [center_hz, center_hz, None, None]
         self._update_cursor_buttons()
         self._redraw(self._current_entries())
         self._update_cursor_readout()
@@ -1414,10 +1418,8 @@ class MeasurementViewerWindow(QMainWindow):
 
     def _cursor_y_val_at(self, n: int, ax_idx: int):
         """Return (float_value, unit_str) for cursor n at a specific axis index."""
-        all_ax = self._flat_axes()
-        mid = max(len(all_ax) // 2, 1)
-        row = 0 if ax_idx < mid else 1
-        for dot, _, a_idx in self._cursor_markers[(n, row)]:
+        slot = self._cursor_slot(ax_idx)
+        for dot, _, a_idx in self._cursor_markers[(n, slot)]:
             if a_idx == ax_idx:
                 yi = dot.get_ydata()
                 if len(yi) == 0:
@@ -1501,18 +1503,42 @@ class MeasurementViewerWindow(QMainWindow):
 
     def _toggle_cursors_linked(self):
         self._cursors_linked = not self._cursors_linked
+        if self._cursors_linked and self._layout_mode == 4:
+            # switching to linked: collapse slots 2,3 into 0,1
+            for n in (1, 2):
+                # copy bottom positions to slot 1 if slot 0 already has data
+                if self._cursor_freq[n][2] is not None and self._cursor_freq[n][1] is None:
+                    self._cursor_freq[n][1] = self._cursor_freq[n][2]
+                self._cursor_freq[n][2] = None
+                self._cursor_freq[n][3] = None
+                for s in (2, 3):
+                    self._cursor_lines[(n, s)] = []
+                    self._cursor_markers[(n, s)] = []
         self._update_linked_buttons()
+        self._redraw(self._current_entries())
 
-    def _row_axes(self, row: int) -> list:
-        """Return axes for a cursor slot.
+    def _cursor_slot(self, ax_idx: int) -> int:
+        """Map an axis index to the cursor slot that governs it.
 
-        2-chart: row 0 = top, row 1 = bottom.
-        4-chart: row 0 = top row (indices 0,1), row 1 = bottom row (2,3).
-        Each row pair moves together; the two rows are always independent.
+        2-chart:          ax 0 → slot 0, ax 1 → slot 1.
+        4-chart linked:   top pair (ax 0,1) → slot 0; bottom pair (ax 2,3) → slot 1.
+        4-chart unlinked: each axis is its own slot (ax_idx = slot directly).
         """
+        if self._layout_mode != 4:
+            return ax_idx          # 0 or 1
+        if self._cursors_linked:
+            return 0 if ax_idx < 2 else 1
+        return ax_idx              # 0,1,2,3
+
+    def _row_axes(self, slot: int) -> list:
+        """Return the axes that belong to a cursor slot."""
         all_axes = self._flat_axes()
-        mid = max(len(all_axes) // 2, 1)
-        return all_axes[:mid] if row == 0 else all_axes[mid:]
+        if self._layout_mode == 4:
+            if self._cursors_linked:
+                return all_axes[:2] if slot == 0 else all_axes[2:]
+            return [all_axes[slot]]   # fully individual
+        # 2-chart
+        return [all_axes[slot]]
 
     def _blit_cursors(self):
         """Fast cursor repaint using saved background — no full figure redraw."""
@@ -1540,18 +1566,19 @@ class MeasurementViewerWindow(QMainWindow):
             for dot, _, _i in self._cursor_markers[key]:
                 try: dot.remove()
                 except Exception: pass
-        self._cursor_lines   = {(1,0): [], (1,1): [], (2,0): [], (2,1): []}
-        self._cursor_markers = {(1,0): [], (1,1): [], (2,0): [], (2,1): []}
+        self._cursor_lines   = {(n,s): [] for n in (1,2) for s in range(4)}
+        self._cursor_markers = {(n,s): [] for n in (1,2) for s in range(4)}
         all_axes = self._flat_axes()
+        n_slots = len(all_axes)   # 2 or 4
         for n, color in ((1, _C1_COLOR), (2, _C2_COLOR)):
             if not self._cursor_enabled[n]:
                 continue
-            for row in (0, 1):
-                freq = self._cursor_freq[n][row]
+            for slot in range(n_slots):
+                freq = self._cursor_freq[n][slot]
                 if freq is None:
                     continue
                 x = freq / self._freq_div
-                for ax in self._row_axes(row):
+                for ax in self._row_axes(slot):
                     ax_idx = all_axes.index(ax)
                     vline = ax.axvline(x, color=color, linewidth=1.2,
                                        linestyle="--", alpha=0.9, zorder=5,
@@ -1579,39 +1606,41 @@ class MeasurementViewerWindow(QMainWindow):
 
         ax = event.inaxes
         all_ax = self._flat_axes()
-        mid = max(len(all_ax) // 2, 1)
-        row = 0 if ax in all_ax[:mid] else 1
+        ax_idx = all_ax.index(ax) if ax in all_ax else 0
+        slot = self._cursor_slot(ax_idx)
 
         xlim = ax.get_xlim()
         thresh = (xlim[1] - xlim[0]) * 0.025
         xdata = event.xdata
 
-        # Near an existing cursor line in this row → drag it
+        # Near an existing cursor line in this slot → drag it
         for n in (1, 2):
             if not self._cursor_enabled[n]:
                 continue
-            freq = self._cursor_freq[n][row]
+            freq = self._cursor_freq[n][slot]
             if freq is not None and abs(xdata - freq / self._freq_div) < thresh:
-                self._cursor_dragging = (n, row)
+                self._cursor_dragging = (n, slot)
                 return
 
-        # Place the first enabled cursor with no freq in this row
+        # Place the first enabled cursor with no freq in this slot
         for n in (1, 2):
-            if self._cursor_enabled[n] and self._cursor_freq[n][row] is None:
-                self._cursor_freq[n][row] = xdata * self._freq_div
+            if self._cursor_enabled[n] and self._cursor_freq[n][slot] is None:
+                self._cursor_freq[n][slot] = xdata * self._freq_div
                 if self._cursors_linked:
-                    self._cursor_freq[n][1 - row] = self._cursor_freq[n][row]
-                self._cursor_dragging = (n, row)
+                    other = 1 - slot   # 0↔1 works for both 2-chart and 4-chart-linked
+                    self._cursor_freq[n][other] = self._cursor_freq[n][slot]
+                self._cursor_dragging = (n, slot)
                 self._draw_cursors()
                 self._update_cursor_readout()
                 self._canvas.draw()
+                self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
                 return
 
-        # Both placed — move nearest
+        # Both placed — move nearest in this slot
         dists = {}
         for n in (1, 2):
-            if self._cursor_enabled[n] and self._cursor_freq[n][row] is not None:
-                dists[(n, row)] = abs(xdata - self._cursor_freq[n][row] / self._freq_div)
+            if self._cursor_enabled[n] and self._cursor_freq[n][slot] is not None:
+                dists[(n, slot)] = abs(xdata - self._cursor_freq[n][slot] / self._freq_div)
         if dists:
             self._cursor_dragging = min(dists, key=dists.get)
 
@@ -1621,15 +1650,15 @@ class MeasurementViewerWindow(QMainWindow):
         if event.xdata is None:
             return
         x = event.xdata
-        n, row = self._cursor_dragging
-        self._cursor_freq[n][row] = x * self._freq_div
+        n, slot = self._cursor_dragging
+        self._cursor_freq[n][slot] = x * self._freq_div
 
-        # Linked: sync the other row of the same cursor
-        keys_to_move = [(n, row)]
+        # Linked: sync the paired slot (0↔1 for both 2-chart and 4-chart-linked)
+        keys_to_move = [(n, slot)]
         if self._cursors_linked:
-            other_row = 1 - row
-            self._cursor_freq[n][other_row] = self._cursor_freq[n][row]
-            keys_to_move.append((n, other_row))
+            other = 1 - slot
+            self._cursor_freq[n][other] = self._cursor_freq[n][slot]
+            keys_to_move.append((n, other))
 
         for key in keys_to_move:
             for line in self._cursor_lines[key]:
