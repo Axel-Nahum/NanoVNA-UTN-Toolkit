@@ -223,32 +223,38 @@ class MeasurementViewerWindow(QMainWindow):
         toolbar.setStyleSheet("background: #161622; border-bottom: 1px solid #2a2a3a;")
         tb = QHBoxLayout(toolbar)
         tb.setContentsMargins(10, 0, 10, 0)
-        tb.setSpacing(6)
+        tb.setSpacing(0)
 
-        _btn_ss = (
-            "QPushButton {{ font-size: 11px; padding: 0 14px; height: 24px;"
-            " border-radius: 4px; border: 1px solid #333355;"
-            " background: {bg}; color: {fg}; }}"
-            " QPushButton:hover {{ background: #3a3a6a; }}"
-        )
-
+        # Segmented layout toggle (pill style — buttons touch each other)
         self._btn_4 = QPushButton("4 Charts")
-        self._btn_4.setCheckable(True)
-        self._btn_4.setChecked(True)
+        self._btn_4.setFixedHeight(24)
+        self._btn_4.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_4.clicked.connect(lambda: self._set_layout(4))
 
         self._btn_2 = QPushButton("2 Charts")
-        self._btn_2.setCheckable(True)
-        self._btn_2.setChecked(False)
+        self._btn_2.setFixedHeight(24)
+        self._btn_2.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_2.clicked.connect(lambda: self._set_layout(2))
+
+        # Left button: rounded left corners only; right button: rounded right corners only
+        self._btn_4.setStyleSheet(
+            self._BTN_ACTIVE.replace("border:", "border-radius: 4px 0 0 4px; border:")
+        )
+        self._btn_2.setStyleSheet(
+            self._BTN_INACTIVE.replace("border:", "border-radius: 0 4px 4px 0; border:")
+        )
 
         self._update_layout_buttons()
 
-        _layout_lbl = QLabel("Layout:")
-        _layout_lbl.setStyleSheet("font-size: 11px; color: #666677;")
-        tb.addWidget(_layout_lbl)
-        tb.addWidget(self._btn_4)
-        tb.addWidget(self._btn_2)
+        seg = QWidget()
+        seg.setFixedHeight(26)
+        seg_lay = QHBoxLayout(seg)
+        seg_lay.setContentsMargins(0, 0, 0, 0)
+        seg_lay.setSpacing(0)
+        seg_lay.addWidget(self._btn_4)
+        seg_lay.addWidget(self._btn_2)
+
+        tb.addWidget(seg)
         tb.addStretch(1)  # space for future control groups
 
         rv.addWidget(toolbar)
@@ -269,16 +275,18 @@ class MeasurementViewerWindow(QMainWindow):
         self._reset_axes()
 
     # ── Layout toggle ─────────────────────────────────────────────────────── #
-    _BTN_ACTIVE   = "QPushButton { font-size:11px; padding:0 14px; height:24px; border-radius:4px; border:1px solid #4da6ff; background:#2a2a4a; color:#4da6ff; } QPushButton:hover { background:#3a3a6a; }"
-    _BTN_INACTIVE = "QPushButton { font-size:11px; padding:0 14px; height:24px; border-radius:4px; border:1px solid #333355; background:#1a1a2e; color:#666688; } QPushButton:hover { background:#2a2a4a; }"
+    _BTN_ACTIVE   = ("QPushButton { font-size:11px; padding:0 12px; height:24px;"
+                     " border:1px solid #4da6ff; background:#2a2a4a; color:#4da6ff; }"
+                     " QPushButton:hover { background:#3a3a6a; }")
+    _BTN_INACTIVE = ("QPushButton { font-size:11px; padding:0 12px; height:24px;"
+                     " border:1px solid #2a2a4a; background:#1a1a2a; color:#555577; }"
+                     " QPushButton:hover { background:#222235; color:#8888aa; }")
 
     def _update_layout_buttons(self):
-        self._btn_4.setStyleSheet(
-            self._BTN_ACTIVE if self._layout_mode == 4 else self._BTN_INACTIVE
-        )
-        self._btn_2.setStyleSheet(
-            self._BTN_ACTIVE if self._layout_mode == 2 else self._BTN_INACTIVE
-        )
+        ss4 = self._BTN_ACTIVE if self._layout_mode == 4 else self._BTN_INACTIVE
+        ss2 = self._BTN_ACTIVE if self._layout_mode == 2 else self._BTN_INACTIVE
+        self._btn_4.setStyleSheet(ss4.replace("border:", "border-radius:4px 0 0 4px; border:"))
+        self._btn_2.setStyleSheet(ss2.replace("border:", "border-radius:0 4px 4px 0; border:"))
 
     def _set_layout(self, mode: int):
         if self._layout_mode == mode:
