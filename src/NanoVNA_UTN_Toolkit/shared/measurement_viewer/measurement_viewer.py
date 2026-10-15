@@ -673,13 +673,19 @@ class MeasurementViewerWindow(QMainWindow):
             _edit_min.editingFinished.connect(lambda n=_n: self._apply_y_range(n))
             _edit_max.editingFinished.connect(lambda n=_n: self._apply_y_range(n))
 
-            _sec.setVisible(_i < 2)
+            _sep_widget = None
             if _i > 0:
-                rph.addWidget(_rsep())
+                _sep_widget = _rsep()
+                rph.addWidget(_sep_widget)
             rph.addWidget(_sec, 1)
+
+            _sec.setVisible(_i < 2)
+            if _sep_widget is not None:
+                _sep_widget.setVisible(_i < 2)
 
             self._range_sections.append({
                 "container": _sec,
+                "sep":       _sep_widget,
                 "label":     _chart_lbl,
                 "btn_auto":  _btn_auto,
                 "btn_grid":  _btn_grid,
@@ -1018,7 +1024,10 @@ class MeasurementViewerWindow(QMainWindow):
         n = 4 if self._layout_mode == 4 else 2
         labels = self._chart_labels_for_range()
         for i, sec in enumerate(self._range_sections):
-            sec["container"].setVisible(i < n)
+            visible = i < n
+            sec["container"].setVisible(visible)
+            if sec["sep"] is not None:
+                sec["sep"].setVisible(visible)
             if i < len(labels):
                 sec["label"].setText(labels[i])
             auto = self._y_autoscale[i]
