@@ -26,6 +26,14 @@ show_app_about = safe_import(
 
 
 
+def _open_measurement_viewer(main_window):
+    from NanoVNA_UTN_Toolkit.shared.measurement_viewer.measurement_viewer import MeasurementViewerWindow
+    vna = getattr(main_window, "vna", None) or getattr(main_window, "vna_device", None)
+    main_window._viewer_win = MeasurementViewerWindow(vna_device=vna, source_module="char")
+    main_window._viewer_win.show()
+    main_window.close()
+
+
 def build_menu(main_window) -> None:
     """Build the full menubar for the characterization main window."""
     menu = main_window._texts.get("menu", {})
@@ -78,6 +86,12 @@ def build_menu(main_window) -> None:
     table_action = QAction(menu.get("show_table", "Results Table"), main_window)
     table_action.triggered.connect(main_window._show_table_window)
     plots_menu.addAction(table_action)
+
+    plots_menu.addSeparator()
+
+    viewer_action = QAction(menu.get("measurement_viewer", "Measurement Viewer…"), main_window)
+    viewer_action.triggered.connect(lambda: _open_measurement_viewer(main_window))
+    plots_menu.addAction(viewer_action)
 
     # ------------------------------------------------------------------ #
     # Calibration / Kits

@@ -323,8 +323,13 @@ class NanoVNAGraphics(QMainWindow):
         plot_manager = plot_menu.addAction(f"{self.measurement_menu_plot_settings}")  
         plot_manager.triggered.connect(lambda: open_plot_settings(self))
 
-        signal_filter = plot_menu.addAction(f"{self.measurement_menu_signal_filters}")  
+        signal_filter = plot_menu.addAction(f"{self.measurement_menu_signal_filters}")
         signal_filter.triggered.connect(lambda: open_signal_filters(self))
+
+        plot_menu.addSeparator()
+
+        viewer_action = plot_menu.addAction("Measurement Viewer…")
+        viewer_action.triggered.connect(lambda: self._open_measurement_viewer())
 
         # --- Help menu actions ---
 
@@ -535,6 +540,19 @@ class NanoVNAGraphics(QMainWindow):
         from datetime import datetime
         return datetime.now().strftime("%Y%m%d_%H%M%S")
     
+    def _open_measurement_viewer(self):
+        from NanoVNA_UTN_Toolkit.shared.measurement_viewer.measurement_viewer import MeasurementViewerWindow
+        from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import stop_realtime
+        try:
+            stop_realtime(self)
+        except Exception:
+            pass
+        self._viewer_win = MeasurementViewerWindow(
+            vna_device=self.vna_device, source_module="dut"
+        )
+        self._viewer_win.show()
+        self.close()
+
     def return_to_menu_window(self):
         from NanoVNA_UTN_Toolkit.modules.menu_window import ModuleSelectionWindow
         from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import stop_realtime
