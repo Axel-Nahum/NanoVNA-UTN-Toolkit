@@ -1335,7 +1335,7 @@ class MeasurementViewerWindow(QMainWindow):
 
     # ── Cursor controls ───────────────────────────────────────────────────── #
     def _update_cursor_buttons(self):
-        has_data = bool(self._current_entries())
+        has_data = bool(self._current_entries()) if hasattr(self, "_file_list") else False
         for btn, on_style, n in (
             (self._btn_c1, self._C1_ON_STYLE, 1),
             (self._btn_c2, self._C2_ON_STYLE, 2),
