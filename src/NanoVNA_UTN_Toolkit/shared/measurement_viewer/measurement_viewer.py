@@ -14,7 +14,7 @@ from matplotlib.figure import Figure as _Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from PySide6.QtCore import Qt
 from PySide6.QtGui import (
-    QAction, QColor, QGuiApplication,
+    QAction, QColor, QGuiApplication, QIcon,
     QPainter, QPainterPath, QPen, QPixmap,
 )
 from PySide6.QtWidgets import (
@@ -1286,6 +1286,19 @@ class MeasurementViewerWindow(QMainWindow):
     def _clear_selection(self):
         self._file_list.clearSelection()
 
+    @staticmethod
+    def _color_swatch(color: str | None, size: int = 12) -> QIcon:
+        px = QPixmap(size, size)
+        px.fill(Qt.GlobalColor.transparent)
+        if color:
+            p = QPainter(px)
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            p.setBrush(QColor(color))
+            p.setPen(Qt.PenStyle.NoPen)
+            p.drawRoundedRect(1, 1, size - 2, size - 2, 3, 3)
+            p.end()
+        return QIcon(px)
+
     # ── Selection ─────────────────────────────────────────────────────────── #
     def _on_selection_changed(self):
         selected_paths = [
@@ -1317,6 +1330,7 @@ class MeasurementViewerWindow(QMainWindow):
             path = item.data(0, Qt.ItemDataRole.UserRole)
             col  = self._color_map.get(path) if item.isSelected() else None
             item.setForeground(0, QColor(col) if col else QColor(_TEXT))
+            item.setIcon(0, self._color_swatch(col))
 
         self._redraw(entries)
 
