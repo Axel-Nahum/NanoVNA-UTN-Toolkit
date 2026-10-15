@@ -50,7 +50,8 @@
     "methanol": "Metanol",
     "butanol": "1-Butanol",
     "cyclohexane": "Ciclohexano",
-    "acetone": "Acetona"
+    "acetone": "Acetona",
+    "butanol": "Alcohol Butílico (1-Butanol)"
   },
   "probes": {
     "probe3mm": "Sonda 3 mm",
@@ -118,6 +119,7 @@
     "precal_no_liquid_msg": "Primero medí, importá o seleccioná un preset del líquido antes de aplicar la normalización con OPEN.",
     "precal_dialog_title": "Pre-calibración — Normalización con OPEN",
     "precal_title": "Normalización con OPEN",
+<<<<<<< Updated upstream
     "precal_std_label": "Corregir con:",
     "precal_std_open": "OPEN (sonda en el aire)",
     "precal_std_short": "SHORT (cortocircuito)",
@@ -129,6 +131,20 @@
     "precal_status_measuring": "Midiendo…",
     "precal_status_done": "OPEN medido ✓",
     "precal_status_done_short": "SHORT medido ✓",
+=======
+    "precal_description": "Colocá la sonda en el aire (OPEN) y medí. La normalización divide el S₁₁ del líquido por el S₁₁ del OPEN, corrigiendo los efectos del cable y los conectores.\n\ns₁₁_norm = s₁₁_líquido / s₁₁_OPEN",
+    "precal_std_label": "Normalizar con:",
+    "precal_std_open": "OPEN (sonda en aire)",
+    "precal_std_short": "SHORT (cortocircuito)",
+    "precal_measure_button": "Medir OPEN",
+    "precal_measure_button_short": "Medir SHORT",
+    "precal_import_button_short": "Importar SHORT .s1p",
+    "precal_status_ready": "Sin medición aún",
+    "precal_status_measuring": "Midiendo…",
+    "precal_status_done": "OPEN medido ✓",
+    "precal_status_done_short": "SHORT medido ✓",
+    "precal_description_short": "Cortocircuitá la cara de la sonda y medí. La normalización divide el S₁₁ del líquido por −S₁₁_SHORT, corrigiendo el signo del coeficiente de reflexión ideal Γ = −1.\n\ns₁₁_norm = s₁₁_líquido / (−s₁₁_SHORT)",
+>>>>>>> Stashed changes
     "precal_apply": "Aplicar",
     "precal_cancel": "Cancelar",
     "temperature_reminder": "Temperatura configurada: {temp:.1f} °C",

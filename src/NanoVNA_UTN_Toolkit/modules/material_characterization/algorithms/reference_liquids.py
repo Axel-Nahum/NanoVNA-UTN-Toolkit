@@ -447,6 +447,17 @@ _ACETONE = ReferenceLiquid(
             "(approximate, not verified against the paper)."),
 )
 
+_BUTANOL = ReferenceLiquid(
+    key="butanol",
+    display_name="1-Butanol",
+    model_type=DebyeModelType.SINGLE_DEBYE,  # placeholder — not used
+    temp_axis_c=(20,),                        # placeholder
+    columns={},                               # placeholder
+    validated=False,
+    source="No Debye model available yet — listed for future use.",
+    has_debye_model=False,
+)
+
 
 REFERENCE_LIQUIDS: Dict[str, ReferenceLiquid] = {
     _WATER.key: _WATER,
@@ -456,6 +467,7 @@ REFERENCE_LIQUIDS: Dict[str, ReferenceLiquid] = {
     _BUTANOL.key: _BUTANOL,
     _CYCLOHEXANE.key: _CYCLOHEXANE,
     _ACETONE.key: _ACETONE,
+    _BUTANOL.key: _BUTANOL,
 }
 
 

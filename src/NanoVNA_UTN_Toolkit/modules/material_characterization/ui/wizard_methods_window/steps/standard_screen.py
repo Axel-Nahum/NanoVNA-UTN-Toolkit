@@ -551,7 +551,15 @@ def build_standard_screen(wizard, descriptor, step_def):
             " border-radius: 4px; padding: 0 10px; }"
             " QPushButton:hover { background: #2a1a00; }"
         )
+<<<<<<< Updated upstream
         btn_precal = QPushButton()
+=======
+        if _has_precal:
+            _precal_btn_label = std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)")
+        else:
+            _precal_btn_label = std_texts.get("pre_calibrate", "⚙  Pre-calibrar (OPEN)")
+        btn_precal = QPushButton(_precal_btn_label)
+>>>>>>> Stashed changes
         btn_precal.setFixedHeight(24)
         precal_row.addWidget(btn_precal)
 
@@ -1990,19 +1998,23 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
 
     dlg = QDialog(wizard)
     dlg.setAttribute(Qt.WA_DeleteOnClose)
+    dlg.setSizeGripEnabled(False)
     dlg.setWindowTitle(std_texts.get("precal_dialog_title", "Pre-calibración — Normalización con OPEN"))
     dlg.setMinimumSize(460, 620)
     dlg.resize(500, 700)
 
     layout = QVBoxLayout(dlg)
-    layout.setContentsMargins(16, 12, 16, 12)
-    layout.setSpacing(6)
+    layout.setContentsMargins(20, 16, 20, 14)
+    layout.setSpacing(0)
 
     # Title
     title_lbl = QLabel(std_texts.get("precal_title", "Normalización con OPEN"))
     title_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #4da6ff;")
+    title_lbl.setAlignment(Qt.AlignCenter)
     layout.addWidget(title_lbl)
+    layout.addSpacing(10)
 
+<<<<<<< Updated upstream
     # Standard selector (OPEN / SHORT)
     _std_row = QHBoxLayout()
     _std_row.setSpacing(8)
@@ -2035,9 +2047,31 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
         "\n\ns₁₁_corr = s₁₁ · s₁₁_SHORT(step 2) / s₁₁_SHORT(now)"
     )
     desc_lbl = QLabel(_desc_open)
+=======
+    # Description (instruction text only, no formula)
+    _desc_text = std_texts.get(
+        "precal_description",
+        "Place the probe in open air (OPEN) and measure. Normalization divides "
+        "the liquid S₁₁ by the OPEN S₁₁, correcting cable and connector effects."
+    ).split("\n\n")[0]  # strip formula line if present in i18n text
+    desc_lbl = QLabel(_desc_text)
+>>>>>>> Stashed changes
     desc_lbl.setWordWrap(True)
+    desc_lbl.setAlignment(Qt.AlignCenter)
     desc_lbl.setStyleSheet("font-size: 11px; color: #aaaaaa;")
     layout.addWidget(desc_lbl)
+    layout.addSpacing(8)
+
+    # Normalization formula (centered, monospace-style)
+    formula_lbl = QLabel("s₁₁_norm  =  s₁₁_liquid  /  s₁₁_OPEN")
+    formula_lbl.setAlignment(Qt.AlignCenter)
+    formula_lbl.setStyleSheet(
+        "font-size: 12px; color: #cccccc; font-family: monospace;"
+        " padding: 6px 12px; border: 1px solid #333344; border-radius: 4px;"
+        " background: #1a1a2a;"
+    )
+    layout.addWidget(formula_lbl, alignment=Qt.AlignHCenter)
+    layout.addSpacing(16)
 
     scope_lbl = QLabel(std_texts.get(
         "precal_scope_note",
@@ -2051,6 +2085,7 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
     _measure_open_btn.setFixedHeight(34)
     _measure_open_btn.setFixedWidth(200)
     layout.addWidget(_measure_open_btn, alignment=Qt.AlignHCenter)
+    layout.addSpacing(8)
 
     _import_open_btn = QPushButton(std_texts.get("precal_import_button", "Import OPEN .s1p"))
     _import_open_btn.setFixedHeight(26)
@@ -2060,9 +2095,10 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
         " border-radius: 4px; padding: 0 12px; }"
         " QPushButton:hover { color: #aaaacc; border-color: #6666aa; }"
     )
-    layout.addSpacing(4)
     layout.addWidget(_import_open_btn, alignment=Qt.AlignHCenter)
+    layout.addSpacing(12)
 
+<<<<<<< Updated upstream
     def _is_short_selected():
         return _std_combo.currentData() == KIND_SHORT
 
@@ -2090,10 +2126,16 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
     _std_combo.currentIndexChanged.connect(_on_std_changed)
 
     # Status label
+=======
+    # Status label — fixed height so it never shifts the Smith chart
+>>>>>>> Stashed changes
     _status_lbl = QLabel(std_texts.get("precal_status_ready", "No measurement yet"))
     _status_lbl.setAlignment(Qt.AlignCenter)
+    _status_lbl.setFixedHeight(24)
     _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: gray;")
     layout.addWidget(_status_lbl)
+
+    layout.addSpacing(10)
 
     # Smith chart in a container widget that stretches to fill remaining space
     chart_widget = QWidget()
@@ -2108,9 +2150,11 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
         figsize=(4.4, 4.4),
     )
     layout.addWidget(chart_widget, stretch=1)
+    layout.addSpacing(12)
 
     # Apply / Cancel
     bottom_row = QHBoxLayout()
+    bottom_row.setSpacing(10)
     bottom_row.addStretch(1)
     apply_btn = QPushButton(std_texts.get("precal_apply", "Aplicar"))
     apply_btn.setFixedHeight(30)
@@ -2130,6 +2174,7 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
     )
     bottom_row.addWidget(apply_btn)
     bottom_row.addWidget(cancel_btn)
+    bottom_row.addStretch(1)
     layout.addLayout(bottom_row)
 
     _open_data = [None]  # [(freqs, s11_open)]
@@ -2150,22 +2195,31 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
         base = builder.create_empty_network(start, stop, points)
         base.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
         builder._configure_smith_chart_appearance()
+<<<<<<< Updated upstream
         _std_label = "SHORT" if _is_short_selected() else "OPEN"
         ax.set_title(rf"$S_{{11}}$ — {_std_label}", fontsize=13, pad=20, color=builder.config.text_color)
+=======
+        ax.set_title(r"$S_{11}$ — OPEN", fontsize=13, pad=20, color=builder.config.text_color)
+>>>>>>> Stashed changes
         ax.plot(np.real(s11_arr), np.imag(s11_arr), "o-", color=trace_color,
                 linewidth=2, markersize=3, zorder=3)
         builder.add_start_point_marker(s11_arr, color=trace_color)
         ax.legend(
-            [Line2D([0], [0], color=trace_color)], [rf"$S_{{11}}$ — {_std_label}"],
+            [Line2D([0], [0], color=trace_color)], [r"$S_{11}$ — OPEN"],
             loc="upper left", bbox_to_anchor=(-0.22, 1.14),
             bbox_transform=ax.transAxes, fontsize=8.5, framealpha=0.93,
         )
         canvas.draw()
 
+<<<<<<< Updated upstream
         _done_key = "precal_status_done_short" if _is_short_selected() else "precal_status_done"
         _done_default = "SHORT measured ✓" if _is_short_selected() else "OPEN measured ✓"
         _status_lbl.setText(std_texts.get(_done_key, _done_default))
         _status_lbl.setStyleSheet("font-size: 12px; padding: 4px; color: lightgreen;")
+=======
+        _status_lbl.setText(std_texts.get("precal_status_done", "OPEN measured ✓"))
+        _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: lightgreen;")
+>>>>>>> Stashed changes
         apply_btn.setEnabled(True)
 
     def _do_measure_open():
@@ -2173,8 +2227,13 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
         _status_lbl.setText(std_texts.get("precal_status_measuring", "Measuring…"))
         _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: orange;")
         QApplication.processEvents()
-        result = run_s11_sweep(wizard)
-        set_status(wizard, "", "gray")  # clear "Measuring..." left on the wizard status bar
+        # Detach wizard status_label so run_s11_sweep doesn't write "Measuring..." to the main wizard
+        _saved_wiz_lbl = getattr(wizard, "status_label", None)
+        wizard.status_label = None
+        try:
+            result = run_s11_sweep(wizard)
+        finally:
+            wizard.status_label = _saved_wiz_lbl
         if result is None:
             _status_lbl.setText(std_texts.get("precal_status_ready", "Sin medición del OPEN"))
             _status_lbl.setStyleSheet("font-size: 11px; padding: 2px; color: gray;")
@@ -2192,6 +2251,7 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
 
     def _do_apply():
         freqs_open, s11_open = _open_data[0]
+<<<<<<< Updated upstream
         kind = KIND_SHORT if _is_short_selected() else KIND_OPEN
         try:
             # c(f) as measured: the old neighbour-spread despike altered
@@ -2216,6 +2276,46 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
             return
         wizard.epsilon_result = None
         on_applied()
+=======
+        if not hasattr(wizard, "_precal_open"):
+            wizard._precal_open = {}
+        if not hasattr(wizard, "_precal_originals"):
+            wizard._precal_originals = {}
+        getattr(wizard, "_precal_blacklist", set()).discard(standard.key)
+        _s11_ref_raw = _remove_spikes(np.asarray(s11_open, dtype=complex))
+        _precal_entry = (
+            np.asarray(freqs_open, dtype=float).copy(),
+            _s11_ref_raw,
+        )
+        wizard._precal_open[standard.key] = _precal_entry
+        if "*" not in wizard._precal_open:  # set global only once — per-step overrides don't replace it
+            wizard._precal_open["*"] = _precal_entry
+        btn_delete_precal.setVisible(True)
+        if btn_precal is not None:
+            btn_precal.setText(std_texts.get("recalibrate", "⚙  Recalibrar (OPEN)"))
+            btn_precal.setStyleSheet(
+                "QPushButton { font-size: 11px; color: #ffaa44; border: 1px solid #ffaa44;"
+                " border-radius: 4px; padding: 0 10px; }"
+                " QPushButton:hover { background: #2a1a00; }"
+            )
+        _liq = wizard.perm_calibration.get_measurement(standard.key)
+        if _liq is not None:
+            # Liquid already measured — apply normalization immediately.
+            # If a previous pre-cal was already applied, _precal_originals holds the
+            # true raw S11. Use that as the base so we don't double-normalize.
+            _prev_orig = getattr(wizard, "_precal_originals", {}).get(standard.key)
+            freqs_liq, s11_liq = _prev_orig if _prev_orig is not None else _liq
+            wizard._precal_originals[standard.key] = (
+                np.asarray(freqs_liq, dtype=float).copy(),
+                np.asarray(s11_liq, dtype=complex).copy(),
+            )
+            s11_norm = np.asarray(s11_liq, dtype=complex) / wizard._precal_open[standard.key][1]
+            _src = wizard.perm_calibration.get_source(standard.key) or "measured"
+            wizard.perm_calibration.set_measurement(standard.key, freqs_liq, s11_norm, source=_src)
+            wizard.epsilon_result = None
+            _render(wizard, standard, name, color, std_texts, (freqs_liq, s11_norm),
+                    state["show_indicative"], False, state.get("chart_mode", "reimag"), state.get("mag_linear", False))
+>>>>>>> Stashed changes
         dlg.accept()
 
     _measure_open_btn.clicked.connect(_do_measure_open)
