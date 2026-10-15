@@ -233,6 +233,11 @@ class MeasurementViewerWindow(QMainWindow):
             gv.setContentsMargins(6, 4, 6, 2)
             gv.setSpacing(2)
 
+            lbl = QLabel(label_text)
+            lbl.setStyleSheet("font-size: 9px; color: #7777a0;")
+            lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+            gv.addWidget(lbl)
+
             ctrl_row = QWidget()
             ctrl_row.setStyleSheet("QWidget { background: transparent; }")
             cr = QHBoxLayout(ctrl_row)
@@ -241,11 +246,6 @@ class MeasurementViewerWindow(QMainWindow):
             for w in widgets:
                 cr.addWidget(w)
             gv.addWidget(ctrl_row, alignment=Qt.AlignmentFlag.AlignHCenter)
-
-            lbl = QLabel(label_text)
-            lbl.setStyleSheet("font-size: 9px; color: #7777a0;")
-            lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-            gv.addWidget(lbl)
             return grp
 
         def _vsep() -> QFrame:
