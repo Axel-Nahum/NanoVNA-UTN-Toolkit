@@ -1053,9 +1053,12 @@ class MeasurementViewerWindow(QMainWindow):
         else:
             self._y_range[i] = (None, None)
             axes = self._flat_axes()
-            if i < len(axes) and axes[i].get_lines():
-                axes[i].relim()
-                axes[i].autoscale_view()
+            if i < len(axes):
+                ax = axes[i]
+                ax.autoscale(enable=True, axis='y')
+                if ax.get_lines():
+                    ax.relim()
+                    ax.autoscale_view()
             self._canvas.draw()
             self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
             self._draw_cursors()
