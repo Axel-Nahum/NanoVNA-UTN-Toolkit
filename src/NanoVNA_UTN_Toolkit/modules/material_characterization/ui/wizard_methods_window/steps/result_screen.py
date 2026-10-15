@@ -669,7 +669,7 @@ def _build_extend_to_full(wizard, layout, rtexts):
             get as get_technique,
         )
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
-            liquid_keys, set_liquid_key,
+            discard_reference_measurement, liquid_keys, set_liquid_key,
         )
 
         try:
@@ -708,6 +708,12 @@ def _build_extend_to_full(wizard, layout, rtexts):
         if answer != QMessageBox.Yes:
             return
 
+        # A ref2 left over from an earlier full-technique run in this session
+        # belongs to whatever liquid ref2 had then; read as ref2_liquid it
+        # would give a wrong result, so it is measured again.
+        if (wizard.perm_calibration.is_standard_measured("ref2")
+                and liquid_keys(wizard).get("ref2") != ref2_liquid):
+            discard_reference_measurement(wizard, "ref2")
         set_liquid_key(wizard, "ref2", ref2_liquid)
         if not wizard.perm_calibration.set_reference_liquids(ref1_liquid, ref2_liquid):
             logger.error("[result_screen] could not set reference liquids %s/%s",

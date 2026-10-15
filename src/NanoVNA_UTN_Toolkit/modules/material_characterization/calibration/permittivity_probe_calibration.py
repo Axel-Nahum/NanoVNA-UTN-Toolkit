@@ -480,6 +480,28 @@ class PermittivityProbeCalibration:
         )
         return self.epsilon_result
 
+    def clear_measurement(self, standard_key: str) -> bool:
+        """
+        Forget the S11 stored for one standard; False for an unknown key.
+
+        EN: For data that no longer describes what the session says the
+            standard is (e.g. its reference liquid changed): the standard goes
+            back to "not measured" and the computed results are invalidated.
+            The .s1p already written to ``results_path`` is left as is.
+        ES: Para datos que ya no corresponden a lo que la sesion dice que es el
+            patron (p. ej. cambio su liquido de referencia): el patron vuelve a
+            "no medido" y se invalidan los resultados calculados. El .s1p ya
+            escrito en ``results_path`` no se toca.
+        """
+        key = standard_key.lower()
+        if key not in self.measurements:
+            logger.error("[PermittivityProbeCalibration] Unknown standard: %s", key)
+            return False
+        self.measurements[key] = self._empty_measurement()
+        self._invalidate_results(pattern_constants=key in STANDARD_KEYS)
+        logger.info("[PermittivityProbeCalibration] Cleared %s", key)
+        return True
+
     def clear_all_measurements(self) -> None:
         for key in self.measurements:
             self.measurements[key] = self._empty_measurement()

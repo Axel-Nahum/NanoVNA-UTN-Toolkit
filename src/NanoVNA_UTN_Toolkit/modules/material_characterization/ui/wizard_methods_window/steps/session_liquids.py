@@ -52,6 +52,22 @@ def set_liquid_key(wizard, standard_key: str, liquid_key: str) -> None:
     liquid_keys(wizard)[standard_key] = liquid_key
 
 
+def discard_reference_measurement(wizard, standard_key: str) -> None:
+    """
+    Forget a reference's stored S11 and the raw copy kept to undo its pre-cal.
+
+    EN: For when the liquid assigned to the standard changes and the stored S11
+        belongs to the previous one. The pre-cal OPEN (``_precal_open``) stays:
+        it is a probe measurement, valid for the liquid measured next.
+    ES: Para cuando cambia el liquido asignado al patron y el S11 guardado es
+        del anterior. El OPEN de la pre-calibracion (``_precal_open``) se
+        conserva: es una medicion de la sonda, valida para el liquido que se
+        mida despues.
+    """
+    wizard.perm_calibration.clear_measurement(standard_key)
+    getattr(wizard, "_precal_originals", {}).pop(standard_key, None)
+
+
 def ensure_defaults(wizard, descriptor) -> None:
     """Seed the session map from the descriptor for any standard not set yet."""
     keys = liquid_keys(wizard)

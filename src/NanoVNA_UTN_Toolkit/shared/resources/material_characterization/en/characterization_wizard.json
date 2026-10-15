@@ -34,6 +34,11 @@
     "preset_delete_title": "Delete stored measurement",
     "preset_delete_msg": "Delete \"{n}\" permanently?",
     "references_duplicated": "The two reference liquids must be different: two identical standards carry no extra information and the calibration cannot be solved.",
+    "liquid_change_title": "Change reference liquid",
+    "liquid_change_msg": "This reference already has a measurement taken with {old}.\n\nIf you will now use {new}, discard it and measure {new} in its step: keeping the {old} S11 under the name {new} gives a wrong permittivity.\n\nKeep it only if the measurement was actually taken with {new} and only the selection was wrong.",
+    "liquid_change_discard": "Discard measurement",
+    "liquid_change_keep": "Keep measurement",
+    "liquid_change_cancel": "Cancel",
     "temperature_out_of_range": "{liquid}: {temp:.1f} °C is outside its tabulated range [{tmin:.0f}, {tmax:.0f}] °C; its permittivity is extrapolated.",
     "debug_sweep_warning": "⚠ This sweep is outside the connected device's capabilities ({caps}). You can import .s1p files with this sweep, but the instrument cannot measure it."
   },
