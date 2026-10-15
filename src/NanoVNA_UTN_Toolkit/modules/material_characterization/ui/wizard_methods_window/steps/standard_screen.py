@@ -594,7 +594,11 @@ def build_standard_screen(wizard, descriptor, step_def):
             _refresh_precal_bar()
             _rerender_stored()
 
-        _refresh_precal_bar()
+        # Initial state: only hide the delete button if there is no pre-cal yet.
+        # Cannot call _refresh_precal_bar() here because precal_row has no
+        # parent widget yet (mid_container.setLayout(mid) hasn't run).
+        if not _has_precal:
+            btn_delete_precal_top.hide()
         # The step's pre-cal can also change outside this bar (a sweep on
         # another grid drops it, a preset or an import replaces it).
         wizard._on_precal_changed_hook = _refresh_precal_bar
@@ -682,7 +686,7 @@ def build_standard_screen(wizard, descriptor, step_def):
             if is_reference or is_dut:
                 _pw, _ph = 245, 184
             elif is_short:
-                _pw, _ph = 290, 215
+                _pw, _ph = 245, 183
             else:
                 _pw, _ph = 330, 245
             _scaled = _p.scaled(_pw, _ph, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -874,9 +878,6 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     wizard._warning_btn.clicked.connect(_show_warning_popup)
 
-    if already:
-        _apply_stored_status(wizard, std_texts, name, _stored_now[0], _stored_now[1])
-
     if is_reference or is_short or is_open or is_dut:
         _lbl_ready     = std_texts.get("status_ready",        "Ready to measure")
         _lbl_import    = std_texts.get("status_import_ready", "No file imported yet")
@@ -928,6 +929,9 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     mid_container = QWidget()
     mid_container.setLayout(mid)
+    # Widgets in mid are now parented to mid_container — safe to call setVisible(True).
+    if already:
+        _apply_stored_status(wizard, std_texts, name, _stored_now[0], _stored_now[1])
     left_half_layout.addWidget(mid_container, stretch=1)
 
     left_half = QWidget()

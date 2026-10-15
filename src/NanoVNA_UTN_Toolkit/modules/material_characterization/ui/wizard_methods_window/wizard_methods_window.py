@@ -6,13 +6,48 @@ from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
 import sys
 import os
+import traceback
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QObject, QEvent
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QPushButton, QLabel
 )
+
+logger = logging.getLogger(__name__)
+
+
+class _FlashDetector(QObject):
+    """App-level event filter: logs any unexpected top-level window that appears."""
+
+    def __init__(self, wizard, parent=None):
+        super().__init__(parent)
+        self._wizard = wizard
+
+    def eventFilter(self, obj, event):
+        if event.type() == QEvent.Type.Show:
+            widget = obj
+            # Only care about top-level windows (no Qt parent) that aren't the wizard.
+            try:
+                is_top_level = widget.isWidgetType() and widget.parent() is None
+                is_wizard = widget is self._wizard
+            except RuntimeError:
+                return False
+            if is_top_level and not is_wizard:
+                stack = "".join(traceback.format_stack())
+                logger.warning(
+                    "[FlashDetector] Unexpected top-level window shown!\n"
+                    "  class : %s\n"
+                    "  title : %r\n"
+                    "  obj   : %r\n"
+                    "--- Python stack at Show event ---\n%s",
+                    type(widget).__name__,
+                    getattr(widget, "windowTitle", lambda: "")(),
+                    widget,
+                    stack,
+                )
+        return False  # never consume the event
 
 try:
     from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import dark_light_config
@@ -205,6 +240,10 @@ class CharacterizationWizard(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         build_introduction_screen(self)
+
+        # Debug: log any unexpected top-level window that appears while the wizard is open.
+        self._flash_detector = _FlashDetector(self)
+        QApplication.instance().installEventFilter(self._flash_detector)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 

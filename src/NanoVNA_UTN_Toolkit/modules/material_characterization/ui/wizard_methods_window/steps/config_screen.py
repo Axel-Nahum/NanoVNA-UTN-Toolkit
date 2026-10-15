@@ -189,7 +189,7 @@ def build_config_screen(wizard, descriptor, step_def):
         "color: #ffa94d; font-size: 11px; font-weight: bold; border: none;")
     wizard.sweep_warning_label.setVisible(False)
     sweep_form.addRow(wizard.sweep_warning_label)
-    root.addWidget(sweep_group, stretch=3)
+    root.addWidget(sweep_group)
 
     # --- Unknown liquid + temperature ------------------------------------ #
     sample_group = QGroupBox(cfg.get("sample_title", "Sample"))
@@ -219,7 +219,7 @@ def build_config_screen(wizard, descriptor, step_def):
     temp_help.setWordWrap(True)
     temp_help.setStyleSheet("color: gray; font-style: italic; font-size: 11px;")
     sample_form.addRow(temp_help)
-    root.addWidget(sample_group, stretch=2)
+    root.addWidget(sample_group)
 
     # --- Reference liquids: selectable + optional stored measurement ------ #
     ensure_defaults(wizard, descriptor)
@@ -341,7 +341,8 @@ def build_config_screen(wizard, descriptor, step_def):
     note.setWordWrap(True)
     note.setStyleSheet("color: gray; font-style: italic; font-size: 11px;")
     ref_form.addRow(note)
-    root.addWidget(ref_group, stretch=3)
+    root.addWidget(ref_group)
+    root.addStretch(1)
 
     # --- Initialize from session, then wire commits ----------------------- #
 

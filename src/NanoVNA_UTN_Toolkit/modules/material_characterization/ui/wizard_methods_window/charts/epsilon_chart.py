@@ -29,6 +29,7 @@ from typing import Any, Optional
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure as _Figure
 from matplotlib.ticker import FuncFormatter, MaxNLocator
 from PySide6.QtWidgets import QSizePolicy
 
@@ -127,7 +128,9 @@ class EpsilonChartManager:
                                     real_label=r"$\varepsilon_r'$",
                                     loss_label=r"$\varepsilon_r''$"):
         """Create an empty permittivity chart and (optionally) add it to a layout."""
-        self.fig, self.ax = plt.subplots(figsize=figsize, layout="constrained")
+        self.fig = _Figure(figsize=figsize)
+        self.ax = self.fig.add_subplot(111)
+        self.fig.set_layout_engine("constrained")
         # Extra breathing room above the title and below the x-axis ticks.
         self.fig.get_layout_engine().set(h_pad=0.25, rect=[0.0, 0.04, 0.95, 0.94])
         self.fig.patch.set_facecolor(self.config.background_color)
