@@ -1219,6 +1219,16 @@ class MeasurementViewerWindow(QMainWindow):
                 _collect(top)
         return result
 
+    @staticmethod
+    def _folder_has_touchstone(folder: Path) -> bool:
+        try:
+            for p in folder.rglob("*"):
+                if p.is_file() and p.suffix.lower() in (".s1p", ".s2p"):
+                    return True
+        except PermissionError:
+            pass
+        return False
+
     def _add_folder_to_tree(self, folder_path: str, parent, existing: set,
                             auto_expand: bool = True):
         folder = Path(folder_path)
@@ -1235,6 +1245,7 @@ class MeasurementViewerWindow(QMainWindow):
                            if p.is_file() and p.suffix.lower() in (".s1p", ".s2p"))
         except PermissionError:
             return
+        subfolders = [s for s in subfolders if self._folder_has_touchstone(s)]
         expand_children = len(subfolders) == 1
         for sub in subfolders:
             self._add_folder_to_tree(str(sub), folder_item, existing,
