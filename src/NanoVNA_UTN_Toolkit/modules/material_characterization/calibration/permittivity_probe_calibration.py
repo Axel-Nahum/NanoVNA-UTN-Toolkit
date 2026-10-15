@@ -47,6 +47,10 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.permittiv
     implausible_s11_reason,
     is_permittivity_touchstone,
 )
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.precal import (
+    REFERENCE_STANDARD,
+    PrecalReference,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +67,9 @@ MUT_KEY = "dut"
 # Frequency-grid comparison tolerance, in Hz.
 _FREQ_ATOL_HZ = 1000.0
 
+# Default of set_measurement(precal=...): the step keeps its pre-calibration.
+KEEP_PRECAL = object()
+
 
 class PermittivityProbeCalibration:
     """Manager for the open-ended coaxial probe permittivity calibration."""
@@ -78,7 +85,10 @@ class PermittivityProbeCalibration:
         # Per-standard measurement storage. ``temperature_c`` is only set when
         # the S11 was NOT taken in this session (a preset or kit recorded at a
         # known temperature): the reference liquid's known eps_r must then be
-        # evaluated at THAT temperature, not at the session one.
+        # evaluated at THAT temperature, not at the session one. ``s11_raw`` is
+        # the sweep as acquired; ``precal`` is the step's own pre-calibration
+        # reference c(f) (calibration.precal); ``s11`` is what the solvers use:
+        # s11_raw * c0 / c when that pre-calibration is applied, else s11_raw.
         self.measurements: Dict[str, Dict] = {
             key: self._empty_measurement() for key in STANDARD_KEYS + (MUT_KEY,)
         }
@@ -101,8 +111,9 @@ class PermittivityProbeCalibration:
 
     @staticmethod
     def _empty_measurement() -> Dict:
-        return {"freqs": None, "s11": None, "measured": False, "source": None,
-                "temperature_c": None}
+        return {"freqs": None, "s11": None, "s11_raw": None, "measured": False,
+                "source": None, "temperature_c": None, "precal": None,
+                "precal_applied": False}
 
     # --------------------------------------------------------------------- #
     # Configuration
@@ -194,12 +205,27 @@ class PermittivityProbeCalibration:
     # --------------------------------------------------------------------- #
 
     def set_measurement(self, standard_key: str, freqs, s11, source: str = "measured",
-                        temperature_c: Optional[float] = None) -> bool:
-        """Store a measurement and persist it as a Touchstone .s1p file.
+                        temperature_c: Optional[float] = None, precal=KEEP_PRECAL) -> bool:
+        """Store a RAW measurement and persist it as a Touchstone .s1p file.
 
-        ``temperature_c`` is the temperature the S11 was recorded at when it
-        does NOT come from this session (preset / kit); leave it None for a
-        live measurement so the session temperature applies.
+        EN: ``s11`` is the sweep as acquired. ``precal`` is the pre-calibration
+            of THIS step (calibration.precal): left out, the step keeps the one
+            it has -- a live re-measurement shares the probe state its
+            reference was taken in --; a ``PrecalReference`` or ``None``
+            replaces it (a preset or kit brings its own reference, or none).
+            A kept reference on another grid than the new sweep is dropped.
+            ``temperature_c`` is the temperature the S11 was recorded at when
+            it does NOT come from this session (preset / kit); leave it None
+            for a live measurement so the session temperature applies.
+        ES: ``s11`` es el barrido tal como se adquirio. ``precal`` es la
+            pre-calibracion de ESTE paso (calibration.precal): si se omite, el
+            paso conserva la que tiene -- una re-medicion en vivo comparte el
+            estado de la sonda en que se tomo su referencia --; un
+            ``PrecalReference`` o ``None`` la reemplaza (un preset o kit trae
+            su propia referencia, o ninguna). Una referencia conservada en otra
+            grilla que el barrido nuevo se descarta. ``temperature_c`` es la
+            temperatura a la que se registro el S11 cuando NO viene de esta
+            sesion (preset / kit); dejarlo en None para una medicion en vivo.
         """
         key = standard_key.lower()
         if key not in self.measurements:
@@ -207,21 +233,157 @@ class PermittivityProbeCalibration:
             return False
         try:
             freqs = np.asarray(freqs, dtype=float)
-            s11 = np.asarray(s11, dtype=complex)
-            self.measurements[key]["freqs"] = freqs
-            self.measurements[key]["s11"] = s11
-            self.measurements[key]["measured"] = True
-            self.measurements[key]["source"] = source
-            self.measurements[key]["temperature_c"] = (
-                float(temperature_c) if temperature_c is not None else None)
-
-            path = os.path.join(self.results_path, f"{key}.s1p")
-            self._save_as_touchstone(freqs, s11, path)
+            s11_raw = np.asarray(s11, dtype=complex)
+            meas = self.measurements[key]
+            if precal is not KEEP_PRECAL:
+                if precal is not None:
+                    self._check_precal(key, precal, freqs)
+                meas["precal"] = precal
+            elif meas["precal"] is not None and not meas["precal"].matches(freqs):
+                logger.warning("[PermittivityProbeCalibration] %s: pre-calibration on another "
+                               "grid than the new sweep, dropped", key)
+                meas["precal"] = None
+            meas["freqs"] = freqs
+            meas["s11_raw"] = s11_raw
+            meas["measured"] = True
+            meas["source"] = source
+            meas["temperature_c"] = float(temperature_c) if temperature_c is not None else None
+            self._refresh(key)
             logger.info("[PermittivityProbeCalibration] Stored %s (%d points, source=%s)", key, len(freqs), source)
             return True
         except Exception as exc:  # noqa: BLE001 - report and signal failure
             logger.error("[PermittivityProbeCalibration] Error storing %s: %s", key, exc)
             return False
+
+    def _invalidate_results(self, key: Optional[str] = None) -> None:
+        """Forget results computed from the previous sweeps (``key=None``: all)."""
+        if key is None or key in STANDARD_KEYS:
+            self.pattern_constants = None
+        self.epsilon_result = None
+
+    def _persist(self, key: str) -> None:
+        """Write the stored (solver-facing) S11 of ``key`` to ``<key>.s1p``."""
+        meas = self.measurements[key]
+        path = os.path.join(self.results_path, f"{key}.s1p")
+        self._save_as_touchstone(meas["freqs"], meas["s11"], path)
+
+    # --------------------------------------------------------------------- #
+    # Per-step pre-calibration (s11 * c0 / c, see calibration.precal)
+    # --------------------------------------------------------------------- #
+
+    @staticmethod
+    def precal_allowed(standard_key: str, kind: str) -> bool:
+        """False for the step that defines the reference state of ``kind``.
+
+        The Open is the reference of the session, so it never takes a
+        pre-calibration; the Short only takes an OPEN one (a SHORT one would
+        be referred to itself).
+        """
+        key = standard_key.lower()
+        return key != "open" and key != REFERENCE_STANDARD.get(kind)
+
+    def _check_precal(self, key: str, reference: PrecalReference, freqs=None) -> None:
+        if not self.precal_allowed(key, reference.kind):
+            raise ValueError(f"'{key}' cannot take a {reference.kind.upper()} pre-calibration: "
+                             f"it is the reference of the session.")
+        if freqs is not None and not reference.matches(freqs):
+            raise ValueError(f"The pre-calibration of '{key}' is not on the frequency grid "
+                             f"of its measurement.")
+
+    def set_step_precal(self, standard_key: str, reference: PrecalReference) -> None:
+        """
+        Pre-calibrate ONE step: its sweep becomes s11_raw * c0 / c.
+
+        EN: Recomputed from the step's current RAW sweep, so a new reference
+            replaces the previous one instead of stacking on it; source and
+            preset temperature are kept and no other step changes. Set before
+            the step is measured, it waits for the measurement. Raises
+            ``ValueError`` (changing nothing) for the reference step of the
+            kind or a reference on another grid than the stored sweep.
+        ES: Se recalcula desde el barrido CRUDO actual del paso, asi una
+            referencia nueva reemplaza a la anterior en vez de apilarse; se
+            conservan la fuente y la temperatura de preset y ningun otro paso
+            cambia. Si se fija antes de medir el paso, espera a la medicion.
+            Lanza ``ValueError`` (sin cambiar nada) para el paso de referencia
+            de ese tipo o una referencia en otra grilla que el barrido guardado.
+        """
+        key = standard_key.lower()
+        meas = self.measurements[key]
+        self._check_precal(key, reference, meas["freqs"] if meas["measured"] else None)
+        meas["precal"] = reference
+        self._refresh(key)
+        logger.info("[PermittivityProbeCalibration] %s pre-calibration set on %s",
+                    reference.kind.upper(), key)
+
+    def clear_step_precal(self, standard_key: str) -> None:
+        """Remove the pre-calibration of one step: it goes back to its raw sweep."""
+        key = standard_key.lower()
+        if self.measurements[key]["precal"] is None:
+            return
+        self.measurements[key]["precal"] = None
+        self._refresh(key)
+        logger.info("[PermittivityProbeCalibration] pre-calibration removed from %s", key)
+
+    def step_precal(self, standard_key: str) -> Optional[PrecalReference]:
+        """The pre-calibration reference of a step (applied or pending), or None."""
+        data = self.measurements.get(standard_key.lower())
+        return data.get("precal") if data else None
+
+    def is_precal_applied(self, standard_key: str) -> bool:
+        """True when the stored sweep of the step is actually s11_raw * c0 / c.
+
+        A pre-calibration stays pending (sweep stored raw) while its reference
+        standard is not measured on the same grid.
+        """
+        data = self.measurements.get(standard_key.lower())
+        return bool(data and data.get("precal_applied"))
+
+    def precal_reference_sweep(self, kind: str) -> Optional[PrecalReference]:
+        """c0 for ``kind``: the stored OPEN (or -SHORT) of the session, or None."""
+        meas = self.measurements[REFERENCE_STANDARD[kind]]
+        if not meas["measured"]:
+            return None
+        return PrecalReference.from_sweep(meas["freqs"], meas["s11"], kind)
+
+    def _refresh(self, key: str) -> None:
+        """Recompute what depends on ``key`` after its sweep or reference changed."""
+        if key in REFERENCE_STANDARD.values():
+            # c0 of every pre-calibrated step may have moved. Open first, then
+            # Short (its own OPEN pre-cal feeds the SHORT c0), then the rest.
+            order = ["open", "short"] + [k for k in self.measurements if k not in ("open", "short")]
+            for k in order:
+                self._apply_step_precal(k)
+            self._invalidate_results()
+        else:
+            self._apply_step_precal(key)
+            self._invalidate_results(key)
+
+    def _apply_step_precal(self, key: str) -> None:
+        meas = self.measurements[key]
+        if not meas["measured"]:
+            return
+        raw, reference = meas["s11_raw"], meas["precal"]
+        s11, applied = raw, False
+        if reference is not None:
+            c0 = self.precal_reference_sweep(reference.kind)
+            if c0 is not None and c0.matches(meas["freqs"]) and reference.matches(meas["freqs"]):
+                s11, applied = reference.correct(raw, c0.divisor), True
+            else:
+                logger.info("[PermittivityProbeCalibration] %s: pre-calibration pending until "
+                            "the %s is measured on the same grid", key, reference.reference_standard)
+        meas["s11"] = s11
+        meas["precal_applied"] = applied
+        try:
+            self._persist(key)
+        except Exception as exc:  # noqa: BLE001 - the in-memory data is what counts
+            logger.error("[PermittivityProbeCalibration] Could not persist %s: %s", key, exc)
+
+    def get_raw_measurement(self, standard_key: str) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+        """Return ``(freqs, s11_raw)`` -- the sweep before its pre-cal -- or ``None``."""
+        data = self.measurements.get(standard_key.lower())
+        if not data or not data["measured"]:
+            return None
+        return data["freqs"], data["s11_raw"]
 
     def get_source(self, standard_key: str) -> Optional[str]:
         """Return the data source tag for a standard, or None if not measured."""
@@ -439,6 +601,7 @@ class PermittivityProbeCalibration:
         return self.epsilon_result
 
     def clear_all_measurements(self) -> None:
+        """Forget every sweep, each step's pre-calibration included."""
         for key in self.measurements:
             self.measurements[key] = self._empty_measurement()
         self.pattern_constants = None
