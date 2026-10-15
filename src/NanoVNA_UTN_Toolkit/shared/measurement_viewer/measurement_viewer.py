@@ -1523,6 +1523,11 @@ class MeasurementViewerWindow(QMainWindow):
                     for s in (2, 3):
                         self._cursor_lines[(n, s)] = []
                         self._cursor_markers[(n, s)] = []
+        if self._layout_mode != 4 and self._cursors_linked:
+            # 2-chart unlinked→linked: snap both slots to slot 0's frequency
+            for n in (1, 2):
+                if self._cursor_freq[n][0] is not None:
+                    self._cursor_freq[n][1] = self._cursor_freq[n][0]
         self._update_linked_buttons()
         self._redraw(self._current_entries())
 
