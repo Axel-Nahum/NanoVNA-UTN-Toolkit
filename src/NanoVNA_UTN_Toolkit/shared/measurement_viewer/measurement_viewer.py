@@ -102,6 +102,7 @@ class MeasurementViewerWindow(QMainWindow):
         # path → colour index (persistent across folder changes)
         self._color_map: dict[str, str] = {}
         self._color_idx = 0
+        self._layout_mode = 4  # 4 = 2×2 grid,  2 = S11 Mag/Phase stacked
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -209,7 +210,50 @@ class MeasurementViewerWindow(QMainWindow):
 
         h_root.addWidget(left)
 
-        # ── Right panel: 2×2 charts ──────────────────────────────────────── #
+        # ── Right panel: toolbar + charts ────────────────────────────────── #
+        right = QWidget()
+        right.setStyleSheet("background: #1e1e1e;")
+        rv = QVBoxLayout(right)
+        rv.setContentsMargins(0, 0, 0, 0)
+        rv.setSpacing(0)
+
+        # Toolbar
+        toolbar = QWidget()
+        toolbar.setFixedHeight(36)
+        toolbar.setStyleSheet("background: #161622; border-bottom: 1px solid #2a2a3a;")
+        tb = QHBoxLayout(toolbar)
+        tb.setContentsMargins(10, 0, 10, 0)
+        tb.setSpacing(6)
+
+        _btn_ss = (
+            "QPushButton {{ font-size: 11px; padding: 0 14px; height: 24px;"
+            " border-radius: 4px; border: 1px solid #333355;"
+            " background: {bg}; color: {fg}; }}"
+            " QPushButton:hover {{ background: #3a3a6a; }}"
+        )
+
+        self._btn_4 = QPushButton("4 Charts")
+        self._btn_4.setCheckable(True)
+        self._btn_4.setChecked(True)
+        self._btn_4.clicked.connect(lambda: self._set_layout(4))
+
+        self._btn_2 = QPushButton("2 Charts")
+        self._btn_2.setCheckable(True)
+        self._btn_2.setChecked(False)
+        self._btn_2.clicked.connect(lambda: self._set_layout(2))
+
+        self._update_layout_buttons()
+
+        _layout_lbl = QLabel("Layout:")
+        _layout_lbl.setStyleSheet("font-size: 11px; color: #666677;")
+        tb.addWidget(_layout_lbl)
+        tb.addWidget(self._btn_4)
+        tb.addWidget(self._btn_2)
+        tb.addStretch(1)  # space for future control groups
+
+        rv.addWidget(toolbar)
+
+        # Canvas
         self._fig = _Figure(facecolor=_BG)
         self._axes = self._fig.subplots(2, 2)
         self._fig.subplots_adjust(left=0.09, right=0.97, top=0.93,
@@ -218,9 +262,49 @@ class MeasurementViewerWindow(QMainWindow):
         self._canvas.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
-        h_root.addWidget(self._canvas, stretch=1)
+        rv.addWidget(self._canvas, stretch=1)
+
+        h_root.addWidget(right, stretch=1)
 
         self._reset_axes()
+
+    # ── Layout toggle ─────────────────────────────────────────────────────── #
+    _BTN_ACTIVE   = "QPushButton { font-size:11px; padding:0 14px; height:24px; border-radius:4px; border:1px solid #4da6ff; background:#2a2a4a; color:#4da6ff; } QPushButton:hover { background:#3a3a6a; }"
+    _BTN_INACTIVE = "QPushButton { font-size:11px; padding:0 14px; height:24px; border-radius:4px; border:1px solid #333355; background:#1a1a2e; color:#666688; } QPushButton:hover { background:#2a2a4a; }"
+
+    def _update_layout_buttons(self):
+        self._btn_4.setStyleSheet(
+            self._BTN_ACTIVE if self._layout_mode == 4 else self._BTN_INACTIVE
+        )
+        self._btn_2.setStyleSheet(
+            self._BTN_ACTIVE if self._layout_mode == 2 else self._BTN_INACTIVE
+        )
+
+    def _set_layout(self, mode: int):
+        if self._layout_mode == mode:
+            return
+        self._layout_mode = mode
+        self._update_layout_buttons()
+        self._rebuild_figure()
+
+    def _rebuild_figure(self):
+        """Recreate matplotlib subplots for the current layout mode."""
+        self._fig.clear()
+        if self._layout_mode == 4:
+            self._axes = self._fig.subplots(2, 2)
+            self._fig.subplots_adjust(left=0.09, right=0.97, top=0.93,
+                                      bottom=0.09, hspace=0.48, wspace=0.32)
+        else:  # 2-chart mode
+            self._axes = self._fig.subplots(2, 1)
+            self._fig.subplots_adjust(left=0.09, right=0.97, top=0.93,
+                                      bottom=0.09, hspace=0.45)
+        # Replay current selection
+        selected_paths = [
+            item.data(Qt.ItemDataRole.UserRole)
+            for item in self._file_list.selectedItems()
+        ]
+        entries = [self._cache[p] for p in selected_paths if p in self._cache]
+        self._redraw(entries)
 
     # ── Folder management ─────────────────────────────────────────────────── #
     def _browse_folder(self):
@@ -305,12 +389,27 @@ class MeasurementViewerWindow(QMainWindow):
         self._redraw(entries)
 
     # ── Drawing ───────────────────────────────────────────────────────────── #
+    def _flat_axes(self) -> list:
+        if self._layout_mode == 4:
+            return [self._axes[0][0], self._axes[0][1],
+                    self._axes[1][0], self._axes[1][1]]
+        else:
+            return list(self._axes)  # [ax_top, ax_bottom]
+
     def _reset_axes(self):
-        titles  = ["S11 Magnitude", "S11 Phase", "S21 Magnitude", "S21 Phase"]
-        ylabels = ["|S11| (dB)", "∠S11 (°)", "|S21| (dB)", "∠S21 (°)"]
-        flat = [self._axes[0][0], self._axes[0][1],
-                self._axes[1][0], self._axes[1][1]]
-        for ax, title, ylabel in zip(flat, titles, ylabels):
+        if self._layout_mode == 4:
+            specs = [
+                ("S11 Magnitude", "|S11| (dB)"),
+                ("S11 Phase",     "∠S11 (°)"),
+                ("S21 Magnitude", "|S21| (dB)"),
+                ("S21 Phase",     "∠S21 (°)"),
+            ]
+        else:
+            specs = [
+                ("S11 Magnitude", "|S11| (dB)"),
+                ("S11 Phase",     "∠S11 (°)"),
+            ]
+        for ax, (title, ylabel) in zip(self._flat_axes(), specs):
             ax.set_facecolor(_BG)
             ax.set_title(title, fontsize=10, color=_TEXT, pad=4)
             ax.set_ylabel(ylabel, fontsize=9, color=_TEXT)
@@ -325,10 +424,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._canvas.draw_idle()
 
     def _redraw(self, entries: list[_FileEntry]):
-        ax_s11_mag, ax_s11_ph = self._axes[0]
-        ax_s21_mag, ax_s21_ph = self._axes[1]
-        flat = [ax_s11_mag, ax_s11_ph, ax_s21_mag, ax_s21_ph]
-
+        flat = self._flat_axes()
         for ax in flat:
             ax.cla()
             ax.set_facecolor(_BG)
@@ -343,34 +439,51 @@ class MeasurementViewerWindow(QMainWindow):
 
         all_f = np.concatenate([e.freqs for e in entries])
         div, unit = _freq_axis_unit(all_f)
-        has_s21 = any(e.s21 is not None for e in entries)
 
-        for e in entries:
-            f  = e.freqs / div
-            lw = 1.6
-            if e.s11 is not None:
-                ax_s11_mag.plot(f, 20 * np.log10(np.abs(e.s11) + 1e-15),
+        if self._layout_mode == 4:
+            ax_s11_mag, ax_s11_ph, ax_s21_mag, ax_s21_ph = flat
+            has_s21 = any(e.s21 is not None for e in entries)
+            for e in entries:
+                f, lw = e.freqs / div, 1.6
+                if e.s11 is not None:
+                    ax_s11_mag.plot(f, 20 * np.log10(np.abs(e.s11) + 1e-15),
+                                    color=e.color, linewidth=lw, label=e.name)
+                    ax_s11_ph.plot(f, np.angle(e.s11, deg=True),
+                                   color=e.color, linewidth=lw, label=e.name)
+                if e.s21 is not None:
+                    ax_s21_mag.plot(f, 20 * np.log10(np.abs(e.s21) + 1e-15),
+                                    color=e.color, linewidth=lw, label=e.name)
+                    ax_s21_ph.plot(f, np.angle(e.s21, deg=True),
+                                   color=e.color, linewidth=lw, label=e.name)
+            specs = [
+                (ax_s11_mag, "S11 Magnitude", "|S11| (dB)"),
+                (ax_s11_ph,  "S11 Phase",     "∠S11 (°)"),
+                (ax_s21_mag, "S21 Magnitude", "|S21| (dB)"),
+                (ax_s21_ph,  "S21 Phase",     "∠S21 (°)"),
+            ]
+            if not has_s21:
+                for ax in (ax_s21_mag, ax_s21_ph):
+                    ax.text(0.5, 0.5, "No S21 data", transform=ax.transAxes,
+                            ha="center", va="center", fontsize=9,
+                            color="#444455", fontstyle="italic")
+        else:
+            ax_mag, ax_ph = flat
+            for e in entries:
+                f, lw = e.freqs / div, 1.6
+                if e.s11 is not None:
+                    ax_mag.plot(f, 20 * np.log10(np.abs(e.s11) + 1e-15),
                                 color=e.color, linewidth=lw, label=e.name)
-                ax_s11_ph.plot(f, np.angle(e.s11, deg=True),
+                    ax_ph.plot(f, np.angle(e.s11, deg=True),
                                color=e.color, linewidth=lw, label=e.name)
-            if e.s21 is not None:
-                ax_s21_mag.plot(f, 20 * np.log10(np.abs(e.s21) + 1e-15),
-                                color=e.color, linewidth=lw, label=e.name)
-                ax_s21_ph.plot(f, np.angle(e.s21, deg=True),
-                               color=e.color, linewidth=lw, label=e.name)
+            specs = [
+                (ax_mag, "S11 Magnitude", "|S11| (dB)"),
+                (ax_ph,  "S11 Phase",     "∠S11 (°)"),
+            ]
 
-        titles  = ["S11 Magnitude", "S11 Phase", "S21 Magnitude", "S21 Phase"]
-        ylabels = ["|S11| (dB)", "∠S11 (°)", "|S21| (dB)", "∠S21 (°)"]
-        for ax, title, ylabel in zip(flat, titles, ylabels):
+        for ax, title, ylabel in specs:
             ax.set_title(title, fontsize=10, color=_TEXT, pad=4)
             ax.set_ylabel(ylabel, fontsize=9, color=_TEXT)
             ax.set_xlabel(f"Frequency ({unit})", fontsize=9, color=_TEXT)
-
-        if not has_s21:
-            for ax in (ax_s21_mag, ax_s21_ph):
-                ax.text(0.5, 0.5, "No S21 data", transform=ax.transAxes,
-                        ha="center", va="center", fontsize=9,
-                        color="#444455", fontstyle="italic")
 
         if len(entries) > 1:
             for ax in flat:
