@@ -151,7 +151,6 @@ class MeasurementViewerWindow(QMainWindow):
     # ── Root layout ───────────────────────────────────────────────────────── #
     def _build_ui(self):
         root = QWidget()
-        root.setStyleSheet(f"background:{_WIN_BG};")
         self.setCentralWidget(root)
 
         v = QVBoxLayout(root)
@@ -167,7 +166,6 @@ class MeasurementViewerWindow(QMainWindow):
         v.addWidget(hline)
 
         content = QWidget()
-        content.setStyleSheet(f"background:{_WIN_BG};")
         h = QHBoxLayout(content)
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(0)
@@ -187,7 +185,6 @@ class MeasurementViewerWindow(QMainWindow):
     def _build_header(self) -> QWidget:
         hdr = QWidget()
         hdr.setFixedHeight(72)
-        hdr.setStyleSheet(f"background:{_PANEL_BG};")
         h = QHBoxLayout(hdr)
         h.setContentsMargins(20, 0, 16, 0)
         h.setSpacing(0)
@@ -279,7 +276,6 @@ class MeasurementViewerWindow(QMainWindow):
     def _build_left_panel(self) -> QWidget:
         left = QWidget()
         left.setFixedWidth(275)
-        left.setStyleSheet(f"background:{_PANEL_BG};")
         lv = QVBoxLayout(left)
         lv.setContentsMargins(12, 14, 12, 12)
         lv.setSpacing(8)
@@ -357,7 +353,6 @@ class MeasurementViewerWindow(QMainWindow):
 
         # Empty state
         self._empty_state = QWidget()
-        self._empty_state.setStyleSheet("background:transparent;")
         ev = QVBoxLayout(self._empty_state)
         ev.setContentsMargins(0, 24, 0, 0)
         ev.setSpacing(6)
@@ -386,12 +381,11 @@ class MeasurementViewerWindow(QMainWindow):
     # ── Chart area ────────────────────────────────────────────────────────── #
     def _build_chart_area(self) -> QWidget:
         right = QWidget()
-        right.setStyleSheet(f"background:{_WIN_BG};")
         rv = QVBoxLayout(right)
         rv.setContentsMargins(0, 0, 0, 0)
         rv.setSpacing(0)
 
-        self._fig = _Figure(facecolor=_WIN_BG)
+        self._fig = _Figure(facecolor=_BG)
         self._axes = self._fig.subplots(2, 1)
         self._fig.subplots_adjust(left=0.09, right=0.97, top=0.93,
                                   bottom=0.08, hspace=0.58)
