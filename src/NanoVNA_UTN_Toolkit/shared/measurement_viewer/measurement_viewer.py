@@ -7,6 +7,7 @@ from __future__ import annotations
 import logging
 import os as _os
 import tempfile as _tmp
+import time as _time
 from pathlib import Path
 
 import numpy as np
@@ -177,6 +178,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._cursor_markers  = {(1,0): [], (1,1): [], (2,0): [], (2,1): []}
         self._cursor_dragging = None   # (n, row) tuple or None
         self._cursors_linked  = True   # True = top/bottom of same cursor move together
+        self._last_motion_draw = 0.0   # monotonic time of last canvas update during drag
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -1408,12 +1410,9 @@ class MeasurementViewerWindow(QMainWindow):
 
     def _cursor_y_val_at(self, n: int, ax_idx: int):
         """Return (float_value, unit_str) for cursor n at a specific axis index."""
-        if self._layout_mode == 4:
-            row = ax_idx % 2   # 0 = left column, 1 = right column
-        else:
-            all_ax = self._flat_axes()
-            mid = max(len(all_ax) // 2, 1)
-            row = 0 if ax_idx < mid else 1
+        all_ax = self._flat_axes()
+        mid = max(len(all_ax) // 2, 1)
+        row = 0 if ax_idx < mid else 1
         for dot, _, a_idx in self._cursor_markers[(n, row)]:
             if a_idx == ax_idx:
                 yi = dot.get_ydata()
@@ -1513,12 +1512,10 @@ class MeasurementViewerWindow(QMainWindow):
         """Return axes for a cursor slot.
 
         2-chart: row 0 = top, row 1 = bottom.
-        4-chart: row 0 = left column (indices 0,2), row 1 = right column (1,3).
-        In 4-chart mode cursors always move in column pairs — never all 4 at once.
+        4-chart: row 0 = top row (indices 0,1), row 1 = bottom row (2,3).
+        Each row pair moves together; the two rows are always independent.
         """
         all_axes = self._flat_axes()
-        if self._layout_mode == 4:
-            return [all_axes[0], all_axes[2]] if row == 0 else [all_axes[1], all_axes[3]]
         mid = max(len(all_axes) // 2, 1)
         return all_axes[:mid] if row == 0 else all_axes[mid:]
 
@@ -1569,12 +1566,8 @@ class MeasurementViewerWindow(QMainWindow):
 
         ax = event.inaxes
         all_ax = self._flat_axes()
-        if self._layout_mode == 4:
-            ax_idx = all_ax.index(ax) if ax in all_ax else 0
-            row = ax_idx % 2   # 0 = left column, 1 = right column
-        else:
-            mid = max(len(all_ax) // 2, 1)
-            row = 0 if ax in all_ax[:mid] else 1
+        mid = max(len(all_ax) // 2, 1)
+        row = 0 if ax in all_ax[:mid] else 1
 
         xlim = ax.get_xlim()
         thresh = (xlim[1] - xlim[0]) * 0.025
@@ -1637,11 +1630,16 @@ class MeasurementViewerWindow(QMainWindow):
                     dot.set_visible(True)
                 else:
                     dot.set_visible(False)
-        self._update_cursor_readout()
-        self._canvas.draw_idle()
+        # Throttle to ~60 fps — skip canvas flush if last draw was <16 ms ago
+        now = _time.monotonic()
+        if now - self._last_motion_draw >= 0.016:
+            self._last_motion_draw = now
+            self._canvas.draw_idle()
 
     def _on_canvas_release(self, event):
         self._cursor_dragging = None
+        self._update_cursor_readout()
+        self._canvas.draw_idle()
 
     def showEvent(self, event):
         super().showEvent(event)
