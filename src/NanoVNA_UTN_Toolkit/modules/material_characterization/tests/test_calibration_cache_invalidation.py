@@ -6,9 +6,9 @@ EN: ``compute_epsilon`` reuses ``pattern_constants`` (and the wizard reuses
     them, so after viewing a result, changing T, replacing a reference liquid
     or re-measuring a standard returned the OLD epsilon (delta = 0). Each test
     changes one input and checks that the result equals a fresh calibration
-    with the new input, that an unchanged input keeps the cache, and that a
-    failed .s1p write leaves the standard as it was. Runnable with pytest or
-    directly: ``python test_calibration_cache_invalidation.py``.
+    with the new input, that an unchanged input keeps the cache, and that
+    ``set_measurement`` only reports what it actually stored. Runnable with
+    pytest or directly: ``python test_calibration_cache_invalidation.py``.
 
 ES: ``compute_epsilon`` reutiliza ``pattern_constants`` (y el asistente
     reutiliza ``epsilon_result``) mientras existan. Antes del arreglo ningun
@@ -16,8 +16,8 @@ ES: ``compute_epsilon`` reutiliza ``pattern_constants`` (y el asistente
     reemplazar un liquido de referencia o volver a medir un patron devolvia el
     epsilon VIEJO (delta = 0). Cada test cambia una entrada y verifica que el
     resultado sea igual al de una calibracion nueva con esa entrada, que una
-    entrada sin cambios conserve el cache y que una escritura fallida del .s1p
-    deje el patron como estaba. Ejecutable con pytest o directo:
+    entrada sin cambios conserve el cache y que ``set_measurement`` solo
+    informe lo que realmente guardo. Ejecutable con pytest o directo:
     ``python test_calibration_cache_invalidation.py``.
 """
 
@@ -154,26 +154,37 @@ def test_simplified_result_is_dropped_on_temperature_change():
     assert cal.epsilon_result is None
 
 
-def test_failed_persistence_leaves_the_standard_untouched():
+def test_store_result_matches_the_stored_state():
+    """set_measurement's return value always matches what was stored.
+
+    A failed .s1p write is only logged (the in-memory sweep is what counts),
+    so the new sweep IS stored, True is returned and the results are dropped;
+    a rejected input returns False and changes nothing, cache included.
+    """
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.precal import (
+        PrecalReference,
+    )
+
     def _disk_full(*_args):
         raise OSError("disk full")
 
     cal = _calibration(20.0)
-    res = cal.compute_epsilon()
-    constants = cal.pattern_constants
+    cal.compute_epsilon()
     freqs, s11 = cal.get_measurement("ref2")
     cal._save_as_touchstone = _disk_full
-    assert cal.set_measurement("ref2", freqs, s11 * 0.98, temperature_c=18.0) is False
-    stored_f, stored_s11 = cal.get_measurement("ref2")
-    assert stored_f is freqs and stored_s11 is s11
-    assert cal.standard_temperature("ref2") is None
-    assert cal.pattern_constants is constants and cal.epsilon_result is res
+    assert cal.set_measurement("ref2", freqs, s11 * 0.98, temperature_c=18.0) is True
+    np.testing.assert_allclose(cal.get_measurement("ref2")[1], s11 * 0.98)
+    assert cal.standard_temperature("ref2") == 18.0
+    _assert_invalidated(cal)
 
-    fresh = PermittivityProbeCalibration()
-    fresh._save_as_touchstone = _disk_full
-    assert fresh.set_measurement("open", freqs, s11) is False
-    assert not fresh.is_standard_measured("open")
-    assert fresh.get_source("open") is None
+    res = cal.compute_epsilon()
+    constants = cal.pattern_constants
+    stored_s11 = cal.get_measurement("ref2")[1]
+    other_grid = PrecalReference.from_sweep(freqs[:-1], s11[:-1])
+    assert cal.set_measurement("ref2", freqs, s11, precal=other_grid) is False
+    assert cal.get_measurement("ref2")[1] is stored_s11
+    assert cal.step_precal("ref2") is None
+    assert cal.pattern_constants is constants and cal.epsilon_result is res
 
 
 def test_config_commit_drops_the_wizards_stale_result():

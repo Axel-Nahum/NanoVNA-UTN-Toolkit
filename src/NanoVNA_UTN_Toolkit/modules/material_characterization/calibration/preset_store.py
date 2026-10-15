@@ -17,6 +17,15 @@ ES: Un ``.s1p`` no lleva procedencia: hasta ahora la unica metadata de un
 
 Legacy presets (a ``.s1p`` with no sidecar) are still listed, with
 ``liquid_key=None``, so nothing saved before this module disappears.
+
+The ``.s1p`` holds the RAW sweep. A sweep taken in a pre-calibrated step
+keeps that step's reference c(f) in ``<name>.precal.s1p`` (``precal_kind``),
+so loading it corrects it again (s11 * c0 / c, calibration.precal) in
+whatever session it is loaded. / El ``.s1p`` guarda el barrido CRUDO. Un
+barrido tomado en un paso pre-calibrado conserva la referencia c(f) de ese
+paso en ``<name>.precal.s1p``, asi al cargarlo se vuelve a corregir en la
+sesion que sea. Presets of the old wizard flagged ``precal_open_applied``
+hold S11 / c(f) without c(f): they are refused.
 """
 
 from __future__ import annotations
@@ -31,13 +40,21 @@ from typing import List, Optional, Tuple
 import numpy as np
 
 from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.precal import (
+    KINDS as PRECAL_KINDS,
+    PrecalReference,
+)
 
 logger = logging.getLogger(__name__)
 
 _PRESET_DEV_PATH = "modules/material_characterization/calibration/preset_liquids"
 _PRESET_EXE_PATH = "modules/material_characterization/calibration/preset_liquids"
 
-SCHEMA_VERSION = 1
+# 2: precal_kind + <name>.precal.s1p for a sweep taken in a pre-calibrated step.
+SCHEMA_VERSION = 2
+
+# Stem suffix of the file holding a normalized preset's c(f); never a preset.
+_PRECAL_SUFFIX = ".precal"
 
 #: Roles a stored sweep can play in a characterization run.
 ROLE_OPEN = "open"
@@ -99,7 +116,12 @@ class PresetMeta:
     points: Optional[int] = None
     f_start_hz: Optional[float] = None
     f_stop_hz: Optional[float] = None
+    # Legacy (old wizard): the .s1p holds S11 / c(f) and c(f) was not kept,
+    # so the raw sweep is unrecoverable; such presets are refused.
     precal_open_applied: bool = False
+    # open | short: the sweep was taken in a pre-calibrated step and
+    # <name>.precal.s1p holds that step's reference c(f). The .s1p is raw.
+    precal_kind: Optional[str] = None
     origin_note: str = ""
     # Shipped with the toolkit: the wizard can neither delete nor overwrite it.
     bundled: bool = False
@@ -135,6 +157,10 @@ def _json_path(name: str) -> Path:
     return get_preset_dir() / (name + ".json")
 
 
+def _precal_path(name: str) -> Path:
+    return get_preset_dir() / (name + _PRECAL_SUFFIX + ".s1p")
+
+
 # --------------------------------------------------------------------------- #
 # Read
 # --------------------------------------------------------------------------- #
@@ -168,7 +194,8 @@ def list_presets(liquid_key: Optional[str] = None,
     """
     out: List[PresetMeta] = []
     try:
-        names = sorted(p.stem for p in get_preset_dir().glob("*.s1p"))
+        names = sorted(p.stem for p in get_preset_dir().glob("*.s1p")
+                       if not p.stem.endswith(_PRECAL_SUFFIX))
     except Exception:
         logger.exception("[preset_store] could not list the preset directory")
         return out
@@ -190,14 +217,73 @@ def list_presets(liquid_key: Optional[str] = None,
     return out
 
 
-def load_preset(name: str) -> Tuple[np.ndarray, np.ndarray, PresetMeta]:
-    """Read a preset sweep. Raises if the Touchstone cannot be parsed."""
+def _read_touchstone(path: Path) -> Tuple[np.ndarray, np.ndarray]:
     import skrf as rf
 
-    net = rf.Network(str(_s1p_path(name)))
-    freqs = np.asarray(net.f, dtype=float)
-    s11 = np.asarray(net.s[:, 0, 0], dtype=complex)
+    net = rf.Network(str(path))
+    return np.asarray(net.f, dtype=float), np.asarray(net.s[:, 0, 0], dtype=complex)
+
+
+def load_preset(name: str) -> Tuple[np.ndarray, np.ndarray, PresetMeta]:
+    """Read a preset sweep as stored. Raises if the Touchstone cannot be parsed.
+
+    To feed a calibration step use ``load_preset_with_precal``, which also
+    returns (and validates) the step's pre-calibration reference.
+    """
+    freqs, s11 = _read_touchstone(_s1p_path(name))
     return freqs, s11, read_meta(name)
+
+
+class PresetPrecalError(ValueError):
+    """A preset whose pre-calibration cannot be honoured (legacy normalized, or c(f) unusable)."""
+
+
+def load_preset_precal(name: str, freqs, meta: Optional[PresetMeta] = None) -> Optional[PrecalReference]:
+    """
+    The pre-calibration reference saved with a preset, checked against ``freqs``.
+
+    EN: ``None`` for a sweep taken without pre-calibration. Raises
+        ``PresetPrecalError`` for a legacy preset of the old wizard
+        (``precal_open_applied``: S11 already divided by a c(f) that was not
+        kept, so it cannot be referred to any session) and when the stored
+        c(f) is missing, malformed or on another grid.
+    ES: ``None`` para un barrido tomado sin pre-calibracion. Lanza
+        ``PresetPrecalError`` para un preset viejo del asistente
+        (``precal_open_applied``: S11 ya dividido por una c(f) que no se
+        guardo, asi que no se puede referir a ninguna sesion) y cuando la c(f)
+        guardada falta, es invalida o esta en otra grilla.
+    """
+    meta = meta or read_meta(name)
+    label = meta.display_name or name
+    if meta.precal_open_applied:
+        raise PresetPrecalError(
+            f"\"{label}\" was saved normalized by a pre-calibration whose reference was "
+            "not stored with it, so its raw sweep cannot be recovered.")
+    if not meta.precal_kind:
+        return None
+    if meta.precal_kind not in PRECAL_KINDS:
+        raise PresetPrecalError(f"\"{label}\": unknown pre-calibration kind '{meta.precal_kind}'.")
+    path = _precal_path(name)
+    if not path.exists():
+        raise PresetPrecalError(f"\"{label}\" was taken in a pre-calibrated step but "
+                                f"{path.name} is missing.")
+    try:
+        ref_freqs, divisor = _read_touchstone(path)
+        precal = PrecalReference(freqs=ref_freqs, divisor=divisor, kind=meta.precal_kind)
+    except Exception as exc:  # noqa: BLE001 - any failure means "unusable"
+        raise PresetPrecalError(f"\"{label}\": unreadable pre-calibration file {path.name}: {exc}") from exc
+    if not precal.matches(freqs):
+        raise PresetPrecalError(f"\"{label}\": {path.name} is not on the preset's frequency grid.")
+    return precal
+
+
+def load_preset_with_precal(name: str):
+    """``(freqs, s11_raw, meta, precal)``: the raw sweep and its step's reference (or None).
+
+    Raises ``PresetPrecalError`` when the pre-calibration cannot be honoured.
+    """
+    freqs, s11, meta = load_preset(name)
+    return freqs, s11, meta, load_preset_precal(name, freqs, meta)
 
 
 def preset_exists(name: str) -> bool:
@@ -218,21 +304,34 @@ def is_bundled(name: Optional[str]) -> bool:
 # --------------------------------------------------------------------------- #
 
 def save_preset(name: str, freqs, s11, meta: PresetMeta, *,
-                overwrite_bundled: bool = False) -> Path:
+                overwrite_bundled: bool = False,
+                precal: Optional[PrecalReference] = None) -> Path:
     """Write ``<name>.s1p`` + ``<name>.json`` and refresh PRESETS.md.
 
     A bundled preset is only rewritten by the bundled-presets builder
     (``overwrite_bundled=True``); the wizard can never replace it.
+
+    ``s11`` is the RAW sweep and ``precal`` the pre-calibration reference of
+    the step it was taken in, or None. It is written to ``<name>.precal.s1p``
+    and sets ``precal_kind``, which therefore always describes the files.
     """
     import skrf as rf
 
+    if name.endswith(_PRECAL_SUFFIX):
+        raise ValueError(f"Preset names cannot end in '{_PRECAL_SUFFIX}'.")
     if is_bundled(name) and not overwrite_bundled:
         raise PresetProtectedError(f"'{name}' is a preset shipped with the toolkit; "
                                    f"it cannot be overwritten.")
 
     freqs = np.asarray(freqs, dtype=float)
     s11 = np.asarray(s11, dtype=complex)
+    if precal is not None and not precal.matches(freqs):
+        raise ValueError("The pre-calibration c(f) is not on the preset's frequency grid.")
+    if meta.precal_open_applied:
+        raise ValueError("Presets are stored raw: 'precal_open_applied' (S11 already divided "
+                         "by c(f)) only describes legacy files. Pass the reference as 'precal'.")
 
+    meta.precal_kind = precal.kind if precal is not None else None
     meta.name = name
     meta.points = int(len(freqs))
     meta.f_start_hz = float(freqs[0])
@@ -245,6 +344,12 @@ def save_preset(name: str, freqs, s11, meta: PresetMeta, *,
     dest = _s1p_path(name)
     net = rf.Network(frequency=freqs, s=s11.reshape(-1, 1, 1), z0=50)
     net.write_touchstone(str(dest))
+    precal_dest = _precal_path(name)
+    if precal is not None:
+        rf.Network(frequency=precal.freqs, s=precal.divisor.reshape(-1, 1, 1),
+                   z0=50).write_touchstone(str(precal_dest))
+    elif precal_dest.exists():
+        precal_dest.unlink()                  # overwritten by a sweep without pre-cal
     _json_path(name).write_text(
         json.dumps(asdict(meta), indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
@@ -263,7 +368,7 @@ def delete_preset(name: str) -> bool:
         raise PresetProtectedError(f"'{name}' is a preset shipped with the toolkit; "
                                    f"it cannot be deleted.")
     removed = False
-    for path in (_s1p_path(name), _json_path(name)):
+    for path in (_s1p_path(name), _json_path(name), _precal_path(name)):
         try:
             if path.exists():
                 path.unlink()
@@ -303,7 +408,9 @@ def _md_row(m: PresetMeta) -> str:
     if m.bundled:
         notes = "**Incluido con el toolkit (no se puede borrar ni sobrescribir).** " + notes
     if m.precal_open_applied:
-        notes = (notes + " - normalizado con OPEN").strip(" -")
+        notes = (notes + " - normalizado sin guardar la referencia (no utilizable)").strip(" -")
+    elif m.precal_kind:
+        notes = (notes + " - con pre-calibracion " + m.precal_kind.upper()).strip(" -")
     detail = (origin + ". " + notes).strip().rstrip(".")
     return ("| `" + m.name + "` | " + (m.liquid_key or "-") + " | " + (m.role or "-")
             + " | " + m.source + " | " + span + " / " + str(m.points) + " pts | "

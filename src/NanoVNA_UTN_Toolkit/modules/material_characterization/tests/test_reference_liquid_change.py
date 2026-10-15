@@ -5,8 +5,8 @@ EN: The S11 stored for a reference belongs to the liquid it was measured
     with; read under another liquid it gives a wrong permittivity. Changing
     the liquid in the Configuration step must therefore ask, and either
     discard the measurement, keep it (only the selection was wrong) or revert
-    the combo. Also covers ``PermittivityProbeCalibration.clear_measurement``.
-    The UI tests drive the real reference row with Qt offscreen and a patched
+    the combo. Also covers ``PermittivityProbeCalibration.clear_measurement``,
+    which keeps the step's own pre-calibration for its next sweep. The UI tests drive the real reference row with Qt offscreen and a patched
     dialog. Runnable with pytest or directly:
     ``python test_reference_liquid_change.py``.
 
@@ -14,7 +14,8 @@ ES: El S11 guardado de una referencia corresponde al liquido con el que se
     midio; leido como otro liquido da una permitividad incorrecta. Cambiar el
     liquido en el paso de Configuracion tiene que preguntar y descartar la
     medicion, conservarla (solo estaba mal la seleccion) o revertir el combo.
-    Tambien cubre ``PermittivityProbeCalibration.clear_measurement``. Los
+    Tambien cubre ``PermittivityProbeCalibration.clear_measurement``, que
+    conserva la pre-calibracion propia del paso para su proximo barrido. Los
     tests de UI usan la fila de referencia real con Qt offscreen y el dialogo
     reemplazado. Ejecutable con pytest o directo:
     ``python test_reference_liquid_change.py``.
@@ -58,6 +59,20 @@ def _calibration():
     return cal
 
 
+def _precalibrate_ref2(cal):
+    """Give ref2 its own OPEN pre-cal (a cable change of -0.1 dB, 3 deg)."""
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.precal import (
+        PrecalReference,
+    )
+
+    freqs, s_open = cal.get_measurement("open")
+    reference = PrecalReference.from_sweep(
+        freqs, s_open * 10 ** (-0.1 / 20) * np.exp(1j * np.deg2rad(3.0)))
+    cal.set_step_precal("ref2", reference)
+    assert cal.is_precal_applied("ref2")
+    return reference
+
+
 def test_clear_measurement_forgets_one_standard():
     cal = _calibration()
     cal.compute_epsilon()
@@ -77,6 +92,31 @@ def test_clear_measurement_forgets_one_standard():
     assert not cal.clear_measurement("no_such_standard")
 
 
+def test_clear_measurement_keeps_the_steps_precal_for_the_next_sweep():
+    cal = _calibration()
+    reference = _precalibrate_ref2(cal)
+    assert cal.clear_measurement("ref2")
+    assert cal.step_precal("ref2") is reference      # pending, not lost
+    assert not cal.is_precal_applied("ref2")
+
+    freqs, s11 = _load_fixture("ethanol_r60_probe21_2026")   # the new liquid
+    assert cal.set_measurement("ref2", freqs, s11)
+    assert cal.is_precal_applied("ref2")
+    np.testing.assert_allclose(cal.get_raw_measurement("ref2")[1], s11)
+    assert not np.allclose(cal.get_measurement("ref2")[1], s11)
+
+
+def test_clearing_the_open_leaves_its_precal_users_pending():
+    cal = _calibration()
+    _precalibrate_ref2(cal)
+    cal.compute_epsilon()
+    assert cal.clear_measurement("open")
+    assert not cal.is_precal_applied("ref2")         # c0 is gone
+    _, raw = cal.get_raw_measurement("ref2")
+    np.testing.assert_allclose(cal.get_measurement("ref2")[1], raw)
+    assert cal.pattern_constants is None and cal.epsilon_result is None
+
+
 # --------------------------------------------------------------------------- #
 # Configuration step: reference row
 # --------------------------------------------------------------------------- #
@@ -89,7 +129,7 @@ def _qapp():
 
 
 def _ref2_row(answer):
-    """Bind the real ref2 row (liquid = IPA, measured) with the dialog patched.
+    """Bind the real ref2 row (IPA, measured, pre-calibrated), dialog patched.
 
     Returns ``(wizard, liquid_combo, asked, restore)``; ``asked`` collects the
     ``(old, new)`` liquid keys of every dialog shown.
@@ -106,7 +146,7 @@ def _ref2_row(answer):
     )
 
     cal = _calibration()
-    raw_ref2 = cal.get_measurement("ref2")
+    _precalibrate_ref2(cal)
     wizard = SimpleNamespace(
         perm_calibration=cal,
         start_freq_input=SimpleNamespace(value=lambda: 1.0),
@@ -117,8 +157,6 @@ def _ref2_row(answer):
         temperature_input=SimpleNamespace(value=lambda: 20.0),
         unknown_name_input=SimpleNamespace(text=lambda: "ethanol"),
         ref_liquid_keys={"ref1": "water", "ref2": "ipa"},
-        _precal_open={"ref2": raw_ref2},
-        _precal_originals={"ref2": raw_ref2},
         epsilon_result=cal.compute_epsilon(),
     )
     descriptor = registry.get("open_coax_liquids")
@@ -159,10 +197,10 @@ def test_discarding_drops_the_old_liquids_measurement():
     cal = wizard.perm_calibration
     assert asked == [("ipa", "methanol")]
     assert not cal.is_standard_measured("ref2")
+    assert cal.get_raw_measurement("ref2") is None   # the IPA sweep is gone
+    assert cal.step_precal("ref2") is not None       # its pre-cal waits
     assert cal.ref2_key == "methanol"
     assert wizard.ref_liquid_keys["ref2"] == "methanol"
-    assert "ref2" not in wizard._precal_originals   # raw copy of the old data
-    assert "ref2" in wizard._precal_open            # probe OPEN still valid
     assert wizard.epsilon_result is None
     assert all(cal.is_standard_measured(k) for k in ("open", "short", "ref1", "dut"))
 
@@ -181,8 +219,8 @@ def test_keeping_relabels_the_measurement():
     cal = wizard.perm_calibration
     assert asked == [("ipa", "methanol")]
     assert cal.get_measurement("ref2")[1] is s11_before
+    assert cal.is_precal_applied("ref2")
     assert cal.ref2_key == "methanol"
-    assert "ref2" in wizard._precal_originals
     assert wizard.epsilon_result is None            # recomputed as methanol
 
 

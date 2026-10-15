@@ -11,6 +11,10 @@ EN: A characterization calibration bundles the calibration standards (Open, Shor
             short.s1p
             ref1.s1p
             ref2.s1p        -- only for the full two-liquid technique
+            <key>.precal.s1p -- only for a pre-calibrated standard: the
+                               reference c(f) of its step (calibration.precal)
+    Every standard is stored RAW; a pre-calibrated one is corrected again on
+    load (s11 * c0 / c, c0 = the kit's own Open), exactly as in its session.
 
 ES: Una calibracion agrupa los patrones de calibracion (Open, Short,
     Ref1 y opcionalmente Ref2) medidos en una sesion para poder reutilizar el
@@ -23,6 +27,10 @@ ES: Una calibracion agrupa los patrones de calibracion (Open, Short,
             short.s1p
             ref1.s1p
             ref2.s1p        -- solo para la tecnica completa (dos liquidos)
+            <clave>.precal.s1p -- solo para un patron pre-calibrado: la
+                               referencia c(f) de su paso (calibration.precal)
+    Cada patron se guarda CRUDO; uno pre-calibrado se vuelve a corregir al
+    cargarse (s11 * c0 / c, c0 = el Open del propio kit), igual que en su sesion.
 """
 
 from __future__ import annotations
@@ -38,13 +46,20 @@ import numpy as np
 import skrf
 
 from NanoVNA_UTN_Toolkit.shared.utils.resources.calibration_path_utils import get_calibration_path
+from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration.precal import (
+    KINDS as PRECAL_KINDS,
+    PrecalReference,
+)
 
 logger = logging.getLogger(__name__)
 
 _KIT_DEV_PATH = "modules/material_characterization/calibration/kits"
 _KIT_EXE_PATH = "modules/material_characterization/calibration/kits"
 
-SCHEMA_VERSION = 1
+# 2: standards stored raw; precal_kinds + <key>.precal.s1p per pre-calibrated standard.
+SCHEMA_VERSION = 2
+
+_PRECAL_SUFFIX = ".precal"
 
 _CALLER = Path(__file__).resolve()
 
@@ -76,6 +91,9 @@ class CalibrationMeta:
     standard_temperatures: Dict[str, float] = field(default_factory=dict)
     # Probe the standards were taken with (algorithms.probe_models key).
     probe_key: Optional[str] = None
+    # Pre-calibrated standards: key -> "open" | "short", with the reference
+    # in <key>.precal.s1p. Absent in older manifests (no pre-cal restored).
+    precal_kinds: Dict[str, str] = field(default_factory=dict)
 
     @property
     def is_simplified(self) -> bool:
@@ -95,6 +113,8 @@ class CalibrationMeta:
         lines.append(f"Temperature: {self.temperature_c:.1f} °C")
         for key, temp in sorted((self.standard_temperatures or {}).items()):
             lines.append(f"  {key} (preset): {temp:.1f} °C")
+        for key, kind in sorted((self.precal_kinds or {}).items()):
+            lines.append(f"  {key}: pre-cal ({kind.upper()})")
         if self.f_start_hz is not None and self.f_stop_hz is not None:
             start = f"{self.f_start_hz / 1e6:.3g} MHz"
             stop = f"{self.f_stop_hz / 1e9:.4g} GHz"
@@ -135,6 +155,10 @@ def _s1p_path(name: str, key: str) -> Path:
     return _cal_path(name) / f"{key}.s1p"
 
 
+def _precal_file(key: str) -> str:
+    return f"{key}{_PRECAL_SUFFIX}.s1p"
+
+
 # --------------------------------------------------------------------------- #
 # Helpers
 # --------------------------------------------------------------------------- #
@@ -149,6 +173,84 @@ def _write_s1p(path: Path, freqs: np.ndarray, s11: np.ndarray) -> None:
 def _read_s1p(path: Path) -> Tuple[np.ndarray, np.ndarray]:
     net = skrf.Network(str(path))
     return net.f, net.s[:, 0, 0]
+
+
+def _write_calibration_files(
+    dest: Path,
+    name: str,
+    display_name: str,
+    cal,
+    technique_id: str,
+    temperature_c: float,
+    device_name: str,
+    action: str,
+) -> CalibrationMeta:
+    """
+    Write the standards of *cal* (raw, plus each one's pre-cal c(f)) into *dest*.
+
+    Shared by ``save_calibration`` and ``export_calibration`` so both formats
+    carry exactly the same content. Raises ``ValueError`` if a required
+    standard is not measured (*action* names the operation in the message).
+    """
+    required = ["open", "short", "ref1"]
+    if cal.ref2_key is not None:
+        required.append("ref2")
+
+    for key in required:
+        if not cal.measurements.get(key, {}).get("measured"):
+            raise ValueError(f"Standard '{key}' is not measured — cannot {action} calibration.")
+
+    dest.mkdir(parents=True, exist_ok=True)
+    standards: List[str] = []
+    sources: Dict[str, str] = {}
+    temps: Dict[str, float] = {}
+    precal_kinds: Dict[str, str] = {}
+    f_start = f_stop = points = None
+
+    for key in required:
+        meas = cal.measurements[key]
+        freqs: np.ndarray = meas["freqs"]
+        raw = meas.get("s11_raw")
+        s11: np.ndarray = raw if raw is not None else meas["s11"]
+        _write_s1p(dest / f"{key}.s1p", freqs, s11)
+        standards.append(key)
+        sources[key] = meas.get("source") or "measured"
+        if meas.get("temperature_c") is not None:
+            temps[key] = float(meas["temperature_c"])
+        precal: Optional[PrecalReference] = meas.get("precal")
+        precal_path = dest / _precal_file(key)
+        if precal is not None:
+            _write_s1p(precal_path, precal.freqs, precal.divisor)
+            precal_kinds[key] = precal.kind
+        elif precal_path.exists():
+            precal_path.unlink()               # overwriting a pre-calibrated kit
+        if f_start is None:
+            f_start = float(freqs[0])
+            f_stop = float(freqs[-1])
+            points = len(freqs)
+
+    return CalibrationMeta(
+        name=name,
+        display_name=display_name,
+        technique_id=technique_id,
+        ref1_key=cal.ref1_key,
+        ref2_key=cal.ref2_key,
+        temperature_c=float(temperature_c),
+        device_name=device_name,
+        saved=datetime.now().isoformat(timespec="seconds"),
+        standards=standards,
+        sources=sources,
+        f_start_hz=f_start,
+        f_stop_hz=f_stop,
+        points=points,
+        standard_temperatures=temps,
+        probe_key=getattr(cal, "probe_key", None),
+        precal_kinds=precal_kinds,
+    )
+
+
+def _write_manifest(path: Path, meta: CalibrationMeta) -> None:
+    path.write_text(json.dumps(asdict(meta), indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 # --------------------------------------------------------------------------- #
@@ -166,63 +268,15 @@ def save_calibration(
     """
     Save the calibration standards from *cal* as a new calibration named *name*.
 
-    Only the non-DUT standards are saved (Open, Short, Ref1, optionally Ref2).
+    Only the non-DUT standards are saved (Open, Short, Ref1, optionally Ref2),
+    each raw and, when its step was pre-calibrated, with its reference c(f).
     Raises ``ValueError`` if the required standards are not all measured.
     Returns the calibration directory path.
     """
-    required = ["open", "short", "ref1"]
-    if cal.ref2_key is not None:
-        required.append("ref2")
-
-    for key in required:
-        meas = cal.measurements.get(key, {})
-        if not meas.get("measured"):
-            raise ValueError(f"Standard '{key}' is not measured — cannot save calibration.")
-
     cal_dir = _cal_path(name)
-    cal_dir.mkdir(parents=True, exist_ok=True)
-
-    standards = []
-    sources: Dict[str, str] = {}
-    temps: Dict[str, float] = {}
-    f_start = f_stop = points = None
-
-    for key in required:
-        meas = cal.measurements[key]
-        freqs: np.ndarray = meas["freqs"]
-        s11: np.ndarray = meas["s11"]
-        _write_s1p(_s1p_path(name, key), freqs, s11)
-        standards.append(key)
-        sources[key] = meas.get("source") or "measured"
-        if meas.get("temperature_c") is not None:
-            temps[key] = float(meas["temperature_c"])
-        if f_start is None:
-            f_start = float(freqs[0])
-            f_stop = float(freqs[-1])
-            points = len(freqs)
-
-    meta = CalibrationMeta(
-        name=name,
-        display_name=display_name,
-        technique_id=technique_id,
-        ref1_key=cal.ref1_key,
-        ref2_key=cal.ref2_key,
-        temperature_c=float(temperature_c),
-        device_name=device_name,
-        saved=datetime.now().isoformat(timespec="seconds"),
-        standards=standards,
-        sources=sources,
-        f_start_hz=f_start,
-        f_stop_hz=f_stop,
-        points=points,
-        standard_temperatures=temps,
-        probe_key=getattr(cal, "probe_key", None),
-    )
-
-    _manifest_path(name).write_text(
-        json.dumps(asdict(meta), indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    meta = _write_calibration_files(cal_dir, name, display_name, cal, technique_id,
+                                    temperature_c, device_name, action="save")
+    _write_manifest(_manifest_path(name), meta)
 
     logger.info("[calibration_store] saved calibration '%s' to %s", name, cal_dir)
     return cal_dir
@@ -235,12 +289,8 @@ def read_calibration_meta(name: str) -> CalibrationMeta:
     return CalibrationMeta(**{k: v for k, v in raw.items() if k in CalibrationMeta.__dataclass_fields__})
 
 
-def load_calibration(name: str) -> Tuple[Dict[str, Tuple[np.ndarray, np.ndarray]], CalibrationMeta]:
-    """
-    Load a calibration by name.
-
-    Returns ``(data, meta)`` where *data* maps standard key → (freqs, s11).
-    """
+def _load_calibration_parts(name: str):
+    """Read and validate every file of calibration *name*: ``(data, meta, precals)``."""
     meta = read_calibration_meta(name)
     data: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
     for key in meta.standards:
@@ -248,7 +298,105 @@ def load_calibration(name: str) -> Tuple[Dict[str, Tuple[np.ndarray, np.ndarray]
         if not path.exists():
             raise FileNotFoundError(f"Calibration '{name}': missing file {path.name}")
         data[key] = _read_s1p(path)
+    return data, meta, _load_precals(name, meta, data)
+
+
+def _load_precals(name: str, meta: CalibrationMeta, data) -> Dict[str, PrecalReference]:
+    """
+    The pre-calibration reference of each pre-calibrated standard, validated.
+
+    EN: A standard listed in ``precal_kinds`` was corrected in its session
+        with that c(f): without it, it would come back uncorrected and out of
+        step with the others, so a missing, malformed or off-grid
+        ``<key>.precal.s1p`` is an error, never a silent "no pre-cal".
+    ES: Un patron listado en ``precal_kinds`` se corrigio en su sesion con esa
+        c(f): sin ella volveria sin corregir y desfasado de los demas, asi que
+        un ``<clave>.precal.s1p`` faltante, invalido o en otra grilla es un
+        error, nunca un "sin pre-cal" silencioso.
+    """
+    label = meta.display_name or name
+    precals: Dict[str, PrecalReference] = {}
+    for key, kind in (meta.precal_kinds or {}).items():
+        if key not in data:
+            raise ValueError(f"Calibration '{label}': pre-calibration listed for '{key}', "
+                             f"which is not one of its standards.")
+        if kind not in PRECAL_KINDS:
+            raise ValueError(f"Calibration '{label}': unknown pre-calibration kind "
+                             f"'{kind}' for '{key}'.")
+        path = _cal_path(name) / _precal_file(key)
+        if not path.exists():
+            raise ValueError(
+                f"Calibration '{label}': '{key}' was pre-calibrated ({kind.upper()}) but "
+                f"{path.name} is missing.\nWithout that reference the standard cannot be "
+                "corrected as it was. Restore the file or redo the calibration.")
+        freqs, divisor = _read_s1p(path)
+        try:
+            precal = PrecalReference(freqs=freqs, divisor=divisor, kind=kind)
+        except ValueError as exc:
+            raise ValueError(f"Calibration '{label}': invalid {path.name}: {exc}") from exc
+        if not precal.matches(data[key][0]):
+            raise ValueError(f"Calibration '{label}': {path.name} is not on the frequency "
+                             f"grid of '{key}'.")
+        precals[key] = precal
+    return precals
+
+
+def load_calibration(name: str) -> Tuple[Dict[str, Tuple[np.ndarray, np.ndarray]], CalibrationMeta]:
+    """
+    Load a calibration by name.
+
+    Returns ``(data, meta)`` where *data* maps standard key → (freqs, s11),
+    the raw S11 as stored (manifests before schema 2 may hold an already
+    divided one: nothing recorded it). Raises ``ValueError`` when a
+    pre-calibrated standard's reference is unusable.
+    """
+    data, meta, _ = _load_calibration_parts(name)
     return data, meta
+
+
+def load_calibration_precals(name: str) -> Dict[str, PrecalReference]:
+    """Validated pre-calibration reference of each pre-calibrated standard of *name*."""
+    return _load_calibration_parts(name)[2]
+
+
+def apply_calibration(cal, name: str) -> Tuple[CalibrationMeta, List[str]]:
+    """
+    Load calibration *name* into the calibration manager *cal*.
+
+    EN: The single path every "open a saved kit" action goes through. All
+        files are read and validated BEFORE *cal* is touched. Then: reference
+        liquids, probe, each standard with its source tag, preset
+        temperature and own pre-calibration, and finally the session
+        temperature, whose extrapolation warnings are returned with the
+        manifest. The kit's Open becomes c0, so a DUT pre-calibrated now is
+        referred to the state the kit was measured in.
+    ES: El unico camino por el que pasa toda accion de "abrir un kit guardado".
+        Todos los archivos se leen y validan ANTES de tocar *cal*. Despues:
+        liquidos de referencia, sonda, cada patron con su fuente, temperatura
+        de preset y pre-calibracion propia, y al final la temperatura de la
+        sesion, cuyas advertencias de extrapolacion se devuelven con el
+        manifiesto. El Open del kit pasa a ser c0, asi un DUT pre-calibrado
+        ahora queda referido al estado en que se midio el kit.
+    """
+    data, meta, precals = _load_calibration_parts(name)
+    label = meta.display_name or name
+
+    cal.clear_all_measurements()
+    if not cal.set_reference_liquids(meta.ref1_key, meta.ref2_key):
+        raise ValueError(f"Calibration '{label}' references unknown liquids "
+                         f"'{meta.ref1_key}' / '{meta.ref2_key}'.")
+    cal.probe_key = meta.probe_key
+
+    temps = meta.standard_temperatures or {}
+    for key, (freqs, s11) in data.items():
+        if not cal.set_measurement(key, freqs, s11, source=f"kit:{meta.name}",
+                                   temperature_c=temps.get(key), precal=precals.get(key)):
+            raise ValueError(f"Calibration '{label}': could not load '{key}'.")
+
+    # After the standards: the warnings check each reference at the
+    # temperature its eps_r is really evaluated at.
+    warnings = cal.set_temperature(meta.temperature_c)
+    return meta, warnings
 
 
 def list_calibrations() -> List[CalibrationMeta]:
@@ -299,59 +447,14 @@ def export_calibration(
 
     dest_dir = Path(dest_dir)
     out_folder = dest_dir / slug
-    out_folder.mkdir(parents=True, exist_ok=True)
-
-    required = ["open", "short", "ref1"]
-    if cal.ref2_key is not None:
-        required.append("ref2")
-
-    for key in required:
-        if not cal.measurements.get(key, {}).get("measured"):
-            raise ValueError(f"Standard '{key}' is not measured — cannot export calibration.")
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
-        standards: List[str] = []
-        sources: Dict[str, str] = {}
-        temps: Dict[str, float] = {}
-        f_start = f_stop = points = None
+        meta = _write_calibration_files(tmp_path, slug, display_name, cal, technique_id,
+                                        temperature_c, device_name, action="export")
+        _write_manifest(tmp_path / "manifest.json", meta)
 
-        for key in required:
-            meas = cal.measurements[key]
-            freqs: np.ndarray = meas["freqs"]
-            s11: np.ndarray = meas["s11"]
-            _write_s1p(tmp_path / f"{key}.s1p", freqs, s11)
-            standards.append(key)
-            sources[key] = meas.get("source") or "measured"
-            if meas.get("temperature_c") is not None:
-                temps[key] = float(meas["temperature_c"])
-            if f_start is None:
-                f_start = float(freqs[0])
-                f_stop = float(freqs[-1])
-                points = len(freqs)
-
-        meta = CalibrationMeta(
-            name=slug,
-            display_name=display_name,
-            technique_id=technique_id,
-            ref1_key=cal.ref1_key,
-            ref2_key=cal.ref2_key,
-            temperature_c=float(temperature_c),
-            device_name=device_name,
-            saved=datetime.now().isoformat(timespec="seconds"),
-            standards=standards,
-            sources=sources,
-            f_start_hz=f_start,
-            f_stop_hz=f_stop,
-            points=points,
-            standard_temperatures=temps,
-            probe_key=getattr(cal, "probe_key", None),
-        )
-        (tmp_path / "manifest.json").write_text(
-            json.dumps(asdict(meta), indent=2, ensure_ascii=False),
-            encoding="utf-8",
-        )
-
+        out_folder.mkdir(parents=True, exist_ok=True)
         archive_files = list(tmp_path.iterdir())
         for ext in (".charpkg", ".zip"):
             out_file = out_folder / f"{slug}{ext}"

@@ -13,6 +13,9 @@ from PySide6.QtWidgets import (
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import calibration_store
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
+from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.kit_loader import (
+    load_kit_into_wizard,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,64 +32,6 @@ def _make_remove_btn() -> "QPushButton":
     btn.setFlat(True)
     btn.setStyleSheet(_REMOVE_BTN_STYLE)
     return btn
-
-
-# --------------------------------------------------------------------------- #
-# Shared helpers
-# --------------------------------------------------------------------------- #
-
-def _load_calibration_into_wizard(wizard, cal_name):
-    """Load a saved calibration into *wizard* and jump to the DUT step."""
-    from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import get as get_technique
-    from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import (
-        update_step_screen,
-    )
-
-    cal_data, meta = calibration_store.load_calibration(cal_name)
-
-    if not meta.technique_id:
-        raise ValueError(
-            f"Calibration '{meta.display_name or cal_name}' has no technique ID stored in its manifest.\n"
-            "This calibration was saved incorrectly. Please redo the measurement and save it again."
-        )
-
-    try:
-        descriptor = get_technique(meta.technique_id)
-    except KeyError:
-        raise ValueError(
-            f"Calibration '{meta.display_name or cal_name}' references unknown technique '{meta.technique_id}'.\n"
-            "The calibration may have been created with a different version of the app."
-        )
-
-    wizard.selected_technique_id = meta.technique_id
-    # Localized title, as the introduction screen stores it; the raw
-    # name_token would end up verbatim in the report.
-    methods = load_text("characterization_methods.json").get("methods", {})
-    wizard.selected_method = methods.get(descriptor.name_token, {}).get(
-        "title", descriptor.name_token)
-    wizard.temperature_c = meta.temperature_c
-    if meta.f_start_hz is not None:
-        wizard.sweep_start_freq = meta.f_start_hz
-    if meta.f_stop_hz is not None:
-        wizard.sweep_stop_freq = meta.f_stop_hz
-    if meta.points is not None:
-        wizard.sweep_steps = meta.points
-    wizard.perm_calibration.set_reference_liquids(meta.ref1_key, meta.ref2_key)
-    wizard.perm_calibration.set_temperature(meta.temperature_c)
-
-    for key, (freqs, s11) in cal_data.items():
-        wizard.perm_calibration.set_measurement(
-            key, freqs, s11, source=f"calibration:{meta.name}"
-        )
-
-    dut_step = next(
-        (i + 1 for i, s in enumerate(descriptor.steps)
-         if s.standard is not None and s.standard.key == "dut"),
-        None,
-    )
-    if dut_step is not None:
-        wizard.current_step = dut_step
-        update_step_screen(wizard)
 
 
 # --------------------------------------------------------------------------- #
@@ -156,7 +101,7 @@ def import_calibration_pkg(main_window):
 
     try:
         wizard = CharacterizationWizard(vna_device=vna)
-        _load_calibration_into_wizard(wizard, cal_name)
+        load_kit_into_wizard(wizard, cal_name)
     except Exception as exc:
         QMessageBox.critical(main_window, "Load failed", str(exc))
         return
@@ -284,7 +229,7 @@ def select_calibration(main_window):
 
         try:
             wizard = CharacterizationWizard(vna_device=vna)
-            _load_calibration_into_wizard(wizard, cal_name)
+            load_kit_into_wizard(wizard, cal_name)
         except Exception as exc:
             full = _tb.format_exc()
             logger.exception("[calibration_menu] failed to load calibration '%s'", cal_name)

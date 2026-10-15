@@ -41,8 +41,8 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.calibration import preset_store
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.session_liquids import (
-    discard_reference_measurement, ensure_defaults, preset_preload, selected_liquid_key,
-    selected_probe, set_liquid_key, set_preset_preload, set_probe_key,
+    ensure_defaults, preset_preload, selected_liquid_key, selected_probe, set_liquid_key,
+    set_preset_preload, set_probe_key,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.step_sidebar import (
     build_step_sidebar,
@@ -477,7 +477,8 @@ def _bind_reference_row(wizard, descriptor, standard, cfg,
                 liquid_combo.blockSignals(False)
                 return
             if choice == _LIQUID_DISCARD:
-                discard_reference_measurement(wizard, standard.key)
+                # The step's pre-cal stays for the new liquid's sweep.
+                wizard.perm_calibration.clear_measurement(standard.key)
         set_liquid_key(wizard, standard.key, key)
         # The previous preset belonged to the previous liquid.
         set_preset_preload(wizard, standard.key, None)
