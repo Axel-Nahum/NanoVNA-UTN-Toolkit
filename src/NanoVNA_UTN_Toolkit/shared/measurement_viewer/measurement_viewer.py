@@ -1371,11 +1371,7 @@ class MeasurementViewerWindow(QMainWindow):
             if axes:
                 xlim = axes[0].get_xlim()
                 center_hz = (xlim[0] + xlim[1]) / 2.0 * self._freq_div
-                # 4-chart unlinked: each axis gets its own slot
-                if self._layout_mode == 4 and not self._cursors_linked:
-                    self._cursor_freq[n] = [center_hz] * 4
-                else:
-                    self._cursor_freq[n] = [center_hz, center_hz, None, None]
+                self._cursor_freq[n] = [center_hz, center_hz, None, None]
         self._update_cursor_buttons()
         self._redraw(self._current_entries())
         self._update_cursor_readout()
@@ -1518,26 +1514,23 @@ class MeasurementViewerWindow(QMainWindow):
         self._redraw(self._current_entries())
 
     def _cursor_slot(self, ax_idx: int) -> int:
-        """Map an axis index to the cursor slot that governs it.
+        """Map an axis index to its cursor slot.
 
-        2-chart:          ax 0 → slot 0, ax 1 → slot 1.
-        4-chart linked:   top pair (ax 0,1) → slot 0; bottom pair (ax 2,3) → slot 1.
-        4-chart unlinked: each axis is its own slot (ax_idx = slot directly).
+        2-chart: ax 0 → slot 0, ax 1 → slot 1.
+        4-chart: always row pairs — top (ax 0,1) → slot 0; bottom (ax 2,3) → slot 1.
         """
         if self._layout_mode != 4:
-            return ax_idx          # 0 or 1
-        if self._cursors_linked:
-            return 0 if ax_idx < 2 else 1
-        return ax_idx              # 0,1,2,3
+            return ax_idx   # 0 or 1
+        return 0 if ax_idx < 2 else 1
 
     def _row_axes(self, slot: int) -> list:
-        """Return the axes that belong to a cursor slot."""
+        """Return the axes that belong to a cursor slot.
+
+        2-chart: one axis per slot. 4-chart: always a pair of two axes per slot.
+        """
         all_axes = self._flat_axes()
         if self._layout_mode == 4:
-            if self._cursors_linked:
-                return all_axes[:2] if slot == 0 else all_axes[2:]
-            return [all_axes[slot]]   # fully individual
-        # 2-chart
+            return all_axes[:2] if slot == 0 else all_axes[2:]
         return [all_axes[slot]]
 
     def _blit_cursors(self):
