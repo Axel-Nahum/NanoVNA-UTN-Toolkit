@@ -122,6 +122,8 @@ class CharacterizationWizard(QMainWindow):
 
         # --- Session state ------------------------------------------------ #
         self.perm_calibration = PermittivityProbeCalibration()
+        # True after the first pre-cal propagation; individual-only after that.
+        self._precal_propagated = False
         self.sweep_start_freq = 50_000          # 50 kHz
         self.sweep_stop_freq = 1_500_000_000    # 1.5 GHz
         self.sweep_steps = 101

@@ -1445,6 +1445,41 @@ def _notify_precal_changed(wizard) -> None:
         hook()
 
 
+def _propagate_precal_first_time(wizard, source_key: str, reference) -> None:
+    """Copy ``reference`` to all subsequent empty steps — fires at most once per session.
+
+    The first time any step gets a pre-cal while no other step has one, the
+    same reference propagates forward to every subsequent step that is empty
+    and can accept that pre-cal kind.  After that the flag is locked and all
+    further pre-cals are individual.
+    """
+    if getattr(wizard, "_precal_propagated", True):
+        return
+    cal = wizard.perm_calibration
+    # Verify no other step already has a pre-cal (must be truly the first).
+    if any(cal.step_precal(k) is not None and k != source_key
+           for k in cal.measurements):
+        wizard._precal_propagated = True
+        return
+    # Resolve ordered step keys from the technique descriptor.
+    try:
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import get as _get_tech
+        descriptor = _get_tech(wizard.selected_technique_id)
+        ordered_keys = [s.standard.key for s in descriptor.steps if s.standard is not None]
+        src_idx = ordered_keys.index(source_key)
+    except (Exception,):  # noqa: BLE001 — any lookup failure → skip silently
+        wizard._precal_propagated = True
+        return
+    for key in ordered_keys[src_idx + 1:]:
+        if cal.step_precal(key) is None and cal.precal_allowed(key, reference.kind):
+            try:
+                cal.set_step_precal(key, reference)
+            except ValueError:
+                pass
+    wizard._precal_propagated = True
+    logger.info("[standard_screen] pre-cal propagated from '%s' to subsequent empty steps", source_key)
+
+
 def _on_import(wizard, standard, name, color, button, std_texts, state):
     """Open a .s1p file, validate frequencies, store and render.
 
@@ -2299,6 +2334,7 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
                     "frequency grid as this step's measurement.\n\n{err}"
                 ).format(err=exc))
             return
+        _propagate_precal_first_time(wizard, standard.key, reference)
         wizard.epsilon_result = None
         on_applied()
         dlg.accept()
