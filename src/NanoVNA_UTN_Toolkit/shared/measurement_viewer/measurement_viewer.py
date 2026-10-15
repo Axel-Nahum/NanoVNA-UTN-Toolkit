@@ -431,9 +431,13 @@ class MeasurementViewerWindow(QMainWindow):
                    f" border:1px solid {_BORDER}; background:transparent;"
                    f" color:{_TEXT2}; border-radius:5px; }}"
                    f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}")
-        self._C1_ON_STYLE  = _C1_ON
-        self._C2_ON_STYLE  = _C2_ON
-        self._CX_OFF_STYLE = _CX_OFF
+        _CX_DIS = (f"QPushButton {{ font-size:11px; padding:2px 10px;"
+                   f" border:1px solid {_BORDER}; background:transparent;"
+                   f" color:#44445a; border-radius:5px; }}")
+        self._C1_ON_STYLE   = _C1_ON
+        self._C2_ON_STYLE   = _C2_ON
+        self._CX_OFF_STYLE  = _CX_OFF
+        self._CX_DIS_STYLE  = _CX_DIS
 
         # ── C1 section ───────────────────────────────────────────────────────── #
         c1_sec = QWidget()
@@ -1327,13 +1331,23 @@ class MeasurementViewerWindow(QMainWindow):
         self._draw_cursors()
         self._canvas.draw_idle()
         self._update_cursor_readout()
+        self._update_cursor_buttons()
 
     # ── Cursor controls ───────────────────────────────────────────────────── #
     def _update_cursor_buttons(self):
-        self._btn_c1.setStyleSheet(
-            self._C1_ON_STYLE if self._cursor_enabled[1] else self._CX_OFF_STYLE)
-        self._btn_c2.setStyleSheet(
-            self._C2_ON_STYLE if self._cursor_enabled[2] else self._CX_OFF_STYLE)
+        has_data = bool(self._current_entries())
+        for btn, on_style, n in (
+            (self._btn_c1, self._C1_ON_STYLE, 1),
+            (self._btn_c2, self._C2_ON_STYLE, 2),
+        ):
+            if not has_data:
+                btn.setStyleSheet(self._CX_DIS_STYLE)
+                btn.setEnabled(False)
+                btn.setCursor(Qt.CursorShape.ForbiddenCursor)
+            else:
+                btn.setEnabled(True)
+                btn.setCursor(Qt.CursorShape.PointingHandCursor)
+                btn.setStyleSheet(on_style if self._cursor_enabled[n] else self._CX_OFF_STYLE)
 
     def _toggle_cursor(self, n: int):
         self._cursor_enabled[n] = not self._cursor_enabled[n]
