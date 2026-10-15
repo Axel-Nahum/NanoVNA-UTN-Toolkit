@@ -178,6 +178,9 @@ class MeasurementViewerWindow(QMainWindow):
         self._cursor_dragging = None   # (n, slot) or None
         self._cursors_linked  = False  # False = pairs independent; True = all sync
         self._blit_bg         = None   # saved background for fast cursor blitting
+        self._y_autoscale     = [True] * 4   # per-chart autoscale flag
+        self._y_range         = [(None, None)] * 4  # (ymin, ymax) when manual
+        self._y_grid          = [True] * 4   # per-chart grid visibility
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -597,16 +600,93 @@ class MeasurementViewerWindow(QMainWindow):
         self._update_cursor_buttons()
         self._tab_stack.addWidget(cursors_page)
 
-        # ── Page 2 — Range (placeholder) ────────────────────────────────────── #
+        # ── Page 2 — Range ───────────────────────────────────────────────────── #
         range_page = QWidget()
         range_page.setStyleSheet("background:transparent;")
         rph = QHBoxLayout(range_page)
-        rph.setContentsMargins(0, 0, 0, 0)
-        rph.addStretch(1)
-        _lbl_rng = QLabel("Range — coming soon")
-        _lbl_rng.setStyleSheet(f"font-size:11px; color:{_TEXT2}; background:transparent;")
-        rph.addWidget(_lbl_rng)
-        rph.addStretch(1)
+        rph.setContentsMargins(12, 0, 12, 0)
+        rph.setSpacing(0)
+
+        _RNG_ON  = (f"QPushButton {{ font-size:10px; font-weight:600; padding:1px 7px;"
+                    f" border:none; background:{_ACCENT}; color:#ffffff; border-radius:4px; }}"
+                    f" QPushButton:hover {{ background:{_ACCENT_H}; }}")
+        _RNG_OFF = (f"QPushButton {{ font-size:10px; padding:1px 7px;"
+                    f" border:1px solid {_BORDER}; background:transparent;"
+                    f" color:{_TEXT2}; border-radius:4px; }}"
+                    f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}")
+        _RNG_IN  = (f"QLineEdit {{ font-size:10px; padding:1px 4px; border-radius:3px;"
+                    f" border:1px solid {_BORDER}; background:{_CARD_BG}; color:{_TEXT}; }}"
+                    f" QLineEdit:focus {{ border-color:{_ACCENT}; }}"
+                    f" QLineEdit:disabled {{ color:#44445a; background:#1a1a2e; border-color:#2a2a42; }}")
+        self._RNG_ON_STYLE  = _RNG_ON
+        self._RNG_OFF_STYLE = _RNG_OFF
+
+        def _rsep() -> QFrame:
+            s = QFrame(); s.setFrameShape(QFrame.Shape.VLine)
+            s.setFixedWidth(1); s.setStyleSheet(f"background:{_BORDER}; border:none;")
+            return s
+
+        self._range_sections: list[dict] = []
+        for _i in range(4):
+            _sec = QWidget(); _sec.setStyleSheet("background:transparent;")
+            _secv = QVBoxLayout(_sec)
+            _secv.setContentsMargins(12, 5, 12, 5)
+            _secv.setSpacing(4)
+
+            # Row 1: label + Auto + Grid
+            _r1 = QHBoxLayout(); _r1.setSpacing(4); _r1.setContentsMargins(0,0,0,0)
+            _chart_lbl = QLabel("—")
+            _chart_lbl.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:10px; font-weight:500;")
+            _chart_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+            _btn_auto = QPushButton("Auto")
+            _btn_auto.setFixedSize(46, 20)
+            _btn_auto.setCursor(Qt.CursorShape.PointingHandCursor)
+            _btn_grid = QPushButton("Grid")
+            _btn_grid.setFixedSize(42, 20)
+            _btn_grid.setCursor(Qt.CursorShape.PointingHandCursor)
+            _r1.addWidget(_chart_lbl)
+            _r1.addWidget(_btn_auto)
+            _r1.addSpacing(2)
+            _r1.addWidget(_btn_grid)
+            _secv.addLayout(_r1)
+
+            # Row 2: Ymin / Ymax inputs
+            _r2 = QHBoxLayout(); _r2.setSpacing(4); _r2.setContentsMargins(0,0,0,0)
+            _lbl_min = QLabel("Y min")
+            _lbl_min.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px;")
+            _edit_min = QLineEdit(); _edit_min.setFixedHeight(20); _edit_min.setStyleSheet(_RNG_IN)
+            _edit_min.setPlaceholderText("auto"); _edit_min.setEnabled(False)
+            _lbl_max = QLabel("max")
+            _lbl_max.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px;")
+            _edit_max = QLineEdit(); _edit_max.setFixedHeight(20); _edit_max.setStyleSheet(_RNG_IN)
+            _edit_max.setPlaceholderText("auto"); _edit_max.setEnabled(False)
+            _r2.addWidget(_lbl_min)
+            _r2.addWidget(_edit_min, 1)
+            _r2.addSpacing(2)
+            _r2.addWidget(_lbl_max)
+            _r2.addWidget(_edit_max, 1)
+            _secv.addLayout(_r2)
+
+            _n = _i
+            _btn_auto.clicked.connect(lambda _, n=_n: self._toggle_y_autoscale(n))
+            _btn_grid.clicked.connect(lambda _, n=_n: self._toggle_y_grid(n))
+            _edit_min.editingFinished.connect(lambda n=_n: self._apply_y_range(n))
+            _edit_max.editingFinished.connect(lambda n=_n: self._apply_y_range(n))
+
+            _sec.setVisible(_i < 2)
+            if _i > 0:
+                rph.addWidget(_rsep())
+            rph.addWidget(_sec, 1)
+
+            self._range_sections.append({
+                "container": _sec,
+                "label":     _chart_lbl,
+                "btn_auto":  _btn_auto,
+                "btn_grid":  _btn_grid,
+                "edit_min":  _edit_min,
+                "edit_max":  _edit_max,
+            })
+
         self._tab_stack.addWidget(range_page)
 
         self._tab_idx = 0
@@ -617,6 +697,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._TAB_ACTIVE   = _TAB_ACTIVE
         self._TAB_INACTIVE = _TAB_INACTIVE
 
+        self._update_range_page()
         return hdr
 
     def _vsep(self) -> QFrame:
@@ -881,6 +962,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._update_layout_buttons()
         self._update_param_buttons()
         self._update_header_groups()
+        self._update_range_page()
         self._rebuild_figure()
         self._update_cursor_readout()
         self._update_linked_buttons()
@@ -890,6 +972,7 @@ class MeasurementViewerWindow(QMainWindow):
             return
         self._display2 = mode
         self._update_display2_buttons()
+        self._update_range_page()
         self._redraw(self._current_entries())
 
     def _set_param(self, mode: str):
@@ -897,6 +980,7 @@ class MeasurementViewerWindow(QMainWindow):
             return
         self._param_mode = mode
         self._update_param_buttons()
+        self._update_range_page()
         self._redraw(self._current_entries())
 
     def _toggle_p4_s11(self):
@@ -904,6 +988,7 @@ class MeasurementViewerWindow(QMainWindow):
             return          # already the only one active, can't turn off
         self._param_mode = "s21" if self._param_mode == "split" else "split"
         self._update_param_buttons()
+        self._update_range_page()
         self._redraw(self._current_entries())
 
     def _toggle_p4_s21(self):
@@ -911,7 +996,89 @@ class MeasurementViewerWindow(QMainWindow):
             return          # already the only one active, can't turn off
         self._param_mode = "s11" if self._param_mode == "split" else "split"
         self._update_param_buttons()
+        self._update_range_page()
         self._redraw(self._current_entries())
+
+    # ── Range page helpers ────────────────────────────────────────────────── #
+    def _chart_labels_for_range(self) -> list[str]:
+        result = []
+        for t in self._chart_titles():
+            tl = t.lower()
+            if "magnitude" in tl:
+                result.append(t + " [dB]")
+            elif "phase" in tl:
+                result.append(t + " [°]")
+            else:
+                result.append(t)
+        return result
+
+    def _update_range_page(self):
+        if not hasattr(self, "_range_sections"):
+            return
+        n = 4 if self._layout_mode == 4 else 2
+        labels = self._chart_labels_for_range()
+        for i, sec in enumerate(self._range_sections):
+            sec["container"].setVisible(i < n)
+            if i < len(labels):
+                sec["label"].setText(labels[i])
+            auto = self._y_autoscale[i]
+            sec["btn_auto"].setStyleSheet(self._RNG_ON_STYLE if auto else self._RNG_OFF_STYLE)
+            sec["btn_grid"].setStyleSheet(self._RNG_ON_STYLE if self._y_grid[i] else self._RNG_OFF_STYLE)
+            sec["edit_min"].setEnabled(not auto)
+            sec["edit_max"].setEnabled(not auto)
+
+    def _toggle_y_autoscale(self, i: int):
+        self._y_autoscale[i] = not self._y_autoscale[i]
+        if not self._y_autoscale[i]:
+            axes = self._flat_axes()
+            if i < len(axes):
+                ylo, yhi = axes[i].get_ylim()
+                self._y_range[i] = (ylo, yhi)
+                sec = self._range_sections[i]
+                sec["edit_min"].setText(f"{ylo:.4g}")
+                sec["edit_max"].setText(f"{yhi:.4g}")
+        else:
+            self._y_range[i] = (None, None)
+            axes = self._flat_axes()
+            if i < len(axes) and axes[i].get_lines():
+                axes[i].relim()
+                axes[i].autoscale_view()
+            self._canvas.draw()
+            self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
+            self._draw_cursors()
+            self._blit_cursors()
+        self._update_range_page()
+
+    def _toggle_y_grid(self, i: int):
+        self._y_grid[i] = not self._y_grid[i]
+        self._update_range_page()
+        axes = self._flat_axes()
+        if i < len(axes):
+            axes[i].grid(self._y_grid[i], linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
+            self._canvas.draw()
+            self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
+            self._draw_cursors()
+            self._blit_cursors()
+
+    def _apply_y_range(self, i: int):
+        if self._y_autoscale[i]:
+            return
+        sec = self._range_sections[i]
+        try:
+            ymin = float(sec["edit_min"].text())
+            ymax = float(sec["edit_max"].text())
+        except (ValueError, TypeError):
+            return
+        if ymin >= ymax:
+            return
+        self._y_range[i] = (ymin, ymax)
+        axes = self._flat_axes()
+        if i < len(axes):
+            axes[i].set_ylim(ymin, ymax)
+            self._canvas.draw()
+            self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
+            self._draw_cursors()
+            self._blit_cursors()
 
     def _update_tab_buttons(self, active_style: str, inactive_style: str):
         for i, btn in enumerate(self._tab_btns):
@@ -1157,7 +1324,7 @@ class MeasurementViewerWindow(QMainWindow):
     def _reset_axes(self):
         titles = self._chart_titles()
 
-        for ax, title in zip(self._flat_axes(), titles):
+        for _ri, (ax, title) in enumerate(zip(self._flat_axes(), titles)):
             ax.cla()
             ax.set_facecolor(_CARD_BG)
             ax.set_title(title, fontsize=11, color=_TEXT, pad=10)
@@ -1165,7 +1332,7 @@ class MeasurementViewerWindow(QMainWindow):
                 spine.set_color(_SPINE)
                 spine.set_linewidth(0.8)
             ax.tick_params(colors=_TEXT2, labelsize=8)
-            ax.grid(True, linestyle="--", alpha=0.35, color=_GRID, linewidth=0.6)
+            ax.grid(self._y_grid[_ri], linestyle="--", alpha=0.35, color=_GRID, linewidth=0.6)
 
             t = title.lower()
             if "magnitude" in t:
@@ -1200,11 +1367,11 @@ class MeasurementViewerWindow(QMainWindow):
 
     def _redraw(self, entries: list[_FileEntry]):
         flat = self._flat_axes()
-        for ax in flat:
+        for _ai, ax in enumerate(flat):
             ax.cla()
             ax.set_facecolor(_CARD_BG)
             ax.tick_params(colors=_TEXT2, labelsize=8)
-            ax.grid(True, linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
+            ax.grid(self._y_grid[_ai], linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
             for spine in ax.spines.values():
                 spine.set_color(_SPINE)
                 spine.set_linewidth(0.8)
@@ -1338,6 +1505,13 @@ class MeasurementViewerWindow(QMainWindow):
                     ax.legend(fontsize=7, loc="best",
                               facecolor=_PANEL_BG, edgecolor=_BORDER,
                               labelcolor=_TEXT)
+
+        # Apply manual Y ranges (overrides matplotlib autoscale)
+        for _ri, _ax in enumerate(flat):
+            if not self._y_autoscale[_ri]:
+                _yl = self._y_range[_ri]
+                if _yl[0] is not None and _yl[1] is not None:
+                    _ax.set_ylim(_yl[0], _yl[1])
 
         try:
             self._fig.tight_layout(pad=1.4, h_pad=2.0, w_pad=2.0)
