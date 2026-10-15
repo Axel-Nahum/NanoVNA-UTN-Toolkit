@@ -529,13 +529,9 @@ def build_standard_screen(wizard, descriptor, step_def):
         # certainly handled since, so the DUT step asks for a pre-cal.
         _from_kit = is_dut and (wizard.perm_calibration.get_source("open") or "").startswith("kit:")
         precal_hint = QLabel(
-            std_texts.get("pre_calibrate_hint_kit",
-                          "Calibración de un kit: si la sonda se manipuló desde entonces, "
-                          "pre-calibrá antes de medir")
+            std_texts.get("pre_calibrate_hint_kit", "Kit externo — verificar sonda")
             if _from_kit else
-            std_texts.get("pre_calibrate_hint",
-                          "¿Manipulaste la sonda antes de este paso? Pre-calibrá para corregirlo"))
-        precal_hint.setWordWrap(True)
+            std_texts.get("pre_calibrate_hint", "¿Desplazaste la sonda? - precalibración"))
         precal_hint.setStyleSheet(
             "font-size: 11px; font-style: italic; color: "
             + ("#ffaa44;" if _from_kit else "#606080;"))
