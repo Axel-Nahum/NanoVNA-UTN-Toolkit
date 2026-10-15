@@ -243,7 +243,7 @@ class MeasurementViewerWindow(QMainWindow):
             gv.addWidget(ctrl_row, alignment=Qt.AlignmentFlag.AlignHCenter)
 
             lbl = QLabel(label_text)
-            lbl.setStyleSheet("font-size: 9px; color: #44445a;")
+            lbl.setStyleSheet("font-size: 9px; color: #7777a0;")
             lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
             gv.addWidget(lbl)
             return grp
@@ -428,30 +428,21 @@ class MeasurementViewerWindow(QMainWindow):
             return list(self._axes)  # [ax_top, ax_bottom]
 
     def _reset_axes(self):
-        if self._layout_mode == 4:
-            specs = [
-                ("S11 Magnitude", "|S11| (dB)"),
-                ("S11 Phase",     "∠S11 (°)"),
-                ("S21 Magnitude", "|S21| (dB)"),
-                ("S21 Phase",     "∠S21 (°)"),
-            ]
-        else:
-            specs = [
-                ("S11 Magnitude", "|S11| (dB)"),
-                ("S11 Phase",     "∠S11 (°)"),
-            ]
-        for ax, (title, ylabel) in zip(self._flat_axes(), specs):
+        titles = (["S11 Magnitude", "S11 Phase", "S21 Magnitude", "S21 Phase"]
+                  if self._layout_mode == 4 else
+                  ["S11 Magnitude", "S11 Phase"])
+        for ax, title in zip(self._flat_axes(), titles):
             ax.set_facecolor(_BG)
             ax.set_title(title, fontsize=10, color=_TEXT, pad=4)
-            ax.set_ylabel(ylabel, fontsize=9, color=_TEXT)
-            ax.set_xlabel("Frequency", fontsize=9, color=_TEXT)
-            ax.tick_params(colors=_TEXT, labelsize=8)
-            ax.grid(True, linestyle=":", alpha=0.35, color=_GRID)
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.set_xlabel("")
+            ax.set_ylabel("")
             for spine in ax.spines.values():
                 spine.set_color(_SPINE)
             ax.text(0.5, 0.5, "No data", transform=ax.transAxes,
-                    ha="center", va="center", fontsize=9,
-                    color="#444455", fontstyle="italic")
+                    ha="center", va="center", fontsize=10,
+                    color="#666688", fontstyle="italic")
         self._canvas.draw_idle()
 
     def _redraw(self, entries: list[_FileEntry]):
@@ -496,7 +487,7 @@ class MeasurementViewerWindow(QMainWindow):
                 for ax in (ax_s21_mag, ax_s21_ph):
                     ax.text(0.5, 0.5, "No S21 data", transform=ax.transAxes,
                             ha="center", va="center", fontsize=9,
-                            color="#444455", fontstyle="italic")
+                            color="#666688", fontstyle="italic")
         else:
             ax_mag, ax_ph = flat
             for e in entries:
