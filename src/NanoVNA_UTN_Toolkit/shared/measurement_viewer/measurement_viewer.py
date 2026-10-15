@@ -388,13 +388,13 @@ class MeasurementViewerWindow(QMainWindow):
     def _build_chart_area(self) -> QWidget:
         right = QWidget()
         rv = QVBoxLayout(right)
-        rv.setContentsMargins(0, 0, 0, 0)
+        rv.setContentsMargins(16, 10, 16, 14)
         rv.setSpacing(0)
 
         self._fig = _Figure(facecolor=_BG)
         self._axes = self._fig.subplots(2, 1)
-        self._fig.subplots_adjust(left=0.08, right=0.98, top=0.95,
-                                  bottom=0.06, hspace=0.45)
+        self._fig.subplots_adjust(left=0.10, right=0.97, top=0.94,
+                                  bottom=0.07, hspace=0.50)
         self._canvas = FigureCanvas(self._fig)
         self._canvas.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
@@ -433,12 +433,12 @@ class MeasurementViewerWindow(QMainWindow):
         self._fig.clear()
         if self._layout_mode == 4:
             self._axes = self._fig.subplots(2, 2)
-            self._fig.subplots_adjust(left=0.08, right=0.98, top=0.95,
-                                      bottom=0.06, hspace=0.45, wspace=0.28)
+            self._fig.subplots_adjust(left=0.08, right=0.97, top=0.94,
+                                      bottom=0.07, hspace=0.50, wspace=0.30)
         else:
             self._axes = self._fig.subplots(2, 1)
-            self._fig.subplots_adjust(left=0.08, right=0.98, top=0.95,
-                                      bottom=0.06, hspace=0.45)
+            self._fig.subplots_adjust(left=0.10, right=0.97, top=0.94,
+                                      bottom=0.07, hspace=0.50)
         self._redraw(self._current_entries())
 
     def _current_entries(self) -> list[_FileEntry]:
