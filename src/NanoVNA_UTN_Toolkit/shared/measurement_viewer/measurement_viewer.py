@@ -279,10 +279,12 @@ class MeasurementViewerWindow(QMainWindow):
         tv.setSpacing(0)
         t1 = QLabel("Measurement Viewer")
         t1.setStyleSheet(
-            f"font-size:14px; font-weight:bold; color:{_TEXT}; background:transparent;")
+            f"font-size:14px; font-weight:bold; color:{_TEXT}; background:transparent;"
+            " margin:0; padding:0;")
         t2 = QLabel("Compare and inspect measurement files")
         t2.setStyleSheet(
-            f"font-size:10px; color:{_TEXT2}; background:transparent;")
+            f"font-size:10px; color:{_TEXT2}; background:transparent;"
+            " margin:0; padding:0;")
         tv.addWidget(t1)
         tv.addWidget(t2)
         bh.addWidget(tcol)
