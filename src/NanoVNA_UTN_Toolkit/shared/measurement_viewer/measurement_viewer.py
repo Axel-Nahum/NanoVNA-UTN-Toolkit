@@ -275,7 +275,7 @@ class MeasurementViewerWindow(QMainWindow):
         tcol.setStyleSheet("background:transparent;")
         tv = QVBoxLayout(tcol)
         tv.setContentsMargins(0, 0, 0, 0)
-        tv.setSpacing(1)
+        tv.setSpacing(0)
         t1 = QLabel("Measurement Viewer")
         t1.setStyleSheet(
             f"font-size:14px; font-weight:bold; color:{_TEXT}; background:transparent;")
