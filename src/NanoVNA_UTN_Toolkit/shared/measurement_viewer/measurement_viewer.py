@@ -34,17 +34,17 @@ _PALETTE = [
     "#cc5de8", "#ff922b", "#20c997", "#f06595",
 ]
 
-# ── Theme (matches app dark palette: blue-gray/slate) ─────────────────────── #
-_WIN_BG   = "#1e1e2e"
-_PANEL_BG = "#252538"
-_BORDER   = "#383850"
-_CARD_BG  = "#0d1219"
-_SPINE    = "#383850"
+# ── Theme (app dark palette: blue-gray/slate with violet undertone) ───────── #
+_WIN_BG   = "#1e1e2e"   # fondo principal app
+_PANEL_BG = "#252538"   # cards / paneles elevados app
+_BORDER   = "#383850"   # bordes app
+_CARD_BG  = "#12121e"   # chart boxes — más oscuro, misma familia
+_SPINE    = "#2a2a42"   # borde de ejes matplotlib
 _ACCENT   = "#2d5a8e"
 _ACCENT_H = "#3a6fa0"
 _TEXT     = "#ffffff"
 _TEXT2    = "#8888aa"
-_GRID     = "#2a2a3e"
+_GRID     = "#1e1e2e"
 _BG       = _CARD_BG
 
 
@@ -268,7 +268,7 @@ class MeasurementViewerWindow(QMainWindow):
         gv.addWidget(lbl)
 
         pill = QWidget()
-        pill.setStyleSheet(f"QWidget {{ background:{_BORDER}; border-radius:7px; }}")
+        pill.setStyleSheet("QWidget { background:#2e2e42; border-radius:7px; }")
         pl = QHBoxLayout(pill)
         pl.setContentsMargins(3, 3, 3, 3)
         pl.setSpacing(1)
