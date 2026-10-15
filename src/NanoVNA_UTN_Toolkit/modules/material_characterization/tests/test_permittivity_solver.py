@@ -13,9 +13,10 @@ EN: Guards the branch choice of ``solve_epsilon_r``: (1) a SYNTHETIC
     seed, and high-eps liquids pushed through the real 21 mm calibration land
     on the true root; (5) gaps are NaN in both parts, so they never read as
     lossless, and each gap cause is reported on its own; (6) robustness: a
-    glitch in a standard cannot take the anchor or steer the march, and a
-    glitch in the sample that forces ambiguous steps is reported with the
-    stretch of the sweep that depends on them.
+    glitch in a standard or in the sample cannot take the anchor or steer
+    the march, so a 2-point glitch in the sample no longer drags the rest of
+    the sweep onto another root; an ambiguous step that does steer is
+    reported with the stretch of the sweep that depends on it.
     Runnable with pytest or directly.
 
 ES: Protege la eleccion de rama de ``solve_epsilon_r``: (1) un liquido
@@ -31,13 +32,13 @@ ES: Protege la eleccion de rama de ``solve_epsilon_r``: (1) un liquido
     alta propagados con la calibracion real de 21 mm caen en la raiz
     verdadera; (5) los gaps son NaN en ambas partes, para que nunca se lean
     como sin perdidas, y cada causa de gap se informa por separado; (6)
-    robustez: un glitch en un patron no puede quedarse con el ancla ni guiar
-    la marcha, y un glitch en la muestra que fuerza pasos ambiguos se informa
-    con el tramo del barrido que depende de ellos.
+    robustez: un glitch en un patron o en la muestra no puede quedarse con
+    el ancla ni guiar la marcha, asi que un glitch de 2 puntos en la muestra
+    ya no arrastra el resto del barrido a otra raiz; un paso ambiguo que si
+    guia la marcha se informa con el tramo del barrido que depende de el.
     Ejecutable con pytest o directo.
 """
 
-import re
 from pathlib import Path
 
 import numpy as np
@@ -47,6 +48,7 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.pattern_co
     compute_pattern_constants,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.permittivity_solver import (
+    _ambiguous_span_text,
     solve_epsilon_r,
 )
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.probe_models import (
@@ -379,34 +381,53 @@ def test_ambiguous_gap_on_real_21mm_ethanol_noise_floor():
                for w in res.warnings), res.warnings
 
 
-def test_dut_glitch_warning_reports_the_affected_stretch():
+def test_dut_glitch_does_not_drag_the_rest_of_the_sweep():
     """A 2-point glitch (|dS11| = 0.3) in the 21 mm water sweep at 1426 MHz
-    forces ambiguous steps. The march may then follow another root up to the
-    end of the sweep; the warning must say from where and how many points,
-    and every point that changed must lie inside that stretch. Clean data
-    never raises it."""
+    forces ambiguous steps. Before, the march then followed another root up
+    to the end of the sweep (573 points changed); now the glitch points keep
+    their roots but do not steer, so nothing outside them changes, and a
+    warning names the jump. Clean data raises neither warning."""
     cal = _calibration("r60_probe21_2026", 22.0)
     f, s11 = _load_fixture("water_r60_probe21_2026")
     clean = cal.compute_epsilon(f, s11)
-    assert not any("ambiguous step" in w for w in clean.warnings)
+    assert not any("margin < 2" in w or "jumps more than" in w for w in clean.warnings)
 
     glitch = [1425, 1426]
     s11_glitch = s11.copy()
     s11_glitch[glitch] += 0.3 * np.exp(2j * np.pi / 8)
     res = cal.compute_epsilon(f, s11_glitch)
 
-    spans = [re.search(r"From f = ([\d.]+) MHz to the end of the sweep \((\d+) points\)", w)
-             for w in res.warnings]
-    spans = [m for m in spans if m]
-    assert len(spans) == 1, res.warnings
-    start = f.size - int(spans[0].group(2))
-    assert abs(f[start] / 1e6 - float(spans[0].group(1))) < 1e-3
-    assert glitch[0] <= start <= glitch[-1] + 1
-
     same = ((np.isnan(clean.eps_selected) & np.isnan(res.eps_selected))
             | (clean.eps_selected == res.eps_selected))
     same[glitch] = True
-    assert np.all(np.flatnonzero(~same) >= start)
+    assert same.all(), np.flatnonzero(~same)
+    jumps = [w for w in res.warnings if "jumps more than 25%" in w]
+    assert len(jumps) == 1 and "first at 1426 MHz" in jumps[0], res.warnings
+    margin = [w for w in res.warnings if "margin < 2" in w]
+    assert len(margin) == 1 and "None of them steered" in margin[0], res.warnings
+
+
+def test_ambiguous_span_counts_only_steps_that_steer():
+    """The span warning starts at the first ambiguous step that steers the
+    march; a held one (a glitch) leaves the rest of the sweep alone, even
+    when it comes before a steering one."""
+    f = (np.arange(10) + 1) * 1e6
+    amb = np.zeros(10, dtype=bool)
+    held = np.zeros(10, dtype=bool)
+    amb[5] = True
+    assert "From f = 6 MHz to the end of the sweep (5 points)" in _ambiguous_span_text(
+        amb, held, 2, f)
+    held[5] = True
+    assert _ambiguous_span_text(amb, held, 2, f).startswith("None of them steered")
+    amb[[4, 6]] = True
+    held[4] = True                       # held 5 MHz, steering 7 MHz
+    assert "From f = 7 MHz to the end of the sweep (4 points)" in _ambiguous_span_text(
+        amb, held, 2, f)
+    amb[0] = True
+    assert "and from f = 1 MHz down to the start of the sweep (1 points)" in (
+        _ambiguous_span_text(amb, held, 2, f))
+    amb[2] = True
+    assert _ambiguous_span_text(amb, held, 2, f).startswith("The whole sweep (10 points)")
 
 
 def test_anchor_resists_a_glitch_in_a_standard():

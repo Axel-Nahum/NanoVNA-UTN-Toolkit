@@ -82,6 +82,13 @@ _ANCHOR_NEIGHBOURS = 2
 # glitch (same 3x rule as the |Gn| quality chart): the root found there keeps
 # its value but does not steer the march. Real 2026 sets stay within 1.8x.
 _GN_OUTLIER_FACTOR = 3.0
+# Same idea for the sample: a Gn = 0 estimate more than this fraction away from
+# its running median marks a likely glitch in the DUT sweep; such a point does
+# not steer the march when its own continuity step is unclear too. Without it
+# a 2-point glitch could drag the rest of the sweep onto another root (573 of
+# 2000 points on 21 mm water; none with it). Tuned on the glitch stress set;
+# clean real sweeps, coarse grids included, are unchanged.
+_TARGET_OUTLIER_FRACTION = 0.25
 # No liquid has eps' below vacuum (Debye: eps' >= eps_inf >= 1). A selected
 # root under it is a measurement error (e.g. the band edge) and is flagged in
 # ``nonpassive_mask``; same threshold as ``simplified_solver``.
@@ -315,25 +322,30 @@ def _march_from_anchor(
     re_min: float,
     re_max: float | None,
     steers: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    steers_if_clear: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """
     Follow the root chosen at ``anchor`` toward both ends of the grid.
 
-    Each point takes the finite candidate nearest to the LAST VALID selected
-    root (gaps do not move the reference, nor do points with
-    ``steers == False``: their root is kept but the next point still compares
-    against the previous reference); if that root has Re(eps) <= re_min or
-    >= re_max the point is a gap, never another root. Returns
-    ``(selected_index, gap_cause, ambiguous)``. ``ambiguous`` marks points
-    kept although the continuity margin is < 2: the Gn = 0 estimate either
-    picked the same root, or was itself unambiguous -- in that case the
-    continuity root is kept even if the estimate points elsewhere. Only when
-    both margins are < 2 and they disagree is the point a gap.
+    Each point takes the finite candidate nearest to the reference: the LAST
+    VALID selected root that was not held. Gaps do not move the reference,
+    nor do HELD points, which keep their root while the next point still
+    compares against the previous reference: points with ``steers == False``
+    (a glitch in a standard), and points with ``steers_if_clear == False``
+    (the sample's estimate jumps there) whose own continuity step is unclear
+    -- the step a glitch uses to switch branches. A root with Re(eps) <=
+    re_min or >= re_max makes the point a gap, never another root. Returns
+    ``(selected_index, gap_cause, ambiguous, held)``. ``ambiguous`` marks
+    points kept although the continuity margin is < 2: the Gn = 0 estimate
+    either picked the same root, or was itself unambiguous -- in that case
+    the continuity root is kept even if the estimate points elsewhere. Only
+    when both margins are < 2 and they disagree is the point a gap.
     """
     n = cands.shape[0]
     selected_index = np.full(n, -1, dtype=int)
     gap_cause = np.zeros(n, dtype=np.int8)
     ambiguous = np.zeros(n, dtype=bool)
+    held = np.zeros(n, dtype=bool)
 
     selected_index[anchor] = choice_target[anchor]
     ambiguous[anchor] = margin_target[anchor] < _AMBIGUITY_MARGIN
@@ -361,33 +373,43 @@ def _march_from_anchor(
                 continue
             selected_index[i] = j
             ambiguous[i] = unclear
-            if steers[i]:
+            if steers[i] and (steers_if_clear[i] or not unclear):
                 reference = cands[i, j]
-    return selected_index, gap_cause, ambiguous
+            else:
+                held[i] = True
+    return selected_index, gap_cause, ambiguous, held
 
 
 def _fmt_mhz(f_hz: float) -> str:
     return f"{f_hz / 1e6:.6g} MHz"
 
 
-def _ambiguous_span_text(ambiguous: np.ndarray, anchor: int, f_hz: np.ndarray) -> str:
+def _ambiguous_span_text(
+    ambiguous: np.ndarray, held: np.ndarray, anchor: int, f_hz: np.ndarray,
+) -> str:
     """
     Which part of the sweep hangs on an ambiguous step of the march.
 
     Everything past the first ambiguous step seen from the anchor (in each
     direction) follows the root chosen there, so a wrong pick propagates to
-    the end of the sweep: say from where, and how many points.
+    the end of the sweep: say from where, and how many points. A held step
+    (a glitch, see ``_march_from_anchor``) does not move the reference, so it
+    opens no span.
     """
     n = f_hz.size
     if ambiguous[anchor]:
         return (f"The whole sweep ({n} points) follows a root chosen at an "
                 f"ambiguous anchor; compare with the simplified cross-check.")
+    steering = ambiguous & ~held
     spans = []
-    up = np.flatnonzero(ambiguous[anchor + 1:])
+    up = np.flatnonzero(steering[anchor + 1:])
     if up.size:
         i = anchor + 1 + int(up[0])
         spans.append(f"from f = {_fmt_mhz(f_hz[i])} to the end of the sweep ({n - i} points)")
-    down = np.flatnonzero(ambiguous[:anchor])
+    down = np.flatnonzero(steering[:anchor])
+    if not spans and not down.size:
+        return ("None of them steered the branch (each was held as a glitch, "
+                "see above), so no other point depends on them.")
     if down.size:
         i = int(down[-1])
         spans.append(f"from f = {_fmt_mhz(f_hz[i])} down to the start of the sweep "
@@ -438,7 +460,12 @@ def solve_epsilon_r(
            point whose |Gn| is more than 3x away from its running median (a
            glitch in a standard, the same 3x rule as the |Gn| quality chart)
            keeps its root but does not become the reference for the next
-           point; it is counted in a warning.
+           point; it is counted in a warning. So does a point whose Gn = 0
+           estimate is more than 25 % away from its running median (a glitch
+           in the sample sweep) AND whose continuity step is unclear: that
+           is the step a 2-point glitch used to hand the rest of the sweep
+           to another root. With a clear step it still steers, since on a
+           coarse grid the estimate also jumps where the real curve bends.
 
         Gaps (complex(nan, nan)), each cause counted in its own warning:
         ill-conditioned points, where the two reference liquids are nearly
@@ -449,8 +476,9 @@ def solve_epsilon_r(
         estimate singles out a root (both margins < 2 and they disagree). The
         march resumes from the last valid point. Points kept with a continuity
         margin < 2 are counted in a warning that also gives the stretch of
-        the sweep hanging on that step: from there to the end of the sweep in
-        the direction of the march (possible branch switch).
+        the sweep hanging on the first of them that steered the march: from
+        there to the end of the sweep in the direction of the march (possible
+        branch switch). Held points open no stretch.
 
         Passivity is a QUALITY flag, not a selection filter. Noise leaves the
         physical root of a near-lossless liquid (cyclohexane, acetone) with
@@ -491,7 +519,13 @@ def solve_epsilon_r(
            seleccionada. Un punto cuyo |Gn| se aleja mas de 3x de su mediana
            movil (un glitch en un patron, la misma regla de 3x del grafico de
            calidad de |Gn|) conserva su raiz pero no pasa a ser la referencia
-           del punto siguiente; se cuenta en un warning.
+           del punto siguiente; se cuenta en un warning. Lo mismo un punto
+           cuya estimacion con Gn = 0 se aleja mas de 25 % de su mediana movil
+           (un glitch en el barrido de la muestra) Y cuyo paso de continuidad
+           no es claro: ese es el paso con el que un glitch de 2 puntos
+           dejaba el resto del barrido en otra raiz. Con un paso claro sigue
+           guiando, porque en una grilla gruesa la estimacion tambien salta
+           donde la curva real cambia de pendiente.
 
         Gaps (complex(nan, nan)), cada causa contada en su propio warning:
         puntos mal condicionados, donde los dos liquidos de referencia son
@@ -502,9 +536,9 @@ def solve_epsilon_r(
         distinguen una raiz (ambos margenes < 2 y no coinciden). La marcha se
         retoma desde el ultimo punto valido. Los puntos que se conservan con
         margen de continuidad < 2 se cuentan en un warning que ademas indica
-        el tramo del barrido que depende de ese paso: desde ahi hasta el
-        extremo del barrido en el sentido de la marcha (posible cambio de
-        rama).
+        el tramo del barrido que depende del primero de ellos que guio la
+        marcha: desde ahi hasta el extremo del barrido en el sentido de la
+        marcha (posible cambio de rama). Los puntos retenidos no abren tramo.
 
         La pasividad es una marca de CALIDAD, no un filtro de seleccion. El
         ruido deja la raiz fisica de un liquido casi sin perdidas
@@ -585,19 +619,31 @@ def solve_epsilon_r(
         gn_outlier = np.isfinite(gn_median) & (
             (gn_ratio > _GN_OUTLIER_FACTOR) | (gn_ratio < 1.0 / _GN_OUTLIER_FACTOR))
 
+    # A glitch in the DUT sweep shows up as the estimate jumping away from its
+    # neighbours (|Gn| only sees the standards). On a coarse grid the estimate
+    # also jumps where the real curve bends, so such a point is only held when
+    # its own continuity step is unclear too (see _march_from_anchor).
+    with np.errstate(invalid="ignore"):
+        target_median = (_running_median(np.real(target), _ANCHOR_NEIGHBOURS)
+                         + 1j * _running_median(np.imag(target), _ANCHOR_NEIGHBOURS))
+        target_outlier = (np.abs(target - target_median)
+                          > _TARGET_OUTLIER_FRACTION * np.abs(target_median))
+
     rows = np.arange(n)
     has_choice = choice_target >= 0
     eligible = (has_choice & ~ill_conditioned & ~gn_outlier
                 & physical_mask[rows, np.maximum(choice_target, 0)])
     anchor = _choose_anchor(eps_candidates, gn_abs, choice_target, margin_target, eligible)
     if anchor is not None:
-        selected_index, gap_cause, ambiguous = _march_from_anchor(
+        selected_index, gap_cause, ambiguous, held = _march_from_anchor(
             eps_candidates, anchor, ill_conditioned,
-            choice_target, margin_target, re_min, re_max, steers=~gn_outlier,
+            choice_target, margin_target, re_min, re_max,
+            steers=~gn_outlier, steers_if_clear=~target_outlier,
         )
     else:
         selected_index = np.full(n, -1, dtype=int)
         ambiguous = np.zeros(n, dtype=bool)
+        held = np.zeros(n, dtype=bool)
         with np.errstate(invalid="ignore"):
             re_target = np.real(eps_candidates[rows, np.maximum(choice_target, 0)])
         out_high = (has_choice & (re_target >= re_max) if re_max is not None
@@ -656,12 +702,27 @@ def solve_epsilon_r(
         warnings.append(msg)
         logger.warning("[permittivity_solver] %s", msg)
 
+    sample_jump = held & ~gn_outlier
+    n_jump = int(np.count_nonzero(sample_jump))
+    if n_jump > 0:
+        first = int(np.flatnonzero(sample_jump)[0])
+        msg = (
+            f"{n_jump} frequency point(s) where the sample's Gn = 0 estimate jumps "
+            f"more than {_TARGET_OUTLIER_FRACTION:.0%} away from its neighbours and "
+            f"continuity is ambiguous (first at {_fmt_mhz(pc.f_hz[first])}): likely "
+            f"a glitch in the sample sweep. Their values are kept but did not "
+            f"steer the branch; check them."
+        )
+        warnings.append(msg)
+        logger.warning("[permittivity_solver] %s", msg)
+
     n_ambiguous = int(np.count_nonzero(ambiguous))
     if n_ambiguous > 0:
         msg = (
             f"{n_ambiguous} frequency point(s) selected with a margin < 2 over the "
             f"second-nearest root (possible branch switch). "
-            + _ambiguous_span_text(ambiguous, anchor, np.asarray(pc.f_hz, dtype=float))
+            + _ambiguous_span_text(ambiguous, held, anchor,
+                                   np.asarray(pc.f_hz, dtype=float))
         )
         warnings.append(msg)
         logger.warning("[permittivity_solver] %s", msg)
