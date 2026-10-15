@@ -1583,7 +1583,7 @@ class MeasurementViewerWindow(QMainWindow):
                     vline = ax.axvline(x, color=color, linewidth=1.2,
                                        linestyle="--", alpha=0.9, zorder=5,
                                        animated=True)
-                    self._cursor_lines[(n, row)].append(vline)
+                    self._cursor_lines[(n, slot)].append(vline)
                     for data_line in ax.get_lines():
                         if data_line is vline:
                             continue
@@ -1596,7 +1596,7 @@ class MeasurementViewerWindow(QMainWindow):
                                        markerfacecolor=color, markeredgecolor=color,
                                        markersize=8, zorder=7, markeredgewidth=0,
                                        animated=True)
-                        self._cursor_markers[(n, row)].append((dot, data_line, ax_idx))
+                        self._cursor_markers[(n, slot)].append((dot, data_line, ax_idx))
 
     def _on_canvas_press(self, event):
         if event.inaxes is None or event.button != 1:
