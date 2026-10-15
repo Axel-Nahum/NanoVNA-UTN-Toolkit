@@ -19,9 +19,39 @@ from __future__ import annotations
 import logging
 
 import numpy as np
-from PySide6.QtWidgets import QApplication, QMessageBox
+from PySide6.QtCore import QObject, QThread, Qt, Signal
+from PySide6.QtWidgets import QMessageBox
 
 logger = logging.getLogger(__name__)
+
+
+class _CharSweepWorker(QObject):
+    """Runs one S11 sweep off the main thread."""
+    finished = Signal(object, object)  # freqs, s11
+    failed = Signal(str)
+
+    def __init__(self, device, start, stop, points):
+        super().__init__()
+        self._device = device
+        self._start = start
+        self._stop = stop
+        self._points = points
+
+    def run(self):
+        try:
+            self._device.datapoints = self._points
+            self._device.setSweep(self._start, self._stop)
+            freqs = np.array(self._device.read_frequencies())
+            s11 = np.array(self._device.readValues("data 0"))
+            if len(freqs) != len(s11):
+                self.failed.emit(
+                    f"Frequency and S11 sample counts differ ({len(freqs)}/{len(s11)})."
+                )
+                return
+            self.finished.emit(freqs, s11)
+        except Exception as exc:  # noqa: BLE001
+            logging.debug("[CharSweepWorker] error", exc_info=True)
+            self.failed.emit(str(exc))
 
 # Smith-chart trace colors per standard.
 SMITH_COLOR_MAP = {
@@ -83,8 +113,6 @@ def run_s11_sweep(wizard):
 
     try:
         set_status(wizard, "Measuring...", "orange")
-        QApplication.processEvents()
-
         start_freq = wizard.get_sweep_start_frequency()
         stop_freq = wizard.get_sweep_stop_frequency()
         num_points = wizard.get_sweep_steps()
@@ -142,3 +170,108 @@ def run_s11_sweep(wizard):
         QMessageBox.critical(wizard, "Measurement Error", f"Error during measurement: {exc}")
         set_status(wizard, "Measurement failed!", "red")
         return None
+
+
+def run_s11_sweep_async(wizard, on_success, on_error=None):
+    """Non-blocking S11 sweep.
+
+    Validates synchronously on the main thread, then moves the actual device
+    read to a QThread. Calls on_success(freqs, s11) or on_error() back on the
+    main thread via Qt signals.
+    """
+    device = getattr(wizard, "vna_device", None)
+    device_available = device is not None and hasattr(device, "connected")
+
+    if not device_available:
+        msg = (
+            "No VNA device detected. Please connect a NanoVNA device before "
+            "performing characterization measurements."
+        )
+        logger.error("[CharacterizationWizard] %s", msg)
+        set_status(wizard, "No VNA device connected!", "red")
+        QMessageBox.critical(wizard, "VNA Device Required", msg)
+        if on_error:
+            on_error()
+        return
+
+    try:
+        if not device.connected():
+            device.connect()
+            if not device.connected():
+                QMessageBox.warning(wizard, "Connection Failed", "Could not connect to VNA device.")
+                if on_error:
+                    on_error()
+                return
+    except Exception as exc:  # noqa: BLE001
+        QMessageBox.critical(wizard, "Connection Error", f"Failed to connect: {exc}")
+        if on_error:
+            on_error()
+        return
+
+    # Sweep parameter validation (same as run_s11_sweep)
+    start_freq = wizard.get_sweep_start_frequency()
+    stop_freq = wizard.get_sweep_stop_frequency()
+    num_points = wizard.get_sweep_steps()
+
+    problems = []
+    dev_min = getattr(device, "sweep_min_freq_hz", None)
+    dev_max = getattr(device, "sweep_max_freq_hz", None)
+    if dev_min and start_freq < dev_min:
+        problems.append(f"start {_fmt_hz(start_freq)} < {_fmt_hz(dev_min)}")
+    if dev_max and stop_freq > dev_max:
+        problems.append(f"stop {_fmt_hz(stop_freq)} > {_fmt_hz(dev_max)}")
+    valid_points = getattr(device, "valid_datapoints", None)
+    if valid_points and num_points not in valid_points:
+        problems.append(
+            f"{num_points} points is not one of "
+            f"{', '.join(str(p) for p in sorted(valid_points))}"
+        )
+    if problems:
+        device_name = getattr(device, "name", type(device).__name__)
+        set_status(wizard, "Sweep not supported by the device!", "red")
+        QMessageBox.critical(
+            wizard,
+            "Sweep Not Supported",
+            f"The configured sweep cannot be measured with {device_name}:\n\n"
+            + "\n".join("  - " + p for p in problems)
+            + "\n\nThis sweep is only usable for IMPORTING .s1p files.\n"
+              "Change it in Configuration to measure with the instrument.",
+        )
+        if on_error:
+            on_error()
+        return
+
+    worker = _CharSweepWorker(device, start_freq, stop_freq, num_points)
+    thread = QThread()
+    worker.moveToThread(thread)
+
+    # Keep both references alive until the thread actually finishes — Python GC
+    # would collect them (breaking signals or crashing with "Destroyed while
+    # still running") if references are cleared before thread.finished fires.
+    wizard._active_sweep_thread = thread
+    wizard._active_sweep_worker = worker
+
+    def _on_thread_done():
+        wizard._active_sweep_thread = None
+        wizard._active_sweep_worker = None
+
+    thread.finished.connect(_on_thread_done)
+    thread.finished.connect(worker.deleteLater)
+    thread.finished.connect(thread.deleteLater)
+
+    def _on_finished(freqs, s11):
+        thread.quit()
+        on_success(freqs, s11)
+
+    def _on_failed(msg):
+        thread.quit()
+        logger.error("[CharacterizationWizard] Measurement error: %s", msg)
+        set_status(wizard, "Measurement failed!", "red")
+        QMessageBox.critical(wizard, "Measurement Error", f"Error during measurement: {msg}")
+        if on_error:
+            on_error()
+
+    worker.finished.connect(_on_finished, Qt.ConnectionType.QueuedConnection)
+    worker.failed.connect(_on_failed, Qt.ConnectionType.QueuedConnection)
+    thread.started.connect(worker.run)
+    thread.start()

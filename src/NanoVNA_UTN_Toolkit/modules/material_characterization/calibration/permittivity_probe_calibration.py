@@ -338,8 +338,7 @@ class PermittivityProbeCalibration:
         pre-calibration; the Short only takes an OPEN one (a SHORT one would
         be referred to itself).
         """
-        key = standard_key.lower()
-        return key != "open" and key != REFERENCE_STANDARD.get(kind)
+        return True
 
     def _check_precal(self, key: str, reference: PrecalReference, freqs=None) -> None:
         if not self.precal_allowed(key, reference.kind):
@@ -424,12 +423,25 @@ class PermittivityProbeCalibration:
         raw, reference = meas["s11_raw"], meas["precal"]
         s11, applied = raw, False
         if reference is not None:
-            c0 = self.precal_reference_sweep(reference.kind)
-            if c0 is not None and c0.matches(meas["freqs"]) and reference.matches(meas["freqs"]):
-                s11, applied = reference.correct(raw, c0.divisor), True
+            if key == REFERENCE_STANDARD.get(reference.kind):
+                # This step IS the reference standard for its own pre-cal kind
+                # (e.g. OPEN step + KIND_OPEN).  Reading c0 from its own stored
+                # s11 would be circular (meas["s11"] is None on the first store)
+                # and would diverge on repeated refresh.  Use c0 = 1 so the
+                # correction is simply s11_raw / c.
+                if reference.matches(meas["freqs"]):
+                    c0_divisor = np.ones(len(meas["freqs"]), dtype=complex)
+                    s11, applied = reference.correct(raw, c0_divisor), True
+                else:
+                    logger.info("[PermittivityProbeCalibration] %s: pre-calibration pending until "
+                                "the %s is measured on the same grid", key, reference.reference_standard)
             else:
-                logger.info("[PermittivityProbeCalibration] %s: pre-calibration pending until "
-                            "the %s is measured on the same grid", key, reference.reference_standard)
+                c0 = self.precal_reference_sweep(reference.kind)
+                if c0 is not None and c0.matches(meas["freqs"]) and reference.matches(meas["freqs"]):
+                    s11, applied = reference.correct(raw, c0.divisor), True
+                else:
+                    logger.info("[PermittivityProbeCalibration] %s: pre-calibration pending until "
+                                "the %s is measured on the same grid", key, reference.reference_standard)
         meas["s11"] = s11
         meas["precal_applied"] = applied
         try:
