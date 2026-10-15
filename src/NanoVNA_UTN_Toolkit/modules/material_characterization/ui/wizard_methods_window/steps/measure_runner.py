@@ -251,11 +251,25 @@ def run_s11_sweep_async(wizard, on_success, on_error=None):
     wizard._active_sweep_thread = thread
     wizard._active_sweep_worker = worker
 
-    def _on_thread_done():
+    # Block navigation so the step's widgets are never destroyed mid-sweep.
+    _back = getattr(wizard, "back_button", None)
+    _nxt  = getattr(wizard, "next_button", None)
+    _next_was_enabled = _nxt.isEnabled() if _nxt is not None else False
+    if _back is not None:
+        _back.setEnabled(False)
+    if _nxt is not None:
+        _nxt.setEnabled(False)
+
+    def _restore_nav():
         wizard._active_sweep_thread = None
         wizard._active_sweep_worker = None
+        try:
+            if _back is not None:
+                _back.setEnabled(True)
+        except RuntimeError:
+            pass
 
-    thread.finished.connect(_on_thread_done)
+    thread.finished.connect(_restore_nav)
     thread.finished.connect(worker.deleteLater)
     thread.finished.connect(thread.deleteLater)
 
@@ -267,6 +281,12 @@ def run_s11_sweep_async(wizard, on_success, on_error=None):
         thread.quit()
         logger.error("[CharacterizationWizard] Measurement error: %s", msg)
         set_status(wizard, "Measurement failed!", "red")
+        # Restore Next to its pre-sweep state (on_success handles enabling on success).
+        try:
+            if _nxt is not None:
+                _nxt.setEnabled(_next_was_enabled)
+        except RuntimeError:
+            pass
         QMessageBox.critical(wizard, "Measurement Error", f"Error during measurement: {msg}")
         if on_error:
             on_error()
