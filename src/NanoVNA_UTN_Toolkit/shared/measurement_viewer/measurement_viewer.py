@@ -176,7 +176,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._cursor_lines    = {(n,s): [] for n in (1,2) for s in range(4)}
         self._cursor_markers  = {(n,s): [] for n in (1,2) for s in range(4)}
         self._cursor_dragging = None   # (n, slot) or None
-        self._cursors_linked  = True   # True = paired (top+top or top+bot in 2-chart)
+        self._cursors_linked  = False  # False = pairs independent; True = all sync
         self._blit_bg         = None   # saved background for fast cursor blitting
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
