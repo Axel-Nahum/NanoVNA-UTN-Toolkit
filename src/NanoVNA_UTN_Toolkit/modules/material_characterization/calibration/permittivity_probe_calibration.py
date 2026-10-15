@@ -104,6 +104,28 @@ class PermittivityProbeCalibration:
         return {"freqs": None, "s11": None, "measured": False, "source": None,
                 "temperature_c": None}
 
+    def _invalidate_results(self, pattern_constants: bool = True) -> None:
+        """
+        Drop the results computed from the previous inputs.
+
+        EN: ``compute_epsilon`` reuses ``pattern_constants`` whenever they
+            exist, so every setter that changes one of their inputs (session
+            temperature, a reference liquid, a standard's S11 or its recorded
+            temperature) must call this; otherwise the new input is silently
+            ignored and the old epsilon comes back. A new DUT sweep only
+            stales ``epsilon_result`` (``pattern_constants=False``).
+        ES: ``compute_epsilon`` reutiliza ``pattern_constants`` si existen, asi
+            que todo setter que cambie una de sus entradas (temperatura de la
+            sesion, un liquido de referencia, el S11 de un patron o su
+            temperatura registrada) tiene que llamar a esto; si no, la entrada
+            nueva se ignora sin aviso y vuelve el epsilon viejo. Un barrido
+            nuevo del DUT solo invalida ``epsilon_result``
+            (``pattern_constants=False``).
+        """
+        if pattern_constants:
+            self.pattern_constants = None
+        self.epsilon_result = None
+
     # --------------------------------------------------------------------- #
     # Configuration
     # --------------------------------------------------------------------- #
@@ -115,12 +137,14 @@ class PermittivityProbeCalibration:
         EN: ``ref2_key=None`` selects the SIMPLIFIED single-reference technique:
             the permittivity comes from the closed-form barycentric formula
             (``simplified_solver``) instead of the degree-5 solver, and ``ref2``
-            stops being a required standard.
+            stops being a required standard. A selection that differs from the
+            current one invalidates the computed results.
 
         ES: ``ref2_key=None`` selecciona la tecnica SIMPLIFICADA de una sola
             referencia: la permitividad sale de la formula baricentrica cerrada
             (``simplified_solver``) en vez del solver de grado 5, y ``ref2``
-            deja de ser un patron requerido.
+            deja de ser un patron requerido. Una seleccion distinta de la
+            actual invalida los resultados calculados.
         """
         if ref2_key is not None and ref1_key == ref2_key:
             logger.error("[PermittivityProbeCalibration] Reference liquids must differ")
@@ -132,6 +156,8 @@ class PermittivityProbeCalibration:
         except KeyError as exc:
             logger.error("[PermittivityProbeCalibration] %s", exc)
             return False
+        if (ref1_key, ref2_key) != (self.ref1_key, self.ref2_key):
+            self._invalidate_results()
         self.ref1_key = ref1_key
         self.ref2_key = ref2_key
         return True
@@ -151,8 +177,16 @@ class PermittivityProbeCalibration:
         Set the session temperature; returns extrapolation warnings (if any)
         for the currently-selected reference liquids, each checked at the
         temperature its known eps_r is actually evaluated at.
+
+        EN: A temperature different from the current one invalidates the
+            computed results (the references' eps_r depend on it).
+        ES: Una temperatura distinta de la actual invalida los resultados
+            calculados (el eps_r de las referencias depende de ella).
         """
-        self.temperature_c = float(temp_c)
+        temp_c = float(temp_c)
+        if temp_c != self.temperature_c:
+            self._invalidate_results()
+        self.temperature_c = temp_c
         warnings: List[str] = []
         for std_key, liq_key in (("ref1", self.ref1_key), ("ref2", self.ref2_key)):
             if liq_key is None:
@@ -200,6 +234,15 @@ class PermittivityProbeCalibration:
         ``temperature_c`` is the temperature the S11 was recorded at when it
         does NOT come from this session (preset / kit); leave it None for a
         live measurement so the session temperature applies.
+
+        EN: All or nothing: the .s1p is written first, and only then the
+            standard is stored and the computed results invalidated. On
+            failure (``False``) the previous content of the standard stays as
+            it was, so ``measured`` never claims data that was not stored.
+        ES: Todo o nada: primero se escribe el .s1p y recien despues se guarda
+            el patron y se invalidan los resultados calculados. Si falla
+            (``False``) el patron conserva lo que tenia, asi ``measured`` nunca
+            declara datos que no se guardaron.
         """
         key = standard_key.lower()
         if key not in self.measurements:
@@ -208,20 +251,19 @@ class PermittivityProbeCalibration:
         try:
             freqs = np.asarray(freqs, dtype=float)
             s11 = np.asarray(s11, dtype=complex)
-            self.measurements[key]["freqs"] = freqs
-            self.measurements[key]["s11"] = s11
-            self.measurements[key]["measured"] = True
-            self.measurements[key]["source"] = source
-            self.measurements[key]["temperature_c"] = (
-                float(temperature_c) if temperature_c is not None else None)
+            own_temp = float(temperature_c) if temperature_c is not None else None
 
             path = os.path.join(self.results_path, f"{key}.s1p")
             self._save_as_touchstone(freqs, s11, path)
-            logger.info("[PermittivityProbeCalibration] Stored %s (%d points, source=%s)", key, len(freqs), source)
-            return True
         except Exception as exc:  # noqa: BLE001 - report and signal failure
             logger.error("[PermittivityProbeCalibration] Error storing %s: %s", key, exc)
             return False
+
+        self.measurements[key] = {"freqs": freqs, "s11": s11, "measured": True,
+                                  "source": source, "temperature_c": own_temp}
+        self._invalidate_results(pattern_constants=key in STANDARD_KEYS)
+        logger.info("[PermittivityProbeCalibration] Stored %s (%d points, source=%s)", key, len(freqs), source)
+        return True
 
     def get_source(self, standard_key: str) -> Optional[str]:
         """Return the data source tag for a standard, or None if not measured."""
@@ -441,5 +483,4 @@ class PermittivityProbeCalibration:
     def clear_all_measurements(self) -> None:
         for key in self.measurements:
             self.measurements[key] = self._empty_measurement()
-        self.pattern_constants = None
-        self.epsilon_result = None
+        self._invalidate_results()

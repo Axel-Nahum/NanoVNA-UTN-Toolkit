@@ -651,6 +651,11 @@ def _commit(wizard, descriptor):
                 selected_liquid_key(wizard, refs[0]), None
             )
         wizard.temperature_warnings = wizard.perm_calibration.set_temperature(wizard.temperature_c)
+        # A new T or reference liquid makes the setters drop the calibration's
+        # result; drop the wizard's copy too, or the result screen and the
+        # main window would keep showing the old epsilon.
+        if wizard.epsilon_result is not wizard.perm_calibration.epsilon_result:
+            wizard.epsilon_result = None
 
         cfg = load_text("characterization_wizard.json").get("config", {})
         _update_sweep_warning(wizard, cfg)
