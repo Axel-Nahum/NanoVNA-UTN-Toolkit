@@ -1,9 +1,5 @@
 """
 Measurement Viewer — standalone file-based S-parameter visualizer.
-
-Opens from either the DUT Measurements or Material Characterization module.
-Browse to a folder, click files from the list, and compare their S11 / S21
-curves in a 2×2 chart layout (magnitude dB and phase per parameter).
 """
 
 from __future__ import annotations
@@ -15,7 +11,7 @@ import numpy as np
 from matplotlib.figure import Figure as _Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QGuiApplication
+from PySide6.QtGui import QAction, QColor, QGuiApplication
 from PySide6.QtWidgets import (
     QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QListWidget, QListWidgetItem, QMainWindow, QPushButton,
@@ -33,21 +29,24 @@ dark_light_config = safe_import(
     "NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode", "dark_light_config"
 )
 
-# ── Colour palette ────────────────────────────────────────────────────────── #
 _PALETTE = [
     "#4da6ff", "#ff6b6b", "#51cf66", "#ffd43b",
     "#cc5de8", "#ff922b", "#20c997", "#f06595",
 ]
 
-# ── Dark theme ────────────────────────────────────────────────────────────── #
-_BG      = "#1e1e1e"
-_TEXT    = "#cccccc"
-_GRID    = "#333344"
-_SPINE   = "#555566"
+# ── Theme ─────────────────────────────────────────────────────────────────── #
+_WIN_BG   = "#0f1117"
+_PANEL_BG = "#141b24"
+_BORDER   = "#21262d"
+_CARD_BG  = "#141b24"
+_SPINE    = "#21262d"
+_ACCENT   = "#1f6feb"
+_TEXT     = "#e6edf3"
+_TEXT2    = "#8b949e"
+_GRID     = "#1a2230"
+_BG       = _CARD_BG   # matplotlib compat
 
 
-# ─────────────────────────────────────────────────────────────────────────── #
-#  Helpers                                                                     #
 # ─────────────────────────────────────────────────────────────────────────── #
 def _freq_axis_unit(freqs: np.ndarray):
     mx = float(freqs[-1]) if len(freqs) else 1e9
@@ -57,7 +56,6 @@ def _freq_axis_unit(freqs: np.ndarray):
 
 
 def _load_touchstone(path: str):
-    """Return (freqs, s11, s21) or raise."""
     from NanoVNA_UTN_Toolkit.touchstone.Touchstone import Touchstone
     ts = Touchstone(path)
     ts.load()
@@ -72,9 +70,6 @@ def _load_touchstone(path: str):
     return freqs, s11, s21
 
 
-# ─────────────────────────────────────────────────────────────────────────── #
-#  File data container                                                         #
-# ─────────────────────────────────────────────────────────────────────────── #
 class _FileEntry:
     __slots__ = ("path", "name", "color", "freqs", "s11", "s21")
 
@@ -88,22 +83,34 @@ class _FileEntry:
 
 
 # ─────────────────────────────────────────────────────────────────────────── #
-#  Main window                                                                 #
-# ─────────────────────────────────────────────────────────────────────────── #
 class MeasurementViewerWindow(QMainWindow):
+
+    # Segmented-pill button styles
+    _SEG_ACTIVE = (
+        f"QPushButton {{ font-size:11px; padding:3px 14px; border:none;"
+        f" background:{_ACCENT}; color:#ffffff; border-radius:5px; }}"
+        f" QPushButton:hover {{ background:#2f7fef; }}"
+    )
+    _SEG_INACTIVE = (
+        "QPushButton { font-size:11px; padding:3px 14px; border:none;"
+        " background:transparent; color:#8b949e; border-radius:5px; }"
+        " QPushButton:hover { background:#1c2433; color:#c9d1d9; }"
+    )
+    _ACTION_BTN = (
+        f"QPushButton {{ font-size:11px; padding:4px 14px; border-radius:6px;"
+        f" border:1px solid {_BORDER}; background:transparent; color:#c9d1d9; }}"
+        " QPushButton:hover { background:#1c2433; }"
+    )
 
     def __init__(self, vna_device=None, source_module: str = "menu"):
         super().__init__()
         self._vna           = vna_device
         self._source_module = source_module
-
-        # path → _FileEntry (cached loaded data)
         self._cache: dict[str, _FileEntry] = {}
-        # path → colour index (persistent across folder changes)
-        self._color_map: dict[str, str] = {}
-        self._color_idx = 0
-        self._layout_mode  = 2      # 2 = S11/S21 stacked (default),  4 = 2×2 grid
-        self._format_mode  = "db"   # "db" | "phase" | "real" | "imag"
+        self._color_map: dict[str, str]    = {}
+        self._color_idx   = 0
+        self._layout_mode = 2
+        self._format_mode = "db"
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -120,236 +127,292 @@ class MeasurementViewerWindow(QMainWindow):
         self._build_menu()
         self._build_ui()
 
-    # ── Menu ──────────────────────────────────────────────────────────────── #
+    # ── Menubar ───────────────────────────────────────────────────────────── #
     def _build_menu(self):
         mb = self.menuBar()
+        mb.setStyleSheet(
+            f"QMenuBar {{ background:{_PANEL_BG}; color:{_TEXT};"
+            f" border-bottom:1px solid {_BORDER}; }}"
+            " QMenuBar::item:selected { background:#1c2433; }"
+            f" QMenu {{ background:{_PANEL_BG}; color:{_TEXT};"
+            f" border:1px solid {_BORDER}; }}"
+            " QMenu::item:selected { background:#1c2433; }"
+        )
         file_menu = mb.addMenu("File")
-
         clear_act = QAction("Clear Selection", self)
         clear_act.triggered.connect(self._clear_selection)
         file_menu.addAction(clear_act)
-
         file_menu.addSeparator()
-
         back_act = QAction("Back to Menu", self)
         back_act.triggered.connect(self.return_to_menu_window)
         file_menu.addAction(back_act)
 
-    # ── UI ────────────────────────────────────────────────────────────────── #
+    # ── Root layout ───────────────────────────────────────────────────────── #
     def _build_ui(self):
         root = QWidget()
+        root.setStyleSheet(f"background:{_WIN_BG};")
         self.setCentralWidget(root)
-        h_root = QHBoxLayout(root)
-        h_root.setContentsMargins(0, 0, 0, 0)
-        h_root.setSpacing(0)
 
-        # ── Left panel ──────────────────────────────────────────────────── #
+        v = QVBoxLayout(root)
+        v.setContentsMargins(0, 0, 0, 0)
+        v.setSpacing(0)
+
+        v.addWidget(self._build_header())
+
+        hline = QFrame()
+        hline.setFrameShape(QFrame.Shape.HLine)
+        hline.setFixedHeight(1)
+        hline.setStyleSheet(f"background:{_BORDER};")
+        v.addWidget(hline)
+
+        content = QWidget()
+        content.setStyleSheet(f"background:{_WIN_BG};")
+        h = QHBoxLayout(content)
+        h.setContentsMargins(0, 0, 0, 0)
+        h.setSpacing(0)
+
+        h.addWidget(self._build_left_panel())
+
+        vline = QFrame()
+        vline.setFrameShape(QFrame.Shape.VLine)
+        vline.setFixedWidth(1)
+        vline.setStyleSheet(f"background:{_BORDER};")
+        h.addWidget(vline)
+
+        h.addWidget(self._build_chart_area(), stretch=1)
+        v.addWidget(content, stretch=1)
+
+    # ── Header ────────────────────────────────────────────────────────────── #
+    def _build_header(self) -> QWidget:
+        hdr = QWidget()
+        hdr.setFixedHeight(72)
+        hdr.setStyleSheet(f"background:{_PANEL_BG};")
+        h = QHBoxLayout(hdr)
+        h.setContentsMargins(20, 0, 16, 0)
+        h.setSpacing(0)
+
+        # Branding
+        brand = QWidget()
+        brand.setStyleSheet("background:transparent;")
+        bh = QHBoxLayout(brand)
+        bh.setContentsMargins(0, 0, 0, 0)
+        bh.setSpacing(10)
+        icon_lbl = QLabel("⌇")
+        icon_lbl.setStyleSheet("font-size:24px; color:#4da6ff; background:transparent;")
+        bh.addWidget(icon_lbl)
+        tcol = QWidget()
+        tcol.setStyleSheet("background:transparent;")
+        tv = QVBoxLayout(tcol)
+        tv.setContentsMargins(0, 0, 0, 0)
+        tv.setSpacing(1)
+        t1 = QLabel("Measurement Viewer")
+        t1.setStyleSheet(
+            f"font-size:14px; font-weight:bold; color:{_TEXT}; background:transparent;")
+        t2 = QLabel("Compare and inspect measurement files")
+        t2.setStyleSheet(
+            f"font-size:10px; color:{_TEXT2}; background:transparent;")
+        tv.addWidget(t1)
+        tv.addWidget(t2)
+        bh.addWidget(tcol)
+        h.addWidget(brand)
+        h.addSpacing(28)
+
+        # Layout group
+        self._btn_2 = QPushButton("2 charts")
+        self._btn_2.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_2.clicked.connect(lambda: self._set_layout(2))
+        self._btn_4 = QPushButton("4 charts")
+        self._btn_4.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_4.clicked.connect(lambda: self._set_layout(4))
+        self._update_layout_buttons()
+        h.addWidget(self._labeled_seg("Layout", self._btn_2, self._btn_4))
+        h.addSpacing(12)
+
+        # Display group
+        self._fmt_btns: dict[str, QPushButton] = {}
+        for fk, fl in [("db","dB"),("phase","Phase"),("real","Real"),("imag","Imag")]:
+            b = QPushButton(fl)
+            b.setCursor(Qt.CursorShape.PointingHandCursor)
+            b.clicked.connect(lambda _=False, f=fk: self._set_format(f))
+            self._fmt_btns[fk] = b
+        self._update_format_buttons()
+        h.addWidget(self._labeled_seg("Display", *self._fmt_btns.values()))
+
+        h.addStretch(1)
+
+        # Fit view
+        fit_btn = QPushButton("Fit view")
+        fit_btn.setStyleSheet(self._ACTION_BTN)
+        fit_btn.setFixedHeight(32)
+        fit_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        fit_btn.clicked.connect(self._fit_view)
+        h.addWidget(fit_btn)
+
+        return hdr
+
+    def _labeled_seg(self, label: str, *buttons) -> QWidget:
+        """Labeled segmented-pill group: label above, pill container below."""
+        grp = QWidget()
+        grp.setStyleSheet("background:transparent;")
+        gv = QVBoxLayout(grp)
+        gv.setContentsMargins(0, 8, 0, 8)
+        gv.setSpacing(4)
+
+        lbl = QLabel(label)
+        lbl.setStyleSheet(f"font-size:9px; color:{_TEXT2}; background:transparent;")
+        lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        gv.addWidget(lbl)
+
+        pill = QWidget()
+        pill.setStyleSheet("QWidget { background:#1c2433; border-radius:7px; }")
+        pl = QHBoxLayout(pill)
+        pl.setContentsMargins(3, 3, 3, 3)
+        pl.setSpacing(1)
+        for btn in buttons:
+            btn.setFixedHeight(26)
+            pl.addWidget(btn)
+        gv.addWidget(pill)
+        return grp
+
+    # ── Left panel ────────────────────────────────────────────────────────── #
+    def _build_left_panel(self) -> QWidget:
         left = QWidget()
-        left.setFixedWidth(270)
-        left.setStyleSheet("background: #161622; border-right: 1px solid #2a2a3a;")
+        left.setFixedWidth(275)
+        left.setStyleSheet(f"background:{_PANEL_BG};")
         lv = QVBoxLayout(left)
-        lv.setContentsMargins(8, 10, 8, 8)
-        lv.setSpacing(6)
+        lv.setContentsMargins(12, 14, 12, 12)
+        lv.setSpacing(8)
 
-        # Title
-        lbl = QLabel("Files")
-        lbl.setStyleSheet("font-size: 13px; font-weight: bold; color: #aaaacc;")
-        lv.addWidget(lbl)
+        # Header row
+        hrow = QHBoxLayout()
+        hrow.setContentsMargins(0, 0, 0, 0)
+        fl = QLabel("Measurement files")
+        fl.setStyleSheet(
+            f"font-size:12px; font-weight:bold; color:{_TEXT}; background:transparent;")
+        hrow.addWidget(fl)
+        hrow.addStretch()
+        self._badge = QLabel("0 files")
+        self._badge.setStyleSheet(
+            f"font-size:10px; color:{_TEXT2}; background:{_BORDER};"
+            " border-radius:8px; padding:1px 7px;")
+        hrow.addWidget(self._badge)
+        lv.addLayout(hrow)
 
-        # Folder path bar
-        path_row = QHBoxLayout()
-        path_row.setSpacing(4)
-        self._path_edit = QLineEdit()
-        self._path_edit.setPlaceholderText("Folder path…")
-        self._path_edit.setStyleSheet(
-            "QLineEdit { background: #1a1a2e; color: #cccccc; border: 1px solid #333355;"
-            " border-radius: 3px; padding: 2px 6px; font-size: 11px; }"
+        # Buttons
+        brow = QHBoxLayout()
+        brow.setContentsMargins(0, 0, 0, 0)
+        brow.setSpacing(6)
+
+        add_files = QPushButton("+ Add files")
+        add_files.setFixedHeight(30)
+        add_files.setCursor(Qt.CursorShape.PointingHandCursor)
+        add_files.setStyleSheet(
+            f"QPushButton {{ font-size:11px; background:{_ACCENT}; color:white;"
+            " border:none; border-radius:5px; }}"
+            " QPushButton:hover { background:#2f7fef; }"
         )
-        self._path_edit.returnPressed.connect(self._load_folder_from_edit)
-        path_row.addWidget(self._path_edit, stretch=1)
+        add_files.clicked.connect(self._add_files)
+        brow.addWidget(add_files)
 
-        browse_btn = QPushButton("…")
-        browse_btn.setFixedSize(26, 26)
-        browse_btn.setToolTip("Browse for folder")
-        browse_btn.setStyleSheet(
-            "QPushButton { background: #2a2a4a; color: #aaaacc; border: 1px solid #333355;"
-            " border-radius: 3px; font-size: 13px; }"
-            " QPushButton:hover { background: #3a3a6a; }"
+        add_folder = QPushButton("Add folder")
+        add_folder.setFixedHeight(30)
+        add_folder.setCursor(Qt.CursorShape.PointingHandCursor)
+        add_folder.setStyleSheet(
+            f"QPushButton {{ font-size:11px; background:transparent; color:{_TEXT2};"
+            f" border:1px solid {_BORDER}; border-radius:5px; }}"
+            " QPushButton:hover { background:#1c2433; color:#c9d1d9; }"
         )
-        browse_btn.clicked.connect(self._browse_folder)
-        path_row.addWidget(browse_btn)
-        lv.addLayout(path_row)
+        add_folder.clicked.connect(self._browse_folder)
+        brow.addWidget(add_folder)
+        lv.addLayout(brow)
 
-        # Separator
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet("color: #2a2a3a;")
-        lv.addWidget(sep)
+        # Filter
+        self._filter_edit = QLineEdit()
+        self._filter_edit.setPlaceholderText("Filter files…")
+        self._filter_edit.setFixedHeight(30)
+        self._filter_edit.setStyleSheet(
+            f"QLineEdit {{ background:#1c2433; color:{_TEXT}; border:1px solid {_BORDER};"
+            " border-radius:5px; padding:0 8px; font-size:11px; }"
+            f" QLineEdit:focus {{ border-color:{_ACCENT}; }}"
+        )
+        self._filter_edit.textChanged.connect(self._apply_filter)
+        lv.addWidget(self._filter_edit)
 
         # File list
         self._file_list = QListWidget()
         self._file_list.setStyleSheet(
-            "QListWidget { background: #12121e; border: none; color: #cccccc;"
-            " font-size: 11px; outline: none; }"
-            " QListWidget::item { padding: 5px 6px; border-bottom: 1px solid #1e1e2e; }"
-            " QListWidget::item:selected { background: #2a2a4a; color: #ffffff; }"
-            " QListWidget::item:hover { background: #1e1e3a; }"
-            " QScrollBar:vertical { width: 6px; background: #1a1a2a; }"
-            " QScrollBar::handle:vertical { background: #44445a; border-radius: 3px; }"
+            "QListWidget { background:transparent; border:none;"
+            f" color:{_TEXT}; font-size:11px; outline:none; }}"
+            f" QListWidget::item {{ padding:5px 4px; border-bottom:1px solid {_BORDER}; }}"
+            " QListWidget::item:selected { background:#1c2d40; color:#ffffff; }"
+            " QListWidget::item:hover { background:#1a2633; }"
+            " QScrollBar:vertical { width:5px; background:transparent; }"
+            f" QScrollBar::handle:vertical {{ background:{_BORDER}; border-radius:2px; }}"
         )
-        self._file_list.setSelectionMode(
-            QListWidget.SelectionMode.MultiSelection
-        )
+        self._file_list.setSelectionMode(QListWidget.SelectionMode.MultiSelection)
         self._file_list.itemSelectionChanged.connect(self._on_selection_changed)
+        self._file_list.setVisible(False)
         lv.addWidget(self._file_list, stretch=1)
 
-        # Info label (file count)
-        self._info_lbl = QLabel("")
-        self._info_lbl.setStyleSheet("font-size: 10px; color: #555566; font-style: italic;")
-        self._info_lbl.setAlignment(Qt.AlignmentFlag.AlignRight)
-        lv.addWidget(self._info_lbl)
+        # Empty state
+        self._empty_state = QWidget()
+        self._empty_state.setStyleSheet("background:transparent;")
+        ev = QVBoxLayout(self._empty_state)
+        ev.setContentsMargins(0, 24, 0, 0)
+        ev.setSpacing(6)
+        ev.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop)
 
-        h_root.addWidget(left)
+        ico = QLabel("\U0001f4c1")
+        ico.setStyleSheet("font-size:40px; background:transparent;")
+        ico.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        ev.addWidget(ico)
 
-        # ── Right panel: toolbar + charts ────────────────────────────────── #
+        nm = QLabel("No measurements loaded")
+        nm.setStyleSheet(
+            f"font-size:12px; font-weight:bold; color:{_TEXT}; background:transparent;")
+        nm.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        ev.addWidget(nm)
+
+        ht = QLabel("Add .s1p or .s2p files to compare curves.")
+        ht.setStyleSheet(f"font-size:10px; color:{_TEXT2}; background:transparent;")
+        ht.setAlignment(Qt.AlignmentFlag.AlignHCenter)
+        ht.setWordWrap(True)
+        ev.addWidget(ht)
+
+        lv.addWidget(self._empty_state, stretch=1)
+        return left
+
+    # ── Chart area ────────────────────────────────────────────────────────── #
+    def _build_chart_area(self) -> QWidget:
         right = QWidget()
-        right.setStyleSheet("background: #1e1e1e;")
+        right.setStyleSheet(f"background:{_WIN_BG};")
         rv = QVBoxLayout(right)
         rv.setContentsMargins(0, 0, 0, 0)
         rv.setSpacing(0)
 
-        # Toolbar — Word/Altium style: labeled groups separated by dividers
-        toolbar = QWidget()
-        toolbar.setFixedHeight(52)
-        toolbar.setStyleSheet("background: #161622; border-bottom: 1px solid #252535;")
-        tb = QHBoxLayout(toolbar)
-        tb.setContentsMargins(8, 0, 8, 0)
-        tb.setSpacing(0)
-
-        def _group(label_text: str, *widgets) -> QWidget:
-            """Labeled group: controls on top, tiny label centred below."""
-            grp = QWidget()
-            grp.setStyleSheet("QWidget { background: transparent; }")
-            gv = QVBoxLayout(grp)
-            gv.setContentsMargins(6, 4, 6, 2)
-            gv.setSpacing(2)
-
-            lbl = QLabel(label_text)
-            lbl.setStyleSheet("font-size: 9px; color: #7777a0;")
-            lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
-            gv.addWidget(lbl)
-
-            ctrl_row = QWidget()
-            ctrl_row.setStyleSheet("QWidget { background: transparent; }")
-            cr = QHBoxLayout(ctrl_row)
-            cr.setContentsMargins(0, 0, 0, 0)
-            cr.setSpacing(2)
-            for w in widgets:
-                cr.addWidget(w)
-            gv.addWidget(ctrl_row, alignment=Qt.AlignmentFlag.AlignHCenter)
-            return grp
-
-        def _vsep() -> QFrame:
-            sep = QFrame()
-            sep.setFrameShape(QFrame.Shape.VLine)
-            sep.setFixedHeight(36)
-            sep.setStyleSheet("color: #252535;")
-            return sep
-
-        # ── Group: Layout ────────────────────────────────────────────────── #
-        self._btn_2 = QPushButton("2 Charts")
-        self._btn_2.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_2.clicked.connect(lambda: self._set_layout(2))
-
-        self._btn_4 = QPushButton("4 Charts")
-        self._btn_4.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_4.clicked.connect(lambda: self._set_layout(4))
-
-        self._update_layout_buttons()
-
-        seg = QWidget()
-        seg.setStyleSheet(
-            "QWidget { background: #1a1a2e; border: 1px solid #2e2e4e; border-radius: 4px; }"
-        )
-        seg_lay = QHBoxLayout(seg)
-        seg_lay.setContentsMargins(2, 2, 2, 2)
-        seg_lay.setSpacing(1)
-        seg_lay.addWidget(self._btn_2)
-        seg_lay.addWidget(self._btn_4)
-
-        tb.addWidget(_group("Layout", seg))
-        tb.addWidget(_vsep())
-
-        # ── Group: Format ────────────────────────────────────────────────── #
-        self._fmt_btns: dict[str, QPushButton] = {}
-        for _fk, _fl in [("db", "dB"), ("phase", "Phase"), ("real", "Real"), ("imag", "Imag")]:
-            _fb = QPushButton(_fl)
-            _fb.setCursor(Qt.CursorShape.PointingHandCursor)
-            _fb.clicked.connect(lambda _=False, f=_fk: self._set_format(f))
-            self._fmt_btns[_fk] = _fb
-        self._update_format_buttons()
-
-        fmt_seg = QWidget()
-        fmt_seg.setStyleSheet(
-            "QWidget { background: #1a1a2e; border: 1px solid #2e2e4e; border-radius: 4px; }"
-        )
-        fmt_lay = QHBoxLayout(fmt_seg)
-        fmt_lay.setContentsMargins(2, 2, 2, 2)
-        fmt_lay.setSpacing(1)
-        for _fb in self._fmt_btns.values():
-            fmt_lay.addWidget(_fb)
-
-        tb.addWidget(_group("Format", fmt_seg))
-        tb.addWidget(_vsep())
-        tb.addStretch(1)
-
-        rv.addWidget(toolbar)
-
-        # Canvas
-        self._fig = _Figure(facecolor=_BG)
-        self._axes = self._fig.subplots(2, 1)   # default: 2-chart mode
+        self._fig = _Figure(facecolor=_WIN_BG)
+        self._axes = self._fig.subplots(2, 1)
         self._fig.subplots_adjust(left=0.09, right=0.97, top=0.93,
-                                  bottom=0.09, hspace=0.45)
+                                  bottom=0.08, hspace=0.58)
         self._canvas = FigureCanvas(self._fig)
         self._canvas.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         rv.addWidget(self._canvas, stretch=1)
 
-        h_root.addWidget(right, stretch=1)
-
         self._reset_axes()
+        return right
 
-    # ── Layout toggle ─────────────────────────────────────────────────────── #
-    _SEG_ACTIVE   = ("QPushButton { font-size:11px; padding:0 12px; height:22px;"
-                     " border:none; background:#3a3a5a; color:#ccccff; border-radius:3px; }"
-                     " QPushButton:hover { background:#4a4a6a; }")
-    _SEG_INACTIVE = ("QPushButton { font-size:11px; padding:0 12px; height:22px;"
-                     " border:none; background:transparent; color:#666688; border-radius:3px; }"
-                     " QPushButton:hover { background:#252535; color:#aaaacc; }")
-
+    # ── Layout / format toggle ────────────────────────────────────────────── #
     def _update_layout_buttons(self):
-        self._btn_4.setStyleSheet(
-            self._SEG_ACTIVE if self._layout_mode == 4 else self._SEG_INACTIVE)
         self._btn_2.setStyleSheet(
             self._SEG_ACTIVE if self._layout_mode == 2 else self._SEG_INACTIVE)
+        self._btn_4.setStyleSheet(
+            self._SEG_ACTIVE if self._layout_mode == 4 else self._SEG_INACTIVE)
 
     def _update_format_buttons(self):
         for fmt, btn in self._fmt_btns.items():
             btn.setStyleSheet(
                 self._SEG_ACTIVE if fmt == self._format_mode else self._SEG_INACTIVE)
-
-    def _set_format(self, mode: str):
-        if self._format_mode == mode:
-            return
-        self._format_mode = mode
-        self._update_format_buttons()
-        selected_paths = [
-            item.data(Qt.ItemDataRole.UserRole)
-            for item in self._file_list.selectedItems()
-        ]
-        entries = [self._cache[p] for p in selected_paths if p in self._cache]
-        self._redraw(entries)
 
     def _set_layout(self, mode: int):
         if self._layout_mode == mode:
@@ -358,76 +421,102 @@ class MeasurementViewerWindow(QMainWindow):
         self._update_layout_buttons()
         self._rebuild_figure()
 
+    def _set_format(self, mode: str):
+        if self._format_mode == mode:
+            return
+        self._format_mode = mode
+        self._update_format_buttons()
+        self._redraw(self._current_entries())
+
     def _rebuild_figure(self):
-        """Recreate matplotlib subplots for the current layout mode."""
         self._fig.clear()
         if self._layout_mode == 4:
             self._axes = self._fig.subplots(2, 2)
-            self._fig.subplots_adjust(left=0.09, right=0.97, top=0.93,
-                                      bottom=0.09, hspace=0.48, wspace=0.32)
-        else:  # 2-chart mode
+            self._fig.subplots_adjust(left=0.08, right=0.97, top=0.93,
+                                      bottom=0.08, hspace=0.58, wspace=0.3)
+        else:
             self._axes = self._fig.subplots(2, 1)
             self._fig.subplots_adjust(left=0.09, right=0.97, top=0.93,
-                                      bottom=0.09, hspace=0.45)
-        # Replay current selection
-        selected_paths = [
-            item.data(Qt.ItemDataRole.UserRole)
-            for item in self._file_list.selectedItems()
-        ]
-        entries = [self._cache[p] for p in selected_paths if p in self._cache]
-        self._redraw(entries)
+                                      bottom=0.08, hspace=0.58)
+        self._redraw(self._current_entries())
 
-    # ── Folder management ─────────────────────────────────────────────────── #
+    def _current_entries(self) -> list[_FileEntry]:
+        return [
+            self._cache[p]
+            for p in (
+                item.data(Qt.ItemDataRole.UserRole)
+                for item in self._file_list.selectedItems()
+            )
+            if p in self._cache
+        ]
+
+    def _fit_view(self):
+        for ax in self._flat_axes():
+            if ax.get_lines():
+                ax.relim()
+                ax.autoscale_view()
+        self._canvas.draw_idle()
+
+    # ── File management ────────────────────────────────────────────────────── #
+    def _add_files(self):
+        paths, _ = QFileDialog.getOpenFileNames(
+            self, "Add Measurement Files", "",
+            "Touchstone Files (*.s1p *.s2p);;All Files (*.*)"
+        )
+        if paths:
+            self._add_file_paths(paths)
+
     def _browse_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Folder", "")
         if folder:
-            self._path_edit.setText(folder)
-            self._load_folder(folder)
+            files = sorted(
+                str(f) for f in Path(folder).iterdir()
+                if f.suffix.lower() in (".s1p", ".s2p")
+            )
+            self._add_file_paths(files)
 
-    def _load_folder_from_edit(self):
-        self._load_folder(self._path_edit.text().strip())
-
-    def _load_folder(self, folder: str):
-        from pathlib import Path as _P
-        p = _P(folder)
-        if not p.is_dir():
-            return
-        files = sorted(
-            f for f in p.iterdir()
-            if f.suffix.lower() in (".s1p", ".s2p")
-        )
+    def _add_file_paths(self, paths: list[str]):
+        existing = {
+            self._file_list.item(i).data(Qt.ItemDataRole.UserRole)
+            for i in range(self._file_list.count())
+        }
         self._file_list.blockSignals(True)
-        self._file_list.clear()
-        for f in files:
-            item = QListWidgetItem(f.name)
-            item.setData(Qt.ItemDataRole.UserRole, str(f))
-            item.setToolTip(str(f))
+        for path in paths:
+            if path in existing:
+                continue
+            item = QListWidgetItem(Path(path).name)
+            item.setData(Qt.ItemDataRole.UserRole, path)
+            item.setToolTip(path)
             self._file_list.addItem(item)
         self._file_list.blockSignals(False)
+        self._refresh_panel_state()
 
-        count = len(files)
-        self._info_lbl.setText(
-            f"{count} file{'s' if count != 1 else ''} found"
-            if count else "No .s1p/.s2p files found"
-        )
-        self._redraw([])
+    def _refresh_panel_state(self):
+        count = self._file_list.count()
+        self._badge.setText(f"{count} file{'s' if count != 1 else ''}")
+        self._file_list.setVisible(count > 0)
+        self._empty_state.setVisible(count == 0)
+
+    def _apply_filter(self, text: str):
+        text = text.lower()
+        for i in range(self._file_list.count()):
+            item = self._file_list.item(i)
+            item.setHidden(bool(text) and text not in item.text().lower())
 
     def _clear_selection(self):
         self._file_list.clearSelection()
 
-    # ── Selection → redraw ────────────────────────────────────────────────── #
+    # ── Selection ─────────────────────────────────────────────────────────── #
     def _on_selection_changed(self):
         selected_paths = [
             item.data(Qt.ItemDataRole.UserRole)
             for item in self._file_list.selectedItems()
         ]
-        # Assign colour to newly selected files
         for path in selected_paths:
             if path not in self._color_map:
                 self._color_map[path] = _PALETTE[self._color_idx % len(_PALETTE)]
                 self._color_idx += 1
 
-        # Load uncached files
         entries = []
         for path in selected_paths:
             if path not in self._cache:
@@ -443,19 +532,11 @@ class MeasurementViewerWindow(QMainWindow):
                 self._cache[path].color = self._color_map[path]
             entries.append(self._cache[path])
 
-        # Update list item colours to reflect their assigned colour
         for i in range(self._file_list.count()):
             item = self._file_list.item(i)
             path = item.data(Qt.ItemDataRole.UserRole)
-            if path in self._color_map and item.isSelected():
-                item.setForeground(
-                    __import__("PySide6.QtGui", fromlist=["QColor"]).QColor(
-                        self._color_map[path]
-                    )
-                )
-            else:
-                from PySide6.QtGui import QColor
-                item.setForeground(QColor(_TEXT))
+            col  = self._color_map.get(path) if item.isSelected() else None
+            item.setForeground(QColor(col) if col else QColor(_TEXT))
 
         self._redraw(entries)
 
@@ -464,36 +545,36 @@ class MeasurementViewerWindow(QMainWindow):
         if self._layout_mode == 4:
             return [self._axes[0][0], self._axes[0][1],
                     self._axes[1][0], self._axes[1][1]]
-        else:
-            return list(self._axes)  # [ax_top, ax_bottom]
+        return list(self._axes)
 
     def _reset_axes(self):
-        titles = (["S11 Magnitude", "S11 Phase", "S21 Magnitude", "S21 Phase"]
-                  if self._layout_mode == 4 else
-                  ["S11", "S21"])
+        titles = (
+            ["S11 Magnitude", "S11 Phase", "S21 Magnitude", "S21 Phase"]
+            if self._layout_mode == 4 else ["S11", "S21"]
+        )
         for ax, title in zip(self._flat_axes(), titles):
-            ax.set_facecolor(_BG)
-            ax.set_title(title, fontsize=10, color=_TEXT, pad=4)
+            ax.set_facecolor(_CARD_BG)
+            ax.set_title(title, fontsize=11, color=_TEXT, pad=10)
             ax.set_xticks([])
             ax.set_yticks([])
-            ax.set_xlabel("")
-            ax.set_ylabel("")
             for spine in ax.spines.values():
                 spine.set_color(_SPINE)
+                spine.set_linewidth(0.8)
             ax.text(0.5, 0.5, "No data", transform=ax.transAxes,
                     ha="center", va="center", fontsize=10,
-                    color="#666688", fontstyle="italic")
+                    color=_TEXT2, fontstyle="italic")
         self._canvas.draw_idle()
 
     def _redraw(self, entries: list[_FileEntry]):
         flat = self._flat_axes()
         for ax in flat:
             ax.cla()
-            ax.set_facecolor(_BG)
-            ax.tick_params(colors=_TEXT, labelsize=8)
-            ax.grid(True, linestyle=":", alpha=0.35, color=_GRID)
+            ax.set_facecolor(_CARD_BG)
+            ax.tick_params(colors=_TEXT2, labelsize=8)
+            ax.grid(True, linestyle=":", alpha=0.3, color=_GRID)
             for spine in ax.spines.values():
                 spine.set_color(_SPINE)
+                spine.set_linewidth(0.8)
 
         if not entries:
             self._reset_axes()
@@ -508,12 +589,12 @@ class MeasurementViewerWindow(QMainWindow):
             for e in entries:
                 f, lw = e.freqs / div, 1.6
                 if e.s11 is not None:
-                    ax_s11_mag.plot(f, 20 * np.log10(np.abs(e.s11) + 1e-15),
+                    ax_s11_mag.plot(f, 20*np.log10(np.abs(e.s11)+1e-15),
                                     color=e.color, linewidth=lw, label=e.name)
                     ax_s11_ph.plot(f, np.angle(e.s11, deg=True),
                                    color=e.color, linewidth=lw, label=e.name)
                 if e.s21 is not None:
-                    ax_s21_mag.plot(f, 20 * np.log10(np.abs(e.s21) + 1e-15),
+                    ax_s21_mag.plot(f, 20*np.log10(np.abs(e.s21)+1e-15),
                                     color=e.color, linewidth=lw, label=e.name)
                     ax_s21_ph.plot(f, np.angle(e.s21, deg=True),
                                    color=e.color, linewidth=lw, label=e.name)
@@ -527,7 +608,7 @@ class MeasurementViewerWindow(QMainWindow):
                 for ax in (ax_s21_mag, ax_s21_ph):
                     ax.text(0.5, 0.5, "No S21 data", transform=ax.transAxes,
                             ha="center", va="center", fontsize=9,
-                            color="#666688", fontstyle="italic")
+                            color=_TEXT2, fontstyle="italic")
         else:
             ax_top, ax_bot = flat
             _fmt_meta = {
@@ -540,7 +621,7 @@ class MeasurementViewerWindow(QMainWindow):
 
             def _yvals(s):
                 if self._format_mode == "db":
-                    return 20 * np.log10(np.abs(s) + 1e-15)
+                    return 20*np.log10(np.abs(s)+1e-15)
                 if self._format_mode == "phase":
                     return np.angle(s, deg=True)
                 if self._format_mode == "real":
@@ -554,11 +635,10 @@ class MeasurementViewerWindow(QMainWindow):
                 if e.s21 is not None:
                     ax_bot.plot(f, _yvals(e.s21), color=e.color, linewidth=lw, label=e.name)
 
-            has_s21 = any(e.s21 is not None for e in entries)
-            if not has_s21:
+            if not any(e.s21 is not None for e in entries):
                 ax_bot.text(0.5, 0.5, "No S21 data", transform=ax_bot.transAxes,
                             ha="center", va="center", fontsize=9,
-                            color="#666688", fontstyle="italic")
+                            color=_TEXT2, fontstyle="italic")
 
             specs = [
                 (ax_top, f"S11 — {fmt_title}", fmt_ylabel),
@@ -566,15 +646,15 @@ class MeasurementViewerWindow(QMainWindow):
             ]
 
         for ax, title, ylabel in specs:
-            ax.set_title(title, fontsize=10, color=_TEXT, pad=4)
-            ax.set_ylabel(ylabel, fontsize=9, color=_TEXT)
-            ax.set_xlabel(f"Frequency ({unit})", fontsize=9, color=_TEXT)
+            ax.set_title(title, fontsize=11, color=_TEXT, pad=10)
+            ax.set_ylabel(ylabel, fontsize=9, color=_TEXT2)
+            ax.set_xlabel(f"Frequency ({unit})", fontsize=9, color=_TEXT2)
 
         if len(entries) > 1:
             for ax in flat:
                 if ax.get_lines():
                     ax.legend(fontsize=7, loc="best",
-                              facecolor="#1a1a2e", edgecolor="#333344",
+                              facecolor="#1c2433", edgecolor=_BORDER,
                               labelcolor=_TEXT)
 
         self._canvas.draw_idle()
