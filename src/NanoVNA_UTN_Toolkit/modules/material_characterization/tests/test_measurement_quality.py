@@ -388,6 +388,35 @@ def test_kit_records_processing_and_keeps_raw_sweeps():
     np.testing.assert_allclose(data["ref1"][1], s_water, atol=1e-9)
 
 
+def test_opening_a_kit_restores_its_spike_removal_setting():
+    """apply_calibration (the one path every 'open a kit' action takes) brings
+    back the despike setting the kit was saved with; a manifest without it
+    (older kits) leaves the session's setting alone."""
+    cal = _calibration(_SET3, 20.0, probe_key="probe3mm")
+    cal.set_despike_enabled(False)
+    assert cal.compute_calibration()
+    original = calibration_store.get_calibration_dir
+    with tempfile.TemporaryDirectory() as tmp:
+        calibration_store.get_calibration_dir = lambda: Path(tmp)
+        try:
+            calibration_store.save_calibration("kit_off", "kit_off", cal, "open_coax_liquids", 20.0)
+            fresh = PermittivityProbeCalibration()
+            assert fresh.despike_enabled
+            meta, _ = calibration_store.apply_calibration(fresh, "kit_off")
+            assert meta.despike_enabled is False and fresh.despike_enabled is False
+
+            manifest = Path(tmp) / "kit_off" / "manifest.json"
+            import json
+            raw = json.loads(manifest.read_text(encoding="utf-8"))
+            raw.pop("despike_enabled")
+            manifest.write_text(json.dumps(raw), encoding="utf-8")
+            older = PermittivityProbeCalibration()
+            calibration_store.apply_calibration(older, "kit_off")
+            assert older.despike_enabled is True
+        finally:
+            calibration_store.get_calibration_dir = original
+
+
 # --------------------------------------------------------------------------- #
 # (5) Cache invalidation
 # --------------------------------------------------------------------------- #

@@ -84,11 +84,13 @@ def build_result_screen(wizard, descriptor, step_def):
     rtexts = texts.get("result", {})
     wizard.title_label.setText(rtexts.get("title", "Permittivity Result"))
 
-    # Reuse cached result when navigating back/forward without re-measuring.
-    # The cache is invalidated (set to None) in _on_measure whenever a new
-    # measurement is stored, so revisiting after a re-measurement recomputes.
+    # Reuse cached result when navigating back/forward without changes. It is
+    # only valid while the calibration still holds it: any input change (a
+    # standard, the DUT, T, a reference liquid, a loaded kit) makes
+    # perm_calibration drop its epsilon_result, and then this one is stale.
     result = getattr(wizard, "epsilon_result", None)
-    if result is None:
+    if result is None or result is not wizard.perm_calibration.epsilon_result:
+        result = None
         try:
             result = wizard.perm_calibration.compute_epsilon()
         except Exception as exc:  # noqa: BLE001
@@ -845,6 +847,12 @@ def _build_extend_to_full(wizard, layout, rtexts):
         if answer != QMessageBox.Yes:
             return
 
+        # A ref2 left over from an earlier full-technique run in this session
+        # belongs to whatever liquid ref2 had then; read as ref2_liquid it
+        # would give a wrong result, so it is measured again.
+        if (wizard.perm_calibration.is_standard_measured("ref2")
+                and liquid_keys(wizard).get("ref2") != ref2_liquid):
+            wizard.perm_calibration.clear_measurement("ref2")
         set_liquid_key(wizard, "ref2", ref2_liquid)
         if not wizard.perm_calibration.set_reference_liquids(ref1_liquid, ref2_liquid):
             logger.error("[result_screen] could not set reference liquids %s/%s",
@@ -853,13 +861,13 @@ def _build_extend_to_full(wizard, layout, rtexts):
 
         # Switch the active technique; measurements live in perm_calibration
         # (shared standard keys), so nothing is lost. The stale simplified
-        # result must not be reused by the full technique's result screen.
+        # result must not be reused by the full technique's result screen
+        # (set_reference_liquids already dropped the calibration's copy).
         wizard.selected_technique_id = _FULL_TECHNIQUE_ID
         methods = load_text("characterization_methods.json").get("methods", {})
         wizard.selected_method = methods.get(_FULL_TECHNIQUE_ID, {}).get(
             "title", _FULL_TECHNIQUE_ID)
         wizard.epsilon_result = None
-        wizard.perm_calibration.pattern_constants = None
 
         logger.info("[result_screen] extended to '%s'; jumping to ref2 (step %d)",
                     _FULL_TECHNIQUE_ID, ref2_index)

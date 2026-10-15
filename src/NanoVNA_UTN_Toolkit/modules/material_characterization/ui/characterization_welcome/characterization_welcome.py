@@ -555,9 +555,7 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
     def open_characterization_methods(self):
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.wizard_methods_window import CharacterizationWizard
-        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import update_step_screen
-        from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import get as get_technique
-        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.kit_loader import load_kit_into_wizard
 
         logging.info("[material_characterization_welcome.open_characterization_methods] Opening characterization methods window")
 
@@ -570,48 +568,8 @@ class MaterialCharacterizationWelcome(QMainWindow):
 
         if kit_name and kit_name in getattr(self, "_calibration_metas", {}):
             try:
-                cal_data, meta = calibration_store.load_calibration(kit_name)
-                descriptor = get_technique(meta.technique_id)
-
-                wizard.selected_technique_id = meta.technique_id
-                # Localized title, as the introduction screen stores it; the
-                # raw name_token would end up verbatim in the report.
-                methods = load_text("characterization_methods.json").get("methods", {})
-                wizard.selected_method = methods.get(descriptor.name_token, {}).get(
-                    "title", descriptor.name_token)
-                wizard.temperature_c = meta.temperature_c
-                if meta.f_start_hz is not None:
-                    wizard.sweep_start_freq = meta.f_start_hz
-                if meta.f_stop_hz is not None:
-                    wizard.sweep_stop_freq = meta.f_stop_hz
-                if meta.points is not None:
-                    wizard.sweep_steps = meta.points
-                wizard.perm_calibration.set_reference_liquids(meta.ref1_key, meta.ref2_key)
-                wizard.perm_calibration.probe_key = meta.probe_key
-                if meta.despike_enabled is not None:
-                    wizard.perm_calibration.set_despike_enabled(meta.despike_enabled)
-
-                std_temps = meta.standard_temperatures or {}
-                for key, (freqs, s11) in cal_data.items():
-                    wizard.perm_calibration.set_measurement(
-                        key, freqs, s11, source=f"kit:{meta.name}",
-                        temperature_c=std_temps.get(key),
-                    )
-                # After the standards: the warnings check each reference at
-                # the temperature its eps_r is really evaluated at.
-                wizard.temperature_warnings = wizard.perm_calibration.set_temperature(
-                    meta.temperature_c)
-
-                # Find the DUT step index (current_step = descriptor index + 1)
-                dut_step = next(
-                    (i + 1 for i, s in enumerate(descriptor.steps)
-                     if s.standard is not None and s.standard.key == "dut"),
-                    None,
-                )
-                if dut_step is not None:
-                    wizard.current_step = dut_step
-                    update_step_screen(wizard)
-
+                # Same loader as the Calibration menu (kit_loader).
+                load_kit_into_wizard(wizard, kit_name)
             except Exception as exc:
                 logging.exception("[open_characterization_methods] failed to load kit '%s'", kit_name)
                 QMessageBox.critical(wizard, "Kit load failed", str(exc))

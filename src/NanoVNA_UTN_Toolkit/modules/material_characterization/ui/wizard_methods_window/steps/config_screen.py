@@ -57,6 +57,9 @@ _UNIT_MULT = {"Hz": 1, "kHz": 1e3, "MHz": 1e6, "GHz": 1e9}
 _DEFAULT_POINTS = [11, 51, 101, 201, 301, 401, 501, 1023]
 _UNKNOWN_NAME_MAXLEN = 80
 
+# Answers of _ask_measured_liquid_change.
+_LIQUID_DISCARD, _LIQUID_KEEP, _LIQUID_CANCEL = "discard", "keep", "cancel"
+
 # Debug Mode lifts the device limits so that a sweep can be made to match ANY
 # .s1p on disk. These bounds only keep the spin boxes sane; they are not a
 # claim about what the instrument can do (see _sweep_exceeds_device).
@@ -408,6 +411,55 @@ def _refresh_preset_combo(wizard, standard, combo, cfg):
     return combo.currentData()
 
 
+def _ask_measured_liquid_change(wizard, cfg, old_key, new_key):
+    """
+    Ask what to do with an already-measured reference whose liquid changes.
+
+    EN: The stored S11 belongs to ``old_key``; read as ``new_key`` it is paired
+        with the wrong known eps_r and the result is wrong. Returns
+        ``_LIQUID_DISCARD`` (the liquid really changes: measure it again),
+        ``_LIQUID_KEEP`` (the data was taken with ``new_key``, only the
+        selection was wrong) or ``_LIQUID_CANCEL`` (stay with ``old_key``).
+    ES: El S11 guardado corresponde a ``old_key``; leido como ``new_key`` se
+        empareja con el eps_r conocido equivocado y el resultado sale mal.
+        Devuelve ``_LIQUID_DISCARD`` (el liquido cambia de verdad: hay que
+        volver a medirlo), ``_LIQUID_KEEP`` (los datos se tomaron con
+        ``new_key``, solo estaba mal la seleccion) o ``_LIQUID_CANCEL``
+        (quedarse con ``old_key``).
+    """
+    liquids = load_text("characterization_wizard.json").get("liquids", {})
+    old, new = (liquids.get(k) or get_reference_liquid(k).display_name
+                for k in (old_key, new_key))
+
+    box = QMessageBox(wizard)
+    box.setIcon(QMessageBox.Warning)
+    box.setWindowTitle(cfg.get("liquid_change_title", "Change reference liquid"))
+    box.setText(cfg.get(
+        "liquid_change_msg",
+        "This reference already has a measurement taken with {old}.\n\n"
+        "If you will now use {new}, discard it and measure {new} in its step: "
+        "keeping the {old} S11 under the name {new} gives a wrong permittivity.\n\n"
+        "Keep it only if the measurement was actually taken with {new} and only "
+        "the selection was wrong."
+    ).format(old=old, new=new))
+    discard_btn = box.addButton(
+        cfg.get("liquid_change_discard", "Discard measurement"), QMessageBox.DestructiveRole)
+    keep_btn = box.addButton(
+        cfg.get("liquid_change_keep", "Keep measurement"), QMessageBox.AcceptRole)
+    cancel_btn = box.addButton(
+        cfg.get("liquid_change_cancel", "Cancel"), QMessageBox.RejectRole)
+    box.setDefaultButton(discard_btn)
+    box.setEscapeButton(cancel_btn)
+    box.exec()
+
+    clicked = box.clickedButton()
+    if clicked is discard_btn:
+        return _LIQUID_DISCARD
+    if clicked is keep_btn:
+        return _LIQUID_KEEP
+    return _LIQUID_CANCEL
+
+
 def _bind_reference_row(wizard, descriptor, standard, cfg,
                         liquid_combo, preset_combo, del_btn):
     """Wire one reference row: liquid choice, preset choice and preset deletion."""
@@ -426,6 +478,18 @@ def _bind_reference_row(wizard, descriptor, standard, cfg,
         key = liquid_combo.currentData()
         if not key:
             return
+        previous = selected_liquid_key(wizard, standard)
+        if (previous and key != previous
+                and wizard.perm_calibration.is_standard_measured(standard.key)):
+            choice = _ask_measured_liquid_change(wizard, cfg, previous, key)
+            if choice == _LIQUID_CANCEL:
+                liquid_combo.blockSignals(True)
+                liquid_combo.setCurrentIndex(max(liquid_combo.findData(previous), 0))
+                liquid_combo.blockSignals(False)
+                return
+            if choice == _LIQUID_DISCARD:
+                # The step's pre-cal stays for the new liquid's sweep.
+                wizard.perm_calibration.clear_measurement(standard.key)
         set_liquid_key(wizard, standard.key, key)
         # The previous preset belonged to the previous liquid.
         set_preset_preload(wizard, standard.key, None)
@@ -662,6 +726,11 @@ def _commit(wizard, descriptor):
                 selected_liquid_key(wizard, refs[0]), None
             )
         wizard.temperature_warnings = wizard.perm_calibration.set_temperature(wizard.temperature_c)
+        # A new T or reference liquid makes the setters drop the calibration's
+        # result; drop the wizard's copy too, or the result screen and the
+        # main window would keep showing the old epsilon.
+        if wizard.epsilon_result is not wizard.perm_calibration.epsilon_result:
+            wizard.epsilon_result = None
 
         cfg = load_text("characterization_wizard.json").get("config", {})
         _update_sweep_warning(wizard, cfg)
