@@ -458,21 +458,21 @@ class MeasurementViewerWindow(QMainWindow):
         c1h.addWidget(self._btn_c1)
         c1v.addLayout(c1h)
         c1d = QHBoxLayout()
-        c1d.setSpacing(10)
+        c1d.setSpacing(8)
         c1d.setContentsMargins(0, 0, 0, 0)
-        self._lbl_c1_freq  = _val_lbl()
-        self._lbl_c1_val   = _val_lbl()
-        self._lbl_c1_val2  = _val_lbl()
-        self._cap_c1_val   = _cap_lbl("—")
-        self._cap_c1_val2  = _cap_lbl("—")
-        for lbl, cap_w in (
-            (self._lbl_c1_freq, _cap_lbl("Freq")),
-            (self._lbl_c1_val,  self._cap_c1_val),
-            (self._lbl_c1_val2, self._cap_c1_val2),
-        ):
-            col = QVBoxLayout(); col.setSpacing(1)
-            col.addWidget(cap_w); col.addWidget(lbl)
-            c1d.addLayout(col)
+        self._lbl_c1_freq = _val_lbl()
+        _fw = QWidget(); _fw.setStyleSheet("background:transparent;")
+        _fv = QVBoxLayout(_fw); _fv.setContentsMargins(0,0,0,0); _fv.setSpacing(1)
+        _fv.addWidget(_cap_lbl("Freq")); _fv.addWidget(self._lbl_c1_freq)
+        c1d.addWidget(_fw)
+        self._c1_vcols: list[tuple] = []
+        for _ in range(4):
+            _cap = _cap_lbl("—"); _val = _val_lbl()
+            _cw = QWidget(); _cw.setStyleSheet("background:transparent;")
+            _cv = QVBoxLayout(_cw); _cv.setContentsMargins(0,0,0,0); _cv.setSpacing(1)
+            _cv.addWidget(_cap); _cv.addWidget(_val)
+            c1d.addWidget(_cw)
+            self._c1_vcols.append((_cw, _cap, _val))
         c1v.addLayout(c1d)
         cph.addWidget(c1_sec, stretch=2)
 
@@ -501,21 +501,21 @@ class MeasurementViewerWindow(QMainWindow):
         c2h.addWidget(self._btn_c2)
         c2v.addLayout(c2h)
         c2d = QHBoxLayout()
-        c2d.setSpacing(10)
+        c2d.setSpacing(8)
         c2d.setContentsMargins(0, 0, 0, 0)
-        self._lbl_c2_freq  = _val_lbl()
-        self._lbl_c2_val   = _val_lbl()
-        self._lbl_c2_val2  = _val_lbl()
-        self._cap_c2_val   = _cap_lbl("—")
-        self._cap_c2_val2  = _cap_lbl("—")
-        for lbl, cap_w in (
-            (self._lbl_c2_freq, _cap_lbl("Freq")),
-            (self._lbl_c2_val,  self._cap_c2_val),
-            (self._lbl_c2_val2, self._cap_c2_val2),
-        ):
-            col = QVBoxLayout(); col.setSpacing(1)
-            col.addWidget(cap_w); col.addWidget(lbl)
-            c2d.addLayout(col)
+        self._lbl_c2_freq = _val_lbl()
+        _fw = QWidget(); _fw.setStyleSheet("background:transparent;")
+        _fv = QVBoxLayout(_fw); _fv.setContentsMargins(0,0,0,0); _fv.setSpacing(1)
+        _fv.addWidget(_cap_lbl("Freq")); _fv.addWidget(self._lbl_c2_freq)
+        c2d.addWidget(_fw)
+        self._c2_vcols: list[tuple] = []
+        for _ in range(4):
+            _cap = _cap_lbl("—"); _val = _val_lbl()
+            _cw = QWidget(); _cw.setStyleSheet("background:transparent;")
+            _cv = QVBoxLayout(_cw); _cv.setContentsMargins(0,0,0,0); _cv.setSpacing(1)
+            _cv.addWidget(_cap); _cv.addWidget(_val)
+            c2d.addWidget(_cw)
+            self._c2_vcols.append((_cw, _cap, _val))
         c2v.addLayout(c2d)
         cph.addWidget(c2_sec, stretch=2)
 
@@ -531,21 +531,21 @@ class MeasurementViewerWindow(QMainWindow):
         df_title.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:10px; font-weight:600;")
         dfv.addWidget(df_title)
         dfd = QHBoxLayout()
-        dfd.setSpacing(10)
+        dfd.setSpacing(8)
         dfd.setContentsMargins(0, 0, 0, 0)
-        self._lbl_df      = _val_lbl()
-        self._lbl_df_val  = _val_lbl()
-        self._lbl_df_val2 = _val_lbl()
-        self._cap_df_val  = _cap_lbl("—")
-        self._cap_df_val2 = _cap_lbl("—")
-        for lbl, cap_w in (
-            (self._lbl_df,      _cap_lbl("ΔF")),
-            (self._lbl_df_val,  self._cap_df_val),
-            (self._lbl_df_val2, self._cap_df_val2),
-        ):
-            col = QVBoxLayout(); col.setSpacing(1)
-            col.addWidget(cap_w); col.addWidget(lbl)
-            dfd.addLayout(col)
+        self._lbl_df = _val_lbl()
+        _fw = QWidget(); _fw.setStyleSheet("background:transparent;")
+        _fv = QVBoxLayout(_fw); _fv.setContentsMargins(0,0,0,0); _fv.setSpacing(1)
+        _fv.addWidget(_cap_lbl("ΔF")); _fv.addWidget(self._lbl_df)
+        dfd.addWidget(_fw)
+        self._df_vcols: list[tuple] = []
+        for _ in range(4):
+            _cap = _cap_lbl("—"); _val = _val_lbl()
+            _cw = QWidget(); _cw.setStyleSheet("background:transparent;")
+            _cv = QVBoxLayout(_cw); _cv.setContentsMargins(0,0,0,0); _cv.setSpacing(1)
+            _cv.addWidget(_cap); _cv.addWidget(_val)
+            dfd.addWidget(_cw)
+            self._df_vcols.append((_cw, _cap, _val))
         dfv.addLayout(dfd)
         cph.addWidget(df_sec, stretch=2)
 
@@ -1387,59 +1387,79 @@ class MeasurementViewerWindow(QMainWindow):
         if "imag"      in t: return "Im"
         return title.split()[-1][:5]
 
-    def _update_cursor_readout(self):
-        titles = self._chart_titles()
+    def _cursor_y_val_at(self, n: int, ax_idx: int):
+        """Return (float_value, unit_str) for cursor n at a specific axis index."""
         all_ax = self._flat_axes()
         mid = max(len(all_ax) // 2, 1)
-        cap0 = self._short_chart_label(titles[0])   if titles        else "Val"
-        cap1 = self._short_chart_label(titles[mid]) if len(titles) > mid else "Val"
-        for lbl, txt in (
-            (self._cap_c1_val,  cap0),   (self._cap_c1_val2,  cap1),
-            (self._cap_c2_val,  cap0),   (self._cap_c2_val2,  cap1),
-            (self._cap_df_val,  f"Δ{cap0}"), (self._cap_df_val2, f"Δ{cap1}"),
-        ):
-            lbl.setText(txt)
+        row = 0 if ax_idx < mid else 1
+        for dot, _, a_idx in self._cursor_markers[(n, row)]:
+            if a_idx == ax_idx:
+                yi = dot.get_ydata()
+                if len(yi) == 0:
+                    continue
+                return float(yi[0]), self._y_unit_for_ax(ax_idx)
+        return None, ""
+
+    def _update_cursor_readout(self):
+        titles = self._chart_titles()
+        n = len(titles)   # 2 or 4
+
+        # Show/hide value columns based on chart count
+        for vcols in (self._c1_vcols, self._c2_vcols, self._df_vcols):
+            for i, (cw, _, __) in enumerate(vcols):
+                cw.setVisible(i < n)
+
+        # Update column captions
+        for i in range(n):
+            short = self._short_chart_label(titles[i])
+            self._c1_vcols[i][1].setText(short)
+            self._c2_vcols[i][1].setText(short)
+            self._df_vcols[i][1].setText(f"Δ{short}")
 
         f1 = self._cursor_freq[1][0]
         f2 = self._cursor_freq[2][0]
 
-        def _fv(n, row):
-            v, u = self._cursor_y_val(n, row)
+        def _fv(cursor_n, ax_idx):
+            v, u = self._cursor_y_val_at(cursor_n, ax_idx)
             return f"{v:.3f} {u}".strip() if v is not None else "—"
+
+        def _dv(ax_idx):
+            v1, u = self._cursor_y_val_at(1, ax_idx)
+            v2, _ = self._cursor_y_val_at(2, ax_idx)
+            if v1 is not None and v2 is not None:
+                dy = v2 - v1
+                return f"{'+'if dy>=0 else''}{dy:.3f} {u}".strip()
+            return "—"
 
         # C1
         if f1 is not None:
             self._lbl_c1_freq.setText(self._fmt_freq(f1))
-            self._lbl_c1_val.setText(_fv(1, 0))
-            self._lbl_c1_val2.setText(_fv(1, 1))
+            for i in range(n):
+                self._c1_vcols[i][2].setText(_fv(1, i))
         else:
             self._lbl_c1_freq.setText("—")
-            self._lbl_c1_val.setText("—")
-            self._lbl_c1_val2.setText("—")
+            for _, _, val in self._c1_vcols:
+                val.setText("—")
+
         # C2
         if f2 is not None:
             self._lbl_c2_freq.setText(self._fmt_freq(f2))
-            self._lbl_c2_val.setText(_fv(2, 0))
-            self._lbl_c2_val2.setText(_fv(2, 1))
+            for i in range(n):
+                self._c2_vcols[i][2].setText(_fv(2, i))
         else:
             self._lbl_c2_freq.setText("—")
-            self._lbl_c2_val.setText("—")
-            self._lbl_c2_val2.setText("—")
+            for _, _, val in self._c2_vcols:
+                val.setText("—")
+
         # Delta
         if f1 is not None and f2 is not None:
             self._lbl_df.setText(self._fmt_freq(abs(f2 - f1)))
-            for lbl, row in ((self._lbl_df_val, 0), (self._lbl_df_val2, 1)):
-                v1, unit = self._cursor_y_val(1, row)
-                v2, _    = self._cursor_y_val(2, row)
-                if v1 is not None and v2 is not None:
-                    dy = v2 - v1
-                    lbl.setText(f"{'+'if dy>=0 else''}{dy:.3f} {unit}".strip())
-                else:
-                    lbl.setText("—")
+            for i in range(n):
+                self._df_vcols[i][2].setText(_dv(i))
         else:
             self._lbl_df.setText("—")
-            self._lbl_df_val.setText("—")
-            self._lbl_df_val2.setText("—")
+            for _, _, val in self._df_vcols:
+                val.setText("—")
 
     def _update_linked_buttons(self):
         linked = self._cursors_linked
