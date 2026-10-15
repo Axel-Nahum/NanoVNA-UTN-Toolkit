@@ -607,14 +607,14 @@ class MeasurementViewerWindow(QMainWindow):
         rph.setContentsMargins(12, 0, 12, 0)
         rph.setSpacing(0)
 
-        _RNG_ON  = (f"QPushButton {{ font-size:10px; font-weight:600; padding:1px 7px;"
+        _RNG_ON  = (f"QPushButton {{ font-size:11px; font-weight:600; padding:2px 9px;"
                     f" border:none; background:{_ACCENT}; color:#ffffff; border-radius:4px; }}"
                     f" QPushButton:hover {{ background:{_ACCENT_H}; }}")
-        _RNG_OFF = (f"QPushButton {{ font-size:10px; padding:1px 7px;"
+        _RNG_OFF = (f"QPushButton {{ font-size:11px; padding:2px 9px;"
                     f" border:1px solid {_BORDER}; background:transparent;"
                     f" color:{_TEXT2}; border-radius:4px; }}"
                     f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}")
-        _RNG_IN  = (f"QLineEdit {{ font-size:10px; padding:1px 4px; border-radius:3px;"
+        _RNG_IN  = (f"QLineEdit {{ font-size:11px; padding:2px 5px; border-radius:3px;"
                     f" border:1px solid {_BORDER}; background:{_CARD_BG}; color:{_TEXT}; }}"
                     f" QLineEdit:focus {{ border-color:{_ACCENT}; }}"
                     f" QLineEdit:disabled {{ color:#44445a; background:#1a1a2e; border-color:#2a2a42; }}")
@@ -636,13 +636,13 @@ class MeasurementViewerWindow(QMainWindow):
             # Row 1: label + Auto + Grid
             _r1 = QHBoxLayout(); _r1.setSpacing(4); _r1.setContentsMargins(0,0,0,0)
             _chart_lbl = QLabel("—")
-            _chart_lbl.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:10px; font-weight:500;")
+            _chart_lbl.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:11px; font-weight:500;")
             _chart_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
             _btn_auto = QPushButton("Auto")
-            _btn_auto.setFixedSize(46, 20)
+            _btn_auto.setFixedSize(52, 23)
             _btn_auto.setCursor(Qt.CursorShape.PointingHandCursor)
             _btn_grid = QPushButton("Grid")
-            _btn_grid.setFixedSize(42, 20)
+            _btn_grid.setFixedSize(48, 23)
             _btn_grid.setCursor(Qt.CursorShape.PointingHandCursor)
             _r1.addWidget(_chart_lbl)
             _r1.addWidget(_btn_auto)
@@ -653,12 +653,12 @@ class MeasurementViewerWindow(QMainWindow):
             # Row 2: Ymin / Ymax inputs
             _r2 = QHBoxLayout(); _r2.setSpacing(4); _r2.setContentsMargins(0,0,0,0)
             _lbl_min = QLabel("Y min")
-            _lbl_min.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px;")
-            _edit_min = QLineEdit(); _edit_min.setFixedHeight(20); _edit_min.setStyleSheet(_RNG_IN)
+            _lbl_min.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:10px;")
+            _edit_min = QLineEdit(); _edit_min.setFixedHeight(23); _edit_min.setStyleSheet(_RNG_IN)
             _edit_min.setPlaceholderText("auto"); _edit_min.setEnabled(False)
             _lbl_max = QLabel("max")
-            _lbl_max.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px;")
-            _edit_max = QLineEdit(); _edit_max.setFixedHeight(20); _edit_max.setStyleSheet(_RNG_IN)
+            _lbl_max.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:10px;")
+            _edit_max = QLineEdit(); _edit_max.setFixedHeight(23); _edit_max.setStyleSheet(_RNG_IN)
             _edit_max.setPlaceholderText("auto"); _edit_max.setEnabled(False)
             _r2.addWidget(_lbl_min)
             _r2.addWidget(_edit_min, 1)
