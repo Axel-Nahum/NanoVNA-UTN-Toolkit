@@ -273,7 +273,6 @@ def _render_real_imag(fig, wizard, standard, name, color, std_texts,
     fig.clf()
     ax_re = fig.add_subplot(2, 1, 1)
     ax_im = fig.add_subplot(2, 1, 2)
-    fig.subplots_adjust(left=0.15, right=0.96, top=0.88, bottom=0.12, hspace=0.45)
     _apply_light_axes(ax_re)
     _apply_light_axes(ax_im)
 
@@ -329,6 +328,7 @@ def _render_real_imag(fig, wizard, standard, name, color, std_texts,
     ax_re.tick_params(labelbottom=False)
     if handles:
         ax_re.legend(handles, labels, fontsize=8, framealpha=0.9, loc="best")
+    fig.subplots_adjust(left=0.17, right=0.96, top=0.88, bottom=0.12, hspace=0.45)
 
 
 def _render_db_phase(fig, wizard, standard, name, color, std_texts,
@@ -343,7 +343,6 @@ def _render_db_phase(fig, wizard, standard, name, color, std_texts,
     fig.clf()
     ax_mag = fig.add_subplot(2, 1, 1)
     ax_ph  = fig.add_subplot(2, 1, 2)
-    fig.subplots_adjust(left=0.15, right=0.96, top=0.88, bottom=0.12, hspace=0.45)
     _apply_light_axes(ax_mag)
     _apply_light_axes(ax_ph)
 
@@ -406,6 +405,7 @@ def _render_db_phase(fig, wizard, standard, name, color, std_texts,
     ax_mag.tick_params(labelbottom=False)
     if handles:
         ax_mag.legend(handles, labels, fontsize=8, framealpha=0.9, loc="best")
+    fig.subplots_adjust(left=0.17, right=0.96, top=0.88, bottom=0.12, hspace=0.45)
 
 
 def _refresh_preset_combo(combo: QComboBox, liquid_key=None, probe=None) -> None:
