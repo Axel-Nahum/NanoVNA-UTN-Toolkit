@@ -267,6 +267,7 @@ class MeasurementViewerWindow(QMainWindow):
         bh = QHBoxLayout(brand)
         bh.setContentsMargins(20, 0, 12, 0)
         bh.setSpacing(10)
+        bh.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         icon_lbl = QLabel()
         icon_lbl.setStyleSheet("background:transparent;")
         icon_lbl.setPixmap(_make_signal_pixmap(36, "#4da6ff"))
