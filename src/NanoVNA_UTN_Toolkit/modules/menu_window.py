@@ -115,7 +115,7 @@ class ModuleSelectionWindow(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         self.setWindowTitle(f"{self.menu_title}")
-        self.setFixedSize(850, 500)
+        self.setFixedSize(850, 620)
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
         window_geometry = self.frameGeometry()
@@ -290,6 +290,47 @@ class ModuleSelectionWindow(QMainWindow):
         modules_layout.addWidget(self.materials_card)
 
 # ------------------------------------------------------------------------------------------------------------------- #
+# Viewer Card (centered below, slightly smaller)
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        self.viewer_card = QFrame()
+        self.viewer_card.setFixedSize(260, 160)
+        self.viewer_card.setStyleSheet(self._card_style)
+
+        viewer_layout = QVBoxLayout(self.viewer_card)
+        viewer_layout.setSpacing(10)
+
+        self.viewer_title_label = QLabel("📊  Measurement Viewer")
+        self.viewer_title_label.setAlignment(Qt.AlignCenter)
+        self.viewer_title_label.setStyleSheet("""
+            font-size: 15px;
+            font-weight: bold;
+            border: none;
+        """)
+
+        self.viewer_description_label = QLabel("Visualize & compare S-parameter files")
+        self.viewer_description_label.setAlignment(Qt.AlignCenter)
+        self.viewer_description_label.setWordWrap(True)
+        self.viewer_description_label.setStyleSheet("""
+            font-size: 12px;
+            border: none;
+        """)
+
+        self.viewer_button = QPushButton("Open")
+        self.viewer_button.setFixedSize(120, 34)
+        self.viewer_button.setStyleSheet(self._btn_open_style)
+        self.viewer_button.clicked.connect(self.open_measurement_viewer)
+
+        viewer_layout.addWidget(self.viewer_title_label)
+        viewer_layout.addWidget(self.viewer_description_label)
+        viewer_layout.addStretch()
+        viewer_layout.addWidget(self.viewer_button, alignment=Qt.AlignCenter)
+
+        viewer_row = QHBoxLayout()
+        viewer_row.setAlignment(Qt.AlignCenter)
+        viewer_row.addWidget(self.viewer_card)
+
+# ------------------------------------------------------------------------------------------------------------------- #
 # Preferences Button
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -312,7 +353,11 @@ class ModuleSelectionWindow(QMainWindow):
 
         main_layout.addLayout(modules_layout)
 
-        main_layout.addSpacing(25)
+        main_layout.addSpacing(18)
+
+        main_layout.addLayout(viewer_row)
+
+        main_layout.addSpacing(18)
 
         main_layout.addWidget(
             self.preferences_button,
@@ -372,8 +417,10 @@ class ModuleSelectionWindow(QMainWindow):
             )
         self.dut_card.setStyleSheet(_card)
         self.materials_card.setStyleSheet(_card)
+        self.viewer_card.setStyleSheet(_card)
         self.dut_button.setStyleSheet(_btn_open)
         self.materials_button.setStyleSheet(_btn_open)
+        self.viewer_button.setStyleSheet(_btn_open)
         self.preferences_button.setStyleSheet(_btn_pref)
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -438,6 +485,76 @@ class ModuleSelectionWindow(QMainWindow):
         self.welcome_windows.show()
 
         self.close()
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Open Measurement Viewer
+# ------------------------------------------------------------------------------------------------------------------- #
+
+    def open_measurement_viewer(self):
+        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel
+        from PySide6.QtCore import Qt
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Measurement Viewer")
+        dlg.setFixedSize(360, 160)
+
+        _is_dark = not getattr(self, "is_dark_mode", False)
+        if _is_dark:
+            dlg.setStyleSheet("background:#1e1e2e; color:#ffffff;")
+            _btn_style = (
+                "QPushButton { background:#1a3a5c; color:white; border:1px solid #2d5a8e;"
+                " border-radius:6px; font-size:13px; font-weight:bold; padding:6px 14px; }"
+                " QPushButton:hover { background:#254e7a; }"
+            )
+        else:
+            dlg.setStyleSheet("")
+            _btn_style = self._btn_open_style
+
+        lyt = QVBoxLayout(dlg)
+        lyt.setContentsMargins(24, 20, 24, 20)
+        lyt.setSpacing(16)
+
+        lbl = QLabel("Open viewer for which module?")
+        lbl.setAlignment(Qt.AlignCenter)
+        lbl.setStyleSheet("font-size:14px; background:transparent;")
+        lyt.addWidget(lbl)
+
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(16)
+
+        btn_dut = QPushButton("DUT Measurement")
+        btn_dut.setFixedHeight(36)
+        btn_dut.setStyleSheet(_btn_style)
+
+        btn_char = QPushButton("Material Characterization")
+        btn_char.setFixedHeight(36)
+        btn_char.setStyleSheet(_btn_style)
+
+        btn_row.addWidget(btn_dut)
+        btn_row.addWidget(btn_char)
+        lyt.addLayout(btn_row)
+
+        chosen = [None]
+
+        def _pick(src):
+            chosen[0] = src
+            dlg.accept()
+
+        btn_dut.clicked.connect(lambda: _pick("dut"))
+        btn_char.clicked.connect(lambda: _pick("char"))
+
+        if dlg.exec() != QDialog.DialogCode.Accepted or chosen[0] is None:
+            return
+
+        from NanoVNA_UTN_Toolkit.shared.measurement_viewer.measurement_viewer import MeasurementViewerWindow
+        self._viewer_win = MeasurementViewerWindow(
+            vna_device=self.vna,
+            source_module=chosen[0],
+            source_window=self,
+        )
+        self._viewer_win.show()
+        self.hide()
+
 
 if __name__ == "__main__":
 

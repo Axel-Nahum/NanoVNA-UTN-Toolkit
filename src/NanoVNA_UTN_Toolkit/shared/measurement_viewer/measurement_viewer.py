@@ -2281,12 +2281,19 @@ class MeasurementViewerWindow(QMainWindow):
             self.return_to_menu_window()
 
     def return_to_menu_window(self):
-        from NanoVNA_UTN_Toolkit.modules.menu_window import ModuleSelectionWindow
         try:
             import matplotlib.pyplot as plt
             plt.close("all")
         except Exception:
             pass
+        if self._source_window is not None:
+            try:
+                self._source_window.show()
+                self.close()
+                return
+            except RuntimeError:
+                pass
+        from NanoVNA_UTN_Toolkit.modules.menu_window import ModuleSelectionWindow
         if self._vna:
             self._menu_win = ModuleSelectionWindow(vna_device=self._vna)
         else:
