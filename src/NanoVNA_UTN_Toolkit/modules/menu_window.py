@@ -271,7 +271,7 @@ class ModuleSelectionWindow(QMainWindow):
         main_layout.addSpacing(_sc(30, _s))
         main_layout.addLayout(viewer_row)
 
-        main_layout.addSpacing(_sc(10, _s))
+        main_layout.addSpacing(_sc(20, _s))
         main_layout.addWidget(self.preferences_button, alignment=Qt.AlignCenter)
 
         main_layout.addStretch(1)
