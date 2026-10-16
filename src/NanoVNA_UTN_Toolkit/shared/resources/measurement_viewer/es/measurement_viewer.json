@@ -1,0 +1,78 @@
+{
+  "window_title": "NanoVNA Toolkit — Visor de Mediciones",
+  "menu": {
+    "file": "Archivo",
+    "clear_selection": "Limpiar Selección",
+    "back_to_dut": "← Volver a DUT",
+    "back_to_char": "← Volver a Caracterización",
+    "back_to_menu": "← Volver al Menú",
+    "method": "Módulo",
+    "dut_measurement": "↖  Medición DUT",
+    "material_characterization": "↖  Caracterización de Materiales"
+  },
+  "header": {
+    "title": "Visor de Mediciones",
+    "subtitle": "Comparar e inspeccionar archivos de medición"
+  },
+  "tabs": {
+    "graphics": "Gráficos",
+    "cursors": "Cursores",
+    "range": "Rango",
+    "export": "Exportar"
+  },
+  "graphics": {
+    "layout": "Disposición",
+    "charts_2": "2 gráficos",
+    "charts_4": "4 gráficos",
+    "parameter": "Parámetro",
+    "display": "Vista",
+    "mag_phase": "Mag+Fase",
+    "real_imag": "Real+Imag"
+  },
+  "cursors": {
+    "cursor_1": "Cursor 1",
+    "cursor_2": "Cursor 2",
+    "freq": "Frec",
+    "delta_title": "Δ  (C2 − C1)",
+    "delta_freq": "ΔF",
+    "linked": "Vinculado"
+  },
+  "range": {
+    "auto": "Auto",
+    "grid": "Grilla",
+    "y_min": "Y min",
+    "y_max": "max"
+  },
+  "export": {
+    "dpi": "DPI",
+    "individual": "Individual",
+    "pairs": "Pares",
+    "four_chart": "4 gráficos",
+    "mag_db": "Mag [dB]",
+    "phase_deg": "Fase [°]",
+    "real": "Real",
+    "imag": "Imag",
+    "mag_phase_pair": "Mag + Fase",
+    "real_imag_pair": "Real + Imag",
+    "no_data_title": "Sin datos",
+    "no_data_msg": "Seleccione al menos un archivo de medición.",
+    "export_chart_title": "Exportar Gráfico",
+    "export_filter": "Imágenes PNG (*.png);;Todos los archivos (*.*)",
+    "export_error": "Error al exportar"
+  },
+  "files_panel": {
+    "title": "Archivos de medición",
+    "badge_files": "{n} archivos",
+    "badge_file": "1 archivo",
+    "single": "Individual",
+    "compare": "Comparar",
+    "add_files": "+ Agregar archivos",
+    "add_folder": "Agregar carpeta",
+    "filter_placeholder": "Filtrar archivos…",
+    "empty_title": "Sin mediciones cargadas",
+    "empty_hint": "Agregue archivos .s1p o .s2p para comparar curvas.",
+    "add_files_title": "Agregar Archivos de Medición",
+    "add_files_filter": "Archivos Touchstone (*.s1p *.s2p);;Todos los archivos (*.*)",
+    "select_folder_title": "Seleccionar Carpeta"
+  }
+}

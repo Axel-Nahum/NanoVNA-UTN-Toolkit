@@ -1,0 +1,78 @@
+{
+  "window_title": "NanoVNA Toolkit — Measurement Viewer",
+  "menu": {
+    "file": "File",
+    "clear_selection": "Clear Selection",
+    "back_to_dut": "← Back to DUT",
+    "back_to_char": "← Back to Characterization",
+    "back_to_menu": "← Back to Menu",
+    "method": "Method",
+    "dut_measurement": "↖  DUT Measurement",
+    "material_characterization": "↖  Material Characterization"
+  },
+  "header": {
+    "title": "Measurement Viewer",
+    "subtitle": "Compare and inspect measurement files"
+  },
+  "tabs": {
+    "graphics": "Graphics",
+    "cursors": "Cursors",
+    "range": "Range",
+    "export": "Export"
+  },
+  "graphics": {
+    "layout": "Layout",
+    "charts_2": "2 charts",
+    "charts_4": "4 charts",
+    "parameter": "Parameter",
+    "display": "Display",
+    "mag_phase": "Mag+Phase",
+    "real_imag": "Real+Imag"
+  },
+  "cursors": {
+    "cursor_1": "Cursor 1",
+    "cursor_2": "Cursor 2",
+    "freq": "Freq",
+    "delta_title": "Δ  (C2 − C1)",
+    "delta_freq": "ΔF",
+    "linked": "Linked"
+  },
+  "range": {
+    "auto": "Auto",
+    "grid": "Grid",
+    "y_min": "Y min",
+    "y_max": "max"
+  },
+  "export": {
+    "dpi": "DPI",
+    "individual": "Individual",
+    "pairs": "Pairs",
+    "four_chart": "4-chart",
+    "mag_db": "Mag [dB]",
+    "phase_deg": "Phase [°]",
+    "real": "Real",
+    "imag": "Imag",
+    "mag_phase_pair": "Mag + Phase",
+    "real_imag_pair": "Real + Imag",
+    "no_data_title": "No data",
+    "no_data_msg": "Select at least one measurement file first.",
+    "export_chart_title": "Export Chart",
+    "export_filter": "PNG Images (*.png);;All Files (*.*)",
+    "export_error": "Export Error"
+  },
+  "files_panel": {
+    "title": "Measurement files",
+    "badge_files": "{n} files",
+    "badge_file": "1 file",
+    "single": "Single",
+    "compare": "Compare",
+    "add_files": "+ Add files",
+    "add_folder": "Add folder",
+    "filter_placeholder": "Filter files…",
+    "empty_title": "No measurements loaded",
+    "empty_hint": "Add .s1p or .s2p files to compare curves.",
+    "add_files_title": "Add Measurement Files",
+    "add_files_filter": "Touchstone Files (*.s1p *.s2p);;All Files (*.*)",
+    "select_folder_title": "Select Folder"
+  }
+}

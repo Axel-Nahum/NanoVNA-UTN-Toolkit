@@ -35,6 +35,9 @@ apply_window_icon = safe_import(
 dark_light_config = safe_import(
     "NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode", "dark_light_config"
 )
+_load_text = safe_import(
+    "NanoVNA_UTN_Toolkit.shared.measurement_viewer.resources_loader", "load_text"
+)
 
 _PALETTE = [
     "#4da6ff", "#ff6b6b", "#51cf66", "#ffd43b",
@@ -189,7 +192,9 @@ class MeasurementViewerWindow(QMainWindow):
         self._y_range         = [(None, None)] * 4  # (ymin, ymax) when manual
         self._y_grid          = [True] * 4   # per-chart grid visibility
 
-        self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
+        self._texts: dict = _load_text("measurement_viewer.json") if _load_text else {}
+
+        self.setWindowTitle(self._t("window_title", fallback="NanoVNA Toolkit — Measurement Viewer"))
         screen = QGuiApplication.primaryScreen().availableGeometry()
         W = min(1280, max(960, int(screen.width()  * 0.85)))
         H = min(780,  max(600, int(screen.height() * 0.82)))
@@ -217,21 +222,24 @@ class MeasurementViewerWindow(QMainWindow):
             f" border:1px solid {_BORDER}; }}"
             " QMenu::item:selected { background:#1c2433; }"
         )
-        file_menu = mb.addMenu("File")
-        clear_act = QAction("Clear Selection", self)
+        file_menu = mb.addMenu(self._t("menu", "file", fallback="File"))
+        clear_act = QAction(self._t("menu", "clear_selection", fallback="Clear Selection"), self)
         clear_act.triggered.connect(self._clear_selection)
         file_menu.addAction(clear_act)
         file_menu.addSeparator()
-        _back_labels = {"dut": "← Back to DUT", "char": "← Back to Characterization"}
-        back_act = QAction(_back_labels.get(self._source_module, "← Back to Menu"), self)
+        _back_labels = {
+            "dut":  self._t("menu", "back_to_dut",  fallback="← Back to DUT"),
+            "char": self._t("menu", "back_to_char", fallback="← Back to Characterization"),
+        }
+        back_act = QAction(_back_labels.get(self._source_module, self._t("menu", "back_to_menu", fallback="← Back to Menu")), self)
         back_act.triggered.connect(self._go_back)
         file_menu.addAction(back_act)
 
-        method_menu = mb.addMenu("Method")
-        dut_act = QAction("↖  DUT Measurement", self)
+        method_menu = mb.addMenu(self._t("menu", "method", fallback="Method"))
+        dut_act = QAction(self._t("menu", "dut_measurement", fallback="↖  DUT Measurement"), self)
         dut_act.triggered.connect(self._go_to_dut)
         method_menu.addAction(dut_act)
-        char_act = QAction("↖  Material Characterization", self)
+        char_act = QAction(self._t("menu", "material_characterization", fallback="↖  Material Characterization"), self)
         char_act.triggered.connect(self._go_to_char)
         method_menu.addAction(char_act)
 
@@ -293,13 +301,13 @@ class MeasurementViewerWindow(QMainWindow):
         tv = QVBoxLayout(tcol)
         tv.setContentsMargins(0, 0, 0, 0)
         tv.setSpacing(0)
-        t1 = QLabel("Measurement Viewer")
+        t1 = QLabel(self._t("header", "title", fallback="Measurement Viewer"))
         t1.setStyleSheet(
             f"font-size:14px; font-weight:bold; color:{_TEXT}; background:transparent;"
             " margin:0; padding:0;")
         t1.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         t1.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-        t2 = QLabel("Compare and inspect measurement files")
+        t2 = QLabel(self._t("header", "subtitle", fallback="Compare and inspect measurement files"))
         t2.setStyleSheet(
             f"font-size:10px; color:{_TEXT2}; background:transparent;"
             " margin:0; padding:0;")
@@ -341,7 +349,10 @@ class MeasurementViewerWindow(QMainWindow):
 
         self._tab_btns: list[QPushButton] = []
         for i, (icon, name) in enumerate((
-            ("∿", "Graphics"), ("⊕", "Cursors"), ("⇔", "Range"), ("↓", "Export")
+            ("∿", self._t("tabs", "graphics", fallback="Graphics")),
+            ("⊕", self._t("tabs", "cursors",  fallback="Cursors")),
+            ("⇔", self._t("tabs", "range",    fallback="Range")),
+            ("↓", self._t("tabs", "export",   fallback="Export")),
         )):
             btn = QPushButton(f"{icon}  {name}")
             btn.setFixedHeight(30)
@@ -372,15 +383,15 @@ class MeasurementViewerWindow(QMainWindow):
         # Left half — Layout (right-aligned so Parameter stays centered)
         left_w = QWidget(); left_w.setStyleSheet("background:transparent;")
         left_h = QHBoxLayout(left_w); left_h.setContentsMargins(16,0,0,0); left_h.setSpacing(0)
-        self._btn_2 = QPushButton("2 charts")
+        self._btn_2 = QPushButton(self._t("graphics", "charts_2", fallback="2 charts"))
         self._btn_2.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_2.clicked.connect(lambda: self._set_layout(2))
-        self._btn_4 = QPushButton("4 charts")
+        self._btn_4 = QPushButton(self._t("graphics", "charts_4", fallback="4 charts"))
         self._btn_4.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_4.clicked.connect(lambda: self._set_layout(4))
         self._update_layout_buttons()
         left_h.addStretch(1)
-        left_h.addWidget(self._labeled_seg("Layout", self._btn_2, self._btn_4))
+        left_h.addWidget(self._labeled_seg(self._t("graphics", "layout", fallback="Layout"), self._btn_2, self._btn_4))
         left_h.addSpacing(20)
         left_h.addWidget(self._vsep())
 
@@ -394,9 +405,9 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_p2_s21.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_p2_s21.clicked.connect(lambda: self._set_param(_p2_s21_param))
         if self._display_mode == "char":
-            self._grp_param2 = self._labeled_seg("Parameter", self._btn_p2_s21, self._btn_p2_s11)
+            self._grp_param2 = self._labeled_seg(self._t("graphics", "parameter", fallback="Parameter"), self._btn_p2_s21, self._btn_p2_s11)
         else:
-            self._grp_param2 = self._labeled_seg("Parameter", self._btn_p2_s11, self._btn_p2_s21)
+            self._grp_param2 = self._labeled_seg(self._t("graphics", "parameter", fallback="Parameter"), self._btn_p2_s11, self._btn_p2_s21)
 
         self._btn_p4_s11 = QPushButton("S11")
         self._btn_p4_s11.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -406,7 +417,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_p4_s21.clicked.connect(self._toggle_p4_s21)
         if self._display_mode == "char":
             self._btn_p4_s21.hide()
-        self._grp_param4 = self._labeled_seg("Parameter", self._btn_p4_s11, self._btn_p4_s21)
+        self._grp_param4 = self._labeled_seg(self._t("graphics", "parameter", fallback="Parameter"), self._btn_p4_s11, self._btn_p4_s21)
 
         self._param_stack = QStackedWidget()
         self._param_stack.addWidget(self._grp_param2)
@@ -417,13 +428,13 @@ class MeasurementViewerWindow(QMainWindow):
         # Right half — Display (left-aligned, mirror of left)
         right_w = QWidget(); right_w.setStyleSheet("background:transparent;")
         right_h = QHBoxLayout(right_w); right_h.setContentsMargins(0,0,16,0); right_h.setSpacing(0)
-        self._btn_mag_ph = QPushButton("Mag+Phase")
+        self._btn_mag_ph = QPushButton(self._t("graphics", "mag_phase", fallback="Mag+Phase"))
         self._btn_mag_ph.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_mag_ph.clicked.connect(lambda: self._set_display2("mag_phase"))
-        self._btn_re_im = QPushButton("Real+Imag")
+        self._btn_re_im = QPushButton(self._t("graphics", "real_imag", fallback="Real+Imag"))
         self._btn_re_im.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_re_im.clicked.connect(lambda: self._set_display2("real_imag"))
-        self._grp_display2 = self._labeled_seg("Display", self._btn_mag_ph, self._btn_re_im)
+        self._grp_display2 = self._labeled_seg(self._t("graphics", "display", fallback="Display"), self._btn_mag_ph, self._btn_re_im)
         right_h.addWidget(self._vsep())
         right_h.addSpacing(20)
         right_h.addWidget(self._grp_display2)
@@ -493,7 +504,7 @@ class MeasurementViewerWindow(QMainWindow):
         c1h.setSpacing(6)
         c1_dot = QLabel("●")
         c1_dot.setStyleSheet(f"color:{_C1_COLOR}; background:transparent; font-size:10px;")
-        c1_title = QLabel("Cursor 1")
+        c1_title = QLabel(self._t("cursors", "cursor_1", fallback="Cursor 1"))
         c1_title.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:10px; font-weight:600;")
         self._btn_c1 = QPushButton("C1")
         self._btn_c1.setFixedHeight(22)
@@ -511,7 +522,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._lbl_c1_freq = _val_lbl()
         _fw = QWidget(); _fw.setStyleSheet("background:transparent;")
         _fv = QVBoxLayout(_fw); _fv.setContentsMargins(0,0,0,0); _fv.setSpacing(1)
-        _fv.addWidget(_cap_lbl("Freq")); _fv.addWidget(self._lbl_c1_freq)
+        _fv.addWidget(_cap_lbl(self._t("cursors", "freq", fallback="Freq"))); _fv.addWidget(self._lbl_c1_freq)
         c1d.addWidget(_fw)
         self._c1_vcols: list[tuple] = []
         for _i in range(4):
@@ -538,7 +549,7 @@ class MeasurementViewerWindow(QMainWindow):
         c2h.setSpacing(6)
         c2_dot = QLabel("●")
         c2_dot.setStyleSheet(f"color:{_C2_COLOR}; background:transparent; font-size:10px;")
-        c2_title = QLabel("Cursor 2")
+        c2_title = QLabel(self._t("cursors", "cursor_2", fallback="Cursor 2"))
         c2_title.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:10px; font-weight:600;")
         self._btn_c2 = QPushButton("C2")
         self._btn_c2.setFixedHeight(22)
@@ -556,7 +567,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._lbl_c2_freq = _val_lbl()
         _fw = QWidget(); _fw.setStyleSheet("background:transparent;")
         _fv = QVBoxLayout(_fw); _fv.setContentsMargins(0,0,0,0); _fv.setSpacing(1)
-        _fv.addWidget(_cap_lbl("Freq")); _fv.addWidget(self._lbl_c2_freq)
+        _fv.addWidget(_cap_lbl(self._t("cursors", "freq", fallback="Freq"))); _fv.addWidget(self._lbl_c2_freq)
         c2d.addWidget(_fw)
         self._c2_vcols: list[tuple] = []
         for _i in range(4):
@@ -579,7 +590,7 @@ class MeasurementViewerWindow(QMainWindow):
         dfv = QVBoxLayout(df_sec)
         dfv.setContentsMargins(14, 4, 14, 4)
         dfv.setSpacing(4)
-        df_title = QLabel("Δ  (C2 − C1)")
+        df_title = QLabel(self._t("cursors", "delta_title", fallback="Δ  (C2 − C1)"))
         df_title.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:10px; font-weight:600;")
         dfv.addWidget(df_title)
         dfd = QHBoxLayout()
@@ -588,7 +599,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._lbl_df = _val_lbl()
         _fw = QWidget(); _fw.setStyleSheet("background:transparent;")
         _fv = QVBoxLayout(_fw); _fv.setContentsMargins(0,0,0,0); _fv.setSpacing(1)
-        _fv.addWidget(_cap_lbl("ΔF")); _fv.addWidget(self._lbl_df)
+        _fv.addWidget(_cap_lbl(self._t("cursors", "delta_freq", fallback="ΔF"))); _fv.addWidget(self._lbl_df)
         dfd.addWidget(_fw)
         self._df_vcols: list[tuple] = []
         for _i in range(4):
@@ -616,7 +627,7 @@ class MeasurementViewerWindow(QMainWindow):
         lnk_title_row.setSpacing(6)
         lnk_icon = QLabel("⇔")
         lnk_icon.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:12px;")
-        lnk_lbl = QLabel("Linked")
+        lnk_lbl = QLabel(self._t("cursors", "linked", fallback="Linked"))
         lnk_lbl.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:10px; font-weight:600;")
         lnk_title_row.addWidget(lnk_icon)
         lnk_title_row.addWidget(lnk_lbl)
@@ -671,10 +682,10 @@ class MeasurementViewerWindow(QMainWindow):
             _chart_lbl = QLabel("—")
             _chart_lbl.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:11px; font-weight:500;")
             _chart_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
-            _btn_auto = QPushButton("Auto")
+            _btn_auto = QPushButton(self._t("range", "auto", fallback="Auto"))
             _btn_auto.setFixedSize(52, 23)
             _btn_auto.setCursor(Qt.CursorShape.PointingHandCursor)
-            _btn_grid = QPushButton("Grid")
+            _btn_grid = QPushButton(self._t("range", "grid", fallback="Grid"))
             _btn_grid.setFixedSize(48, 23)
             _btn_grid.setCursor(Qt.CursorShape.PointingHandCursor)
             _r1.addWidget(_chart_lbl)
@@ -685,11 +696,11 @@ class MeasurementViewerWindow(QMainWindow):
 
             # Row 2: Ymin / Ymax inputs
             _r2 = QHBoxLayout(); _r2.setSpacing(4); _r2.setContentsMargins(0,0,0,0)
-            _lbl_min = QLabel("Y min")
+            _lbl_min = QLabel(self._t("range", "y_min", fallback="Y min"))
             _lbl_min.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:10px;")
             _edit_min = QLineEdit(); _edit_min.setFixedHeight(23); _edit_min.setStyleSheet(_RNG_IN)
             _edit_min.setPlaceholderText("auto"); _edit_min.setEnabled(False)
-            _lbl_max = QLabel("max")
+            _lbl_max = QLabel(self._t("range", "y_max", fallback="max"))
             _lbl_max.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:10px;")
             _edit_max = QLineEdit(); _edit_max.setFixedHeight(23); _edit_max.setStyleSheet(_RNG_IN)
             _edit_max.setPlaceholderText("auto"); _edit_max.setEnabled(False)
@@ -779,7 +790,7 @@ class MeasurementViewerWindow(QMainWindow):
         dpi_w = QWidget(); dpi_w.setStyleSheet("background:transparent;")
         dpi_v = QVBoxLayout(dpi_w)
         dpi_v.setContentsMargins(12, 5, 12, 5); dpi_v.setSpacing(4)
-        dpi_lbl2 = QLabel("DPI")
+        dpi_lbl2 = QLabel(self._t("export", "dpi", fallback="DPI"))
         dpi_lbl2.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px; font-weight:600;")
         dpi_v.addWidget(dpi_lbl2)
         dpi_v.addWidget(self._export_dpi)
@@ -793,19 +804,19 @@ class MeasurementViewerWindow(QMainWindow):
             b.setStyleSheet(_EXP_GO)
             b.clicked.connect(lambda _=False, m=mode: self._run_export(m))
             return b
-        eph.addWidget(_exp_section("Individual",
-            _ebt("Mag [dB]", "ind_mag"),
-            _ebt("Phase [°]", "ind_phase"),
-            _ebt("Real", "ind_real"),
-            _ebt("Imag", "ind_imag"),
+        eph.addWidget(_exp_section(self._t("export", "individual", fallback="Individual"),
+            _ebt(self._t("export", "mag_db",    fallback="Mag [dB]"),  "ind_mag"),
+            _ebt(self._t("export", "phase_deg", fallback="Phase [°]"), "ind_phase"),
+            _ebt(self._t("export", "real",      fallback="Real"),      "ind_real"),
+            _ebt(self._t("export", "imag",      fallback="Imag"),      "ind_imag"),
         ), stretch=2)
 
         eph.addWidget(_exp_sep())
 
         # ── Pairs ─────────────────────────────────────────────────────────────── #
-        eph.addWidget(_exp_section("Pairs",
-            _ebt("Mag + Phase", "pair_mp"),
-            _ebt("Real + Imag", "pair_ri"),
+        eph.addWidget(_exp_section(self._t("export", "pairs", fallback="Pairs"),
+            _ebt(self._t("export", "mag_phase_pair",  fallback="Mag + Phase"), "pair_mp"),
+            _ebt(self._t("export", "real_imag_pair",  fallback="Real + Imag"), "pair_ri"),
         ), stretch=1)
 
         eph.addWidget(_exp_sep())
@@ -814,7 +825,7 @@ class MeasurementViewerWindow(QMainWindow):
         _4ch_s21_btn = _ebt("S21", "4ch_s21")
         if self._display_mode == "char":
             _4ch_s21_btn.hide()
-        eph.addWidget(_exp_section("4-chart",
+        eph.addWidget(_exp_section(self._t("export", "four_chart", fallback="4-chart"),
             _ebt("S11", "4ch_s11"),
             _4ch_s21_btn,
         ), stretch=1)
@@ -831,6 +842,15 @@ class MeasurementViewerWindow(QMainWindow):
 
         self._update_range_page()
         return hdr
+
+    def _t(self, *keys: str, fallback: str = "") -> str:
+        """Look up a translation key path in self._texts."""
+        d = self._texts
+        for k in keys:
+            if not isinstance(d, dict):
+                return fallback
+            d = d.get(k, {})
+        return d if isinstance(d, str) else fallback
 
     def _vsep(self) -> QFrame:
         sep = QFrame()
@@ -875,12 +895,12 @@ class MeasurementViewerWindow(QMainWindow):
         # Header row
         hrow = QHBoxLayout()
         hrow.setContentsMargins(0, 0, 0, 0)
-        fl = QLabel("Measurement files")
+        fl = QLabel(self._t("files_panel", "title", fallback="Measurement files"))
         fl.setStyleSheet(
             f"font-size:12px; font-weight:bold; color:{_TEXT}; background:transparent;")
         hrow.addWidget(fl)
         hrow.addStretch()
-        self._badge = QLabel("0 files")
+        self._badge = QLabel(self._t("files_panel", "badge_files", fallback="{n} files").replace("{n}", "0"))
         self._badge.setStyleSheet(
             f"font-size:10px; color:{_TEXT2}; background:{_BORDER};"
             " border-radius:8px; padding:1px 7px;")
@@ -906,11 +926,11 @@ class MeasurementViewerWindow(QMainWindow):
         self._MODE_ON_STYLE  = _MODE_ON
         self._MODE_OFF_STYLE = _MODE_OFF
 
-        self._btn_single = QPushButton("Single")
+        self._btn_single = QPushButton(self._t("files_panel", "single", fallback="Single"))
         self._btn_single.setFixedHeight(34)
         self._btn_single.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_single.clicked.connect(lambda: self._set_compare_mode(False))
-        self._btn_compare = QPushButton("Compare")
+        self._btn_compare = QPushButton(self._t("files_panel", "compare", fallback="Compare"))
         self._btn_compare.setFixedHeight(34)
         self._btn_compare.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_compare.clicked.connect(lambda: self._set_compare_mode(True))
@@ -937,7 +957,7 @@ class MeasurementViewerWindow(QMainWindow):
         brow.setContentsMargins(0, 0, 0, 0)
         brow.setSpacing(6)
 
-        add_files = QPushButton("+ Add files")
+        add_files = QPushButton(self._t("files_panel", "add_files", fallback="+ Add files"))
         add_files.setFixedHeight(36)
         add_files.setCursor(Qt.CursorShape.PointingHandCursor)
         add_files.setStyleSheet(
@@ -948,7 +968,7 @@ class MeasurementViewerWindow(QMainWindow):
         add_files.clicked.connect(self._add_files)
         brow.addWidget(add_files)
 
-        add_folder = QPushButton("Add folder")
+        add_folder = QPushButton(self._t("files_panel", "add_folder", fallback="Add folder"))
         add_folder.setFixedHeight(36)
         add_folder.setCursor(Qt.CursorShape.PointingHandCursor)
         add_folder.setStyleSheet(
@@ -962,7 +982,7 @@ class MeasurementViewerWindow(QMainWindow):
 
         # Filter
         self._filter_edit = QLineEdit()
-        self._filter_edit.setPlaceholderText("Filter files…")
+        self._filter_edit.setPlaceholderText(self._t("files_panel", "filter_placeholder", fallback="Filter files…"))
         self._filter_edit.setFixedHeight(30)
         self._filter_edit.setStyleSheet(
             f"QLineEdit {{ background:{_PANEL_BG}; color:{_TEXT}; border:1px solid {_BORDER};"
@@ -1016,13 +1036,13 @@ class MeasurementViewerWindow(QMainWindow):
         ico.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         ev.addWidget(ico)
 
-        nm = QLabel("No measurements loaded")
+        nm = QLabel(self._t("files_panel", "empty_title", fallback="No measurements loaded"))
         nm.setStyleSheet(
             f"font-size:12px; font-weight:bold; color:{_TEXT}; background:transparent;")
         nm.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         ev.addWidget(nm)
 
-        ht = QLabel("Add .s1p or .s2p files to compare curves.")
+        ht = QLabel(self._t("files_panel", "empty_hint", fallback="Add .s1p or .s2p files to compare curves."))
         ht.setStyleSheet(f"font-size:10px; color:{_TEXT2}; background:transparent;")
         ht.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         ht.setWordWrap(True)
@@ -1360,7 +1380,9 @@ class MeasurementViewerWindow(QMainWindow):
         from PySide6.QtWidgets import QMessageBox
         import matplotlib.pyplot as _plt
         if not self._current_entries():
-            QMessageBox.warning(self, "No data", "Select at least one measurement file first.")
+            QMessageBox.warning(self,
+                self._t("export", "no_data_title", fallback="No data"),
+                self._t("export", "no_data_msg",   fallback="Select at least one measurement file first."))
             return
         fig, hint = self._build_export_fig(mode)
         if fig is None:
@@ -1370,14 +1392,16 @@ class MeasurementViewerWindow(QMainWindow):
         except ValueError:
             dpi = 150
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Chart", f"{hint}.png",
-            "PNG Images (*.png);;All Files (*.*)"
+            self,
+            self._t("export", "export_chart_title", fallback="Export Chart"),
+            f"{hint}.png",
+            self._t("export", "export_filter", fallback="PNG Images (*.png);;All Files (*.*)")
         )
         if path:
             try:
                 fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor=_CARD_BG)
             except Exception as exc:
-                QMessageBox.critical(self, "Export Error", str(exc))
+                QMessageBox.critical(self, self._t("export", "export_error", fallback="Export Error"), str(exc))
         _plt.close(fig)
 
     def _update_tab_buttons(self, active_style: str, inactive_style: str):
@@ -1461,14 +1485,16 @@ class MeasurementViewerWindow(QMainWindow):
     # ── File management ────────────────────────────────────────────────────── #
     def _add_files(self):
         paths, _ = QFileDialog.getOpenFileNames(
-            self, "Add Measurement Files", "",
-            "Touchstone Files (*.s1p *.s2p);;All Files (*.*)"
+            self,
+            self._t("files_panel", "add_files_title", fallback="Add Measurement Files"),
+            "",
+            self._t("files_panel", "add_files_filter", fallback="Touchstone Files (*.s1p *.s2p);;All Files (*.*)")
         )
         if paths:
             self._add_file_paths(paths)
 
     def _browse_folder(self):
-        folder = QFileDialog.getExistingDirectory(self, "Select Folder", "")
+        folder = QFileDialog.getExistingDirectory(self, self._t("files_panel", "select_folder_title", fallback="Select Folder"), "")
         if folder:
             key = str(Path(folder).resolve())
             loaded = getattr(self, "_loaded_folder_paths", set())
@@ -1557,7 +1583,10 @@ class MeasurementViewerWindow(QMainWindow):
 
     def _refresh_panel_state(self):
         count = len(self._all_file_items())
-        self._badge.setText(f"{count} file{'s' if count != 1 else ''}")
+        if count == 1:
+            self._badge.setText(self._t("files_panel", "badge_file", fallback="1 file"))
+        else:
+            self._badge.setText(self._t("files_panel", "badge_files", fallback="{n} files").replace("{n}", str(count)))
         has_items = self._file_list.topLevelItemCount() > 0
         self._file_list.setVisible(has_items)
         self._empty_state.setVisible(not has_items)
