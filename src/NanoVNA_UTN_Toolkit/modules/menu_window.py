@@ -34,6 +34,11 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.characterization_w
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
+def _sc(value: float, s: float) -> int:
+    """Scale a pixel value by factor s."""
+    return max(1, int(value * s))
+
+
 class ModuleSelectionWindow(QMainWindow):
 
     def __init__(self, vna_device=None):
@@ -47,7 +52,7 @@ class ModuleSelectionWindow(QMainWindow):
 
         settings = get_settings(
             "INI/dut_measurement/preferences/preferences.ini",
-            "shared/utils/preferences/preferences.ini", 
+            "shared/utils/preferences/preferences.ini",
             Path(__file__).resolve()
         )
 
@@ -63,6 +68,15 @@ class ModuleSelectionWindow(QMainWindow):
         self.resourceLoader.load_main_menu_resources()
 
 # ------------------------------------------------------------------------------------------------------------------- #
+# Scale factor — clamp between 0.75 and 1.0 based on available screen
+# ------------------------------------------------------------------------------------------------------------------- #
+
+        screen = QGuiApplication.primaryScreen().availableGeometry()
+        _s = min(1.0, min(screen.width() / 850, (screen.height() - 60) / 700))
+        _s = max(0.75, _s)
+        self._s = _s
+
+# ------------------------------------------------------------------------------------------------------------------- #
 # Dark light Mode
 # ------------------------------------------------------------------------------------------------------------------- #
 
@@ -75,54 +89,17 @@ class ModuleSelectionWindow(QMainWindow):
         )
         self.is_dark_mode = _theme_cfg.value("Dark_Light/is_dark_mode", False, type=bool)
         _is_dark = not self.is_dark_mode
-        if _is_dark:
-            self._card_style = (
-                "QFrame { background-color: #252538; border: 1px solid #383850;"
-                " border-radius: 10px; padding: 10px; }"
-            )
-            self._btn_open_style = """
-                QPushButton { background-color: #1a3a5c; color: white; border: 1px solid #2d5a8e;
-                    border-radius: 6px; font-size: 14px; font-weight: bold; }
-                QPushButton:hover  { background-color: #254e7a; }
-                QPushButton:pressed { background-color: #12263d; }
-            """
-            self._btn_pref_style = """
-                QPushButton { background-color: #1c2533; color: #7ab3f5; border: 1px solid #2d5a8e;
-                    border-radius: 6px; font-size: 13px; font-weight: 500; padding: 4px 12px; }
-                QPushButton:hover  { background-color: #1a3a5c; color: #aacfff; border: 1px solid #4da6ff; }
-                QPushButton:pressed { background-color: #12263d; }
-            """
-        else:
-            self._card_style = (
-                "QFrame { background-color: #e8e8f4; border: 1px solid #c4c4d8;"
-                " border-radius: 10px; padding: 10px; }"
-            )
-            self._btn_open_style = """
-                QPushButton { background-color: #2d5a8e; color: white; border: 1px solid #a0bcd8;
-                    border-radius: 6px; font-size: 14px; font-weight: bold; }
-                QPushButton:hover  { background-color: #3a6fa8; }
-                QPushButton:pressed { background-color: #1a4a7a; }
-            """
-            self._btn_pref_style = """
-                QPushButton { background-color: #e0e0f0; color: #1e1e2e; border: 1px solid #c4c4d8;
-                    border-radius: 6px; font-size: 13px; font-weight: 500; padding: 4px 12px; }
-                QPushButton:hover  { background-color: #d0d0e8; }
-                QPushButton:pressed { background-color: #c0c0d8; }
-            """
+        self._build_styles(_is_dark, _s)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Title and Window Size
 # ------------------------------------------------------------------------------------------------------------------- #
 
         self.setWindowTitle(f"{self.menu_title}")
-        self.setFixedSize(850, 700)
+        self.setFixedSize(_sc(850, _s), _sc(700, _s))
 
-        screen = QGuiApplication.primaryScreen().availableGeometry()
         window_geometry = self.frameGeometry()
-
-        center_point = screen.center()
-        window_geometry.moveCenter(center_point)
-
+        window_geometry.moveCenter(screen.center())
         self.move(window_geometry.topLeft())
 
         logging.info("[ModuleSelectionWindow] Initializing launcher menu")
@@ -137,9 +114,8 @@ class ModuleSelectionWindow(QMainWindow):
         self.setCentralWidget(central_widget)
 
         main_layout = QVBoxLayout(central_widget)
-
-        main_layout.setContentsMargins(40, 30, 40, 30)
-        main_layout.setSpacing(30)
+        main_layout.setContentsMargins(_sc(40, _s), _sc(30, _s), _sc(40, _s), _sc(30, _s))
+        main_layout.setSpacing(0)
         main_layout.setAlignment(Qt.AlignTop)
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -147,33 +123,20 @@ class ModuleSelectionWindow(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         self.title_label = QLabel(self.menu_title)
-
         self.title_label.setAlignment(Qt.AlignCenter)
+        self.title_label.setStyleSheet(f"font-size: {_sc(30, _s)}px; font-weight: bold;")
 
-        self.title_label.setStyleSheet("""
-            font-size: 30px;
-            font-weight: bold;
-        """)
-
-        self.description_label = QLabel(
-            self.menu_description
-        )
-
+        self.description_label = QLabel(self.menu_description)
         self.description_label.setAlignment(Qt.AlignCenter)
-
         self.description_label.setWordWrap(True)
-
-        self.description_label.setStyleSheet("""
-            font-size: 15px;
-        """)
+        self.description_label.setStyleSheet(f"font-size: {_sc(15, _s)}px;")
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Modules Layout
 # ------------------------------------------------------------------------------------------------------------------- #
 
         modules_layout = QHBoxLayout()
-
-        modules_layout.setSpacing(30)
+        modules_layout.setSpacing(_sc(30, _s))
         modules_layout.setAlignment(Qt.AlignCenter)
 
 # ------------------------------------------------------------------------------------------------------------------- #
@@ -181,106 +144,65 @@ class ModuleSelectionWindow(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         self.dut_card = QFrame()
-        self.dut_card.setFixedSize(300, 230)
+        self.dut_card.setFixedSize(_sc(300, _s), _sc(230, _s))
         self.dut_card.setStyleSheet(self._card_style)
 
         dut_layout = QVBoxLayout(self.dut_card)
+        dut_layout.setSpacing(_sc(15, _s))
 
-        dut_layout.setSpacing(15)
-
-        self.dut_title_label = QLabel(
-            self.dut_measurement_title
-        )
-
+        self.dut_title_label = QLabel(self.dut_measurement_title)
         self.dut_title_label.setAlignment(Qt.AlignCenter)
+        self.dut_title_label.setStyleSheet(
+            f"font-size: {_sc(18, _s)}px; font-weight: bold; border: none;")
 
-        self.dut_title_label.setStyleSheet("""
-            font-size: 18px;
-            font-weight: bold;
-            border: none;
-        """)
-
-        self.dut_description_label = QLabel(
-            self.dut_measurement_description
-        )
-
+        self.dut_description_label = QLabel(self.dut_measurement_description)
         self.dut_description_label.setAlignment(Qt.AlignCenter)
-
         self.dut_description_label.setWordWrap(True)
-
-        self.dut_description_label.setStyleSheet("""
-            font-size: 13px;
-            border: none;
-        """)
+        self.dut_description_label.setStyleSheet(
+            f"font-size: {_sc(13, _s)}px; border: none;")
 
         self.dut_button = QPushButton("Open")
-
-        self.dut_button.setFixedSize(140, 40)
-
+        self.dut_button.setFixedSize(_sc(140, _s), _sc(40, _s))
         self.dut_button.setStyleSheet(self._btn_open_style)
-
-        self.dut_button.clicked.connect(
-            self.open_dut_measurement_module
-        )
+        self.dut_button.clicked.connect(self.open_dut_measurement_module)
 
         dut_layout.addWidget(self.dut_title_label)
         dut_layout.addWidget(self.dut_description_label)
-
         dut_layout.addStretch()
-
-        dut_layout.addWidget(
-            self.dut_button,
-            alignment=Qt.AlignCenter
-        )
+        dut_layout.addWidget(self.dut_button, alignment=Qt.AlignCenter)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Materials Card
 # ------------------------------------------------------------------------------------------------------------------- #
 
         self.materials_card = QFrame()
-        self.materials_card.setFixedSize(300, 230)
+        self.materials_card.setFixedSize(_sc(300, _s), _sc(230, _s))
         self.materials_card.setStyleSheet(self._card_style)
 
         materials_layout = QVBoxLayout(self.materials_card)
-
-        materials_layout.setSpacing(15)
+        materials_layout.setSpacing(_sc(15, _s))
 
         self.materials_title_label = QLabel(self.materials_characterization_title)
         self.materials_title_label.setAlignment(Qt.AlignCenter)
         self.materials_title_label.setWordWrap(True)
-        self.materials_title_label.setStyleSheet("""
-            font-size: 18px;
-            font-weight: bold;
-            border: none;
-        """)
+        self.materials_title_label.setStyleSheet(
+            f"font-size: {_sc(18, _s)}px; font-weight: bold; border: none;")
 
         self.materials_description_label = QLabel(self.materials_characterization_description)
         self.materials_description_label.setAlignment(Qt.AlignCenter)
         self.materials_description_label.setWordWrap(True)
-        self.materials_description_label.setStyleSheet("""
-            font-size: 13px;
-            border: none;
-        """)
+        self.materials_description_label.setStyleSheet(
+            f"font-size: {_sc(13, _s)}px; border: none;")
 
         self.materials_button = QPushButton("Open")
-
-        self.materials_button.setFixedSize(140, 40)
-
+        self.materials_button.setFixedSize(_sc(140, _s), _sc(40, _s))
         self.materials_button.setStyleSheet(self._btn_open_style)
-
-        self.materials_button.clicked.connect(
-            self.open_material_characterization_module
-        )
+        self.materials_button.clicked.connect(self.open_material_characterization_module)
 
         materials_layout.addWidget(self.materials_title_label)
         materials_layout.addWidget(self.materials_description_label)
-
         materials_layout.addStretch()
-
-        materials_layout.addWidget(
-            self.materials_button,
-            alignment=Qt.AlignCenter
-        )
+        materials_layout.addWidget(self.materials_button, alignment=Qt.AlignCenter)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Add Cards
@@ -294,30 +216,25 @@ class ModuleSelectionWindow(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         self.viewer_card = QFrame()
-        self.viewer_card.setFixedSize(260, 160)
+        self.viewer_card.setFixedSize(_sc(260, _s), _sc(160, _s))
         self.viewer_card.setStyleSheet(self._card_style)
 
         viewer_layout = QVBoxLayout(self.viewer_card)
-        viewer_layout.setSpacing(10)
+        viewer_layout.setSpacing(_sc(10, _s))
 
         self.viewer_title_label = QLabel("📊  Measurement Viewer")
         self.viewer_title_label.setAlignment(Qt.AlignCenter)
-        self.viewer_title_label.setStyleSheet("""
-            font-size: 15px;
-            font-weight: bold;
-            border: none;
-        """)
+        self.viewer_title_label.setStyleSheet(
+            f"font-size: {_sc(15, _s)}px; font-weight: bold; border: none;")
 
         self.viewer_description_label = QLabel("Visualize & compare S-parameter files")
         self.viewer_description_label.setAlignment(Qt.AlignCenter)
         self.viewer_description_label.setWordWrap(True)
-        self.viewer_description_label.setStyleSheet("""
-            font-size: 12px;
-            border: none;
-        """)
+        self.viewer_description_label.setStyleSheet(
+            f"font-size: {_sc(12, _s)}px; border: none;")
 
         self.viewer_button = QPushButton("Open")
-        self.viewer_button.setFixedSize(120, 34)
+        self.viewer_button.setFixedSize(_sc(120, _s), _sc(34, _s))
         self.viewer_button.setStyleSheet(self._btn_open_style)
         self.viewer_button.clicked.connect(self.open_measurement_viewer)
 
@@ -335,7 +252,7 @@ class ModuleSelectionWindow(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         self.preferences_button = QPushButton("⚙ Preferences")
-        self.preferences_button.setFixedSize(180, 35)
+        self.preferences_button.setFixedSize(_sc(180, _s), _sc(35, _s))
         self.preferences_button.setStyleSheet(self._btn_pref_style)
         self.preferences_button.clicked.connect(lambda: open_preferences_dialog(self))
 
@@ -346,25 +263,60 @@ class ModuleSelectionWindow(QMainWindow):
         main_layout.addStretch(1)
 
         main_layout.addWidget(self.title_label)
-
         main_layout.addWidget(self.description_label)
 
-        main_layout.addSpacing(30)
-
+        main_layout.addSpacing(_sc(30, _s))
         main_layout.addLayout(modules_layout)
 
-        main_layout.addSpacing(30)
-
+        main_layout.addSpacing(_sc(30, _s))
         main_layout.addLayout(viewer_row)
 
-        main_layout.addSpacing(10)
-
-        main_layout.addWidget(
-            self.preferences_button,
-            alignment=Qt.AlignCenter
-        )
+        main_layout.addSpacing(_sc(10, _s))
+        main_layout.addWidget(self.preferences_button, alignment=Qt.AlignCenter)
 
         main_layout.addStretch(2)
+
+# ------------------------------------------------------------------------------------------------------------------- #
+# Style builder
+# ------------------------------------------------------------------------------------------------------------------- #
+
+    def _build_styles(self, is_dark: bool, s: float):
+        fs_btn  = _sc(14, s)
+        fs_pref = _sc(13, s)
+        if is_dark:
+            self._card_style = (
+                "QFrame { background-color: #252538; border: 1px solid #383850;"
+                " border-radius: 10px; padding: 10px; }"
+            )
+            self._btn_open_style = (
+                f"QPushButton {{ background-color: #1a3a5c; color: white; border: 1px solid #2d5a8e;"
+                f" border-radius: 6px; font-size: {fs_btn}px; font-weight: bold; }}"
+                " QPushButton:hover  { background-color: #254e7a; }"
+                " QPushButton:pressed { background-color: #12263d; }"
+            )
+            self._btn_pref_style = (
+                f"QPushButton {{ background-color: #1c2533; color: #7ab3f5; border: 1px solid #2d5a8e;"
+                f" border-radius: 6px; font-size: {fs_pref}px; font-weight: 500; padding: 4px 12px; }}"
+                " QPushButton:hover  { background-color: #1a3a5c; color: #aacfff; border: 1px solid #4da6ff; }"
+                " QPushButton:pressed { background-color: #12263d; }"
+            )
+        else:
+            self._card_style = (
+                "QFrame { background-color: #e8e8f4; border: 1px solid #c4c4d8;"
+                " border-radius: 10px; padding: 10px; }"
+            )
+            self._btn_open_style = (
+                f"QPushButton {{ background-color: #2d5a8e; color: white; border: 1px solid #a0bcd8;"
+                f" border-radius: 6px; font-size: {fs_btn}px; font-weight: bold; }}"
+                " QPushButton:hover  { background-color: #3a6fa8; }"
+                " QPushButton:pressed { background-color: #1a4a7a; }"
+            )
+            self._btn_pref_style = (
+                f"QPushButton {{ background-color: #e0e0f0; color: #1e1e2e; border: 1px solid #c4c4d8;"
+                f" border-radius: 6px; font-size: {fs_pref}px; font-weight: 500; padding: 4px 12px; }}"
+                " QPushButton:hover  { background-color: #d0d0e8; }"
+                " QPushButton:pressed { background-color: #c0c0d8; }"
+            )
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Live theme update
@@ -374,54 +326,15 @@ class ModuleSelectionWindow(QMainWindow):
         super().setStyleSheet(stylesheet)
         if not hasattr(self, "dut_card"):
             return
-        # is_dark_mode=True when toggle_menu_dark_mode is about to apply dark
         _going_dark = getattr(self, "is_dark_mode", False)
-        if _going_dark:
-            _card = (
-                "QFrame { background-color: #252538; border: 1px solid #383850;"
-                " border-radius: 10px; padding: 10px; }"
-            )
-            _btn_open = (
-                "QPushButton { background-color: #1a3a5c; color: white;"
-                " border: 1px solid #2d5a8e; border-radius: 6px;"
-                " font-size: 14px; font-weight: bold; }"
-                " QPushButton:hover { background-color: #254e7a; }"
-                " QPushButton:pressed { background-color: #12263d; }"
-            )
-            _btn_pref = (
-                "QPushButton { background-color: #1c2533; color: #7ab3f5;"
-                " border: 1px solid #2d5a8e; border-radius: 6px;"
-                " font-size: 13px; font-weight: 500; padding: 4px 12px; }"
-                " QPushButton:hover { background-color: #1a3a5c; color: #aacfff;"
-                " border: 1px solid #4da6ff; }"
-                " QPushButton:pressed { background-color: #12263d; }"
-            )
-        else:
-            _card = (
-                "QFrame { background-color: #e8e8f4; border: 1px solid #c4c4d8;"
-                " border-radius: 10px; padding: 10px; }"
-            )
-            _btn_open = (
-                "QPushButton { background-color: #2d5a8e; color: white;"
-                " border: 1px solid #a0bcd8; border-radius: 6px;"
-                " font-size: 14px; font-weight: bold; }"
-                " QPushButton:hover { background-color: #3a6fa8; }"
-                " QPushButton:pressed { background-color: #1a4a7a; }"
-            )
-            _btn_pref = (
-                "QPushButton { background-color: #e0e0f0; color: #1e1e2e;"
-                " border: 1px solid #c4c4d8; border-radius: 6px;"
-                " font-size: 13px; font-weight: 500; padding: 4px 12px; }"
-                " QPushButton:hover { background-color: #d0d0e8; }"
-                " QPushButton:pressed { background-color: #c0c0d8; }"
-            )
-        self.dut_card.setStyleSheet(_card)
-        self.materials_card.setStyleSheet(_card)
-        self.viewer_card.setStyleSheet(_card)
-        self.dut_button.setStyleSheet(_btn_open)
-        self.materials_button.setStyleSheet(_btn_open)
-        self.viewer_button.setStyleSheet(_btn_open)
-        self.preferences_button.setStyleSheet(_btn_pref)
+        self._build_styles(_going_dark, getattr(self, "_s", 1.0))
+        self.dut_card.setStyleSheet(self._card_style)
+        self.materials_card.setStyleSheet(self._card_style)
+        self.viewer_card.setStyleSheet(self._card_style)
+        self.dut_button.setStyleSheet(self._btn_open_style)
+        self.materials_button.setStyleSheet(self._btn_open_style)
+        self.viewer_button.setStyleSheet(self._btn_open_style)
+        self.preferences_button.setStyleSheet(self._btn_pref_style)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Open DUT Module
