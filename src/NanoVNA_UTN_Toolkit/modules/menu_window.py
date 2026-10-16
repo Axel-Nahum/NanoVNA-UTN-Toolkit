@@ -72,7 +72,7 @@ class ModuleSelectionWindow(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
-        _s = min(1.0, min(screen.width() / 850, (screen.height() - 60) / 700))
+        _s = min(1.0, min(screen.width() / 850, (screen.height() - 60) / 650))
         _s = max(0.75, _s)
         self._s = _s
 
@@ -96,7 +96,7 @@ class ModuleSelectionWindow(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         self.setWindowTitle(f"{self.menu_title}")
-        self.setFixedSize(_sc(850, _s), _sc(700, _s))
+        self.setFixedSize(_sc(850, _s), _sc(650, _s))
 
         window_geometry = self.frameGeometry()
         window_geometry.moveCenter(screen.center())
@@ -274,7 +274,7 @@ class ModuleSelectionWindow(QMainWindow):
         main_layout.addSpacing(_sc(10, _s))
         main_layout.addWidget(self.preferences_button, alignment=Qt.AlignCenter)
 
-        main_layout.addStretch(2)
+        main_layout.addStretch(1)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Style builder
