@@ -2285,8 +2285,8 @@ class MeasurementViewerWindow(QMainWindow):
             plt.close("all")
         except Exception:
             pass
-        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.welcome_window.welcome_windows import NanoVNAWelcome
-        self._dut_win = NanoVNAWelcome(vna_device=self._vna)
+        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_window import NanoVNAGraphics
+        self._dut_win = NanoVNAGraphics(vna_device=self._vna)
         self._dut_win.show()
         self.close()
 
