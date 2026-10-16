@@ -172,6 +172,8 @@ class MeasurementViewerWindow(QMainWindow):
         self._compare_mode = False        # False = single file, True = overlay
         self._freq_div     = 1e9          # current display divisor (updated in _redraw)
         self._freq_unit    = "GHz"
+        self._data_freq_min: float | None = None   # Hz — set in _redraw
+        self._data_freq_max: float | None = None
         self._cursor_enabled  = {1: False, 2: False}
         # Per-cursor, per-row frequency: _cursor_freq[n][row]  row 0=top, 1=bottom
         self._cursor_freq     = {1: [None]*4, 2: [None]*4}   # 4 slots (0-3)
@@ -1739,6 +1741,8 @@ class MeasurementViewerWindow(QMainWindow):
         div, unit = _freq_axis_unit(all_f)
         self._freq_div  = div
         self._freq_unit = unit
+        self._data_freq_min = float(all_f.min())
+        self._data_freq_max = float(all_f.max())
 
         p = self._param_mode
 
@@ -2225,6 +2229,10 @@ class MeasurementViewerWindow(QMainWindow):
         if event.xdata is None:
             return
         x = event.xdata
+        if self._data_freq_min is not None:
+            x = float(np.clip(x,
+                              self._data_freq_min / self._freq_div,
+                              self._data_freq_max / self._freq_div))
         n, slot = self._cursor_dragging
         self._cursor_freq[n][slot] = x * self._freq_div
 
