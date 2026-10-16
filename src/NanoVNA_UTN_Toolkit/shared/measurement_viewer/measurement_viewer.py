@@ -216,8 +216,9 @@ class MeasurementViewerWindow(QMainWindow):
         clear_act.triggered.connect(self._clear_selection)
         file_menu.addAction(clear_act)
         file_menu.addSeparator()
-        back_act = QAction("Back to Menu", self)
-        back_act.triggered.connect(self.return_to_menu_window)
+        _back_labels = {"dut": "← Back to DUT", "char": "← Back to Characterization"}
+        back_act = QAction(_back_labels.get(self._source_module, "← Back to Menu"), self)
+        back_act.triggered.connect(self._go_back)
         file_menu.addAction(back_act)
 
         method_menu = mb.addMenu("Method")
@@ -2256,6 +2257,14 @@ class MeasurementViewerWindow(QMainWindow):
         self._reset_axes()
 
     # ── Navigation ────────────────────────────────────────────────────────── #
+    def _go_back(self):
+        if self._source_module == "dut":
+            self._go_to_dut()
+        elif self._source_module == "char":
+            self._go_to_char()
+        else:
+            self.return_to_menu_window()
+
     def return_to_menu_window(self):
         from NanoVNA_UTN_Toolkit.modules.menu_window import ModuleSelectionWindow
         try:
