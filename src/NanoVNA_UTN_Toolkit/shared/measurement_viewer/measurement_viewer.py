@@ -1944,7 +1944,11 @@ class MeasurementViewerWindow(QMainWindow):
         self._update_cursor_readout()
 
     def _fmt_freq(self, hz: float) -> str:
-        return f"{hz / self._freq_div:.4f} {self._freq_unit}"
+        if hz >= 1e9:
+            return f"{hz / 1e9:.4f} GHz"
+        if hz >= 1e6:
+            return f"{hz / 1e6:.4f} MHz"
+        return f"{hz / 1e3:.4f} kHz"
 
     def _y_unit_for_ax(self, ax_idx: int) -> str:
         """Return the y-axis unit string for chart at ax_idx."""
