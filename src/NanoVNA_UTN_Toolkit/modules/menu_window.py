@@ -343,7 +343,7 @@ class ModuleSelectionWindow(QMainWindow):
 # Main Layout
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        main_layout.addStretch()
+        main_layout.addStretch(1)
 
         main_layout.addWidget(self.title_label)
 
@@ -357,14 +357,14 @@ class ModuleSelectionWindow(QMainWindow):
 
         main_layout.addLayout(viewer_row)
 
-        main_layout.addSpacing(20)
+        main_layout.addSpacing(16)
 
         main_layout.addWidget(
             self.preferences_button,
             alignment=Qt.AlignCenter
         )
 
-        main_layout.addStretch()
+        main_layout.addStretch(2)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Live theme update
