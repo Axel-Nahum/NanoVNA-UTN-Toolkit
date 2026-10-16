@@ -227,10 +227,6 @@ class MeasurementViewerWindow(QMainWindow):
         char_act = QAction("↖  Material Characterization", self)
         char_act.triggered.connect(self._go_to_char)
         method_menu.addAction(char_act)
-        method_menu.addSeparator()
-        menu_act = QAction("←  Back to Menu", self)
-        menu_act.triggered.connect(self.return_to_menu_window)
-        method_menu.addAction(menu_act)
 
     # ── Root layout ───────────────────────────────────────────────────────── #
     def _build_ui(self):
@@ -1505,7 +1501,16 @@ class MeasurementViewerWindow(QMainWindow):
         self._empty_state.setVisible(not has_items)
 
     def _apply_filter(self, text: str):
-        text = text.lower()
+        stripped = text.strip()
+        try:
+            p = Path(stripped)
+            if p.is_absolute() and p.is_dir():
+                self._add_folder_to_tree(p)
+                self._filter_edit.clear()
+                return
+        except (OSError, ValueError):
+            pass
+        text = stripped.lower()
         def _filter(item) -> bool:
             if item.childCount() == 0:
                 match = not bool(text) or text in item.text(0).lower()
