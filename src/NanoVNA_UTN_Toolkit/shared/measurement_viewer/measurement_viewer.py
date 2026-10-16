@@ -182,7 +182,6 @@ class MeasurementViewerWindow(QMainWindow):
         self._y_autoscale     = [True] * 4   # per-chart autoscale flag
         self._y_range         = [(None, None)] * 4  # (ymin, ymax) when manual
         self._y_grid          = [True] * 4   # per-chart grid visibility
-        self._export_fmt      = "png"
 
         self.setWindowTitle("NanoVNA Toolkit — Measurement Viewer")
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -744,34 +743,20 @@ class MeasurementViewerWindow(QMainWindow):
             return w
 
         # ── Format + DPI ─────────────────────────────────────────────────────── #
-        self._btn_fmt: dict[str, QPushButton] = {}
-        for fmt in ("png", "pdf", "svg"):
-            b = QPushButton(fmt.upper())
-            b.setCursor(Qt.CursorShape.PointingHandCursor)
-            b.clicked.connect(lambda _=False, f=fmt: self._set_export_fmt(f))
-            self._btn_fmt[fmt] = b
-        _dpi_lbl = QLabel("DPI")
-        _dpi_lbl.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px;")
+        self._export_fmt = "png"
         self._export_dpi = QLineEdit("150")
         self._export_dpi.setFixedSize(42, 22)
         self._export_dpi.setStyleSheet(
             f"QLineEdit {{ font-size:10px; padding:1px 4px; border-radius:3px;"
             f" border:1px solid {_BORDER}; background:{_CARD_BG}; color:{_TEXT}; }}")
-        fmt_dpi_w = QWidget(); fmt_dpi_w.setStyleSheet("background:transparent;")
-        fmt_dpi_v = QVBoxLayout(fmt_dpi_w)
-        fmt_dpi_v.setContentsMargins(12, 5, 12, 5); fmt_dpi_v.setSpacing(4)
-        fmt_lbl2 = QLabel("Format & DPI")
-        fmt_lbl2.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px; font-weight:600;")
-        fmt_dpi_v.addWidget(fmt_lbl2)
-        fmt_row = QHBoxLayout(); fmt_row.setSpacing(4); fmt_row.setContentsMargins(0,0,0,0)
-        for b in self._btn_fmt.values():
-            b.setFixedHeight(22); fmt_row.addWidget(b)
-        fmt_row.addSpacing(6)
-        fmt_row.addWidget(_dpi_lbl)
-        fmt_row.addWidget(self._export_dpi)
-        fmt_dpi_v.addLayout(fmt_row)
-        eph.addWidget(fmt_dpi_w)
-        self._update_export_fmt_buttons()
+        dpi_w = QWidget(); dpi_w.setStyleSheet("background:transparent;")
+        dpi_v = QVBoxLayout(dpi_w)
+        dpi_v.setContentsMargins(12, 5, 12, 5); dpi_v.setSpacing(4)
+        dpi_lbl2 = QLabel("DPI")
+        dpi_lbl2.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px; font-weight:600;")
+        dpi_v.addWidget(dpi_lbl2)
+        dpi_v.addWidget(self._export_dpi)
+        eph.addWidget(dpi_w)
 
         eph.addWidget(_exp_sep())
 
@@ -1208,17 +1193,6 @@ class MeasurementViewerWindow(QMainWindow):
             self._blit_cursors()
 
     # ── Export helpers ────────────────────────────────────────────────────── #
-    def _update_export_fmt_buttons(self):
-        if not hasattr(self, "_btn_fmt"):
-            return
-        for fmt, btn in self._btn_fmt.items():
-            btn.setStyleSheet(self._EXP_ACT_STYLE if fmt == self._export_fmt
-                              else self._EXP_OFF_STYLE)
-
-    def _set_export_fmt(self, fmt: str):
-        self._export_fmt = fmt
-        self._update_export_fmt_buttons()
-
     def _build_export_fig(self, mode: str):
         from matplotlib.figure import Figure as _MplFig
         entries = self._current_entries()
@@ -1327,14 +1301,13 @@ class MeasurementViewerWindow(QMainWindow):
         fig, hint = self._build_export_fig(mode)
         if fig is None:
             return
-        fmt = self._export_fmt
         try:
             dpi = max(72, min(600, int(self._export_dpi.text())))
         except ValueError:
             dpi = 150
         path, _ = QFileDialog.getSaveFileName(
-            self, "Export Chart", f"{hint}.{fmt}",
-            f"{fmt.upper()} Files (*.{fmt});;All Files (*.*)"
+            self, "Export Chart", f"{hint}.png",
+            "PNG Images (*.png);;All Files (*.*)"
         )
         if path:
             try:
