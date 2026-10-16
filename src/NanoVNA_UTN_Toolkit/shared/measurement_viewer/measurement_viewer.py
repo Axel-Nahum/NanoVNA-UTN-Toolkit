@@ -220,6 +220,18 @@ class MeasurementViewerWindow(QMainWindow):
         back_act.triggered.connect(self.return_to_menu_window)
         file_menu.addAction(back_act)
 
+        method_menu = mb.addMenu("Method")
+        dut_act = QAction("↖  DUT Measurement", self)
+        dut_act.triggered.connect(self._go_to_dut)
+        method_menu.addAction(dut_act)
+        char_act = QAction("↖  Material Characterization", self)
+        char_act.triggered.connect(self._go_to_char)
+        method_menu.addAction(char_act)
+        method_menu.addSeparator()
+        menu_act = QAction("←  Back to Menu", self)
+        menu_act.triggered.connect(self.return_to_menu_window)
+        method_menu.addAction(menu_act)
+
     # ── Root layout ───────────────────────────────────────────────────────── #
     def _build_ui(self):
         root = QWidget()
@@ -2171,4 +2183,26 @@ class MeasurementViewerWindow(QMainWindow):
         else:
             self._menu_win = ModuleSelectionWindow()
         self._menu_win.show()
+        self.close()
+
+    def _go_to_dut(self):
+        try:
+            import matplotlib.pyplot as plt
+            plt.close("all")
+        except Exception:
+            pass
+        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.welcome_window.welcome_windows import NanoVNAWelcome
+        self._dut_win = NanoVNAWelcome(vna_device=self._vna)
+        self._dut_win.show()
+        self.close()
+
+    def _go_to_char(self):
+        try:
+            import matplotlib.pyplot as plt
+            plt.close("all")
+        except Exception:
+            pass
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.measurement_main_window import MeasurementMainWindow
+        self._char_win = MeasurementMainWindow(vna_device=self._vna)
+        self._char_win.show()
         self.close()
