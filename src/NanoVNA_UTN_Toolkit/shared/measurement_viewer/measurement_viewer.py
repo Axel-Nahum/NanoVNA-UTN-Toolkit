@@ -2237,6 +2237,7 @@ class MeasurementViewerWindow(QMainWindow):
                 else:
                     dot.set_visible(False)
         self._blit_cursors()
+        self._update_cursor_readout()
 
     def _on_canvas_release(self, event):
         self._cursor_dragging = None
