@@ -514,7 +514,8 @@ class MeasurementViewerWindow(QMainWindow):
             _cv = QVBoxLayout(_cw); _cv.setContentsMargins(0,0,0,0); _cv.setSpacing(1)
             _cv.addWidget(_cap); _cv.addWidget(_val)
             c1d.addWidget(_cw)
-            _cw.setVisible(_i < 2)
+            if _i >= 2:
+                _cw.hide()
             self._c1_vcols.append((_cw, _cap, _val))
         c1v.addLayout(c1d)
         cph.addWidget(c1_sec, stretch=2)
@@ -558,7 +559,8 @@ class MeasurementViewerWindow(QMainWindow):
             _cv = QVBoxLayout(_cw); _cv.setContentsMargins(0,0,0,0); _cv.setSpacing(1)
             _cv.addWidget(_cap); _cv.addWidget(_val)
             c2d.addWidget(_cw)
-            _cw.setVisible(_i < 2)
+            if _i >= 2:
+                _cw.hide()
             self._c2_vcols.append((_cw, _cap, _val))
         c2v.addLayout(c2d)
         cph.addWidget(c2_sec, stretch=2)
@@ -589,7 +591,8 @@ class MeasurementViewerWindow(QMainWindow):
             _cv = QVBoxLayout(_cw); _cv.setContentsMargins(0,0,0,0); _cv.setSpacing(1)
             _cv.addWidget(_cap); _cv.addWidget(_val)
             dfd.addWidget(_cw)
-            _cw.setVisible(_i < 2)
+            if _i >= 2:
+                _cw.hide()
             self._df_vcols.append((_cw, _cap, _val))
         dfv.addLayout(dfd)
         cph.addWidget(df_sec, stretch=2)
@@ -703,9 +706,10 @@ class MeasurementViewerWindow(QMainWindow):
                 rph.addWidget(_sep_widget)
             rph.addWidget(_sec, 1)
 
-            _sec.setVisible(_i < 2)
-            if _sep_widget is not None:
-                _sep_widget.setVisible(_i < 2)
+            if _i >= 2:
+                _sec.hide()
+                if _sep_widget is not None:
+                    _sep_widget.hide()
 
             self._range_sections.append({
                 "container": _sec,
