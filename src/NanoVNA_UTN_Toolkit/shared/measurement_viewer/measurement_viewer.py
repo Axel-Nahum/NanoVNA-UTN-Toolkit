@@ -1505,7 +1505,9 @@ class MeasurementViewerWindow(QMainWindow):
         try:
             p = Path(stripped)
             if p.is_absolute() and p.is_dir():
-                self._add_folder_to_tree(p)
+                existing = {item.data(0, Qt.ItemDataRole.UserRole)
+                            for item in self._all_file_items()}
+                self._add_folder_to_tree(str(p), None, existing)
                 self._filter_edit.clear()
                 return
         except (OSError, ValueError):
