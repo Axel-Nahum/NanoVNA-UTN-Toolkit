@@ -175,6 +175,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._freq_unit    = "GHz"
         self._data_freq_min: float | None = None   # Hz — set in _redraw
         self._data_freq_max: float | None = None
+        self._snap_freqs:    np.ndarray | None = None  # sorted unique freqs in Hz
         self._last_readout_slot = {1: 0, 2: 0}    # slot last dragged per cursor
         self._cursor_enabled  = {1: False, 2: False}
         # Per-cursor, per-row frequency: _cursor_freq[n][row]  row 0=top, 1=bottom
@@ -1745,6 +1746,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._freq_unit = unit
         self._data_freq_min = float(all_f.min())
         self._data_freq_max = float(all_f.max())
+        self._snap_freqs    = np.unique(all_f)
 
         p = self._param_mode
 
@@ -2235,10 +2237,10 @@ class MeasurementViewerWindow(QMainWindow):
         if event.xdata is None:
             return
         x = event.xdata
-        if self._data_freq_min is not None:
-            x = float(np.clip(x,
-                              self._data_freq_min / self._freq_div,
-                              self._data_freq_max / self._freq_div))
+        if self._snap_freqs is not None and len(self._snap_freqs):
+            hz = x * self._freq_div
+            idx = int(np.argmin(np.abs(self._snap_freqs - hz)))
+            x = self._snap_freqs[idx] / self._freq_div
         n, slot = self._cursor_dragging
         self._cursor_freq[n][slot] = x * self._freq_div
         self._last_readout_slot[n] = slot
