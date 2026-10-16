@@ -748,7 +748,8 @@ class MeasurementViewerWindow(QMainWindow):
             w = QWidget(); w.setStyleSheet("background:transparent;")
             v = QVBoxLayout(w); v.setContentsMargins(12, 5, 12, 5); v.setSpacing(4)
             lbl = QLabel(label_text)
-            lbl.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px; font-weight:600;")
+            lbl.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:11px; font-weight:600;")
+            lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
             v.addWidget(lbl)
             row = QHBoxLayout(); row.setSpacing(4); row.setContentsMargins(0,0,0,0)
             for b in btns:
@@ -1070,7 +1071,7 @@ class MeasurementViewerWindow(QMainWindow):
             self._SEG_ACTIVE if s21_on else self._SEG_INACTIVE)
 
     def _update_header_groups(self):
-        self._grp_display2.setVisible(True)
+        self._grp_display2.setVisible(self._param_mode != "eps")
         self._param_stack.setCurrentIndex(0 if self._layout_mode == 2 else 1)
 
     def _set_layout(self, mode: int):
@@ -1104,6 +1105,7 @@ class MeasurementViewerWindow(QMainWindow):
             return
         self._param_mode = mode
         self._update_param_buttons()
+        self._update_header_groups()
         self._update_range_page()
         self._redraw(self._current_entries())
 
