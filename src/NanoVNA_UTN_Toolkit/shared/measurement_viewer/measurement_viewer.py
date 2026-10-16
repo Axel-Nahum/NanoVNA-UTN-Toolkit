@@ -1414,10 +1414,16 @@ class MeasurementViewerWindow(QMainWindow):
     def _browse_folder(self):
         folder = QFileDialog.getExistingDirectory(self, "Select Folder", "")
         if folder:
+            key = str(Path(folder).resolve())
+            loaded = getattr(self, "_loaded_folder_paths", set())
+            if key in loaded:
+                return
             self._file_list.blockSignals(True)
             existing = {item.data(0, Qt.ItemDataRole.UserRole)
                         for item in self._all_file_items()}
             self._add_folder_to_tree(folder, None, existing)
+            loaded.add(key)
+            self._loaded_folder_paths = loaded
             self._file_list.blockSignals(False)
             self._refresh_panel_state()
 
@@ -1505,9 +1511,14 @@ class MeasurementViewerWindow(QMainWindow):
         try:
             p = Path(stripped)
             if p.is_absolute() and p.is_dir():
-                existing = {item.data(0, Qt.ItemDataRole.UserRole)
-                            for item in self._all_file_items()}
-                self._add_folder_to_tree(str(p), None, existing)
+                key = str(p.resolve())
+                loaded = getattr(self, "_loaded_folder_paths", set())
+                if key not in loaded:
+                    existing = {item.data(0, Qt.ItemDataRole.UserRole)
+                                for item in self._all_file_items()}
+                    self._add_folder_to_tree(str(p), None, existing)
+                    loaded.add(key)
+                    self._loaded_folder_paths = loaded
                 self._filter_edit.clear()
                 return
         except (OSError, ValueError):
