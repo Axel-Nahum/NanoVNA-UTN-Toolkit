@@ -1071,7 +1071,7 @@ class MeasurementViewerWindow(QMainWindow):
             self._SEG_ACTIVE if s21_on else self._SEG_INACTIVE)
 
     def _update_header_groups(self):
-        self._grp_display2.setVisible(self._param_mode != "eps")
+        self._grp_display2.setEnabled(self._param_mode != "eps")
         self._param_stack.setCurrentIndex(0 if self._layout_mode == 2 else 1)
 
     def _set_layout(self, mode: int):
