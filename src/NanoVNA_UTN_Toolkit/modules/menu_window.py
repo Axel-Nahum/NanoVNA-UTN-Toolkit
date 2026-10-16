@@ -349,15 +349,15 @@ class ModuleSelectionWindow(QMainWindow):
 
         main_layout.addWidget(self.description_label)
 
-        main_layout.addSpacing(24)
+        main_layout.addSpacing(30)
 
         main_layout.addLayout(modules_layout)
 
-        main_layout.addSpacing(24)
+        main_layout.addSpacing(30)
 
         main_layout.addLayout(viewer_row)
 
-        main_layout.addSpacing(16)
+        main_layout.addSpacing(10)
 
         main_layout.addWidget(
             self.preferences_button,
