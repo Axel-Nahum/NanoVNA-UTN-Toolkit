@@ -174,6 +174,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._freq_unit    = "GHz"
         self._data_freq_min: float | None = None   # Hz — set in _redraw
         self._data_freq_max: float | None = None
+        self._last_readout_slot = {1: 0, 2: 0}    # slot last dragged per cursor
         self._cursor_enabled  = {1: False, 2: False}
         # Per-cursor, per-row frequency: _cursor_freq[n][row]  row 0=top, 1=bottom
         self._cursor_freq     = {1: [None]*4, 2: [None]*4}   # 4 slots (0-3)
@@ -2004,8 +2005,8 @@ class MeasurementViewerWindow(QMainWindow):
             self._c2_vcols[i][1].setText(short)
             self._df_vcols[i][1].setText(f"Δ{short}")
 
-        f1 = self._cursor_freq[1][0]
-        f2 = self._cursor_freq[2][0]
+        f1 = self._cursor_freq[1][self._last_readout_slot[1]]
+        f2 = self._cursor_freq[2][self._last_readout_slot[2]]
 
         def _fv(cursor_n, ax_idx):
             v, u = self._cursor_y_val_at(cursor_n, ax_idx)
@@ -2235,6 +2236,7 @@ class MeasurementViewerWindow(QMainWindow):
                               self._data_freq_max / self._freq_div))
         n, slot = self._cursor_dragging
         self._cursor_freq[n][slot] = x * self._freq_div
+        self._last_readout_slot[n] = slot
 
         # Linked syncs slots only in 2-chart; in 4-chart pairing is via _row_axes
         keys_to_move = [(n, slot)]
