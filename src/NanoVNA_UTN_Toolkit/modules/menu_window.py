@@ -115,7 +115,7 @@ class ModuleSelectionWindow(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         self.setWindowTitle(f"{self.menu_title}")
-        self.setFixedSize(850, 680)
+        self.setFixedSize(850, 700)
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
         window_geometry = self.frameGeometry()
@@ -343,28 +343,28 @@ class ModuleSelectionWindow(QMainWindow):
 # Main Layout
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        main_layout.addStretch(2)
+        main_layout.addStretch()
 
         main_layout.addWidget(self.title_label)
 
         main_layout.addWidget(self.description_label)
 
-        main_layout.addSpacing(28)
+        main_layout.addSpacing(24)
 
         main_layout.addLayout(modules_layout)
 
-        main_layout.addSpacing(30)
+        main_layout.addSpacing(24)
 
         main_layout.addLayout(viewer_row)
 
-        main_layout.addSpacing(14)
+        main_layout.addSpacing(20)
 
         main_layout.addWidget(
             self.preferences_button,
             alignment=Qt.AlignCenter
         )
 
-        main_layout.addStretch(1)
+        main_layout.addStretch()
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Live theme update
