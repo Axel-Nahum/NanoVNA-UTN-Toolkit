@@ -29,9 +29,9 @@ show_app_about = safe_import(
 def _open_measurement_viewer(main_window):
     from NanoVNA_UTN_Toolkit.shared.measurement_viewer.measurement_viewer import MeasurementViewerWindow
     vna = getattr(main_window, "vna", None) or getattr(main_window, "vna_device", None)
-    main_window._viewer_win = MeasurementViewerWindow(vna_device=vna, source_module="char")
+    main_window._viewer_win = MeasurementViewerWindow(vna_device=vna, source_module="char", source_window=main_window)
     main_window._viewer_win.show()
-    main_window.close()
+    main_window.hide()
 
 
 def build_menu(main_window) -> None:

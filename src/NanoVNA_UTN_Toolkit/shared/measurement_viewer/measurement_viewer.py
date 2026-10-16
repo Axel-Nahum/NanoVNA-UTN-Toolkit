@@ -158,10 +158,11 @@ class MeasurementViewerWindow(QMainWindow):
         f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}"
     )
 
-    def __init__(self, vna_device=None, source_module: str = "menu"):
+    def __init__(self, vna_device=None, source_module: str = "menu", source_window=None):
         super().__init__()
         self._vna           = vna_device
         self._source_module = source_module
+        self._source_window = source_window
         self._cache: dict[str, _FileEntry] = {}
         self._color_map: dict[str, str]    = {}
         self._color_idx   = 0
@@ -2300,6 +2301,13 @@ class MeasurementViewerWindow(QMainWindow):
             plt.close("all")
         except Exception:
             pass
+        if self._source_window is not None:
+            try:
+                self._source_window.show()
+                self.close()
+                return
+            except RuntimeError:
+                pass
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.measurement_main_window import MeasurementMainWindow
         self._char_win = MeasurementMainWindow(vna_device=self._vna)
         self._char_win.show()
