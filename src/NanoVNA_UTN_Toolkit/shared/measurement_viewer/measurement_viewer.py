@@ -381,9 +381,11 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_p2_s11 = QPushButton("S11")
         self._btn_p2_s11.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_p2_s11.clicked.connect(lambda: self._set_param("s11"))
-        self._btn_p2_s21 = QPushButton("S21")
+        _p2_s21_label = "ε" if self._source_module == "char" else "S21"
+        _p2_s21_param = "eps" if self._source_module == "char" else "s21"
+        self._btn_p2_s21 = QPushButton(_p2_s21_label)
         self._btn_p2_s21.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_p2_s21.clicked.connect(lambda: self._set_param("s21"))
+        self._btn_p2_s21.clicked.connect(lambda: self._set_param(_p2_s21_param))
         self._grp_param2 = self._labeled_seg("Parameter", self._btn_p2_s11, self._btn_p2_s21)
 
         self._btn_p4_s11 = QPushButton("S11")
@@ -392,6 +394,8 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_p4_s21 = QPushButton("S21")
         self._btn_p4_s21.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_p4_s21.clicked.connect(self._toggle_p4_s21)
+        if self._source_module == "char":
+            self._btn_p4_s21.hide()
         self._grp_param4 = self._labeled_seg("Parameter", self._btn_p4_s11, self._btn_p4_s21)
 
         self._param_stack = QStackedWidget()
@@ -792,9 +796,12 @@ class MeasurementViewerWindow(QMainWindow):
         eph.addWidget(_exp_sep())
 
         # ── 4-chart ───────────────────────────────────────────────────────────── #
+        _4ch_s21_btn = _ebt("S21", "4ch_s21")
+        if self._source_module == "char":
+            _4ch_s21_btn.hide()
         eph.addWidget(_exp_section("4-chart",
             _ebt("S11", "4ch_s11"),
-            _ebt("S21", "4ch_s21"),
+            _4ch_s21_btn,
         ), stretch=1)
 
         self._tab_stack.addWidget(export_page)
@@ -1048,9 +1055,10 @@ class MeasurementViewerWindow(QMainWindow):
         # 2-chart: mutually exclusive
         self._btn_p2_s11.setStyleSheet(
             self._SEG_ACTIVE if self._param_mode == "s11" else self._SEG_INACTIVE)
+        p2_s21_active = self._param_mode in ("s21", "eps")
         self._btn_p2_s21.setStyleSheet(
-            self._SEG_ACTIVE if self._param_mode == "s21" else self._SEG_INACTIVE)
-        # 4-chart: both active when split
+            self._SEG_ACTIVE if p2_s21_active else self._SEG_INACTIVE)
+        # 4-chart: both active when split; in char mode s21 button is hidden
         s11_on = self._param_mode in ("s11", "split")
         s21_on = self._param_mode in ("s21", "split")
         self._btn_p4_s11.setStyleSheet(
@@ -1068,6 +1076,9 @@ class MeasurementViewerWindow(QMainWindow):
         self._layout_mode = mode
         # "split" is only valid in 4-chart; reset to s11 if switching to 2-chart
         if mode == 2 and self._param_mode == "split":
+            self._param_mode = "s11"
+        # In char mode 4-chart only supports S11; eps is 2-chart only
+        if mode == 4 and self._param_mode == "eps":
             self._param_mode = "s11"
         self._update_layout_buttons()
         self._update_param_buttons()
@@ -1118,6 +1129,8 @@ class MeasurementViewerWindow(QMainWindow):
                 result.append(t + " [dB]")
             elif "phase" in tl:
                 result.append(t + " [°]")
+            elif t.startswith("ε"):
+                result.append(t + " [–]")
             else:
                 result.append(t)
         return result
@@ -1231,6 +1244,33 @@ class MeasurementViewerWindow(QMainWindow):
                 ax.legend(fontsize=7, facecolor=_PANEL_BG, edgecolor=_BORDER, labelcolor=_TEXT)
 
         def _s(e, param): return e.s11 if param == "s11" else e.s21
+
+        # ── Permittivity (eps) export ─────────────────────────────────────────
+        if p == "eps":
+            if mode in ("ind_mag", "ind_phase", "ind_real", "ind_imag",
+                        "pair_mp", "pair_ri"):
+                fig = _MplFig(figsize=(9, 5) if mode.startswith("ind") else (9, 8),
+                              facecolor=_CARD_BG)
+                if mode.startswith("ind"):
+                    ax = fig.add_subplot(111)
+                    if mode in ("ind_mag", "ind_real"):
+                        _plot(ax, entries, lambda e: e.s11.real if e.s11 is not None else None)
+                        _style(ax, "ε' Real", "ε' (–)")
+                        fname = "eps_real"
+                    else:
+                        _plot(ax, entries, lambda e: e.s11.imag if e.s11 is not None else None)
+                        _style(ax, "ε'' Imag", "ε'' (–)")
+                        fname = "eps_imag"
+                else:
+                    ax1, ax2 = fig.subplots(2, 1)
+                    _plot(ax1, entries, lambda e: e.s11.real if e.s11 is not None else None)
+                    _plot(ax2, entries, lambda e: e.s11.imag if e.s11 is not None else None)
+                    _style(ax1, "ε' Real",  "ε' (–)")
+                    _style(ax2, "ε'' Imag", "ε'' (–)")
+                    fname = "eps_real_imag"
+                fig.tight_layout(pad=1.4, h_pad=2.0)
+                return fig, fname
+            return None, ""
 
         pname = p.upper()
 
@@ -1606,6 +1646,8 @@ class MeasurementViewerWindow(QMainWindow):
                 return ["S11 Real", "S11 Imag", "S21 Real", "S21 Imag"]
             return ["S11 Magnitude", "S11 Phase", "S21 Magnitude", "S21 Phase"]
         # 2-chart
+        if p == "eps":
+            return ["ε' Real", "ε'' Imag"]
         name = "S11" if p == "s11" else "S21"
         if self._display2 == "real_imag":
             return [f"{name} Real", f"{name} Imag"]
@@ -1755,46 +1797,65 @@ class MeasurementViewerWindow(QMainWindow):
                                 color=_TEXT2, fontstyle="italic")
         else:
             ax_top, ax_bot = flat
-            pname = p.upper()
 
-            def _yvals_top(s):
-                if self._display2 == "real_imag":
-                    return s.real
-                return 20*np.log10(np.abs(s)+1e-15)
-
-            def _yvals_bot(s):
-                if self._display2 == "real_imag":
-                    return s.imag
-                return np.angle(s, deg=True)
-
-            def _get_s(e):
-                return e.s11 if p == "s11" else e.s21
-
-            no_data = not any(_get_s(e) is not None for e in entries)
-            for e in entries:
-                s = _get_s(e)
-                if s is None:
-                    continue
-                f, lw = e.freqs / div, 1.6
-                ax_top.plot(f, _yvals_top(s), color=e.color, linewidth=lw, label=e.name)
-                ax_bot.plot(f, _yvals_bot(s), color=e.color, linewidth=lw, label=e.name)
-
-            if no_data:
-                for ax in (ax_top, ax_bot):
-                    ax.text(0.5, 0.5, f"No {pname} data", transform=ax.transAxes,
-                            ha="center", va="center", fontsize=9,
-                            color=_TEXT2, fontstyle="italic")
-
-            if self._display2 == "real_imag":
+            if p == "eps":
+                no_data = not any(e.s11 is not None for e in entries)
+                for e in entries:
+                    if e.s11 is None:
+                        continue
+                    f, lw = e.freqs / div, 1.6
+                    ax_top.plot(f, e.s11.real, color=e.color, linewidth=lw, label=e.name)
+                    ax_bot.plot(f, e.s11.imag, color=e.color, linewidth=lw, label=e.name)
+                if no_data:
+                    for ax in (ax_top, ax_bot):
+                        ax.text(0.5, 0.5, "No permittivity data", transform=ax.transAxes,
+                                ha="center", va="center", fontsize=9,
+                                color=_TEXT2, fontstyle="italic")
                 specs = [
-                    (ax_top, f"{pname} Real", f"Re({pname})"),
-                    (ax_bot, f"{pname} Imag", f"Im({pname})"),
+                    (ax_top, "ε' Real",  "ε' (–)"),
+                    (ax_bot, "ε'' Imag", "ε'' (–)"),
                 ]
             else:
-                specs = [
-                    (ax_top, f"{pname} Magnitude", f"|{pname}| (dB)"),
-                    (ax_bot, f"{pname} Phase",     f"∠{pname} (°)"),
-                ]
+                pname = p.upper()
+
+                def _yvals_top(s):
+                    if self._display2 == "real_imag":
+                        return s.real
+                    return 20*np.log10(np.abs(s)+1e-15)
+
+                def _yvals_bot(s):
+                    if self._display2 == "real_imag":
+                        return s.imag
+                    return np.angle(s, deg=True)
+
+                def _get_s(e):
+                    return e.s11 if p == "s11" else e.s21
+
+                no_data = not any(_get_s(e) is not None for e in entries)
+                for e in entries:
+                    s = _get_s(e)
+                    if s is None:
+                        continue
+                    f, lw = e.freqs / div, 1.6
+                    ax_top.plot(f, _yvals_top(s), color=e.color, linewidth=lw, label=e.name)
+                    ax_bot.plot(f, _yvals_bot(s), color=e.color, linewidth=lw, label=e.name)
+
+                if no_data:
+                    for ax in (ax_top, ax_bot):
+                        ax.text(0.5, 0.5, f"No {pname} data", transform=ax.transAxes,
+                                ha="center", va="center", fontsize=9,
+                                color=_TEXT2, fontstyle="italic")
+
+                if self._display2 == "real_imag":
+                    specs = [
+                        (ax_top, f"{pname} Real", f"Re({pname})"),
+                        (ax_bot, f"{pname} Imag", f"Im({pname})"),
+                    ]
+                else:
+                    specs = [
+                        (ax_top, f"{pname} Magnitude", f"|{pname}| (dB)"),
+                        (ax_bot, f"{pname} Phase",     f"∠{pname} (°)"),
+                    ]
 
         for ax, title, ylabel in specs:
             ax.set_title(title, fontsize=11, color=_TEXT, pad=10)
