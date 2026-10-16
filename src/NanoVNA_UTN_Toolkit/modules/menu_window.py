@@ -115,7 +115,7 @@ class ModuleSelectionWindow(QMainWindow):
 # ------------------------------------------------------------------------------------------------------------------- #
 
         self.setWindowTitle(f"{self.menu_title}")
-        self.setFixedSize(850, 620)
+        self.setFixedSize(850, 680)
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
         window_geometry = self.frameGeometry()
@@ -353,11 +353,11 @@ class ModuleSelectionWindow(QMainWindow):
 
         main_layout.addLayout(modules_layout)
 
-        main_layout.addSpacing(18)
+        main_layout.addSpacing(30)
 
         main_layout.addLayout(viewer_row)
 
-        main_layout.addSpacing(18)
+        main_layout.addSpacing(24)
 
         main_layout.addWidget(
             self.preferences_button,
