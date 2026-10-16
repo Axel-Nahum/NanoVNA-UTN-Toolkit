@@ -409,7 +409,7 @@ class ModuleSelectionWindow(QMainWindow):
 
         dlg = QDialog(self)
         dlg.setWindowTitle("Measurement Viewer")
-        dlg.setFixedSize(360, 160)
+        dlg.setFixedSize(340, 200)
 
         _is_dark = not getattr(self, "is_dark_mode", False)
         if _is_dark:
@@ -424,28 +424,24 @@ class ModuleSelectionWindow(QMainWindow):
             _btn_style = self._btn_open_style
 
         lyt = QVBoxLayout(dlg)
-        lyt.setContentsMargins(24, 20, 24, 20)
-        lyt.setSpacing(16)
+        lyt.setContentsMargins(28, 20, 28, 20)
+        lyt.setSpacing(12)
 
         lbl = QLabel("Open viewer for which module?")
         lbl.setAlignment(Qt.AlignCenter)
         lbl.setStyleSheet("font-size:14px; background:transparent;")
         lyt.addWidget(lbl)
 
-        btn_row = QHBoxLayout()
-        btn_row.setSpacing(16)
-
         btn_dut = QPushButton("DUT Measurement")
-        btn_dut.setFixedHeight(36)
+        btn_dut.setFixedHeight(38)
         btn_dut.setStyleSheet(_btn_style)
 
         btn_char = QPushButton("Material Characterization")
-        btn_char.setFixedHeight(36)
+        btn_char.setFixedHeight(38)
         btn_char.setStyleSheet(_btn_style)
 
-        btn_row.addWidget(btn_dut)
-        btn_row.addWidget(btn_char)
-        lyt.addLayout(btn_row)
+        lyt.addWidget(btn_dut)
+        lyt.addWidget(btn_char)
 
         chosen = [None]
 
