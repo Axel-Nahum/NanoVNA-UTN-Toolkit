@@ -458,8 +458,9 @@ class ModuleSelectionWindow(QMainWindow):
         from NanoVNA_UTN_Toolkit.shared.measurement_viewer.measurement_viewer import MeasurementViewerWindow
         self._viewer_win = MeasurementViewerWindow(
             vna_device=self.vna,
-            source_module=chosen[0],
+            source_module="menu",
             source_window=self,
+            display_mode=chosen[0],
         )
         self._viewer_win.show()
         self.hide()

@@ -158,16 +158,17 @@ class MeasurementViewerWindow(QMainWindow):
         f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}"
     )
 
-    def __init__(self, vna_device=None, source_module: str = "menu", source_window=None):
+    def __init__(self, vna_device=None, source_module: str = "menu", source_window=None, display_mode: str = None):
         super().__init__()
         self._vna           = vna_device
         self._source_module = source_module
         self._source_window = source_window
+        self._display_mode  = display_mode if display_mode is not None else source_module
         self._cache: dict[str, _FileEntry] = {}
         self._color_map: dict[str, str]    = {}
         self._color_idx   = 0
         self._layout_mode  = 2
-        self._param_mode   = "eps" if source_module == "char" else "s11"  # "s11"|"s21"|"eps"|"split"
+        self._param_mode   = "eps" if self._display_mode == "char" else "s11"  # "s11"|"s21"|"eps"|"split"
         self._display2     = "mag_phase"  # "mag_phase" | "real_imag"
         self._compare_mode = False        # False = single file, True = overlay
         self._freq_div     = 1e9          # current display divisor (updated in _redraw)
@@ -386,12 +387,12 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_p2_s11 = QPushButton("S11")
         self._btn_p2_s11.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_p2_s11.clicked.connect(lambda: self._set_param("s11"))
-        _p2_s21_label = "ε" if self._source_module == "char" else "S21"
-        _p2_s21_param = "eps" if self._source_module == "char" else "s21"
+        _p2_s21_label = "ε" if self._display_mode == "char" else "S21"
+        _p2_s21_param = "eps" if self._display_mode == "char" else "s21"
         self._btn_p2_s21 = QPushButton(_p2_s21_label)
         self._btn_p2_s21.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_p2_s21.clicked.connect(lambda: self._set_param(_p2_s21_param))
-        if self._source_module == "char":
+        if self._display_mode == "char":
             self._grp_param2 = self._labeled_seg("Parameter", self._btn_p2_s21, self._btn_p2_s11)
         else:
             self._grp_param2 = self._labeled_seg("Parameter", self._btn_p2_s11, self._btn_p2_s21)
@@ -402,7 +403,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_p4_s21 = QPushButton("S21")
         self._btn_p4_s21.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_p4_s21.clicked.connect(self._toggle_p4_s21)
-        if self._source_module == "char":
+        if self._display_mode == "char":
             self._btn_p4_s21.hide()
         self._grp_param4 = self._labeled_seg("Parameter", self._btn_p4_s11, self._btn_p4_s21)
 
@@ -810,7 +811,7 @@ class MeasurementViewerWindow(QMainWindow):
 
         # ── 4-chart ───────────────────────────────────────────────────────────── #
         _4ch_s21_btn = _ebt("S21", "4ch_s21")
-        if self._source_module == "char":
+        if self._display_mode == "char":
             _4ch_s21_btn.hide()
         eph.addWidget(_exp_section("4-chart",
             _ebt("S11", "4ch_s11"),
