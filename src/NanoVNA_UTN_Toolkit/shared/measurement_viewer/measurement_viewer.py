@@ -166,7 +166,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._color_map: dict[str, str]    = {}
         self._color_idx   = 0
         self._layout_mode  = 2
-        self._param_mode   = "s11"        # "s11" | "s21" | "split"
+        self._param_mode   = "eps" if source_module == "char" else "s11"  # "s11"|"s21"|"eps"|"split"
         self._display2     = "mag_phase"  # "mag_phase" | "real_imag"
         self._compare_mode = False        # False = single file, True = overlay
         self._freq_div     = 1e9          # current display divisor (updated in _redraw)
@@ -386,7 +386,10 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_p2_s21 = QPushButton(_p2_s21_label)
         self._btn_p2_s21.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_p2_s21.clicked.connect(lambda: self._set_param(_p2_s21_param))
-        self._grp_param2 = self._labeled_seg("Parameter", self._btn_p2_s11, self._btn_p2_s21)
+        if self._source_module == "char":
+            self._grp_param2 = self._labeled_seg("Parameter", self._btn_p2_s21, self._btn_p2_s11)
+        else:
+            self._grp_param2 = self._labeled_seg("Parameter", self._btn_p2_s11, self._btn_p2_s21)
 
         self._btn_p4_s11 = QPushButton("S11")
         self._btn_p4_s11.setCursor(Qt.CursorShape.PointingHandCursor)
