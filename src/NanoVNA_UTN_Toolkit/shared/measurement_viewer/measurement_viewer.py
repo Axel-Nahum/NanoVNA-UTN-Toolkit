@@ -1266,18 +1266,18 @@ class MeasurementViewerWindow(QMainWindow):
                     ax = fig.add_subplot(111)
                     if mode in ("ind_mag", "ind_real"):
                         _plot(ax, entries, lambda e: e.s11.real if e.s11 is not None else None)
-                        _style(ax, "ε' Real", "ε' (–)")
+                        _style(ax, "ε'", "ε' (–)")
                         fname = "eps_real"
                     else:
                         _plot(ax, entries, lambda e: e.s11.imag if e.s11 is not None else None)
-                        _style(ax, "ε'' Imag", "ε'' (–)")
+                        _style(ax, "ε''", "ε'' (–)")
                         fname = "eps_imag"
                 else:
                     ax1, ax2 = fig.subplots(2, 1)
                     _plot(ax1, entries, lambda e: e.s11.real if e.s11 is not None else None)
                     _plot(ax2, entries, lambda e: e.s11.imag if e.s11 is not None else None)
-                    _style(ax1, "ε' Real",  "ε' (–)")
-                    _style(ax2, "ε'' Imag", "ε'' (–)")
+                    _style(ax1, "ε'",  "ε' (–)")
+                    _style(ax2, "ε''", "ε'' (–)")
                     fname = "eps_real_imag"
                 fig.tight_layout(pad=1.4, h_pad=2.0)
                 return fig, fname
@@ -1658,7 +1658,7 @@ class MeasurementViewerWindow(QMainWindow):
             return ["S11 Magnitude", "S11 Phase", "S21 Magnitude", "S21 Phase"]
         # 2-chart
         if p == "eps":
-            return ["ε' Real", "ε'' Imag"]
+            return ["ε'", "ε''"]
         name = "S11" if p == "s11" else "S21"
         if self._display2 == "real_imag":
             return [f"{name} Real", f"{name} Imag"]
@@ -1823,8 +1823,8 @@ class MeasurementViewerWindow(QMainWindow):
                                 ha="center", va="center", fontsize=9,
                                 color=_TEXT2, fontstyle="italic")
                 specs = [
-                    (ax_top, "ε' Real",  "ε' (–)"),
-                    (ax_bot, "ε'' Imag", "ε'' (–)"),
+                    (ax_top, "ε'",  "ε' (–)"),
+                    (ax_bot, "ε''", "ε'' (–)"),
                 ]
             else:
                 pname = p.upper()
