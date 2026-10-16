@@ -3,6 +3,7 @@
   "menu": {
     "file": "Archivo",
     "clear_selection": "Limpiar Selección",
+    "preferences": "Preferencias…",
     "back_to_dut": "← Volver a DUT",
     "back_to_char": "← Volver a Caracterización",
     "back_to_menu": "← Volver al Menú",

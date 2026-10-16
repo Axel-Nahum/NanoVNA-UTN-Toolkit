@@ -38,6 +38,12 @@ dark_light_config = safe_import(
 _load_text = safe_import(
     "NanoVNA_UTN_Toolkit.shared.measurement_viewer.resources_loader", "load_text"
 )
+open_preferences_dialog = safe_import(
+    "NanoVNA_UTN_Toolkit.shared.utils.preferences.preferences", "open_preferences_dialog"
+)
+_get_settings = safe_import(
+    "NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings"
+)
 
 _PALETTE = [
     "#4da6ff", "#ff6b6b", "#51cf66", "#ffd43b",
@@ -61,20 +67,17 @@ _GRID     = "#2a2a42"
 _BG       = _CARD_BG
 
 # ── Branch arrow SVGs (written once to a temp dir for Qt stylesheet use) ─── #
-def _make_branch_svgs() -> tuple[str, str]:
+def _make_branch_svgs(color: str = _TEXT2) -> tuple[str, str]:
     td = _tmp.mkdtemp(prefix="nv_viewer_")
     closed = _os.path.join(td, "br_c.svg").replace("\\", "/")
     opened = _os.path.join(td, "br_o.svg").replace("\\", "/")
-    _c = _TEXT2
     with open(closed, "w") as _f:
         _f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8">'
-                 f'<polygon points="2,1 6,4 2,7" fill="{_c}"/></svg>')
+                 f'<polygon points="2,1 6,4 2,7" fill="{color}"/></svg>')
     with open(opened, "w") as _f:
         _f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8">'
-                 f'<polygon points="1,2 7,2 4,6" fill="{_c}"/></svg>')
+                 f'<polygon points="1,2 7,2 4,6" fill="{color}"/></svg>')
     return closed, opened
-
-_BR_CLOSED, _BR_OPEN = _make_branch_svgs()
 
 
 # ─────────────────────────────────────────────────────────────────────────── #
@@ -142,24 +145,10 @@ def _make_signal_pixmap(size: int = 36, color: str = "#4da6ff") -> QPixmap:
 # ─────────────────────────────────────────────────────────────────────────── #
 class MeasurementViewerWindow(QMainWindow):
 
-    # Segmented-pill button styles
-    _SEG_ACTIVE = (
-        f"QPushButton {{ font-size:11px; padding:3px 14px;"
-        f" border:1px solid {_ACCENT};"
-        f" background:{_ACCENT}; color:#ffffff; border-radius:5px; }}"
-        f" QPushButton:hover {{ background:{_ACCENT_H}; border-color:{_ACCENT_H}; }}"
-    )
-    _SEG_INACTIVE = (
-        f"QPushButton {{ font-size:11px; padding:3px 14px;"
-        f" border:1px solid {_BORDER};"
-        f" background:{_PANEL_BG}; color:{_TEXT2}; border-radius:5px; }}"
-        f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}"
-    )
-    _ACTION_BTN = (
-        f"QPushButton {{ font-size:11px; padding:4px 14px; border-radius:6px;"
-        f" border:1px solid {_BORDER}; background:transparent; color:{_TEXT2}; }}"
-        f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}"
-    )
+    # Style strings are set as instance attributes in _load_theme_colors()
+    _SEG_ACTIVE  = ""
+    _SEG_INACTIVE = ""
+    _ACTION_BTN  = ""
 
     def __init__(self, vna_device=None, source_module: str = "menu", source_window=None, display_mode: str = None):
         super().__init__()
@@ -192,6 +181,7 @@ class MeasurementViewerWindow(QMainWindow):
         self._y_range         = [(None, None)] * 4  # (ymin, ymax) when manual
         self._y_grid          = [True] * 4   # per-chart grid visibility
 
+        self._load_theme_colors()
         self._texts: dict = _load_text("measurement_viewer.json") if _load_text else {}
 
         self.setWindowTitle(self._t("window_title", fallback="NanoVNA Toolkit — Measurement Viewer"))
@@ -215,11 +205,11 @@ class MeasurementViewerWindow(QMainWindow):
     def _build_menu(self):
         mb = self.menuBar()
         mb.setStyleSheet(
-            f"QMenuBar {{ background:{_PANEL_BG}; color:{_TEXT};"
-            f" border-bottom:1px solid {_BORDER}; }}"
+            f"QMenuBar {{ background:{self._PANEL_BG}; color:{self._TEXT};"
+            f" border-bottom:1px solid {self._BORDER}; }}"
             " QMenuBar::item:selected { background:#1c2433; }"
-            f" QMenu {{ background:{_PANEL_BG}; color:{_TEXT};"
-            f" border:1px solid {_BORDER}; }}"
+            f" QMenu {{ background:{self._PANEL_BG}; color:{self._TEXT};"
+            f" border:1px solid {self._BORDER}; }}"
             " QMenu::item:selected { background:#1c2433; }"
         )
         file_menu = mb.addMenu(self._t("menu", "file", fallback="File"))
@@ -227,6 +217,11 @@ class MeasurementViewerWindow(QMainWindow):
         clear_act.triggered.connect(self._clear_selection)
         file_menu.addAction(clear_act)
         file_menu.addSeparator()
+        if open_preferences_dialog:
+            pref_act = QAction("⚙  " + self._t("menu", "preferences", fallback="Preferences…"), self)
+            pref_act.triggered.connect(lambda: open_preferences_dialog(self))
+            file_menu.addAction(pref_act)
+            file_menu.addSeparator()
         _back_labels = {
             "dut":  self._t("menu", "back_to_dut",  fallback="← Back to DUT"),
             "char": self._t("menu", "back_to_char", fallback="← Back to Characterization"),
@@ -257,7 +252,7 @@ class MeasurementViewerWindow(QMainWindow):
         hline = QFrame()
         hline.setFrameShape(QFrame.Shape.HLine)
         hline.setFixedHeight(1)
-        hline.setStyleSheet(f"background:{_BORDER};")
+        hline.setStyleSheet(f"background:{self._BORDER};")
         v.addWidget(hline)
 
         content = QWidget()
@@ -270,7 +265,7 @@ class MeasurementViewerWindow(QMainWindow):
         vline = QFrame()
         vline.setFrameShape(QFrame.Shape.VLine)
         vline.setFixedWidth(1)
-        vline.setStyleSheet(f"background:{_BORDER};")
+        vline.setStyleSheet(f"background:{self._BORDER};")
         h.addWidget(vline)
 
         h.addWidget(self._build_chart_area(), stretch=1)
@@ -303,13 +298,13 @@ class MeasurementViewerWindow(QMainWindow):
         tv.setSpacing(0)
         t1 = QLabel(self._t("header", "title", fallback="Measurement Viewer"))
         t1.setStyleSheet(
-            f"font-size:14px; font-weight:bold; color:{_TEXT}; background:transparent;"
+            f"font-size:14px; font-weight:bold; color:{self._TEXT}; background:transparent;"
             " margin:0; padding:0;")
         t1.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         t1.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         t2 = QLabel(self._t("header", "subtitle", fallback="Compare and inspect measurement files"))
         t2.setStyleSheet(
-            f"font-size:10px; color:{_TEXT2}; background:transparent;"
+            f"font-size:10px; color:{self._TEXT2}; background:transparent;"
             " margin:0; padding:0;")
         t2.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         t2.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
@@ -322,8 +317,8 @@ class MeasurementViewerWindow(QMainWindow):
         chart_hdr = QWidget()
         chart_hdr.setObjectName("chart_hdr_card")
         chart_hdr.setStyleSheet(
-            f"QWidget#chart_hdr_card {{ background:{_PANEL_BG};"
-            f" border:1px solid {_BORDER}; border-radius:8px; }}"
+            f"QWidget#chart_hdr_card {{ background:{self._PANEL_BG};"
+            f" border:1px solid {self._BORDER}; border-radius:8px; }}"
         )
         cv = QVBoxLayout(chart_hdr)
         cv.setContentsMargins(0, 0, 0, 0)
@@ -333,12 +328,12 @@ class MeasurementViewerWindow(QMainWindow):
         # ── Tab bar (top of card) ────────────────────────────────────────────── #
         _TAB_ACTIVE = (
             f"QPushButton {{ font-size:11px; font-weight:600; padding:5px 18px;"
-            f" border:none; background:{_ACCENT}; color:#ffffff; border-radius:6px; }}"
+            f" border:none; background:{self._ACCENT}; color:#ffffff; border-radius:6px; }}"
         )
         _TAB_INACTIVE = (
             f"QPushButton {{ font-size:11px; font-weight:500; padding:5px 18px;"
-            f" border:none; background:transparent; color:{_TEXT2}; border-radius:6px; }}"
-            f" QPushButton:hover {{ color:{_TEXT}; background:{_BORDER}; }}"
+            f" border:none; background:transparent; color:{self._TEXT2}; border-radius:6px; }}"
+            f" QPushButton:hover {{ color:{self._TEXT}; background:{self._BORDER}; }}"
         )
         tab_bar_w = QWidget()
         tab_bar_w.setStyleSheet("background:transparent;")
@@ -366,7 +361,7 @@ class MeasurementViewerWindow(QMainWindow):
         hsep = QFrame()
         hsep.setFrameShape(QFrame.Shape.HLine)
         hsep.setFixedHeight(1)
-        hsep.setStyleSheet(f"background:{_BORDER}; border:none;")
+        hsep.setStyleSheet(f"background:{self._BORDER}; border:none;")
         cv.addWidget(hsep)
 
         # ── Tab content stack ────────────────────────────────────────────────── #
@@ -462,17 +457,17 @@ class MeasurementViewerWindow(QMainWindow):
             sep = QFrame()
             sep.setFrameShape(QFrame.Shape.VLine)
             sep.setFixedWidth(1)
-            sep.setStyleSheet(f"background:{_BORDER}; border:none;")
+            sep.setStyleSheet(f"background:{self._BORDER}; border:none;")
             return sep
 
         def _cap_lbl(text: str) -> QLabel:
             l = QLabel(text)
-            l.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px;")
+            l.setStyleSheet(f"color:{self._TEXT2}; background:transparent; font-size:9px;")
             return l
 
         def _val_lbl() -> QLabel:
             l = QLabel("—")
-            l.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:11px; font-weight:500;")
+            l.setStyleSheet(f"color:{self._TEXT}; background:transparent; font-size:11px; font-weight:500;")
             return l
 
         # ── cursor button styles ─────────────────────────────────────────────── #
@@ -483,11 +478,11 @@ class MeasurementViewerWindow(QMainWindow):
                    f" border:none; background:{_C2_COLOR}; color:#0a0a14;"
                    f" border-radius:5px; }}")
         _CX_OFF = (f"QPushButton {{ font-size:11px; padding:2px 10px;"
-                   f" border:1px solid {_BORDER}; background:transparent;"
-                   f" color:{_TEXT2}; border-radius:5px; }}"
-                   f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}")
+                   f" border:1px solid {self._BORDER}; background:transparent;"
+                   f" color:{self._TEXT2}; border-radius:5px; }}"
+                   f" QPushButton:hover {{ background:{self._BORDER}; color:{self._TEXT}; }}")
         _CX_DIS = (f"QPushButton {{ font-size:11px; padding:2px 10px;"
-                   f" border:1px solid {_BORDER}; background:transparent;"
+                   f" border:1px solid {self._BORDER}; background:transparent;"
                    f" color:#44445a; border-radius:5px; }}")
         self._C1_ON_STYLE   = _C1_ON
         self._C2_ON_STYLE   = _C2_ON
@@ -505,7 +500,7 @@ class MeasurementViewerWindow(QMainWindow):
         c1_dot = QLabel("●")
         c1_dot.setStyleSheet(f"color:{_C1_COLOR}; background:transparent; font-size:10px;")
         c1_title = QLabel(self._t("cursors", "cursor_1", fallback="Cursor 1"))
-        c1_title.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:10px; font-weight:600;")
+        c1_title.setStyleSheet(f"color:{self._TEXT}; background:transparent; font-size:10px; font-weight:600;")
         self._btn_c1 = QPushButton("C1")
         self._btn_c1.setFixedHeight(22)
         self._btn_c1.setFixedWidth(38)
@@ -550,7 +545,7 @@ class MeasurementViewerWindow(QMainWindow):
         c2_dot = QLabel("●")
         c2_dot.setStyleSheet(f"color:{_C2_COLOR}; background:transparent; font-size:10px;")
         c2_title = QLabel(self._t("cursors", "cursor_2", fallback="Cursor 2"))
-        c2_title.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:10px; font-weight:600;")
+        c2_title.setStyleSheet(f"color:{self._TEXT}; background:transparent; font-size:10px; font-weight:600;")
         self._btn_c2 = QPushButton("C2")
         self._btn_c2.setFixedHeight(22)
         self._btn_c2.setFixedWidth(38)
@@ -591,7 +586,7 @@ class MeasurementViewerWindow(QMainWindow):
         dfv.setContentsMargins(14, 4, 14, 4)
         dfv.setSpacing(4)
         df_title = QLabel(self._t("cursors", "delta_title", fallback="Δ  (C2 − C1)"))
-        df_title.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:10px; font-weight:600;")
+        df_title.setStyleSheet(f"color:{self._TEXT2}; background:transparent; font-size:10px; font-weight:600;")
         dfv.addWidget(df_title)
         dfd = QHBoxLayout()
         dfd.setSpacing(8)
@@ -626,9 +621,9 @@ class MeasurementViewerWindow(QMainWindow):
         lnk_title_row = QHBoxLayout()
         lnk_title_row.setSpacing(6)
         lnk_icon = QLabel("⇔")
-        lnk_icon.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:12px;")
+        lnk_icon.setStyleSheet(f"color:{self._TEXT2}; background:transparent; font-size:12px;")
         lnk_lbl = QLabel(self._t("cursors", "linked", fallback="Linked"))
-        lnk_lbl.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:10px; font-weight:600;")
+        lnk_lbl.setStyleSheet(f"color:{self._TEXT}; background:transparent; font-size:10px; font-weight:600;")
         lnk_title_row.addWidget(lnk_icon)
         lnk_title_row.addWidget(lnk_lbl)
         lnk_title_row.addStretch(1)
@@ -652,22 +647,22 @@ class MeasurementViewerWindow(QMainWindow):
         rph.setSpacing(0)
 
         _RNG_ON  = (f"QPushButton {{ font-size:11px; font-weight:600; padding:2px 9px;"
-                    f" border:none; background:{_ACCENT}; color:#ffffff; border-radius:4px; }}"
-                    f" QPushButton:hover {{ background:{_ACCENT_H}; }}")
+                    f" border:none; background:{self._ACCENT}; color:#ffffff; border-radius:4px; }}"
+                    f" QPushButton:hover {{ background:{self._ACCENT_H}; }}")
         _RNG_OFF = (f"QPushButton {{ font-size:11px; padding:2px 9px;"
-                    f" border:1px solid {_BORDER}; background:transparent;"
-                    f" color:{_TEXT2}; border-radius:4px; }}"
-                    f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}")
+                    f" border:1px solid {self._BORDER}; background:transparent;"
+                    f" color:{self._TEXT2}; border-radius:4px; }}"
+                    f" QPushButton:hover {{ background:{self._BORDER}; color:{self._TEXT}; }}")
         _RNG_IN  = (f"QLineEdit {{ font-size:11px; padding:2px 5px; border-radius:3px;"
-                    f" border:1px solid {_BORDER}; background:{_CARD_BG}; color:{_TEXT}; }}"
-                    f" QLineEdit:focus {{ border-color:{_ACCENT}; }}"
+                    f" border:1px solid {self._BORDER}; background:{self._CARD_BG}; color:{self._TEXT}; }}"
+                    f" QLineEdit:focus {{ border-color:{self._ACCENT}; }}"
                     f" QLineEdit:disabled {{ color:#44445a; background:#1a1a2e; border-color:#2a2a42; }}")
         self._RNG_ON_STYLE  = _RNG_ON
         self._RNG_OFF_STYLE = _RNG_OFF
 
         def _rsep() -> QFrame:
             s = QFrame(); s.setFrameShape(QFrame.Shape.VLine)
-            s.setFixedWidth(1); s.setStyleSheet(f"background:{_BORDER}; border:none;")
+            s.setFixedWidth(1); s.setStyleSheet(f"background:{self._BORDER}; border:none;")
             return s
 
         self._range_sections: list[dict] = []
@@ -680,7 +675,7 @@ class MeasurementViewerWindow(QMainWindow):
             # Row 1: label + Auto + Grid
             _r1 = QHBoxLayout(); _r1.setSpacing(4); _r1.setContentsMargins(0,0,0,0)
             _chart_lbl = QLabel("—")
-            _chart_lbl.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:11px; font-weight:500;")
+            _chart_lbl.setStyleSheet(f"color:{self._TEXT}; background:transparent; font-size:11px; font-weight:500;")
             _chart_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
             _btn_auto = QPushButton(self._t("range", "auto", fallback="Auto"))
             _btn_auto.setFixedSize(52, 23)
@@ -697,11 +692,11 @@ class MeasurementViewerWindow(QMainWindow):
             # Row 2: Ymin / Ymax inputs
             _r2 = QHBoxLayout(); _r2.setSpacing(4); _r2.setContentsMargins(0,0,0,0)
             _lbl_min = QLabel(self._t("range", "y_min", fallback="Y min"))
-            _lbl_min.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:10px;")
+            _lbl_min.setStyleSheet(f"color:{self._TEXT2}; background:transparent; font-size:10px;")
             _edit_min = QLineEdit(); _edit_min.setFixedHeight(23); _edit_min.setStyleSheet(_RNG_IN)
             _edit_min.setPlaceholderText("auto"); _edit_min.setEnabled(False)
             _lbl_max = QLabel(self._t("range", "y_max", fallback="max"))
-            _lbl_max.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:10px;")
+            _lbl_max.setStyleSheet(f"color:{self._TEXT2}; background:transparent; font-size:10px;")
             _edit_max = QLineEdit(); _edit_max.setFixedHeight(23); _edit_max.setStyleSheet(_RNG_IN)
             _edit_max.setPlaceholderText("auto"); _edit_max.setEnabled(False)
             _r2.addWidget(_lbl_min)
@@ -748,29 +743,29 @@ class MeasurementViewerWindow(QMainWindow):
         eph.setSpacing(0)
 
         _EXP_ACT = (f"QPushButton {{ font-size:10px; font-weight:600; padding:2px 9px;"
-                    f" border:none; background:{_ACCENT}; color:#ffffff; border-radius:4px; }}"
-                    f" QPushButton:hover {{ background:{_ACCENT_H}; }}")
+                    f" border:none; background:{self._ACCENT}; color:#ffffff; border-radius:4px; }}"
+                    f" QPushButton:hover {{ background:{self._ACCENT_H}; }}")
         _EXP_OFF = (f"QPushButton {{ font-size:10px; padding:2px 9px;"
-                    f" border:1px solid {_BORDER}; background:transparent;"
-                    f" color:{_TEXT2}; border-radius:4px; }}"
-                    f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}")
+                    f" border:1px solid {self._BORDER}; background:transparent;"
+                    f" color:{self._TEXT2}; border-radius:4px; }}"
+                    f" QPushButton:hover {{ background:{self._BORDER}; color:{self._TEXT}; }}")
         _EXP_GO  = (f"QPushButton {{ font-size:10px; font-weight:600; padding:2px 10px;"
-                    f" border:1px solid {_BORDER}; background:transparent;"
-                    f" color:{_TEXT}; border-radius:4px; }}"
-                    f" QPushButton:hover {{ background:{_BORDER}; }}")
+                    f" border:1px solid {self._BORDER}; background:transparent;"
+                    f" color:{self._TEXT}; border-radius:4px; }}"
+                    f" QPushButton:hover {{ background:{self._BORDER}; }}")
         self._EXP_ACT_STYLE = _EXP_ACT
         self._EXP_OFF_STYLE = _EXP_OFF
 
         def _exp_sep():
             s = QFrame(); s.setFrameShape(QFrame.Shape.VLine)
-            s.setFixedWidth(1); s.setStyleSheet(f"background:{_BORDER}; border:none;")
+            s.setFixedWidth(1); s.setStyleSheet(f"background:{self._BORDER}; border:none;")
             return s
 
         def _exp_section(label_text, *btns):
             w = QWidget(); w.setStyleSheet("background:transparent;")
             v = QVBoxLayout(w); v.setContentsMargins(12, 5, 12, 5); v.setSpacing(4)
             lbl = QLabel(label_text)
-            lbl.setStyleSheet(f"color:{_TEXT}; background:transparent; font-size:11px; font-weight:600;")
+            lbl.setStyleSheet(f"color:{self._TEXT}; background:transparent; font-size:11px; font-weight:600;")
             lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
             v.addWidget(lbl)
             row = QHBoxLayout(); row.setSpacing(4); row.setContentsMargins(0,0,0,0)
@@ -786,12 +781,12 @@ class MeasurementViewerWindow(QMainWindow):
         self._export_dpi.setFixedSize(42, 22)
         self._export_dpi.setStyleSheet(
             f"QLineEdit {{ font-size:10px; padding:1px 4px; border-radius:3px;"
-            f" border:1px solid {_BORDER}; background:{_CARD_BG}; color:{_TEXT}; }}")
+            f" border:1px solid {self._BORDER}; background:{self._CARD_BG}; color:{self._TEXT}; }}")
         dpi_w = QWidget(); dpi_w.setStyleSheet("background:transparent;")
         dpi_v = QVBoxLayout(dpi_w)
         dpi_v.setContentsMargins(12, 5, 12, 5); dpi_v.setSpacing(4)
         dpi_lbl2 = QLabel(self._t("export", "dpi", fallback="DPI"))
-        dpi_lbl2.setStyleSheet(f"color:{_TEXT2}; background:transparent; font-size:9px; font-weight:600;")
+        dpi_lbl2.setStyleSheet(f"color:{self._TEXT2}; background:transparent; font-size:9px; font-weight:600;")
         dpi_v.addWidget(dpi_lbl2)
         dpi_v.addWidget(self._export_dpi)
         eph.addWidget(dpi_w)
@@ -852,12 +847,71 @@ class MeasurementViewerWindow(QMainWindow):
             d = d.get(k, {})
         return d if isinstance(d, str) else fallback
 
+    def _load_theme_colors(self):
+        """Read dark/light mode from INI and set all color instance variables."""
+        is_dark = True  # dark by default
+        if _get_settings is not None:
+            try:
+                _s = _get_settings(
+                    "INI/dut_measurement/dark_light_config/dark_light_config.ini",
+                    "shared/utils/dark_light_mode/dark_light_config.ini",
+                    Path(__file__).resolve(),
+                )
+                # is_dark_mode=False → dark active; True → light active
+                is_dark = not _s.value("Dark_Light/is_dark_mode", False, type=bool)
+            except Exception:
+                pass
+
+        if is_dark:
+            self._WIN_BG   = "#1e1e2e"
+            self._PANEL_BG = "#252538"
+            self._BORDER   = "#383850"
+            self._CARD_BG  = "#12121e"
+            self._SPINE    = "#2a2a42"
+            self._ACCENT   = "#2d5a8e"
+            self._ACCENT_H = "#3a6fa0"
+            self._TEXT     = "#ffffff"
+            self._TEXT2    = "#8888aa"
+            self._GRID     = "#2a2a42"
+        else:
+            self._WIN_BG   = "#f0f0f5"
+            self._PANEL_BG = "#ffffff"
+            self._BORDER   = "#d0d0e0"
+            self._CARD_BG  = "#e8e8f4"
+            self._SPINE    = "#c0c0cc"
+            self._ACCENT   = "#2d5a8e"
+            self._ACCENT_H = "#3a6fa0"
+            self._TEXT     = "#1a1a2e"
+            self._TEXT2    = "#5555aa"
+            self._GRID     = "#d0d0e0"
+
+        self._BG = self._CARD_BG
+        self._BR_CLOSED, self._BR_OPEN = _make_branch_svgs(self._TEXT2)
+
+        self._SEG_ACTIVE = (
+            f"QPushButton {{ font-size:11px; padding:3px 14px;"
+            f" border:1px solid {self._ACCENT};"
+            f" background:{self._ACCENT}; color:#ffffff; border-radius:5px; }}"
+            f" QPushButton:hover {{ background:{self._ACCENT_H}; border-color:{self._ACCENT_H}; }}"
+        )
+        self._SEG_INACTIVE = (
+            f"QPushButton {{ font-size:11px; padding:3px 14px;"
+            f" border:1px solid {self._BORDER};"
+            f" background:{self._PANEL_BG}; color:{self._TEXT2}; border-radius:5px; }}"
+            f" QPushButton:hover {{ background:{self._BORDER}; color:{self._TEXT}; }}"
+        )
+        self._ACTION_BTN = (
+            f"QPushButton {{ font-size:11px; padding:4px 14px; border-radius:6px;"
+            f" border:1px solid {self._BORDER}; background:transparent; color:{self._TEXT2}; }}"
+            f" QPushButton:hover {{ background:{self._BORDER}; color:{self._TEXT}; }}"
+        )
+
     def _vsep(self) -> QFrame:
         sep = QFrame()
         sep.setFrameShape(QFrame.Shape.VLine)
         sep.setFixedWidth(1)
         sep.setFixedHeight(48)
-        sep.setStyleSheet(f"background:{_BORDER};")
+        sep.setStyleSheet(f"background:{self._BORDER};")
         return sep
 
     def _labeled_seg(self, label: str, *buttons) -> QWidget:
@@ -869,7 +923,7 @@ class MeasurementViewerWindow(QMainWindow):
         gv.setSpacing(5)
 
         lbl = QLabel(label)
-        lbl.setStyleSheet(f"font-size:10px; color:{_TEXT2}; background:transparent;")
+        lbl.setStyleSheet(f"font-size:10px; color:{self._TEXT2}; background:transparent;")
         lbl.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         gv.addWidget(lbl)
 
@@ -897,12 +951,12 @@ class MeasurementViewerWindow(QMainWindow):
         hrow.setContentsMargins(0, 0, 0, 0)
         fl = QLabel(self._t("files_panel", "title", fallback="Measurement files"))
         fl.setStyleSheet(
-            f"font-size:12px; font-weight:bold; color:{_TEXT}; background:transparent;")
+            f"font-size:12px; font-weight:bold; color:{self._TEXT}; background:transparent;")
         hrow.addWidget(fl)
         hrow.addStretch()
         self._badge = QLabel(self._t("files_panel", "badge_files", fallback="{n} files").replace("{n}", "0"))
         self._badge.setStyleSheet(
-            f"font-size:10px; color:{_TEXT2}; background:{_BORDER};"
+            f"font-size:10px; color:{self._TEXT2}; background:{self._BORDER};"
             " border-radius:8px; padding:1px 7px;")
         hrow.addWidget(self._badge)
         lv.addLayout(hrow)
@@ -920,8 +974,8 @@ class MeasurementViewerWindow(QMainWindow):
         )
         _MODE_OFF = (
             f"QPushButton {{ font-size:12px; font-weight:500;"
-            f" background:{_PANEL_BG}; color:{_TEXT2}; border:none; }}"
-            f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}"
+            f" background:{self._PANEL_BG}; color:{self._TEXT2}; border:none; }}"
+            f" QPushButton:hover {{ background:{self._BORDER}; color:{self._TEXT}; }}"
         )
         self._MODE_ON_STYLE  = _MODE_ON
         self._MODE_OFF_STYLE = _MODE_OFF
@@ -938,7 +992,7 @@ class MeasurementViewerWindow(QMainWindow):
         # Segmented control container — rounded outer corners only
         seg_mode = QWidget()
         seg_mode.setStyleSheet(
-            f"QWidget {{ background:{_PANEL_BG}; border:1px solid {_BORDER};"
+            f"QWidget {{ background:{self._PANEL_BG}; border:1px solid {self._BORDER};"
             f" border-radius:7px; }}"
         )
         seg_mode.setFixedHeight(36)
@@ -961,9 +1015,9 @@ class MeasurementViewerWindow(QMainWindow):
         add_files.setFixedHeight(36)
         add_files.setCursor(Qt.CursorShape.PointingHandCursor)
         add_files.setStyleSheet(
-            f"QPushButton {{ font-size:12px; background:{_ACCENT}; color:white;"
-            f" border:1px solid {_ACCENT}; border-radius:6px; }}"
-            f" QPushButton:hover {{ background:{_ACCENT_H}; border-color:{_ACCENT_H}; }}"
+            f"QPushButton {{ font-size:12px; background:{self._ACCENT}; color:white;"
+            f" border:1px solid {self._ACCENT}; border-radius:6px; }}"
+            f" QPushButton:hover {{ background:{self._ACCENT_H}; border-color:{self._ACCENT_H}; }}"
         )
         add_files.clicked.connect(self._add_files)
         brow.addWidget(add_files)
@@ -972,9 +1026,9 @@ class MeasurementViewerWindow(QMainWindow):
         add_folder.setFixedHeight(36)
         add_folder.setCursor(Qt.CursorShape.PointingHandCursor)
         add_folder.setStyleSheet(
-            f"QPushButton {{ font-size:12px; background:{_PANEL_BG}; color:{_TEXT2};"
-            f" border:1px solid {_BORDER}; border-radius:6px; }}"
-            f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}"
+            f"QPushButton {{ font-size:12px; background:{self._PANEL_BG}; color:{self._TEXT2};"
+            f" border:1px solid {self._BORDER}; border-radius:6px; }}"
+            f" QPushButton:hover {{ background:{self._BORDER}; color:{self._TEXT}; }}"
         )
         add_folder.clicked.connect(self._browse_folder)
         brow.addWidget(add_folder)
@@ -985,9 +1039,9 @@ class MeasurementViewerWindow(QMainWindow):
         self._filter_edit.setPlaceholderText(self._t("files_panel", "filter_placeholder", fallback="Filter files…"))
         self._filter_edit.setFixedHeight(30)
         self._filter_edit.setStyleSheet(
-            f"QLineEdit {{ background:{_PANEL_BG}; color:{_TEXT}; border:1px solid {_BORDER};"
+            f"QLineEdit {{ background:{self._PANEL_BG}; color:{self._TEXT}; border:1px solid {self._BORDER};"
             " border-radius:5px; padding:0 8px; font-size:11px; }"
-            f" QLineEdit:focus {{ border-color:{_ACCENT}; }}"
+            f" QLineEdit:focus {{ border-color:{self._ACCENT}; }}"
         )
         self._filter_edit.textChanged.connect(self._apply_filter)
         lv.addWidget(self._filter_edit)
@@ -996,7 +1050,7 @@ class MeasurementViewerWindow(QMainWindow):
         _fsep = QFrame()
         _fsep.setFrameShape(QFrame.Shape.HLine)
         _fsep.setFixedHeight(1)
-        _fsep.setStyleSheet(f"background:{_BORDER}; border:none;")
+        _fsep.setStyleSheet(f"background:{self._BORDER}; border:none;")
         lv.addWidget(_fsep)
 
         # File tree
@@ -1006,18 +1060,18 @@ class MeasurementViewerWindow(QMainWindow):
         self._file_list.setIndentation(14)
         self._file_list.setStyleSheet(
             f"QTreeWidget {{ background:transparent; border:none;"
-            f" color:{_TEXT}; font-size:11px; outline:none; }}"
+            f" color:{self._TEXT}; font-size:11px; outline:none; }}"
             f" QTreeWidget::item {{ padding:4px 2px; }}"
-            f" QTreeWidget::item:selected {{ background:{_ACCENT}; color:#ffffff; }}"
-            f" QTreeWidget::item:hover:!selected {{ background:{_BORDER}; }}"
+            f" QTreeWidget::item:selected {{ background:{self._ACCENT}; color:#ffffff; }}"
+            f" QTreeWidget::item:hover:!selected {{ background:{self._BORDER}; }}"
             " QScrollBar:vertical { width:5px; background:transparent; }"
-            f" QScrollBar::handle:vertical {{ background:{_BORDER}; border-radius:2px; }}"
+            f" QScrollBar::handle:vertical {{ background:{self._BORDER}; border-radius:2px; }}"
             f" QTreeWidget::branch:has-children:!has-siblings:closed,"
             f" QTreeWidget::branch:closed:has-children:has-siblings {{"
-            f"   border-image: none; image: url({_BR_CLOSED}); }}"
+            f"   border-image: none; image: url({self._BR_CLOSED}); }}"
             f" QTreeWidget::branch:open:has-children:!has-siblings,"
             f" QTreeWidget::branch:open:has-children:has-siblings {{"
-            f"   border-image: none; image: url({_BR_OPEN}); }}"
+            f"   border-image: none; image: url({self._BR_OPEN}); }}"
         )
         self._file_list.setSelectionMode(self._file_list.SelectionMode.SingleSelection)
         self._file_list.itemSelectionChanged.connect(self._on_selection_changed)
@@ -1038,12 +1092,12 @@ class MeasurementViewerWindow(QMainWindow):
 
         nm = QLabel(self._t("files_panel", "empty_title", fallback="No measurements loaded"))
         nm.setStyleSheet(
-            f"font-size:12px; font-weight:bold; color:{_TEXT}; background:transparent;")
+            f"font-size:12px; font-weight:bold; color:{self._TEXT}; background:transparent;")
         nm.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         ev.addWidget(nm)
 
         ht = QLabel(self._t("files_panel", "empty_hint", fallback="Add .s1p or .s2p files to compare curves."))
-        ht.setStyleSheet(f"font-size:10px; color:{_TEXT2}; background:transparent;")
+        ht.setStyleSheet(f"font-size:10px; color:{self._TEXT2}; background:transparent;")
         ht.setAlignment(Qt.AlignmentFlag.AlignHCenter)
         ht.setWordWrap(True)
         ev.addWidget(ht)
@@ -1058,7 +1112,7 @@ class MeasurementViewerWindow(QMainWindow):
         rv.setContentsMargins(16, 10, 16, 14)
         rv.setSpacing(0)
 
-        self._fig = _Figure(facecolor=_BG)
+        self._fig = _Figure(facecolor=self._BG)
         self._axes = self._fig.subplots(2, 1)
         self._canvas = FigureCanvas(self._fig)
         self._canvas.setSizePolicy(
@@ -1221,7 +1275,7 @@ class MeasurementViewerWindow(QMainWindow):
         if i < len(axes):
             ax = axes[i]
             if self._y_grid[i]:
-                ax.grid(True, linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
+                ax.grid(True, linestyle="--", alpha=0.45, color=self._GRID, linewidth=0.6)
             else:
                 ax.grid(False)
             self._canvas.draw()
@@ -1262,14 +1316,14 @@ class MeasurementViewerWindow(QMainWindow):
             p = "s11"
 
         def _style(ax, title, ylabel):
-            ax.set_facecolor(_CARD_BG)
-            ax.set_title(title, fontsize=12, color=_TEXT, pad=10)
-            ax.set_ylabel(ylabel, fontsize=9, color=_TEXT2)
-            ax.set_xlabel(f"Frequency ({unit})", fontsize=9, color=_TEXT2)
-            ax.tick_params(colors=_TEXT2, labelsize=8)
-            ax.grid(True, linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
+            ax.set_facecolor(self._CARD_BG)
+            ax.set_title(title, fontsize=12, color=self._TEXT, pad=10)
+            ax.set_ylabel(ylabel, fontsize=9, color=self._TEXT2)
+            ax.set_xlabel(f"Frequency ({unit})", fontsize=9, color=self._TEXT2)
+            ax.tick_params(colors=self._TEXT2, labelsize=8)
+            ax.grid(True, linestyle="--", alpha=0.45, color=self._GRID, linewidth=0.6)
             for sp in ax.spines.values():
-                sp.set_color(_SPINE); sp.set_linewidth(0.8)
+                sp.set_color(self._SPINE); sp.set_linewidth(0.8)
 
         def _plot(ax, entries, get_y):
             for e in entries:
@@ -1277,7 +1331,7 @@ class MeasurementViewerWindow(QMainWindow):
                 if y is None: continue
                 ax.plot(e.freqs / div, y, color=e.color, linewidth=1.6, label=e.name)
             if len(entries) > 1 and ax.get_lines():
-                ax.legend(fontsize=7, facecolor=_PANEL_BG, edgecolor=_BORDER, labelcolor=_TEXT)
+                ax.legend(fontsize=7, facecolor=self._PANEL_BG, edgecolor=self._BORDER, labelcolor=self._TEXT)
 
         def _s(e, param): return e.s11 if param == "s11" else e.s21
 
@@ -1286,7 +1340,7 @@ class MeasurementViewerWindow(QMainWindow):
             if mode in ("ind_mag", "ind_phase", "ind_real", "ind_imag",
                         "pair_mp", "pair_ri"):
                 fig = _MplFig(figsize=(9, 5) if mode.startswith("ind") else (9, 8),
-                              facecolor=_CARD_BG)
+                              facecolor=self._CARD_BG)
                 if mode.startswith("ind"):
                     ax = fig.add_subplot(111)
                     if mode in ("ind_mag", "ind_real"):
@@ -1311,7 +1365,7 @@ class MeasurementViewerWindow(QMainWindow):
         pname = p.upper()
 
         if mode in ("ind_mag", "ind_phase", "ind_real", "ind_imag"):
-            fig = _MplFig(figsize=(9, 5), facecolor=_CARD_BG)
+            fig = _MplFig(figsize=(9, 5), facecolor=self._CARD_BG)
             ax = fig.add_subplot(111)
             if mode == "ind_mag":
                 _plot(ax, entries, lambda e: 20*np.log10(np.abs(_s(e,p))+1e-15) if _s(e,p) is not None else None)
@@ -1333,7 +1387,7 @@ class MeasurementViewerWindow(QMainWindow):
             return fig, fname
 
         if mode in ("pair_mp", "pair_ri"):
-            fig = _MplFig(figsize=(9, 8), facecolor=_CARD_BG)
+            fig = _MplFig(figsize=(9, 8), facecolor=self._CARD_BG)
             ax1, ax2 = fig.subplots(2, 1)
             if mode == "pair_mp":
                 _plot(ax1, entries, lambda e: 20*np.log10(np.abs(_s(e,p))+1e-15) if _s(e,p) is not None else None)
@@ -1353,7 +1407,7 @@ class MeasurementViewerWindow(QMainWindow):
         if mode in ("4ch_s11", "4ch_s21"):
             param = "s11" if mode == "4ch_s11" else "s21"
             pn = param.upper()
-            fig = _MplFig(figsize=(12, 8), facecolor=_CARD_BG)
+            fig = _MplFig(figsize=(12, 8), facecolor=self._CARD_BG)
             ((ax0, ax1), (ax2, ax3)) = fig.subplots(2, 2)
             for e in entries:
                 s = _s(e, param)
@@ -1370,7 +1424,7 @@ class MeasurementViewerWindow(QMainWindow):
             if len(entries) > 1:
                 for ax in (ax0, ax1, ax2, ax3):
                     if ax.get_lines():
-                        ax.legend(fontsize=7, facecolor=_PANEL_BG, edgecolor=_BORDER, labelcolor=_TEXT)
+                        ax.legend(fontsize=7, facecolor=self._PANEL_BG, edgecolor=self._BORDER, labelcolor=self._TEXT)
             fig.tight_layout(pad=1.4, h_pad=2.0, w_pad=2.0)
             return fig, f"{pn}_4chart"
 
@@ -1399,7 +1453,7 @@ class MeasurementViewerWindow(QMainWindow):
         )
         if path:
             try:
-                fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor=_CARD_BG)
+                fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor=self._CARD_BG)
             except Exception as exc:
                 QMessageBox.critical(self, self._t("export", "export_error", fallback="Export Error"), str(exc))
         _plt.close(fig)
@@ -1421,7 +1475,7 @@ class MeasurementViewerWindow(QMainWindow):
         _right_r = (
             "border-top-left-radius:0px; border-bottom-left-radius:0px;"
             f" border-top-right-radius:6px; border-bottom-right-radius:6px;"
-            f" border-left:1px solid {_BORDER};"
+            f" border-left:1px solid {self._BORDER};"
         )
         if not self._compare_mode:
             self._btn_single.setStyleSheet(
@@ -1709,39 +1763,39 @@ class MeasurementViewerWindow(QMainWindow):
 
         for _ri, (ax, title) in enumerate(zip(self._flat_axes(), titles)):
             ax.cla()
-            ax.set_facecolor(_CARD_BG)
-            ax.set_title(title, fontsize=11, color=_TEXT, pad=10)
+            ax.set_facecolor(self._CARD_BG)
+            ax.set_title(title, fontsize=11, color=self._TEXT, pad=10)
             for spine in ax.spines.values():
-                spine.set_color(_SPINE)
+                spine.set_color(self._SPINE)
                 spine.set_linewidth(0.8)
-            ax.tick_params(colors=_TEXT2, labelsize=8)
+            ax.tick_params(colors=self._TEXT2, labelsize=8)
             if self._y_grid[_ri]:
-                ax.grid(True, linestyle="--", alpha=0.35, color=_GRID, linewidth=0.6)
+                ax.grid(True, linestyle="--", alpha=0.35, color=self._GRID, linewidth=0.6)
             else:
                 ax.grid(False)
 
             t = title.lower()
             if "magnitude" in t:
                 ax.set_ylim(-60, 0)
-                ax.set_ylabel("|S| (dB)", fontsize=8, color=_TEXT2)
+                ax.set_ylabel("|S| (dB)", fontsize=8, color=self._TEXT2)
             elif "phase" in t:
                 ax.set_ylim(-180, 180)
-                ax.set_ylabel("Phase (°)", fontsize=8, color=_TEXT2)
+                ax.set_ylabel("Phase (°)", fontsize=8, color=self._TEXT2)
             elif "real" in t:
                 ax.set_ylim(-1.1, 1.1)
-                ax.set_ylabel("Real", fontsize=8, color=_TEXT2)
+                ax.set_ylabel("Real", fontsize=8, color=self._TEXT2)
             elif "imag" in t:
                 ax.set_ylim(-1.1, 1.1)
-                ax.set_ylabel("Imag", fontsize=8, color=_TEXT2)
+                ax.set_ylabel("Imag", fontsize=8, color=self._TEXT2)
 
             ax.set_xlim(0, 1500)
-            ax.set_xlabel("Frequency (MHz)", fontsize=8, color=_TEXT2)
-            ax.yaxis.label.set_color(_TEXT2)
-            ax.xaxis.label.set_color(_TEXT2)
+            ax.set_xlabel("Frequency (MHz)", fontsize=8, color=self._TEXT2)
+            ax.yaxis.label.set_color(self._TEXT2)
+            ax.xaxis.label.set_color(self._TEXT2)
 
             ax.text(0.5, 0.5, "No data to display", transform=ax.transAxes,
                     ha="center", va="center", fontsize=10,
-                    color=_TEXT2, fontstyle="italic")
+                    color=self._TEXT2, fontstyle="italic")
         try:
             self._fig.tight_layout(pad=1.4, h_pad=2.0, w_pad=2.0)
         except Exception:
@@ -1755,14 +1809,14 @@ class MeasurementViewerWindow(QMainWindow):
         flat = self._flat_axes()
         for _ai, ax in enumerate(flat):
             ax.cla()
-            ax.set_facecolor(_CARD_BG)
-            ax.tick_params(colors=_TEXT2, labelsize=8)
+            ax.set_facecolor(self._CARD_BG)
+            ax.tick_params(colors=self._TEXT2, labelsize=8)
             if self._y_grid[_ai]:
-                ax.grid(True, linestyle="--", alpha=0.45, color=_GRID, linewidth=0.6)
+                ax.grid(True, linestyle="--", alpha=0.45, color=self._GRID, linewidth=0.6)
             else:
                 ax.grid(False)
             for spine in ax.spines.values():
-                spine.set_color(_SPINE)
+                spine.set_color(self._SPINE)
                 spine.set_linewidth(0.8)
 
         if not entries:
@@ -1815,7 +1869,7 @@ class MeasurementViewerWindow(QMainWindow):
                     for ax in (ax2, ax3):
                         ax.text(0.5, 0.5, "No S21 data", transform=ax.transAxes,
                                 ha="center", va="center", fontsize=9,
-                                color=_TEXT2, fontstyle="italic")
+                                color=self._TEXT2, fontstyle="italic")
             else:
                 # s11 or s21: 4 charts — Mag, Phase, Real, Imag for chosen param
                 def _get_s(e):
@@ -1842,7 +1896,7 @@ class MeasurementViewerWindow(QMainWindow):
                     for ax in flat:
                         ax.text(0.5, 0.5, f"No {pname} data", transform=ax.transAxes,
                                 ha="center", va="center", fontsize=9,
-                                color=_TEXT2, fontstyle="italic")
+                                color=self._TEXT2, fontstyle="italic")
         else:
             ax_top, ax_bot = flat
 
@@ -1858,7 +1912,7 @@ class MeasurementViewerWindow(QMainWindow):
                     for ax in (ax_top, ax_bot):
                         ax.text(0.5, 0.5, "No permittivity data", transform=ax.transAxes,
                                 ha="center", va="center", fontsize=9,
-                                color=_TEXT2, fontstyle="italic")
+                                color=self._TEXT2, fontstyle="italic")
                 specs = [
                     (ax_top, "ε'",  "ε' (–)"),
                     (ax_bot, "ε''", "ε'' (–)"),
@@ -1892,7 +1946,7 @@ class MeasurementViewerWindow(QMainWindow):
                     for ax in (ax_top, ax_bot):
                         ax.text(0.5, 0.5, f"No {pname} data", transform=ax.transAxes,
                                 ha="center", va="center", fontsize=9,
-                                color=_TEXT2, fontstyle="italic")
+                                color=self._TEXT2, fontstyle="italic")
 
                 if self._display2 == "real_imag":
                     specs = [
@@ -1906,16 +1960,16 @@ class MeasurementViewerWindow(QMainWindow):
                     ]
 
         for ax, title, ylabel in specs:
-            ax.set_title(title, fontsize=11, color=_TEXT, pad=10)
-            ax.set_ylabel(ylabel, fontsize=9, color=_TEXT2)
-            ax.set_xlabel(f"Frequency ({unit})", fontsize=9, color=_TEXT2)
+            ax.set_title(title, fontsize=11, color=self._TEXT, pad=10)
+            ax.set_ylabel(ylabel, fontsize=9, color=self._TEXT2)
+            ax.set_xlabel(f"Frequency ({unit})", fontsize=9, color=self._TEXT2)
 
         if len(entries) > 1:
             for ax in flat:
                 if ax.get_lines():
                     ax.legend(fontsize=7, loc="best",
-                              facecolor=_PANEL_BG, edgecolor=_BORDER,
-                              labelcolor=_TEXT)
+                              facecolor=self._PANEL_BG, edgecolor=self._BORDER,
+                              labelcolor=self._TEXT)
 
         # Apply manual Y ranges (overrides matplotlib autoscale)
         for _ri, _ax in enumerate(flat):
@@ -2089,11 +2143,11 @@ class MeasurementViewerWindow(QMainWindow):
     def _update_linked_buttons(self):
         linked = self._cursors_linked
         on  = (f"QPushButton {{ font-size:11px; font-weight:600; border:none;"
-               f" background:{_ACCENT}; color:#ffffff; border-radius:5px; }}"
-               f" QPushButton:hover {{ background:{_ACCENT_H}; }}")
-        off = (f"QPushButton {{ font-size:11px; border:1px solid {_BORDER};"
-               f" background:transparent; color:{_TEXT2}; border-radius:5px; }}"
-               f" QPushButton:hover {{ background:{_BORDER}; color:{_TEXT}; }}")
+               f" background:{self._ACCENT}; color:#ffffff; border-radius:5px; }}"
+               f" QPushButton:hover {{ background:{self._ACCENT_H}; }}")
+        off = (f"QPushButton {{ font-size:11px; border:1px solid {self._BORDER};"
+               f" background:transparent; color:{self._TEXT2}; border-radius:5px; }}"
+               f" QPushButton:hover {{ background:{self._BORDER}; color:{self._TEXT}; }}")
         self._btn_linked.setEnabled(True)
         self._btn_linked.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_linked.setText("ON" if linked else "OFF")

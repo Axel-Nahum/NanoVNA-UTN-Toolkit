@@ -3,6 +3,7 @@
   "menu": {
     "file": "File",
     "clear_selection": "Clear Selection",
+    "preferences": "Preferences…",
     "back_to_dut": "← Back to DUT",
     "back_to_char": "← Back to Characterization",
     "back_to_menu": "← Back to Menu",
