@@ -44,6 +44,18 @@ open_preferences_dialog = safe_import(
 _get_settings = safe_import(
     "NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings"
 )
+_toggle_menu_dark_mode = safe_import(
+    "NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode", "toggle_menu_dark_mode"
+)
+_show_app_about = safe_import(
+    "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu", "show_app_about"
+)
+_show_about_dialog = safe_import(
+    "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.help_menu.help_menu", "show_about_dialog"
+)
+_get_current_language = safe_import(
+    "NanoVNA_UTN_Toolkit.shared.measurement_viewer.resources_loader", "get_current_language"
+)
 
 _PALETTE = [
     "#4da6ff", "#ff6b6b", "#51cf66", "#ffd43b",
@@ -201,16 +213,29 @@ class MeasurementViewerWindow(QMainWindow):
         self._build_menu()
         self._build_ui()
 
+    # ── Theme toggle ──────────────────────────────────────────────────────── #
+    def _toggle_theme(self, btn):
+        if _toggle_menu_dark_mode:
+            _toggle_menu_dark_mode(self, btn)
+        new_win = MeasurementViewerWindow(
+            vna_device=self._vna,
+            source_module=self._source_module,
+            source_window=self._source_window,
+            display_mode=self._display_mode,
+        )
+        new_win.show()
+        self.close()
+
     # ── Menubar ───────────────────────────────────────────────────────────── #
     def _build_menu(self):
         mb = self.menuBar()
         mb.setStyleSheet(
             f"QMenuBar {{ background:{self._PANEL_BG}; color:{self._TEXT};"
             f" border-bottom:1px solid {self._BORDER}; }}"
-            " QMenuBar::item:selected { background:#1c2433; }"
+            f" QMenuBar::item:selected {{ background:{self._ACCENT}; color:#ffffff; }}"
             f" QMenu {{ background:{self._PANEL_BG}; color:{self._TEXT};"
             f" border:1px solid {self._BORDER}; }}"
-            " QMenu::item:selected { background:#1c2433; }"
+            f" QMenu::item:selected {{ background:{self._ACCENT}; color:#ffffff; }}"
         )
         file_menu = mb.addMenu(self._t("menu", "file", fallback="File"))
         clear_act = QAction(self._t("menu", "clear_selection", fallback="Clear Selection"), self)
@@ -238,9 +263,24 @@ class MeasurementViewerWindow(QMainWindow):
         char_act.triggered.connect(self._go_to_char)
         method_menu.addAction(char_act)
 
+        help_menu = mb.addMenu(self._t("help_menu", "help", fallback="Help"))
+        _lang = _get_current_language() if _get_current_language else "en"
+        _readme = "README_VIEWER_ES.md" if _lang == "es" else "README_VIEWER.md"
+        if _show_about_dialog:
+            doc_act = QAction(self._t("help_menu", "documentation", fallback="Documentation…"), self)
+            doc_act.triggered.connect(lambda: _show_about_dialog(
+                self, language=_lang, readme_file=_readme))
+            help_menu.addAction(doc_act)
+            help_menu.addSeparator()
+        if _show_app_about:
+            about_act = QAction(self._t("help_menu", "about", fallback="About…"), self)
+            about_act.triggered.connect(lambda: _show_app_about(self, lang=_lang))
+            help_menu.addAction(about_act)
+
     # ── Root layout ───────────────────────────────────────────────────────── #
     def _build_ui(self):
         root = QWidget()
+        root.setStyleSheet(f"background:{self._WIN_BG}; color:{self._TEXT};")
         self.setCentralWidget(root)
 
         v = QVBoxLayout(root)
@@ -256,6 +296,7 @@ class MeasurementViewerWindow(QMainWindow):
         v.addWidget(hline)
 
         content = QWidget()
+        content.setStyleSheet("background:transparent;")
         h = QHBoxLayout(content)
         h.setContentsMargins(0, 0, 0, 0)
         h.setSpacing(0)
@@ -274,6 +315,7 @@ class MeasurementViewerWindow(QMainWindow):
     # ── Header ────────────────────────────────────────────────────────────── #
     def _build_header(self) -> QWidget:
         hdr = QWidget()
+        hdr.setStyleSheet(f"background:{self._WIN_BG};")
         hdr.setFixedHeight(130)
         h = QHBoxLayout(hdr)
         h.setContentsMargins(0, 12, 16, 8)
@@ -310,6 +352,11 @@ class MeasurementViewerWindow(QMainWindow):
         t2.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tv.addWidget(t1)
         tv.addWidget(t2)
+        theme_btn = QPushButton(self._theme_btn_text)
+        theme_btn.setStyleSheet(self._ACTION_BTN)
+        theme_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        theme_btn.clicked.connect(lambda: self._toggle_theme(theme_btn))
+        tv.addWidget(theme_btn)
         bh.addWidget(tcol)
         h.addWidget(brand)
 
@@ -888,6 +935,9 @@ class MeasurementViewerWindow(QMainWindow):
         self._BG = self._CARD_BG
         self._BR_CLOSED, self._BR_OPEN = _make_branch_svgs(self._TEXT2)
 
+        # Button label: "Light Mode 🔆" (currently dark) or "Dark Mode 🌙" (currently light)
+        self._theme_btn_text = "Dark Mode 🌙" if is_dark else "Light Mode 🔆"
+
         self._SEG_ACTIVE = (
             f"QPushButton {{ font-size:11px; padding:3px 14px;"
             f" border:1px solid {self._ACCENT};"
@@ -941,6 +991,7 @@ class MeasurementViewerWindow(QMainWindow):
     # ── Left panel ────────────────────────────────────────────────────────── #
     def _build_left_panel(self) -> QWidget:
         left = QWidget()
+        left.setStyleSheet(f"background:{self._PANEL_BG};")
         left.setFixedWidth(320)
         lv = QVBoxLayout(left)
         lv.setContentsMargins(12, 14, 12, 12)
@@ -1108,6 +1159,7 @@ class MeasurementViewerWindow(QMainWindow):
     # ── Chart area ────────────────────────────────────────────────────────── #
     def _build_chart_area(self) -> QWidget:
         right = QWidget()
+        right.setStyleSheet(f"background:{self._WIN_BG};")
         rv = QVBoxLayout(right)
         rv.setContentsMargins(16, 10, 16, 14)
         rv.setSpacing(0)

@@ -131,10 +131,7 @@ def scale_limits(eps, usable: Optional[np.ndarray] = None,
         utilizable es finito (el llamador conserva sus propios limites).
     """
     eps_real, eps_loss = permittivity_columns(eps)
-    keep = np.ones(eps_real.shape, dtype=bool) if usable is None else np.asarray(usable, bool)
-    if keep.shape != eps_real.shape:
-        keep = np.ones(eps_real.shape, dtype=bool)
-    values = np.concatenate([eps_real[keep], eps_loss[keep]])
+    values = np.concatenate([eps_real, eps_loss])
     values = values[np.isfinite(values)]
     if values.size == 0:
         return None

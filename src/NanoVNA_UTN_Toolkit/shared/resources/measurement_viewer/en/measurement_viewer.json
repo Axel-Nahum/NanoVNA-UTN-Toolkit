@@ -61,6 +61,11 @@
     "export_filter": "PNG Images (*.png);;All Files (*.*)",
     "export_error": "Export Error"
   },
+  "help_menu": {
+    "help": "Help",
+    "about": "About…",
+    "documentation": "Documentation…"
+  },
   "files_panel": {
     "title": "Measurement files",
     "badge_files": "{n} files",
