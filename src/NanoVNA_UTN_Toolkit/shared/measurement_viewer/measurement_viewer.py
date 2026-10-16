@@ -2258,6 +2258,7 @@ class MeasurementViewerWindow(QMainWindow):
 
     # ── Navigation ────────────────────────────────────────────────────────── #
     def _go_back(self):
+        logger.info("[MeasurementViewer._go_back] source_module=%r", self._source_module)
         if self._source_module == "dut":
             self._go_to_dut()
         elif self._source_module == "char":
