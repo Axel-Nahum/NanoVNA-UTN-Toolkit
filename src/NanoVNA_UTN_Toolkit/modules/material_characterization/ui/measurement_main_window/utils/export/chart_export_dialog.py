@@ -29,6 +29,7 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader i
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
     write_permittivity_csv,
 )
+from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.light_dark_mode import dark_light_config
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +60,7 @@ class ChartExportDialog(QDialog):
         self._ann_objects  = []            # [{"text": txt, "patch": patch}, ...]
         self._drag_cids    = []
 
+        dark_light_config(self)
         self._setup_ui()
 
     # ------------------------------------------------------------------ #
