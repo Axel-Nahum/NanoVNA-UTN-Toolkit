@@ -352,11 +352,6 @@ class MeasurementViewerWindow(QMainWindow):
         t2.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
         tv.addWidget(t1)
         tv.addWidget(t2)
-        theme_btn = QPushButton(self._theme_btn_text)
-        theme_btn.setStyleSheet(self._ACTION_BTN)
-        theme_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        theme_btn.clicked.connect(lambda: self._toggle_theme(theme_btn))
-        tv.addWidget(theme_btn)
         bh.addWidget(tcol)
         h.addWidget(brand)
 
@@ -454,12 +449,11 @@ class MeasurementViewerWindow(QMainWindow):
         self._btn_p4_s11 = QPushButton("S11")
         self._btn_p4_s11.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_p4_s11.clicked.connect(self._toggle_p4_s11)
-        self._btn_p4_s21 = QPushButton("S21")
+        _p4_s21_label = "ε" if self._display_mode == "char" else "S21"
+        self._btn_p4_s21 = QPushButton(_p4_s21_label)
         self._btn_p4_s21.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_p4_s21.clicked.connect(self._toggle_p4_s21)
-        if self._display_mode == "char":
-            self._btn_p4_s21.hide()
-        self._grp_param4 = self._labeled_seg(self._t("graphics", "parameter", fallback="Parameter"), self._btn_p4_s11, self._btn_p4_s21)
+        self._grp_param4 = self._labeled_seg(self._t("graphics", "parameter", fallback="Parameter"), self._btn_p4_s21, self._btn_p4_s11)
 
         self._param_stack = QStackedWidget()
         self._param_stack.addWidget(self._grp_param2)
@@ -1199,9 +1193,13 @@ class MeasurementViewerWindow(QMainWindow):
         p2_s21_active = self._param_mode in ("s21", "eps")
         self._btn_p2_s21.setStyleSheet(
             self._SEG_ACTIVE if p2_s21_active else self._SEG_INACTIVE)
-        # 4-chart: both active when split; in char mode s21 button is hidden
-        s11_on = self._param_mode in ("s11", "split")
-        s21_on = self._param_mode in ("s21", "split")
+        # 4-chart buttons
+        if self._display_mode == "char":
+            s11_on = self._param_mode == "s11"
+            s21_on = self._param_mode == "eps"
+        else:
+            s11_on = self._param_mode in ("s11", "split")
+            s21_on = self._param_mode in ("s21", "split")
         self._btn_p4_s11.setStyleSheet(
             self._SEG_ACTIVE if s11_on else self._SEG_INACTIVE)
         self._btn_p4_s21.setStyleSheet(
@@ -1218,8 +1216,11 @@ class MeasurementViewerWindow(QMainWindow):
         # "split" is only valid in 4-chart; reset to s11 if switching to 2-chart
         if mode == 2 and self._param_mode == "split":
             self._param_mode = "s11"
-        # In char mode 4-chart only supports S11; eps is 2-chart only
-        if mode == 4 and self._param_mode == "eps":
+        # in char mode, 2-chart always uses eps
+        if mode == 2 and self._display_mode == "char":
+            self._param_mode = "eps"
+        # char mode: eps stays in both 2-chart and 4-chart
+        if mode == 4 and self._param_mode == "eps" and self._display_mode != "char":
             self._param_mode = "s11"
         self._update_layout_buttons()
         self._update_param_buttons()
@@ -1247,18 +1248,30 @@ class MeasurementViewerWindow(QMainWindow):
         self._redraw(self._current_entries())
 
     def _toggle_p4_s11(self):
-        if self._param_mode == "s11":
-            return          # already the only one active, can't turn off
-        self._param_mode = "s21" if self._param_mode == "split" else "split"
+        if self._display_mode == "char":
+            if self._param_mode == "s11":
+                return
+            self._param_mode = "s11"
+        else:
+            if self._param_mode == "s11":
+                return
+            self._param_mode = "s21" if self._param_mode == "split" else "split"
         self._update_param_buttons()
+        self._update_header_groups()
         self._update_range_page()
         self._redraw(self._current_entries())
 
     def _toggle_p4_s21(self):
-        if self._param_mode == "s21":
-            return          # already the only one active, can't turn off
-        self._param_mode = "s11" if self._param_mode == "split" else "split"
+        if self._display_mode == "char":
+            if self._param_mode == "eps":
+                return
+            self._param_mode = "eps"
+        else:
+            if self._param_mode == "s21":
+                return
+            self._param_mode = "s11" if self._param_mode == "split" else "split"
         self._update_param_buttons()
+        self._update_header_groups()
         self._update_range_page()
         self._redraw(self._current_entries())
 
@@ -1788,6 +1801,8 @@ class MeasurementViewerWindow(QMainWindow):
     def _chart_titles(self) -> list[str]:
         p = self._param_mode
         if self._layout_mode == 4:
+            if self._display_mode == "char":
+                return ["ε'", "ε''", "tan(δ)", "|ε*|"]
             if p == "s11":
                 return ["S11 Magnitude", "S11 Phase", "S11 Real", "S11 Imag"]
             if p == "s21":
@@ -1839,6 +1854,14 @@ class MeasurementViewerWindow(QMainWindow):
             elif "imag" in t:
                 ax.set_ylim(-1.1, 1.1)
                 ax.set_ylabel("Imag", fontsize=8, color=self._TEXT2)
+            elif "ε'" in title:
+                ax.set_ylabel("ε' (–)", fontsize=8, color=self._TEXT2)
+            elif "ε''" in title:
+                ax.set_ylabel("ε'' (–)", fontsize=8, color=self._TEXT2)
+            elif "tan" in t:
+                ax.set_ylabel("ε''/ε' (–)", fontsize=8, color=self._TEXT2)
+            elif "|ε" in title:
+                ax.set_ylabel("|ε| (–)", fontsize=8, color=self._TEXT2)
 
             ax.set_xlim(0, 1500)
             ax.set_xlabel("Frequency (MHz)", fontsize=8, color=self._TEXT2)
@@ -1887,7 +1910,34 @@ class MeasurementViewerWindow(QMainWindow):
 
         if self._layout_mode == 4:
             ax0, ax1, ax2, ax3 = flat
-            if p == "split":
+
+            if self._display_mode == "char":
+                no_data = not any(e.s11 is not None for e in entries)
+                for e in entries:
+                    if e.s11 is None:
+                        continue
+                    f, lw = e.freqs / div, 1.6
+                    ep_r = e.s11.real
+                    ep_i = e.s11.imag
+                    tan_d = np.where(ep_r != 0, ep_i / ep_r, np.nan)
+                    mod_e = np.sqrt(ep_r**2 + ep_i**2)
+                    ax0.plot(f, ep_r,  color=e.color, linewidth=lw, label=e.name)
+                    ax1.plot(f, ep_i,  color=e.color, linewidth=lw, label=e.name)
+                    ax2.plot(f, tan_d, color=e.color, linewidth=lw, label=e.name)
+                    ax3.plot(f, mod_e, color=e.color, linewidth=lw, label=e.name)
+                if no_data:
+                    for ax in flat:
+                        ax.text(0.5, 0.5, "No permittivity data", transform=ax.transAxes,
+                                ha="center", va="center", fontsize=9,
+                                color=self._TEXT2, fontstyle="italic")
+                specs = [
+                    (ax0, "ε'",     "ε' (–)"),
+                    (ax1, "ε''",    "ε'' (–)"),
+                    (ax2, "tan(δ)", "ε''/ε' (–)"),
+                    (ax3, "|ε*|",   "|ε| (–)"),
+                ]
+
+            elif p == "split":
                 has_s21 = any(e.s21 is not None for e in entries)
                 ri = self._display2 == "real_imag"
 
