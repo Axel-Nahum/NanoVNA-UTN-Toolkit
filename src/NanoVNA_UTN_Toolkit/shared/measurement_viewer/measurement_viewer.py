@@ -840,9 +840,12 @@ class MeasurementViewerWindow(QMainWindow):
             b.setStyleSheet(_EXP_GO)
             b.clicked.connect(lambda _=False, m=mode: self._run_export(m))
             return b
+        self._exp_btn_ind_mag   = _ebt(self._t("export", "mag_db",    fallback="Mag [dB]"),  "ind_mag")
+        self._exp_btn_ind_phase = _ebt(self._t("export", "phase_deg", fallback="Phase [°]"), "ind_phase")
+        self._exp_btn_pair_mp   = _ebt(self._t("export", "mag_phase_pair", fallback="Mag + Phase"), "pair_mp")
         eph.addWidget(_exp_section(self._t("export", "individual", fallback="Individual"),
-            _ebt(self._t("export", "mag_db",    fallback="Mag [dB]"),  "ind_mag"),
-            _ebt(self._t("export", "phase_deg", fallback="Phase [°]"), "ind_phase"),
+            self._exp_btn_ind_mag,
+            self._exp_btn_ind_phase,
             _ebt(self._t("export", "real",      fallback="Real"),      "ind_real"),
             _ebt(self._t("export", "imag",      fallback="Imag"),      "ind_imag"),
         ), stretch=2)
@@ -851,7 +854,7 @@ class MeasurementViewerWindow(QMainWindow):
 
         # ── Pairs ─────────────────────────────────────────────────────────────── #
         eph.addWidget(_exp_section(self._t("export", "pairs", fallback="Pairs"),
-            _ebt(self._t("export", "mag_phase_pair",  fallback="Mag + Phase"), "pair_mp"),
+            self._exp_btn_pair_mp,
             _ebt(self._t("export", "real_imag_pair",  fallback="Real + Imag"), "pair_ri"),
         ), stretch=1)
 
@@ -1208,6 +1211,12 @@ class MeasurementViewerWindow(QMainWindow):
     def _update_header_groups(self):
         self._grp_display2.setEnabled(self._param_mode != "eps")
         self._param_stack.setCurrentIndex(0 if self._layout_mode == 2 else 1)
+        if not hasattr(self, "_exp_btn_ind_mag"):
+            return
+        _eps = self._param_mode == "eps"
+        for btn in (self._exp_btn_ind_mag, self._exp_btn_ind_phase, self._exp_btn_pair_mp):
+            btn.setEnabled(not _eps)
+            btn.setCursor(Qt.CursorShape.ForbiddenCursor if _eps else Qt.CursorShape.PointingHandCursor)
 
     def _set_layout(self, mode: int):
         if self._layout_mode == mode:
@@ -1404,9 +1413,8 @@ class MeasurementViewerWindow(QMainWindow):
         if p == "eps":
             if mode in ("ind_mag", "ind_phase", "ind_real", "ind_imag",
                         "pair_mp", "pair_ri"):
-                fig = _MplFig(figsize=(9, 5) if mode.startswith("ind") else (9, 8),
-                              facecolor=self._CARD_BG)
                 if mode.startswith("ind"):
+                    fig = _MplFig(figsize=(9, 5), facecolor=self._CARD_BG)
                     ax = fig.add_subplot(111)
                     if mode in ("ind_mag", "ind_real"):
                         _plot(ax, entries, lambda e: e.s11.real if e.s11 is not None else None)
@@ -1416,14 +1424,36 @@ class MeasurementViewerWindow(QMainWindow):
                         _plot(ax, entries, lambda e: e.s11.imag if e.s11 is not None else None)
                         _style(ax, "ε''", "ε'' (–)")
                         fname = "eps_imag"
-                else:
+                    _axes = [ax]
+                elif mode == "pair_ri":
+                    # overlay ε' and ε'' on a single axes, each with its own color
+                    _EPS_IMAG_COLORS = ["#e07830", "#30a870", "#c040c0", "#30b8d0", "#e0c030"]
+                    fig = _MplFig(figsize=(9, 5), facecolor=self._CARD_BG)
+                    ax = fig.add_subplot(111)
+                    for i, e in enumerate(entries):
+                        if e.s11 is None:
+                            continue
+                        lbl = (e.name + " ") if len(entries) > 1 else ""
+                        imag_color = _EPS_IMAG_COLORS[i % len(_EPS_IMAG_COLORS)]
+                        ax.plot(e.freqs / div, e.s11.real, color=e.color,    lw=1.6,
+                                linestyle="-", label=f"{lbl}ε'")
+                        ax.plot(e.freqs / div, e.s11.imag, color=imag_color, lw=1.6,
+                                linestyle="-", label=f"{lbl}ε''")
+                    if ax.get_lines():
+                        ax.legend(fontsize=7, facecolor=self._PANEL_BG,
+                                  edgecolor=self._BORDER, labelcolor=self._TEXT)
+                    _style(ax, "ε'  y  ε''", "ε (–)")
+                    fname = "eps_real_imag"
+                    _axes = [ax]
+                else:  # pair_mp
+                    fig = _MplFig(figsize=(9, 8), facecolor=self._CARD_BG)
                     ax1, ax2 = fig.subplots(2, 1)
                     _plot(ax1, entries, lambda e: e.s11.real if e.s11 is not None else None)
                     _plot(ax2, entries, lambda e: e.s11.imag if e.s11 is not None else None)
                     _style(ax1, "ε'",  "ε' (–)")
                     _style(ax2, "ε''", "ε'' (–)")
                     fname = "eps_real_imag"
-                _axes = [ax] if mode.startswith("ind") else [ax1, ax2]
+                    _axes = [ax1, ax2]
                 self._apply_cursors_to_export(_axes)
                 fig.tight_layout(pad=1.4, h_pad=2.0)
                 return fig, fname
