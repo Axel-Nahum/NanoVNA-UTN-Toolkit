@@ -797,6 +797,8 @@ class MeasurementMainWindow(QMainWindow):
                 "idx2":      idx2,
                 "m1_color":  _s.value("Epsilon_Real/MarkerColor1", "#ff0000"),
                 "m2_color":  _s.value("Epsilon_Imag/MarkerColor1", "#ff0000"),
+                "vis1":      getattr(self, "_cursor1_visible", True),
+                "vis2":      getattr(self, "_cursor2_visible", True),
             }
         dlg = ChartExportDialog(
             parent=self,

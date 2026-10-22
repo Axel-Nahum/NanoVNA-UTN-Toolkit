@@ -152,6 +152,8 @@ class ChartExportDialog(QDialog):
         idx2     = int(md["idx2"])
         m1_color = md["m1_color"]
         m2_color = md["m2_color"]
+        vis1     = md.get("vis1", True)
+        vis2     = md.get("vis2", True)
 
         def _fmt_freq(hz):
             return f"{hz/1e9:.4f} GHz" if hz >= 0.5e9 else f"{hz/1e6:.4f} MHz"
@@ -166,16 +168,17 @@ class ChartExportDialog(QDialog):
         x_span = xlim[1] - xlim[0]
         y_span = ylim[1] - ylim[0]
 
-        specs = [
-            (idx1, real_eps, m1_color,
-             f"f = {_fmt_freq(freqs[idx1])}\nε' = {_fmt_eps(real_eps[idx1])}",
-             xlim[0] + x_span * 0.10,
-             ylim[1] - y_span * 0.15),
-            (idx2, loss_eps, m2_color,
-             f"f = {_fmt_freq(freqs[idx2])}\nε'' = {_fmt_eps(loss_eps[idx2])}",
-             xlim[0] + x_span * 0.60,
-             ylim[1] - y_span * 0.15),
-        ]
+        specs = []
+        if vis1:
+            specs.append((idx1, real_eps, m1_color,
+                          f"f = {_fmt_freq(freqs[idx1])}\nε' = {_fmt_eps(real_eps[idx1])}",
+                          xlim[0] + x_span * 0.10,
+                          ylim[1] - y_span * 0.15))
+        if vis2:
+            specs.append((idx2, loss_eps, m2_color,
+                          f"f = {_fmt_freq(freqs[idx2])}\nε'' = {_fmt_eps(loss_eps[idx2])}",
+                          xlim[0] + x_span * 0.60,
+                          ylim[1] - y_span * 0.15))
 
         renderer = self._canvas.get_renderer()
         PAD = 6
