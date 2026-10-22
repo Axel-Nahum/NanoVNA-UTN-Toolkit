@@ -1423,6 +1423,8 @@ class MeasurementViewerWindow(QMainWindow):
                     _style(ax1, "ε'",  "ε' (–)")
                     _style(ax2, "ε''", "ε'' (–)")
                     fname = "eps_real_imag"
+                _axes = [ax] if mode.startswith("ind") else [ax1, ax2]
+                self._apply_cursors_to_export(_axes)
                 fig.tight_layout(pad=1.4, h_pad=2.0)
                 return fig, fname
             return None, ""
@@ -1448,6 +1450,7 @@ class MeasurementViewerWindow(QMainWindow):
                 _plot(ax, entries, lambda e: _s(e,p).imag if _s(e,p) is not None else None)
                 _style(ax, f"{pname} Imaginary", f"Im({pname})")
                 fname = f"{pname}_imag"
+            self._apply_cursors_to_export([ax])
             fig.tight_layout(pad=1.4)
             return fig, fname
 
@@ -1466,6 +1469,7 @@ class MeasurementViewerWindow(QMainWindow):
                 _style(ax1, f"{pname} Real", f"Re({pname})")
                 _style(ax2, f"{pname} Imaginary", f"Im({pname})")
                 fname = f"{pname}_real_imag"
+            self._apply_cursors_to_export([ax1, ax2])
             fig.tight_layout(pad=1.4, h_pad=2.0)
             return fig, fname
 
@@ -1490,10 +1494,25 @@ class MeasurementViewerWindow(QMainWindow):
                 for ax in (ax0, ax1, ax2, ax3):
                     if ax.get_lines():
                         ax.legend(fontsize=7, facecolor=self._PANEL_BG, edgecolor=self._BORDER, labelcolor=self._TEXT)
+            self._apply_cursors_to_export([ax0, ax1, ax2, ax3])
             fig.tight_layout(pad=1.4, h_pad=2.0, w_pad=2.0)
             return fig, f"{pn}_4chart"
 
         return None, ""
+
+    def _apply_cursors_to_export(self, axes: list):
+        """Draw enabled cursor lines onto export-figure axes (axes in slot order)."""
+        for n, color in ((1, _C1_COLOR), (2, _C2_COLOR)):
+            if not self._cursor_enabled[n]:
+                continue
+            for slot, ax in enumerate(axes):
+                freq = self._cursor_freq[n][slot] if slot < 4 else None
+                if freq is None:
+                    freq = self._cursor_freq[n][0]
+                if freq is None:
+                    continue
+                x = freq / self._freq_div
+                ax.axvline(x, color=color, linewidth=1.2, linestyle="--", alpha=0.9, zorder=5)
 
     def _run_export(self, mode: str):
         from PySide6.QtWidgets import QMessageBox
