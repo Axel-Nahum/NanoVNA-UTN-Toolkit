@@ -1,3 +1,13 @@
+# Session notes
+resumen_sesion.txt
+pendientes_proxima_version.txt
+
+# Theoretical Debye curves (local only, not source code)
+teoricos_debye/
+
+# Ideal DUT S-parameter files (local only, not source code)
+teoricos_duts/
+
 # Inno Setup scripts
 *.iss
 

@@ -154,6 +154,14 @@ def _make_signal_pixmap(size: int = 36, color: str = "#4da6ff") -> QPixmap:
     return px
 
 
+def _db(s):
+    return np.round(20 * np.log10(np.abs(s) + 1e-15), 9)
+
+
+def _phase(s):
+    return np.degrees(np.angle(s))
+
+
 # ─────────────────────────────────────────────────────────────────────────── #
 class MeasurementViewerWindow(QMainWindow):
 
@@ -1465,11 +1473,11 @@ class MeasurementViewerWindow(QMainWindow):
             fig = _MplFig(figsize=(9, 5), facecolor=self._CARD_BG)
             ax = fig.add_subplot(111)
             if mode == "ind_mag":
-                _plot(ax, entries, lambda e: 20*np.log10(np.abs(_s(e,p))+1e-15) if _s(e,p) is not None else None)
+                _plot(ax, entries, lambda e: _db(_s(e,p)) if _s(e,p) is not None else None)
                 _style(ax, f"{pname} Magnitude", f"|{pname}| (dB)")
                 fname = f"{pname}_magnitude"
             elif mode == "ind_phase":
-                _plot(ax, entries, lambda e: np.angle(_s(e,p), deg=True) if _s(e,p) is not None else None)
+                _plot(ax, entries, lambda e: _phase(_s(e,p)) if _s(e,p) is not None else None)
                 _style(ax, f"{pname} Phase", f"∠{pname} (°)")
                 fname = f"{pname}_phase"
             elif mode == "ind_real":
@@ -1488,8 +1496,8 @@ class MeasurementViewerWindow(QMainWindow):
             fig = _MplFig(figsize=(9, 8), facecolor=self._CARD_BG)
             ax1, ax2 = fig.subplots(2, 1)
             if mode == "pair_mp":
-                _plot(ax1, entries, lambda e: 20*np.log10(np.abs(_s(e,p))+1e-15) if _s(e,p) is not None else None)
-                _plot(ax2, entries, lambda e: np.angle(_s(e,p), deg=True) if _s(e,p) is not None else None)
+                _plot(ax1, entries, lambda e: _db(_s(e,p)) if _s(e,p) is not None else None)
+                _plot(ax2, entries, lambda e: _phase(_s(e,p)) if _s(e,p) is not None else None)
                 _style(ax1, f"{pname} Magnitude", f"|{pname}| (dB)")
                 _style(ax2, f"{pname} Phase", f"∠{pname} (°)")
                 fname = f"{pname}_mag_phase"
@@ -1512,8 +1520,8 @@ class MeasurementViewerWindow(QMainWindow):
                 s = _s(e, param)
                 if s is None: continue
                 f = e.freqs / div
-                ax0.plot(f, 20*np.log10(np.abs(s)+1e-15), color=e.color, lw=1.6, label=e.name)
-                ax1.plot(f, np.angle(s, deg=True),         color=e.color, lw=1.6, label=e.name)
+                ax0.plot(f, _db(s), color=e.color, lw=1.6, label=e.name)
+                ax1.plot(f, _phase(s),         color=e.color, lw=1.6, label=e.name)
                 ax2.plot(f, s.real,                        color=e.color, lw=1.6, label=e.name)
                 ax3.plot(f, s.imag,                        color=e.color, lw=1.6, label=e.name)
             _style(ax0, f"{pn} Magnitude",  f"|{pn}| (dB)")
@@ -1895,7 +1903,6 @@ class MeasurementViewerWindow(QMainWindow):
                 ax.set_ylim(-60, 0)
                 ax.set_ylabel("|S| (dB)", fontsize=8, color=self._TEXT2)
             elif "phase" in t:
-                ax.set_ylim(-180, 180)
                 ax.set_ylabel("Phase (°)", fontsize=8, color=self._TEXT2)
             elif "real" in t:
                 ax.set_ylim(-1.1, 1.1)
@@ -1990,8 +1997,8 @@ class MeasurementViewerWindow(QMainWindow):
                 has_s21 = any(e.s21 is not None for e in entries)
                 ri = self._display2 == "real_imag"
 
-                def _col0(s): return s.real if ri else 20*np.log10(np.abs(s)+1e-15)
-                def _col1(s): return s.imag if ri else np.angle(s, deg=True)
+                def _col0(s): return s.real if ri else _db(s)
+                def _col1(s): return s.imag if ri else _phase(s)
 
                 for e in entries:
                     f, lw = e.freqs / div, 1.6
@@ -2033,8 +2040,8 @@ class MeasurementViewerWindow(QMainWindow):
                     if s is None:
                         continue
                     f, lw = e.freqs / div, 1.6
-                    ax0.plot(f, 20*np.log10(np.abs(s)+1e-15), color=e.color, linewidth=lw, label=e.name)
-                    ax1.plot(f, np.angle(s, deg=True),         color=e.color, linewidth=lw, label=e.name)
+                    ax0.plot(f, _db(s), color=e.color, linewidth=lw, label=e.name)
+                    ax1.plot(f, _phase(s),         color=e.color, linewidth=lw, label=e.name)
                     ax2.plot(f, s.real,                        color=e.color, linewidth=lw, label=e.name)
                     ax3.plot(f, s.imag,                        color=e.color, linewidth=lw, label=e.name)
                 specs = [
@@ -2074,12 +2081,12 @@ class MeasurementViewerWindow(QMainWindow):
                 def _yvals_top(s):
                     if self._display2 == "real_imag":
                         return s.real
-                    return 20*np.log10(np.abs(s)+1e-15)
+                    return _db(s)
 
                 def _yvals_bot(s):
                     if self._display2 == "real_imag":
                         return s.imag
-                    return np.angle(s, deg=True)
+                    return _phase(s)
 
                 def _get_s(e):
                     return e.s11 if p == "s11" else e.s21
