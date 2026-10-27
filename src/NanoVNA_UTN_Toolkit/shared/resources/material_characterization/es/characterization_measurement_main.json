@@ -80,9 +80,9 @@
     "folder_label": "Carpeta:",
     "browse": "Explorar…",
     "browse_title": "Seleccionar carpeta con archivos .s1p",
-    "files_label": "Archivos S11 (definí el orden y el nombre a mostrar):",
+    "files_label": "Archivos S11 — definí el orden y el nombre a mostrar:",
     "col_file": "Archivo",
-    "col_name": "Nombre para mostrar (reemplaza \"sample\" en el título del gráfico)",
+    "col_name": "Nombre a mostrar",
     "no_files": "No se encontraron archivos .s1p en esta carpeta.",
     "cancel": "Cancelar",
     "apply": "Aplicar"

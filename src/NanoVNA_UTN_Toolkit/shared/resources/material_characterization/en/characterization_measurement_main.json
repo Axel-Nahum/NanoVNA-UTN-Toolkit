@@ -80,9 +80,9 @@
     "folder_label": "Folder:",
     "browse": "Browse…",
     "browse_title": "Select folder with .s1p files",
-    "files_label": "S11 files (set order and display name):",
+    "files_label": "S11 files — set order and display name:",
     "col_file": "File",
-    "col_name": "Display name (replaces \"sample\" in chart title)",
+    "col_name": "Display name",
     "no_files": "No .s1p files found in this folder.",
     "cancel": "Cancel",
     "apply": "Apply"

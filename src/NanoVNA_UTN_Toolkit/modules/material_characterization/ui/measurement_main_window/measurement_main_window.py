@@ -1719,62 +1719,264 @@ class MeasurementMainWindow(QMainWindow):
 
     def _open_file_sweep_config_dialog(self):
         t = self._texts.get("file_sweep_dialog", {})
+
+        _is_dark = self.palette().window().color().lightness() < 128
+        if _is_dark:
+            title_color  = "#c8daf5"
+            sep_color    = "#2a2a38"
+            tbl_bg       = "#0e0e12"
+            tbl_alt      = "#1a1a22"
+            tbl_text     = "#e0e0e0"
+            tbl_grid     = "#232323"
+            hdr_bg       = "#0f1e30"
+            hdr_fg       = "#7ab3f5"
+            hdr_bdr      = "#2a2a2a"
+            sel_bg       = "#1e4878"
+            sel_fg       = "#ffffff"
+            scroll_track = "#111116"
+            scroll_hdl   = "#3a3a44"
+            scroll_hov   = "#555560"
+            btn_bg       = "#1a1a24"
+            btn_fg       = "#7ab3f5"
+            btn_bdr      = "#2d5a8e"
+            btn_hover    = "#1e3a60"
+            btn_press    = "#142a50"
+            outer_bdr    = "#2a2a30"
+            frame_bg     = "#13131a"
+            lbl_color    = "#8fa0c0"
+            edit_bg      = "#1a1a24"
+            edit_bdr     = "#2d5a8e"
+            no_file_col  = "#e05050"
+            icon_btn_bg  = "#1a1a24"
+            icon_btn_bdr = "#2d5a8e"
+            icon_btn_fg  = "#7ab3f5"
+            icon_btn_hov = "#1e3a60"
+        else:
+            title_color  = "#1a2a3a"
+            sep_color    = "#c8d4e0"
+            tbl_bg       = "#ffffff"
+            tbl_alt      = "#f4f4f6"
+            tbl_text     = "#1a1a1a"
+            tbl_grid     = "#d0d0d8"
+            hdr_bg       = "#dce8f5"
+            hdr_fg       = "#1a3a5c"
+            hdr_bdr      = "#9bbcd8"
+            sel_bg       = "#b8d4f8"
+            sel_fg       = "#0a1a2a"
+            scroll_track = "#e4e4e8"
+            scroll_hdl   = "#aaaabc"
+            scroll_hov   = "#888898"
+            btn_bg       = "#dce8f5"
+            btn_fg       = "#1a3a5c"
+            btn_bdr      = "#9bbcd8"
+            btn_hover    = "#c8dcf0"
+            btn_press    = "#b0ccec"
+            outer_bdr    = "#9bbcd8"
+            frame_bg     = "#f0f4f8"
+            lbl_color    = "#3a5a7a"
+            edit_bg      = "#ffffff"
+            edit_bdr     = "#9bbcd8"
+            no_file_col  = "#c0392b"
+            icon_btn_bg  = "#dce8f5"
+            icon_btn_bdr = "#9bbcd8"
+            icon_btn_fg  = "#1a3a5c"
+            icon_btn_hov = "#c8dcf0"
+
+        from PySide6.QtWidgets import QFrame as _QFrame
+
         dlg = QDialog(self)
         dlg.setWindowTitle(t.get("title", "Configure S11 File Source"))
-        dlg.setMinimumSize(600, 430)
+        dlg.setMinimumSize(660, 500)
         dlg.setStyleSheet(self.styleSheet())
 
         layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(12)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(0)
 
-        # Folder row
-        folder_row = QHBoxLayout()
-        folder_lbl = QLabel(t.get("folder_label", "Folder:"))
-        folder_lbl.setStyleSheet("border: none;")
+        # ── Title ──────────────────────────────────────────────────────────
+        title_lbl = QLabel(t.get("title", "Configure S11 File Source"))
+        title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_lbl.setStyleSheet(
+            f"font-size: 16px; font-weight: bold; color: {title_color};"
+            " padding-bottom: 14px; border: none;"
+        )
+        layout.addWidget(title_lbl)
+
+        def _sep():
+            s = _QFrame()
+            s.setFrameShape(_QFrame.Shape.HLine)
+            s.setFixedHeight(1)
+            s.setStyleSheet(f"background-color: {sep_color}; border: none;")
+            return s
+
+        layout.addWidget(_sep())
+        layout.addSpacing(14)
+
+        # ── Folder section ─────────────────────────────────────────────────
+        folder_sect_lbl = QLabel(t.get("folder_label", "Folder:"))
+        folder_sect_lbl.setStyleSheet(
+            f"font-size: 11px; font-weight: bold; color: {lbl_color}; border: none;"
+        )
+        layout.addWidget(folder_sect_lbl)
+        layout.addSpacing(6)
+
+        folder_frame = _QFrame()
+        folder_frame.setStyleSheet(
+            f"QFrame {{ border: 1px solid {outer_bdr}; border-radius: 8px;"
+            f" background-color: {frame_bg}; }}"
+        )
+        folder_fl = QHBoxLayout(folder_frame)
+        folder_fl.setContentsMargins(12, 10, 12, 10)
+        folder_fl.setSpacing(8)
+
         folder_edit = QLineEdit()
+        folder_edit.setPlaceholderText("…")
+        folder_edit.setStyleSheet(
+            f"QLineEdit {{ background-color: {edit_bg}; border: 1px solid {edit_bdr};"
+            f" border-radius: 5px; padding: 4px 8px; color: {tbl_text}; }}"
+        )
         if self._file_sweep_config:
             folder_edit.setText(str(Path(self._file_sweep_config[0]["path"]).parent))
+
         browse_btn = QPushButton(t.get("browse", "Browse…"))
-        folder_row.addWidget(folder_lbl)
-        folder_row.addWidget(folder_edit, 1)
-        folder_row.addWidget(browse_btn)
-        layout.addLayout(folder_row)
+        browse_btn.setFixedWidth(90)
+        browse_btn.setStyleSheet(
+            f"QPushButton {{ background-color: {btn_bg}; border: 1px solid {btn_bdr};"
+            f" border-radius: 5px; color: {btn_fg}; padding: 4px 10px; }}"
+            f" QPushButton:hover {{ background-color: {btn_hover}; }}"
+            f" QPushButton:pressed {{ background-color: {btn_press}; }}"
+        )
+        folder_fl.addWidget(folder_edit, 1)
+        folder_fl.addWidget(browse_btn)
+        layout.addWidget(folder_frame)
+        layout.addSpacing(18)
 
-        # Files table
-        files_lbl = QLabel(t.get("files_label", "S11 files (set order and display name):"))
-        files_lbl.setStyleSheet("border: none;")
-        layout.addWidget(files_lbl)
+        layout.addWidget(_sep())
+        layout.addSpacing(14)
 
-        table_row = QHBoxLayout()
+        # ── Files section ──────────────────────────────────────────────────
+        files_hdr = QHBoxLayout()
+        files_sect_lbl = QLabel(t.get("files_label", "S11 files — set order and display name:"))
+        files_sect_lbl.setStyleSheet(
+            f"font-size: 11px; font-weight: bold; color: {lbl_color}; border: none;"
+        )
+        files_hdr.addWidget(files_sect_lbl)
+        files_hdr.addStretch()
+
+        _icon_style = (
+            f"QPushButton {{ background-color: {icon_btn_bg}; border: 1px solid {icon_btn_bdr};"
+            f" border-radius: 5px; color: {icon_btn_fg}; font-size: 14px;"
+            f" padding: 0px; min-width: 28px; max-width: 28px;"
+            f" min-height: 24px; max-height: 24px; }}"
+            f" QPushButton:hover {{ background-color: {icon_btn_hov}; }}"
+            f" QPushButton:disabled {{ color: {sep_color}; border-color: {sep_color}; }}"
+        )
+        up_btn = QPushButton("↑")
+        dn_btn = QPushButton("↓")
+        up_btn.setStyleSheet(_icon_style)
+        dn_btn.setStyleSheet(_icon_style)
+        files_hdr.addWidget(up_btn)
+        files_hdr.addSpacing(4)
+        files_hdr.addWidget(dn_btn)
+        layout.addLayout(files_hdr)
+        layout.addSpacing(6)
+
         table = QTableWidget(0, 2)
         table.setHorizontalHeaderLabels([
             t.get("col_file", "File"),
-            t.get("col_name", "Display name (replaces \"sample\" in chart title)"),
+            t.get("col_name", "Display name"),
         ])
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        table.setEditTriggers(QTableWidget.EditTrigger.DoubleClicked | QTableWidget.EditTrigger.SelectedClicked)
-        table_row.addWidget(table, 1)
-
-        btn_col = QVBoxLayout()
-        up_btn = QPushButton("↑")
-        dn_btn = QPushButton("↓")
-        up_btn.setFixedWidth(32)
-        dn_btn.setFixedWidth(32)
-        btn_col.addStretch()
-        btn_col.addWidget(up_btn)
-        btn_col.addWidget(dn_btn)
-        btn_col.addStretch()
-        table_row.addLayout(btn_col)
-        layout.addLayout(table_row, 1)
+        table.setEditTriggers(
+            QTableWidget.EditTrigger.DoubleClicked | QTableWidget.EditTrigger.SelectedClicked
+        )
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
+        table.setShowGrid(False)
+        table.setStyleSheet(f"""
+            QTableWidget {{
+                border: 1px solid {outer_bdr};
+                border-radius: 8px;
+                background-color: {tbl_bg};
+                alternate-background-color: {tbl_alt};
+                color: {tbl_text};
+                gridline-color: {tbl_grid};
+                outline: none;
+            }}
+            QTableWidget::item {{
+                padding: 5px 10px;
+                border: none;
+            }}
+            QTableWidget::item:selected {{
+                background-color: {sel_bg};
+                color: {sel_fg};
+            }}
+            QHeaderView::section {{
+                background-color: {hdr_bg};
+                color: {hdr_fg};
+                border: none;
+                border-bottom: 1px solid {hdr_bdr};
+                padding: 6px 10px;
+                font-size: 11px;
+                font-weight: bold;
+            }}
+            QHeaderView::section:first {{
+                border-top-left-radius: 7px;
+            }}
+            QHeaderView::section:last {{
+                border-top-right-radius: 7px;
+            }}
+            QScrollBar:vertical {{
+                background: {scroll_track};
+                width: 8px;
+                border-radius: 4px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {scroll_hdl};
+                border-radius: 4px;
+                min-height: 20px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {scroll_hov};
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
+        """)
+        layout.addWidget(table, 1)
+        layout.addSpacing(8)
 
         no_files_lbl = QLabel(t.get("no_files", "No .s1p files found in this folder."))
-        no_files_lbl.setStyleSheet("color: #f44336; border: none;")
+        no_files_lbl.setStyleSheet(f"color: {no_file_col}; border: none; font-size: 11px;")
         no_files_lbl.setVisible(False)
         layout.addWidget(no_files_lbl)
 
+        layout.addSpacing(14)
+        layout.addWidget(_sep())
+        layout.addSpacing(14)
+
+        # ── Cancel / Apply ─────────────────────────────────────────────────
+        _action_style = (
+            f"QPushButton {{ background-color: {btn_bg}; border: 1px solid {btn_bdr};"
+            f" border-radius: 6px; color: {btn_fg}; padding: 6px 22px; font-size: 12px; }}"
+            f" QPushButton:hover {{ background-color: {btn_hover}; }}"
+            f" QPushButton:pressed {{ background-color: {btn_press}; }}"
+        )
+        cancel_btn = QPushButton(t.get("cancel", "Cancel"))
+        apply_btn  = QPushButton(t.get("apply", "Apply"))
+        cancel_btn.setStyleSheet(_action_style)
+        apply_btn.setStyleSheet(_action_style)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        btn_row.addWidget(cancel_btn)
+        btn_row.addSpacing(8)
+        btn_row.addWidget(apply_btn)
+        layout.addLayout(btn_row)
+
+        # ── Logic ──────────────────────────────────────────────────────────
         def _populate(folder_str):
             folder = Path(folder_str)
             if not folder.is_dir():
@@ -1799,17 +2001,25 @@ class MeasurementMainWindow(QMainWindow):
                 table.setItem(r1, col, i2)
                 table.setItem(r2, col, i1)
 
-        up_btn.clicked.connect(lambda: (
-            _swap_rows(table.currentRow(), table.currentRow() - 1)
-            or table.setCurrentCell(table.currentRow() - 1, table.currentColumn())
-        ) if table.currentRow() > 0 else None)
-        dn_btn.clicked.connect(lambda: (
-            _swap_rows(table.currentRow(), table.currentRow() + 1)
-            or table.setCurrentCell(table.currentRow() + 1, table.currentColumn())
-        ) if 0 <= table.currentRow() < table.rowCount() - 1 else None)
+        def _move_up():
+            r = table.currentRow()
+            if r > 0:
+                _swap_rows(r, r - 1)
+                table.setCurrentCell(r - 1, table.currentColumn())
+
+        def _move_dn():
+            r = table.currentRow()
+            if 0 <= r < table.rowCount() - 1:
+                _swap_rows(r, r + 1)
+                table.setCurrentCell(r + 1, table.currentColumn())
+
+        up_btn.clicked.connect(_move_up)
+        dn_btn.clicked.connect(_move_dn)
 
         def _browse():
-            folder = QFileDialog.getExistingDirectory(dlg, t.get("browse_title", "Select folder with .s1p files"))
+            folder = QFileDialog.getExistingDirectory(
+                dlg, t.get("browse_title", "Select folder with .s1p files")
+            )
             if folder:
                 folder_edit.setText(folder)
                 _populate(folder)
@@ -1819,15 +2029,6 @@ class MeasurementMainWindow(QMainWindow):
 
         if folder_edit.text():
             _populate(folder_edit.text())
-
-        # Buttons
-        btn_row = QHBoxLayout()
-        cancel_btn = QPushButton(t.get("cancel", "Cancel"))
-        apply_btn  = QPushButton(t.get("apply", "Apply"))
-        btn_row.addStretch()
-        btn_row.addWidget(cancel_btn)
-        btn_row.addWidget(apply_btn)
-        layout.addLayout(btn_row)
 
         cancel_btn.clicked.connect(dlg.reject)
 
