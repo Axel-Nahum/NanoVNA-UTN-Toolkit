@@ -644,12 +644,12 @@ class MeasurementMainWindow(QMainWindow):
 
         _CHART_LEFT  = 0.11   # fixed left margin — wide enough for any tick labels
         _CHART_RIGHT = 0.97
-        _CHART_TOP   = 0.91   # fixed top margin — space for the title
+        _CHART_TOP   = 0.87   # fixed top margin — space for the title
 
         def _adjust_layout(event=None):
             try:
                 sl_bot, sl_h = _slider_positions()
-                _bottom = sl_bot + sl_h + 0.07    # room for xtick labels + xlabel above sliders
+                _bottom = sl_bot + sl_h + 0.09    # room for xtick labels + xlabel above sliders
 
                 # Fixed margins so the axes width never shifts with tick-label changes.
                 fig.subplots_adjust(
@@ -670,6 +670,9 @@ class MeasurementMainWindow(QMainWindow):
             except Exception:
                 pass
 
+        # Disable the constrained layout engine that epsilon_chart sets up —
+        # it overrides subplots_adjust on every draw, making manual layout impossible.
+        fig.set_layout_engine("none")
         _adjust_layout()
         fig.canvas.mpl_connect("resize_event", _adjust_layout)
 
