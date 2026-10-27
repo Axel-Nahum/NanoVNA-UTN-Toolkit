@@ -302,7 +302,13 @@ class MeasurementMainWindow(QMainWindow):
         _CHK = (
             f"QCheckBox {{ color: {_fg}; font-size: 12px; spacing: 6px;"
             f" border: none; background: transparent; }}"
-            f" QCheckBox::indicator {{ width: 14px; height: 14px; }}"
+            f" QCheckBox::indicator {{"
+            f"  width: 14px; height: 14px;"
+            f"  border: 2px solid {_border}; border-radius: 3px;"
+            f"  background-color: transparent; }}"
+            f" QCheckBox::indicator:checked {{"
+            f"  background-color: #2196f3; border-color: #2196f3; }}"
+            f" QCheckBox::indicator:unchecked {{ background-color: transparent; }}"
         )
         _BTN = (
             f"QPushButton {{ background-color: {_btn_bg}; color: #ffffff;"
@@ -1461,7 +1467,7 @@ class MeasurementMainWindow(QMainWindow):
                 if _ymin is not None and _ymax is not None and _ymax > _ymin:
                     self._epsilon_ax.set_ylim(_ymin, _ymax)
             self._restore_markers_after_redraw()
-            self._epsilon_canvas.draw_idle()
+            self._epsilon_canvas.draw()
         except Exception as exc:
             logging.error("[MeasurementMainWindow] redraw_chart failed: %s", exc)
 
@@ -1588,6 +1594,11 @@ class MeasurementMainWindow(QMainWindow):
         if wiz is None:
             self._on_sweep_error("No wizard reference")
             return
+        device = getattr(wiz, "vna_device", None)
+        if device is None or not hasattr(device, "connected"):
+            self._on_sweep_error("No VNA device")
+            logging.warning("[MeasurementMainWindow] Run Sweep: no NanoVNA device available")
+            return
         run_s11_sweep_async(
             wiz,
             on_success=self._on_sweep_s11_received,
@@ -1610,8 +1621,13 @@ class MeasurementMainWindow(QMainWindow):
 
     def _on_sweep_success_result(self, new_result):
         self._result = new_result
-        # Refresh marker data arrays so cursors and badges reflect the new result
         new_real, new_loss = permittivity_columns(new_result.eps_selected)
+        logging.info(
+            "[MeasurementMainWindow] sweep success — median ε′=%.3f  ε″=%.3f  NaN=%d/%d",
+            float(np.nanmedian(new_real)), float(np.nanmedian(new_loss)),
+            int(np.sum(~np.isfinite(new_real))), len(new_real),
+        )
+        # Refresh marker data arrays so cursors and badges reflect the new result
         self._marker_real_eps = new_real
         self._marker_loss_eps = new_loss
         self._marker_freqs = np.asarray(new_result.f_hz, dtype=float)
@@ -1635,10 +1651,24 @@ class MeasurementMainWindow(QMainWindow):
         self._sweep_in_progress = False
         if hasattr(self, "_run_sweep_btn"):
             self._run_sweep_btn.setEnabled(True)
+        # Stop real-time on error to avoid repeating blocking dialogs every tick
+        if hasattr(self, "_realtime_check") and self._realtime_check.isChecked():
+            self._realtime_check.setChecked(False)
         self._set_sweep_status("Error", "#f44336")
 
     def closeEvent(self, event):
         self._realtime_timer.stop()
+        self._sweep_in_progress = False  # discard any pending sweep callback
+        # Let any running thread finish without crashing Qt
+        wiz = self.wizard_window
+        if wiz is not None:
+            t = getattr(wiz, "_active_sweep_thread", None)
+            if t is not None:
+                try:
+                    t.quit()
+                    t.wait(1000)
+                except Exception:
+                    pass
         super().closeEvent(event)
 
     def return_to_menu_window(self):
