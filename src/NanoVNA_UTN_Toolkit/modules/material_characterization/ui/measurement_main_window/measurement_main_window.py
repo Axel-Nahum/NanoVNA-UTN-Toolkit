@@ -95,6 +95,7 @@ class MeasurementMainWindow(QMainWindow):
         self._epsilon_canvas = None
         self._result = None
         self._sweep_in_progress = False
+        self._window_closed = False
         self._debug_sweep_idx = 0
         self._realtime_timer = QTimer(self)
         self._realtime_timer.setInterval(2000)
@@ -784,6 +785,7 @@ class MeasurementMainWindow(QMainWindow):
                 slider2.set_val(int(slider1.val))
 
         self._toggle_cursors_link = _toggle_link
+        self._adjust_chart_layout = _adjust_layout
 
         self._slider1 = slider1
         self._slider2 = slider2
@@ -1467,6 +1469,8 @@ class MeasurementMainWindow(QMainWindow):
                 if _ymin is not None and _ymax is not None and _ymax > _ymin:
                     self._epsilon_ax.set_ylim(_ymin, _ymax)
             self._restore_markers_after_redraw()
+            if hasattr(self, "_adjust_chart_layout"):
+                self._adjust_chart_layout()
             self._epsilon_canvas.draw()
         except Exception as exc:
             logging.error("[MeasurementMainWindow] redraw_chart failed: %s", exc)
@@ -1620,6 +1624,8 @@ class MeasurementMainWindow(QMainWindow):
             self._on_sweep_error(str(exc))
 
     def _on_sweep_success_result(self, new_result):
+        if self._window_closed:
+            return
         self._result = new_result
         new_real, new_loss = permittivity_columns(new_result.eps_selected)
         logging.info(
@@ -1647,6 +1653,8 @@ class MeasurementMainWindow(QMainWindow):
             self._set_sweep_status("Ready", "#4caf50")
 
     def _on_sweep_error(self, msg: str = ""):
+        if self._window_closed:
+            return
         logging.error("[MeasurementMainWindow] sweep error: %s", msg)
         self._sweep_in_progress = False
         if hasattr(self, "_run_sweep_btn"):
@@ -1657,6 +1665,7 @@ class MeasurementMainWindow(QMainWindow):
         self._set_sweep_status("Error", "#f44336")
 
     def closeEvent(self, event):
+        self._window_closed = True
         self._realtime_timer.stop()
         self._sweep_in_progress = False  # discard any pending sweep callback
         # Let any running thread finish without crashing Qt
