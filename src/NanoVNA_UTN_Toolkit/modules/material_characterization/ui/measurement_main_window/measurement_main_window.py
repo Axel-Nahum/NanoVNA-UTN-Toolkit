@@ -110,6 +110,7 @@ class MeasurementMainWindow(QMainWindow):
             screen.y() + (screen.height() - h) // 2,
             w, h,
         )
+        self.setMinimumSize(780, 560)
 
         apply_window_icon(self)
         dark_light_config(self)
@@ -648,7 +649,7 @@ class MeasurementMainWindow(QMainWindow):
         def _adjust_layout(event=None):
             try:
                 sl_bot, sl_h = _slider_positions()
-                _bottom = sl_bot + sl_h + 0.015   # small gap above slider band
+                _bottom = sl_bot + sl_h + 0.07    # room for xtick labels + xlabel above sliders
 
                 # Fixed margins so the axes width never shifts with tick-label changes.
                 fig.subplots_adjust(
