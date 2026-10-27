@@ -115,13 +115,19 @@ def build_config_screen(wizard, descriptor, step_def):
     lim_min_hz = _DEBUG_MIN_HZ
     lim_max_hz = _DEBUG_MAX_HZ
 
+    _compact = getattr(wizard, "_compact", False)
+    _sp  = 6  if _compact else 14   # section spacing
+    _fsp = 4  if _compact else 7    # form row spacing
+    _fh  = 24 if _compact else 30   # combo/input min height
+    _ih  = 30 if _compact else 36   # unknown name input height
+
     left_half_layout = QHBoxLayout()
     left_half_layout.setContentsMargins(0, 0, 0, 0)
     left_half_layout.setSpacing(8)
     left_half_layout.addWidget(build_step_sidebar(wizard, descriptor, texts), stretch=0)
 
     root = QVBoxLayout()
-    root.setSpacing(14)
+    root.setSpacing(_sp)
 
     # --- Connected device info ------------------------------------------- #
     if dev_name:
@@ -143,14 +149,15 @@ def build_config_screen(wizard, descriptor, step_def):
         f"QWidget#infoCard {{ background-color: {_infocard_bg}; border: 1px solid {_infocard_border}; border-radius: 6px; }}"
     )
     info_card_layout = QHBoxLayout(info_card)
-    info_card_layout.setContentsMargins(12, 8, 12, 8)
+    _icp = 4 if _compact else 8
+    info_card_layout.setContentsMargins(12, _icp, 12, _icp)
     info_card_layout.addWidget(dev_label)
     root.addWidget(info_card)
 
     # --- Sweep configuration --------------------------------------------- #
     sweep_group = QGroupBox(cfg.get("sweep_title", "Sweep Configuration"))
     sweep_form = QFormLayout(sweep_group)
-    sweep_form.setVerticalSpacing(7)
+    sweep_form.setVerticalSpacing(_fsp)
     sweep_form.setHorizontalSpacing(16)
 
     wizard.start_freq_input = QDoubleSpinBox()
@@ -158,18 +165,18 @@ def build_config_screen(wizard, descriptor, step_def):
     wizard.start_freq_input.setRange(0.0001, 1e12)
     wizard.start_freq_unit = QComboBox()
     wizard.start_freq_unit.addItems(list(_UNIT_MULT))
-    wizard.start_freq_unit.setMinimumHeight(30)
+    wizard.start_freq_unit.setMinimumHeight(_fh)
 
     wizard.stop_freq_input = QDoubleSpinBox()
     wizard.stop_freq_input.setDecimals(4)
     wizard.stop_freq_input.setRange(0.0001, 1e12)
     wizard.stop_freq_unit = QComboBox()
     wizard.stop_freq_unit.addItems(list(_UNIT_MULT))
-    wizard.stop_freq_unit.setMinimumHeight(30)
+    wizard.stop_freq_unit.setMinimumHeight(_fh)
 
     wizard.points_input = QComboBox()
     wizard.points_input.addItems([str(p) for p in valid_points])
-    wizard.points_input.setMinimumHeight(30)
+    wizard.points_input.setMinimumHeight(_fh)
     if debug_mode:
         # Editable so any point count can be typed, not just the device list.
         wizard.points_input.setEditable(True)
@@ -194,12 +201,12 @@ def build_config_screen(wizard, descriptor, step_def):
     # --- Unknown liquid + temperature ------------------------------------ #
     sample_group = QGroupBox(cfg.get("sample_title", "Sample"))
     sample_form = QFormLayout(sample_group)
-    sample_form.setVerticalSpacing(7)
+    sample_form.setVerticalSpacing(_fsp)
     sample_form.setHorizontalSpacing(16)
 
     wizard.unknown_name_input = QLineEdit()
     wizard.unknown_name_input.setMaxLength(_UNKNOWN_NAME_MAXLEN)
-    wizard.unknown_name_input.setMinimumHeight(36)
+    wizard.unknown_name_input.setMinimumHeight(_ih)
     wizard.unknown_name_input.setPlaceholderText(
         cfg.get("unknown_placeholder", "e.g. tap water, glycerin solution…")
     )
@@ -226,7 +233,7 @@ def build_config_screen(wizard, descriptor, step_def):
 
     ref_group = QGroupBox(cfg.get("references_title", "Reference Liquids"))
     ref_form = QFormLayout(ref_group)
-    ref_form.setVerticalSpacing(7)
+    ref_form.setVerticalSpacing(_fsp)
     ref_form.setHorizontalSpacing(16)
 
     all_liquids = list_reference_liquids()
@@ -245,7 +252,7 @@ def build_config_screen(wizard, descriptor, step_def):
     idx = probe_combo.findData(selected_probe(wizard).key)
     probe_combo.setCurrentIndex(idx if idx >= 0 else probe_combo.count() - 1)
     probe_combo.setMinimumWidth(150)
-    probe_combo.setMinimumHeight(32)
+    probe_combo.setMinimumHeight(_fh)
     ref_form.addRow(cfg.get("probe", "Probe:"), probe_combo)
     wizard.probe_combo = probe_combo
 
@@ -294,11 +301,11 @@ def build_config_screen(wizard, descriptor, step_def):
         idx = liquid_combo.findData(current)
         liquid_combo.setCurrentIndex(idx if idx >= 0 else 0)
         liquid_combo.setMinimumWidth(150)
-        liquid_combo.setMinimumHeight(32)
+        liquid_combo.setMinimumHeight(_fh)
 
         preset_combo = QComboBox()
         preset_combo.setMinimumWidth(190)
-        preset_combo.setMinimumHeight(32)
+        preset_combo.setMinimumHeight(_fh)
         preset_combo.setToolTip(cfg.get(
             "preset_tooltip",
             "Optional: load a stored measurement of this liquid instead of measuring it."))

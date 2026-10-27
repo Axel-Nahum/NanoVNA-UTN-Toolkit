@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt, QObject, QEvent, QSize, QPointF, QRectF
 from PySide6.QtGui import QGuiApplication, QFont, QIcon, QPixmap, QPainter, QColor, QPolygonF
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QHBoxLayout, QPushButton, QLabel, QScrollArea
+    QHBoxLayout, QPushButton, QLabel
 )
 
 logger = logging.getLogger(__name__)
@@ -221,17 +221,13 @@ class CharacterizationWizard(QMainWindow):
         # Content layout
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        self._scroll_area = QScrollArea()
-        self._scroll_area.setWidgetResizable(True)
-        self._scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
-        self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self.content_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.content_layout, stretch=1)
 
-        self._content_widget = QWidget()
-        self.content_layout = QVBoxLayout(self._content_widget)
-        self._scroll_area.setWidget(self._content_widget)
-
-        self.main_layout.addWidget(self._scroll_area, stretch=1)
+        # Detect small screens so step builders can use compact spacing.
+        _avail_h = (QGuiApplication.primaryScreen().availableGeometry().height()
+                    if QGuiApplication.primaryScreen() else 1080)
+        self._compact = _avail_h < 820
 
 # ------------------------------------------------------------------------------------------------------------------- #
         # Bottom navigation
@@ -302,10 +298,9 @@ class CharacterizationWizard(QMainWindow):
         screen = QGuiApplication.screenAt(self.pos()) or QGuiApplication.primaryScreen()
         if screen:
             avail = screen.availableGeometry()
-            max_h = avail.height() - 60
+            max_h = avail.height() - 40
             if self.height() > max_h:
                 self.resize(self.width(), max_h)
-            # keep the window inside the screen vertically
             if self.y() + self.height() > avail.y() + avail.height():
                 self.move(self.x(), max(avail.y(), avail.y() + avail.height() - self.height()))
 
