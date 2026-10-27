@@ -203,6 +203,9 @@ def open_plot_manager(main_window):
         checked = bool(state)
         y_min.setEnabled(not checked)
         y_max.setEnabled(not checked)
+        if checked:
+            y_min.clear()
+            y_max.clear()
         if not checked:
             _ax = getattr(main_window, "_epsilon_ax", None)
             if _ax is not None:
