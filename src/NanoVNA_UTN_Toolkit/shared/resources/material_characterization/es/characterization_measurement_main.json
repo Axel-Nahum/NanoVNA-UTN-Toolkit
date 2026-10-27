@@ -83,6 +83,8 @@
     "files_label": "Archivos S11 — definí el orden y el nombre a mostrar:",
     "col_file": "Archivo",
     "col_name": "Nombre a mostrar",
+    "interval_label": "Barrer cada:",
+    "interval_suffix": " s",
     "no_files": "No se encontraron archivos .s1p en esta carpeta.",
     "cancel": "Cancelar",
     "apply": "Aplicar"

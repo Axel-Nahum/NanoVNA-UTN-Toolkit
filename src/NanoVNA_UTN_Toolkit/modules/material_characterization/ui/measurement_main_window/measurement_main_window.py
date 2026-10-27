@@ -1855,6 +1855,30 @@ class MeasurementMainWindow(QMainWindow):
         folder_fl.addWidget(folder_edit, 1)
         folder_fl.addWidget(browse_btn)
         layout.addWidget(folder_frame)
+        layout.addSpacing(14)
+
+        # ── Sweep interval ─────────────────────────────────────────────────
+        from PySide6.QtWidgets import QSpinBox
+        interval_row = QHBoxLayout()
+        interval_lbl = QLabel(t.get("interval_label", "Sweep every:"))
+        interval_lbl.setStyleSheet(
+            f"font-size: 11px; font-weight: bold; color: {lbl_color}; border: none;"
+        )
+        interval_spin = QSpinBox()
+        interval_spin.setRange(1, 3600)
+        interval_spin.setSuffix(t.get("interval_suffix", " s"))
+        interval_spin.setValue(max(1, self._realtime_timer.interval() // 1000))
+        interval_spin.setFixedWidth(80)
+        interval_spin.setStyleSheet(
+            f"QSpinBox {{ background-color: {edit_bg}; border: 1px solid {edit_bdr};"
+            f" border-radius: 5px; padding: 3px 6px; color: {tbl_text}; }}"
+            f" QSpinBox::up-button, QSpinBox::down-button {{ width: 16px; }}"
+        )
+        interval_row.addWidget(interval_lbl)
+        interval_row.addSpacing(8)
+        interval_row.addWidget(interval_spin)
+        interval_row.addStretch()
+        layout.addLayout(interval_row)
         layout.addSpacing(18)
 
         layout.addWidget(_sep())
@@ -1893,9 +1917,10 @@ class MeasurementMainWindow(QMainWindow):
             t.get("col_name", "Display name"),
             "",
         ])
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
         table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        table.setColumnWidth(0, 200)
         table.setColumnWidth(2, 34)
         table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         table.setEditTriggers(
@@ -1988,8 +2013,14 @@ class MeasurementMainWindow(QMainWindow):
         # ── Logic ──────────────────────────────────────────────────────────
         _rm_style = (
             "QPushButton { border: none; background: transparent;"
-            f" color: #cc4444; font-size: 13px; font-weight: bold; }}"
+            " color: #cc4444; font-size: 13px; font-weight: bold; }"
             " QPushButton:hover { color: #ff6666; }"
+        )
+        _name_edit_style = (
+            f"QLineEdit {{ background-color: transparent; border: none;"
+            f" color: {tbl_text}; padding: 2px 4px; }}"
+            f" QLineEdit:focus {{ background-color: {edit_bg};"
+            f" border: 1px solid {edit_bdr}; border-radius: 3px; }}"
         )
 
         def _add_remove_btn(row):
@@ -2020,7 +2051,10 @@ class MeasurementMainWindow(QMainWindow):
                 fname_item.setFlags(fname_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 fname_item.setData(Qt.ItemDataRole.UserRole, str(f))
                 table.setItem(row, 0, fname_item)
-                table.setItem(row, 1, QTableWidgetItem(existing.get(str(f), "")))
+                name_edit = QLineEdit(existing.get(str(f), ""))
+                name_edit.setPlaceholderText("sample")
+                name_edit.setStyleSheet(_name_edit_style)
+                table.setCellWidget(row, 1, name_edit)
                 _add_remove_btn(row)
             no_files_lbl.setVisible(table.rowCount() == 0)
 
@@ -2066,17 +2100,20 @@ class MeasurementMainWindow(QMainWindow):
             config = []
             for row in range(table.rowCount()):
                 path_item = table.item(row, 0)
-                name_item = table.item(row, 1)
+                name_widget = table.cellWidget(row, 1)
                 if path_item:
+                    name = (name_widget.text() if isinstance(name_widget, QLineEdit) else "").strip()
                     config.append({
                         "path": path_item.data(Qt.ItemDataRole.UserRole),
-                        "name": (name_item.text() if name_item else "").strip(),
+                        "name": name,
                     })
             if not config:
                 return
             self._file_sweep_config = config
             self._file_sweep_idx    = 0
             self._sweep_mode        = "file"
+            secs = interval_spin.value()
+            self._realtime_timer.setInterval(secs * 1000)
             self._update_sweep_source_action()
             sc = self._texts.get("sweep_controls", {})
             self._set_sweep_status(sc.get("status_file_mode", "File mode"), "#ff9800")

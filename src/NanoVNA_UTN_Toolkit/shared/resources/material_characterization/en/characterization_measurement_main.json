@@ -83,6 +83,8 @@
     "files_label": "S11 files — set order and display name:",
     "col_file": "File",
     "col_name": "Display name",
+    "interval_label": "Sweep every:",
+    "interval_suffix": " s",
     "no_files": "No .s1p files found in this folder.",
     "cancel": "Cancel",
     "apply": "Apply"
