@@ -206,6 +206,7 @@ class CharacterizationWizard(QMainWindow):
         _title_row.setContentsMargins(0, 0, 0, 0)
         _title_row.setAlignment(Qt.AlignmentFlag.AlignVCenter)
         _title_row.addWidget(self.title_label)
+        self._rename_liquid_btn.setContentsMargins(0, 4, 0, 0)
         _title_row.addWidget(self._rename_liquid_btn, 0, Qt.AlignmentFlag.AlignBottom)
         _title_row.addStretch()
 
