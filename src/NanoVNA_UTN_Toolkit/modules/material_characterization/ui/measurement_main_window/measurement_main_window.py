@@ -2140,36 +2140,38 @@ class MeasurementMainWindow(QMainWindow):
         dlg.exec()
 
     def _open_name_assignment_dialog(self, config: list, parent) -> bool:
-        """
-        Opens a dialog to assign display names to each file in config (modified in place).
-        Shows a reusable names panel on the right. Returns True if confirmed.
-        """
+        """Assign display names to each file in config (modified in place). Returns True if confirmed."""
         t  = self._texts.get("file_sweep_dialog", {})
         nd = self._texts.get("name_dialog", {})
 
-        _is_dark = self.palette().window().color().lightness() < 128
-        _dlg_bg      = "#0a1220" if _is_dark else "#eef4fa"
-        title_color  = "#c8daf5" if _is_dark else "#1a2a3a"
-        sep_color    = "#2d5a8e" if _is_dark else "#c8d4e0"
-        lbl_color    = "#7ab3f5" if _is_dark else "#3a5a7a"
-        tbl_text     = "#c8daf5" if _is_dark else "#1a1a1a"
-        edit_bg      = "#0d1520" if _is_dark else "#ffffff"
-        edit_bdr     = "#2d5a8e" if _is_dark else "#9bbcd8"
-        btn_bg       = "#1a2640" if _is_dark else "#dce8f5"
-        btn_fg       = "#7ab3f5" if _is_dark else "#1a3a5c"
-        btn_bdr      = "#2d5a8e" if _is_dark else "#9bbcd8"
-        btn_hover    = "#1e3a60" if _is_dark else "#c8dcf0"
-        btn_press    = "#142a50" if _is_dark else "#b0ccec"
-        chip_bg      = "#1a2640" if _is_dark else "#dce8f5"
-        chip_fg      = "#7ab3f5" if _is_dark else "#1a3a5c"
-        chip_bdr     = "#2d5a8e" if _is_dark else "#9bbcd8"
-        no_file_col  = "#e05050" if _is_dark else "#c0392b"
+        _is_dark    = self.palette().window().color().lightness() < 128
+        _dlg_bg     = "#0a1220" if _is_dark else "#eef4fa"
+        title_color = "#c8daf5" if _is_dark else "#1a2a3a"
+        sep_color   = "#2d5a8e" if _is_dark else "#c8d4e0"
+        lbl_color   = "#7ab3f5" if _is_dark else "#3a5a7a"
+        tbl_text    = "#c8daf5" if _is_dark else "#1a1a1a"
+        edit_bg     = "#0d1520" if _is_dark else "#ffffff"
+        edit_bdr    = "#2d5a8e" if _is_dark else "#9bbcd8"
+        btn_bg      = "#1a2640" if _is_dark else "#dce8f5"
+        btn_fg      = "#7ab3f5" if _is_dark else "#1a3a5c"
+        btn_bdr     = "#2d5a8e" if _is_dark else "#9bbcd8"
+        btn_hover   = "#1e3a60" if _is_dark else "#c8dcf0"
+        btn_press   = "#142a50" if _is_dark else "#b0ccec"
+        scroll_bg   = "#0a1220" if _is_dark else "#eef4fa"
+        scroll_hdl  = "#2d5a8e" if _is_dark else "#9bbcd8"
+        scroll_hov  = "#3a72b0" if _is_dark else "#7aaad0"
 
-        from PySide6.QtWidgets import QFrame as _QF, QScrollArea, QSpacerItem, QSizePolicy
+        from PySide6.QtWidgets import QFrame as _QF, QScrollArea
+
+        _ROW_H    = 62   # px per file row (label + input + spacing)
+        _MAX_ROWS = 4
+        n         = len(config)
+        scroll_h  = min(n, _MAX_ROWS) * _ROW_H + 8
+        dlg_h     = 80 + scroll_h + 20 + 60   # title+sep + scroll + sep + buttons
 
         dlg = QDialog(parent)
         dlg.setWindowTitle(nd.get("title", "Assign display names"))
-        dlg.setFixedSize(520, 500)
+        dlg.setFixedSize(480, dlg_h)
         dlg.setStyleSheet(
             self.styleSheet()
             + f" QDialog {{ background-color: {_dlg_bg}; }}"
@@ -2180,7 +2182,12 @@ class MeasurementMainWindow(QMainWindow):
         outer.setContentsMargins(22, 18, 22, 18)
         outer.setSpacing(0)
 
-        # Title
+        def _sep():
+            s = _QF(); s.setFrameShape(_QF.Shape.HLine)
+            s.setFixedHeight(1)
+            s.setStyleSheet(f"background-color: {sep_color}; border: none;")
+            return s
+
         title_lbl = QLabel(nd.get("title", "Assign display names"))
         title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_lbl.setStyleSheet(
@@ -2188,134 +2195,84 @@ class MeasurementMainWindow(QMainWindow):
             " padding-bottom: 12px; border: none;"
         )
         outer.addWidget(title_lbl)
-
-        def _sep():
-            s = _QF(); s.setFrameShape(_QF.Shape.HLine)
-            s.setFixedHeight(1)
-            s.setStyleSheet(f"background-color: {sep_color}; border: none;")
-            return s
-
         outer.addWidget(_sep())
-        outer.addSpacing(12)
+        outer.addSpacing(10)
 
+        # ── Scrollable file rows ───────────────────────────────────────────
         _edit_style = (
             f"QLineEdit {{ background-color: {edit_bg}; border: 1px solid {edit_bdr};"
             f" border-radius: 5px; padding: 4px 8px; color: {tbl_text}; }}"
         )
-        _file_lbl_style = f"font-size: 11px; color: {lbl_color}; border: none;"
+        _lbl_style = f"font-size: 11px; color: {lbl_color}; border: none; background: transparent;"
 
-        # ── File rows ──────────────────────────────────────────────────────
+        rows_widget = QWidget()
+        rows_widget.setStyleSheet("background: transparent;")
+        rows_layout = QVBoxLayout(rows_widget)
+        rows_layout.setContentsMargins(4, 4, 4, 4)
+        rows_layout.setSpacing(0)
+
         name_edits: list[QLineEdit] = []
         for entry in config:
-            row_lbl = QLabel(Path(entry["path"]).name)
-            row_lbl.setStyleSheet(_file_lbl_style)
-            row_lbl.setToolTip(entry["path"])
-            name_edit = QLineEdit(entry.get("name", ""))
-            name_edit.setPlaceholderText("sample")
-            name_edit.setStyleSheet(_edit_style)
-            name_edits.append(name_edit)
-            outer.addWidget(row_lbl)
-            outer.addSpacing(3)
-            outer.addWidget(name_edit)
-            outer.addSpacing(10)
-
-        outer.addSpacing(4)
-        outer.addWidget(_sep())
-        outer.addSpacing(10)
-
-        # ── Saved names panel ──────────────────────────────────────────────
-        saved_hdr = QHBoxLayout()
-        saved_lbl = QLabel(nd.get("saved_names_label", "Saved names  (click to fill focused field):"))
-        saved_lbl.setStyleSheet(
-            f"font-size: 11px; font-weight: bold; color: {lbl_color}; border: none;"
-        )
-        saved_hdr.addWidget(saved_lbl)
-        saved_hdr.addStretch()
-        outer.addLayout(saved_hdr)
-        outer.addSpacing(6)
-
-        chips_container = QWidget()
-        chips_container.setStyleSheet("background: transparent;")
-        chips_layout = QHBoxLayout(chips_container)
-        chips_layout.setContentsMargins(0, 0, 0, 0)
-        chips_layout.setSpacing(6)
-        chips_layout.addStretch()
+            lbl = QLabel(Path(entry["path"]).name)
+            lbl.setStyleSheet(_lbl_style)
+            lbl.setToolTip(entry["path"])
+            ed = QLineEdit(entry.get("name", ""))
+            ed.setPlaceholderText("sample")
+            ed.setStyleSheet(_edit_style)
+            name_edits.append(ed)
+            rows_layout.addWidget(lbl)
+            rows_layout.addSpacing(3)
+            rows_layout.addWidget(ed)
+            rows_layout.addSpacing(12)
+        rows_layout.addStretch()
 
         scroll = QScrollArea()
+        scroll.setWidget(rows_widget)
         scroll.setWidgetResizable(True)
-        scroll.setFixedHeight(46)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        scroll.setWidget(chips_container)
-        scroll.setStyleSheet(
-            f"QScrollArea {{ border: 1px solid {edit_bdr}; border-radius: 6px;"
-            f" background-color: {edit_bg}; }}"
+        scroll.setFixedHeight(scroll_h)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded if n > _MAX_ROWS
+            else Qt.ScrollBarPolicy.ScrollBarAlwaysOff
         )
-        outer.addWidget(scroll)
-
-        _chip_style = (
-            f"QPushButton {{ background-color: {chip_bg}; border: 1px solid {chip_bdr};"
-            f" border-radius: 10px; color: {chip_fg}; font-size: 11px; padding: 2px 8px; }}"
-            f" QPushButton:hover {{ background-color: {btn_hover}; }}"
-        )
-        _chip_rm_style = (
-            "QPushButton { border: none; background: transparent;"
-            " color: #cc4444; font-size: 11px; font-weight: bold; padding: 0px 2px; }"
-            " QPushButton:hover { color: #ff6666; }"
-        )
-
-        def _focused_edit() -> QLineEdit | None:
-            for ed in name_edits:
-                if ed.hasFocus():
-                    return ed
-            return name_edits[-1] if name_edits else None
-
-        def _rebuild_chips():
-            for i in reversed(range(chips_layout.count() - 1)):
-                w = chips_layout.itemAt(i).widget()
-                if w:
-                    w.setParent(None)
-            for name in self._file_sweep_saved_names:
-                chip_w = QWidget()
-                chip_w.setStyleSheet("background: transparent;")
-                ch = QHBoxLayout(chip_w)
-                ch.setContentsMargins(0, 0, 0, 0)
-                ch.setSpacing(2)
-                chip_btn = QPushButton(name)
-                chip_btn.setStyleSheet(_chip_style)
-                chip_btn.clicked.connect(lambda _, n=name: (
-                    _focused_edit().setText(n) if _focused_edit() else None
-                ))
-                rm_btn = QPushButton("✕")
-                rm_btn.setFixedSize(16, 16)
-                rm_btn.setStyleSheet(_chip_rm_style)
-                rm_btn.clicked.connect(lambda _, n=name: _remove_saved(n))
-                ch.addWidget(chip_btn)
-                ch.addWidget(rm_btn)
-                chips_layout.insertWidget(chips_layout.count() - 1, chip_w)
-
-        def _remove_saved(name):
-            if name in self._file_sweep_saved_names:
-                self._file_sweep_saved_names.remove(name)
-                _rebuild_chips()
-
-        _rebuild_chips()
-
-        outer.addSpacing(14)
+        scroll.setStyleSheet(f"""
+            QScrollArea {{
+                border: none;
+                background-color: transparent;
+            }}
+            QScrollBar:vertical {{
+                background: {scroll_bg};
+                width: 8px;
+                border-radius: 4px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {scroll_hdl};
+                border-radius: 4px;
+                min-height: 20px;
+            }}
+            QScrollBar::handle:vertical:hover {{
+                background: {scroll_hov};
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
+        """)
+        outer.addWidget(scroll, 1)
+        outer.addSpacing(10)
         outer.addWidget(_sep())
         outer.addSpacing(12)
 
         # ── Buttons ────────────────────────────────────────────────────────
-        _act_style = (
+        _act = (
             f"QPushButton {{ background-color: {btn_bg}; border: 1px solid {btn_bdr};"
             f" border-radius: 6px; color: {btn_fg}; padding: 6px 22px; font-size: 12px; }}"
             f" QPushButton:hover {{ background-color: {btn_hover}; }}"
             f" QPushButton:pressed {{ background-color: {btn_press}; }}"
         )
         cancel_btn = QPushButton(t.get("cancel", "Cancel"))
-        ok_btn     = QPushButton(t.get("apply", "Apply"))
-        cancel_btn.setStyleSheet(_act_style)
-        ok_btn.setStyleSheet(_act_style)
+        ok_btn     = QPushButton(t.get("apply",  "Apply"))
+        cancel_btn.setStyleSheet(_act)
+        ok_btn.setStyleSheet(_act)
 
         btn_row = QHBoxLayout()
         btn_row.addStretch()
@@ -2328,10 +2285,7 @@ class MeasurementMainWindow(QMainWindow):
 
         def _confirm():
             for entry, ed in zip(config, name_edits):
-                name = ed.text().strip()
-                entry["name"] = name
-                if name and name not in self._file_sweep_saved_names:
-                    self._file_sweep_saved_names.append(name)
+                entry["name"] = ed.text().strip()
             dlg.accept()
 
         ok_btn.clicked.connect(_confirm)
