@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt, QObject, QEvent, QSize, QPointF, QRectF
 from PySide6.QtGui import QGuiApplication, QFont, QIcon, QPixmap, QPainter, QColor, QPolygonF
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QHBoxLayout, QPushButton, QLabel
+    QHBoxLayout, QPushButton, QLabel, QScrollArea
 )
 
 logger = logging.getLogger(__name__)
@@ -221,8 +221,20 @@ class CharacterizationWizard(QMainWindow):
         # Content layout
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        self.content_layout = QVBoxLayout()
-        self.main_layout.addLayout(self.content_layout, stretch=1)
+        self._scroll_area = QScrollArea()
+        self._scroll_area.setWidgetResizable(True)
+        self._scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
+        self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        self._scroll_area.setStyleSheet(
+            "QScrollBar:vertical { width: 6px; background: transparent; }"
+            " QScrollBar::handle:vertical { background: #3a4a6a; border-radius: 3px; min-height: 20px; }"
+            " QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }"
+        )
+        self._content_widget = QWidget()
+        self.content_layout = QVBoxLayout(self._content_widget)
+        self._scroll_area.setWidget(self._content_widget)
+        self.main_layout.addWidget(self._scroll_area, stretch=1)
 
         # Detect small screens so step builders can use compact spacing.
         _avail_h = (QGuiApplication.primaryScreen().availableGeometry().height()
