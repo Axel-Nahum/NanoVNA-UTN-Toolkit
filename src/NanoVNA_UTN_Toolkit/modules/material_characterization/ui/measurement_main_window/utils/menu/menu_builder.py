@@ -89,6 +89,10 @@ def build_menu(main_window) -> None:
     plot_manager_action.triggered.connect(lambda: open_plot_manager(main_window))
     plots_menu.addAction(plot_manager_action)
 
+    signal_filters_action = QAction(menu.get("signal_filters", "Signal Filters…"), main_window)
+    signal_filters_action.triggered.connect(main_window._open_signal_filters)
+    plots_menu.addAction(signal_filters_action)
+
     plots_menu.addSeparator()
 
     s11_action = QAction(menu.get("show_s11", "S11 — Smith Chart"), main_window)

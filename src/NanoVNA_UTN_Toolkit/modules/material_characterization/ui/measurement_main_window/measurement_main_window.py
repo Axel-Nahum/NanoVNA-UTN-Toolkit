@@ -91,6 +91,12 @@ class MeasurementMainWindow(QMainWindow):
         self._realtime_timer.setInterval(2000)
         self._realtime_timer.timeout.connect(self._run_one_sweep)
 
+        # Signal filter state (Smoothing / Kalman applied to ε after calculation)
+        self._active_filter     = "Off"
+        self._filter_smooth_pct = 5
+        self._kf_eps            = None   # ComplexKalman, reset on settings change
+        self._display_eps       = None   # filtered complex eps array used for plotting
+
         self.setWindowTitle(self._texts.get("window_title", "Material Characterization - Results"))
         screen = QGuiApplication.primaryScreen().availableGeometry()
         w = min(1171, screen.width() - 40)
@@ -1447,6 +1453,61 @@ class MeasurementMainWindow(QMainWindow):
             if limits is not None:
                 ax.set_ylim(limits)
 
+    # --------------------------------------------------------------------- #
+    # Signal filters                                                         #
+    # --------------------------------------------------------------------- #
+
+    def _open_signal_filters(self):
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.menu.signal_filters.signal_filters_char import (
+            open_signal_filters_char,
+        )
+        open_signal_filters_char(self)
+
+    def _apply_eps_filter(self, real, loss):
+        """Apply the active filter to ε′ (real) and ε″ (loss) arrays."""
+        import numpy as np
+        active = getattr(self, "_active_filter", "Off")
+        if active == "Smoothing":
+            w = max(1, int(len(real) * self._filter_smooth_pct / 100))
+            if w > 1:
+                kernel = np.ones(w) / w
+                pad = w // 2
+                real = np.convolve(np.pad(real, pad, mode="edge"), kernel, mode="valid")[:len(real)]
+                loss = np.convolve(np.pad(loss, pad, mode="edge"), kernel, mode="valid")[:len(loss)]
+        elif active == "Kalman" and self._kf_eps is not None:
+            filtered = np.array([
+                self._kf_eps.update(complex(r, i))
+                for r, i in zip(real, loss)
+            ])
+            real = filtered.real
+            loss = filtered.imag
+        return real, loss
+
+    def _on_filter_settings_changed(self):
+        """Called after filter dialog applies new settings — redraw with new settings."""
+        if self._result is None:
+            return
+        # Filter is only active in real-time; changing settings outside real-time just redraws raw.
+        _is_realtime = (
+            getattr(self, "_realtime_check", None) is not None
+            and self._realtime_check.isChecked()
+        )
+        if _is_realtime:
+            import numpy as np
+            raw_real, raw_loss = permittivity_columns(self._result.eps_selected)
+            if self._active_filter == "Kalman" and self._kf_eps is not None:
+                self._kf_eps.reset()
+            filtered_real, filtered_loss = self._apply_eps_filter(
+                np.asarray(raw_real, dtype=float),
+                np.asarray(raw_loss, dtype=float),
+            )
+            self._display_eps     = (filtered_real - 1j * filtered_loss).astype(complex)
+            self._marker_real_eps = filtered_real
+            self._marker_loss_eps = filtered_loss
+        else:
+            self._display_eps = None
+        self.redraw_chart()
+
     def redraw_chart(self):
         if not hasattr(self, "_epsilon_ax") or self._epsilon_ax is None:
             return
@@ -1459,10 +1520,15 @@ class MeasurementMainWindow(QMainWindow):
             self._epsilon_manager.config = self._make_chart_config(EpsilonChartConfig())
             # Pass canvas=None so update_epsilon_curves doesn't draw mid-way;
             # we draw once at the end after restoring the marker cursors.
+            _eps_to_draw = (
+                self._display_eps
+                if self._display_eps is not None
+                else self._result.eps_selected
+            )
             self._epsilon_manager.update_epsilon_curves(
                 self._epsilon_ax,
                 self._result.f_hz,
-                self._result.eps_selected,
+                _eps_to_draw,
                 canvas=None,
             )
             if not getattr(self, "_grid_enabled", True):
@@ -1654,9 +1720,26 @@ class MeasurementMainWindow(QMainWindow):
             float(np.nanmedian(new_real)), float(np.nanmedian(new_loss)),
             int(np.sum(~np.isfinite(new_real))), len(new_real),
         )
-        # Refresh marker data arrays so cursors and badges reflect the new result
-        self._marker_real_eps = new_real
-        self._marker_loss_eps = new_loss
+        # Apply filter only in real-time mode; single-shot shows raw data and resets Kalman.
+        _is_realtime = (
+            getattr(self, "_realtime_check", None) is not None
+            and self._realtime_check.isChecked()
+        )
+        if _is_realtime:
+            filtered_real, filtered_loss = self._apply_eps_filter(
+                np.asarray(new_real, dtype=float),
+                np.asarray(new_loss, dtype=float),
+            )
+            # permittivity_columns returns eps_loss = -Im(eps), reconstruct as eps' - j*eps''
+            self._display_eps = (filtered_real - 1j * filtered_loss).astype(complex)
+        else:
+            filtered_real, filtered_loss = new_real, new_loss
+            self._display_eps = None          # redraw_chart uses raw eps_selected
+            if self._kf_eps is not None:
+                self._kf_eps.reset()          # start fresh next real-time session
+        # Refresh marker data arrays so cursors and badges reflect the result
+        self._marker_real_eps = filtered_real
+        self._marker_loss_eps = filtered_loss
         self._marker_freqs = np.asarray(new_result.f_hz, dtype=float)
         self._marker_n = len(self._marker_freqs)
         self.redraw_chart()
