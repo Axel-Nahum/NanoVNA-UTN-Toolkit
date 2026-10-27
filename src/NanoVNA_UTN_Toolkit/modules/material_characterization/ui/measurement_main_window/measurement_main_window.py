@@ -86,6 +86,7 @@ class MeasurementMainWindow(QMainWindow):
         self._sweep_mode = "device"          # "device" | "file"
         self._file_sweep_config = []         # list of {"path": str, "name": str}
         self._file_sweep_idx = 0
+        self._file_sweep_saved_names: list = []  # user-built pool of reusable names
         self._realtime_timer = QTimer(self)
         self._realtime_timer.setInterval(2000)
         self._realtime_timer.timeout.connect(self._run_one_sweep)
@@ -1868,12 +1869,7 @@ class MeasurementMainWindow(QMainWindow):
         interval_spin.setRange(1, 3600)
         interval_spin.setSuffix(t.get("interval_suffix", " s"))
         interval_spin.setValue(max(1, self._realtime_timer.interval() // 1000))
-        interval_spin.setFixedWidth(80)
-        interval_spin.setStyleSheet(
-            f"QSpinBox {{ background-color: {edit_bg}; border: 1px solid {edit_bdr};"
-            f" border-radius: 5px; padding: 3px 6px; color: {tbl_text}; }}"
-            f" QSpinBox::up-button, QSpinBox::down-button {{ width: 16px; }}"
-        )
+        interval_spin.setFixedWidth(90)
         interval_row.addWidget(interval_lbl)
         interval_row.addSpacing(8)
         interval_row.addWidget(interval_spin)
@@ -1911,21 +1907,16 @@ class MeasurementMainWindow(QMainWindow):
         layout.addLayout(files_hdr)
         layout.addSpacing(6)
 
-        table = QTableWidget(0, 3)
+        table = QTableWidget(0, 2)
         table.setHorizontalHeaderLabels([
             t.get("col_file", "File"),
-            t.get("col_name", "Display name"),
             "",
         ])
-        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Interactive)
-        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
-        table.setColumnWidth(0, 200)
-        table.setColumnWidth(2, 34)
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Stretch)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        table.setColumnWidth(1, 34)
         table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
-        table.setEditTriggers(
-            QTableWidget.EditTrigger.DoubleClicked | QTableWidget.EditTrigger.SelectedClicked
-        )
+        table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
         table.setShowGrid(False)
@@ -2016,23 +2007,17 @@ class MeasurementMainWindow(QMainWindow):
             " color: #cc4444; font-size: 13px; font-weight: bold; }"
             " QPushButton:hover { color: #ff6666; }"
         )
-        _name_edit_style = (
-            f"QLineEdit {{ background-color: transparent; border: none;"
-            f" color: {tbl_text}; padding: 2px 4px; }}"
-            f" QLineEdit:focus {{ background-color: {edit_bg};"
-            f" border: 1px solid {edit_bdr}; border-radius: 3px; }}"
-        )
 
         def _add_remove_btn(row):
             rm = QPushButton("✕")
             rm.setFixedSize(28, 24)
             rm.setStyleSheet(_rm_style)
             rm.clicked.connect(lambda: _remove_row(rm))
-            table.setCellWidget(row, 2, rm)
+            table.setCellWidget(row, 1, rm)
 
         def _remove_row(btn):
             for r in range(table.rowCount()):
-                if table.cellWidget(r, 2) is btn:
+                if table.cellWidget(r, 1) is btn:
                     table.removeRow(r)
                     no_files_lbl.setVisible(table.rowCount() == 0)
                     break
@@ -2051,19 +2036,14 @@ class MeasurementMainWindow(QMainWindow):
                 fname_item.setFlags(fname_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
                 fname_item.setData(Qt.ItemDataRole.UserRole, str(f))
                 table.setItem(row, 0, fname_item)
-                name_edit = QLineEdit(existing.get(str(f), ""))
-                name_edit.setPlaceholderText("sample")
-                name_edit.setStyleSheet(_name_edit_style)
-                table.setCellWidget(row, 1, name_edit)
                 _add_remove_btn(row)
             no_files_lbl.setVisible(table.rowCount() == 0)
 
         def _swap_rows(r1, r2):
-            for col in range(2):  # only data columns, not the button column
-                i1 = table.takeItem(r1, col)
-                i2 = table.takeItem(r2, col)
-                table.setItem(r1, col, i2)
-                table.setItem(r2, col, i1)
+            item0_a = table.takeItem(r1, 0)
+            item0_b = table.takeItem(r2, 0)
+            table.setItem(r1, 0, item0_b)
+            table.setItem(r2, 0, item0_a)
 
         def _move_up():
             r = table.currentRow()
@@ -2100,27 +2080,225 @@ class MeasurementMainWindow(QMainWindow):
             config = []
             for row in range(table.rowCount()):
                 path_item = table.item(row, 0)
-                name_widget = table.cellWidget(row, 1)
                 if path_item:
-                    name = (name_widget.text() if isinstance(name_widget, QLineEdit) else "").strip()
-                    config.append({
-                        "path": path_item.data(Qt.ItemDataRole.UserRole),
-                        "name": name,
-                    })
+                    path = path_item.data(Qt.ItemDataRole.UserRole)
+                    prev = next(
+                        (e["name"] for e in self._file_sweep_config if e["path"] == path), ""
+                    )
+                    config.append({"path": path, "name": prev})
             if not config:
                 return
-            self._file_sweep_config = config
-            self._file_sweep_idx    = 0
-            self._sweep_mode        = "file"
             secs = interval_spin.value()
-            self._realtime_timer.setInterval(secs * 1000)
-            self._update_sweep_source_action()
-            sc = self._texts.get("sweep_controls", {})
-            self._set_sweep_status(sc.get("status_file_mode", "File mode"), "#ff9800")
-            dlg.accept()
+            if self._open_name_assignment_dialog(config, dlg):
+                self._file_sweep_config = config
+                self._file_sweep_idx    = 0
+                self._sweep_mode        = "file"
+                self._realtime_timer.setInterval(secs * 1000)
+                self._update_sweep_source_action()
+                sc = self._texts.get("sweep_controls", {})
+                self._set_sweep_status(sc.get("status_file_mode", "File mode"), "#ff9800")
+                dlg.accept()
 
         apply_btn.clicked.connect(_apply)
         dlg.exec()
+
+    def _open_name_assignment_dialog(self, config: list, parent) -> bool:
+        """
+        Opens a dialog to assign display names to each file in config (modified in place).
+        Shows a reusable names panel on the right. Returns True if confirmed.
+        """
+        t  = self._texts.get("file_sweep_dialog", {})
+        nd = self._texts.get("name_dialog", {})
+
+        _is_dark = self.palette().window().color().lightness() < 128
+        _dlg_bg      = "#0a1220" if _is_dark else "#eef4fa"
+        title_color  = "#c8daf5" if _is_dark else "#1a2a3a"
+        sep_color    = "#2d5a8e" if _is_dark else "#c8d4e0"
+        lbl_color    = "#7ab3f5" if _is_dark else "#3a5a7a"
+        tbl_text     = "#c8daf5" if _is_dark else "#1a1a1a"
+        edit_bg      = "#0d1520" if _is_dark else "#ffffff"
+        edit_bdr     = "#2d5a8e" if _is_dark else "#9bbcd8"
+        btn_bg       = "#1a2640" if _is_dark else "#dce8f5"
+        btn_fg       = "#7ab3f5" if _is_dark else "#1a3a5c"
+        btn_bdr      = "#2d5a8e" if _is_dark else "#9bbcd8"
+        btn_hover    = "#1e3a60" if _is_dark else "#c8dcf0"
+        btn_press    = "#142a50" if _is_dark else "#b0ccec"
+        chip_bg      = "#1a2640" if _is_dark else "#dce8f5"
+        chip_fg      = "#7ab3f5" if _is_dark else "#1a3a5c"
+        chip_bdr     = "#2d5a8e" if _is_dark else "#9bbcd8"
+        no_file_col  = "#e05050" if _is_dark else "#c0392b"
+
+        from PySide6.QtWidgets import QFrame as _QF, QScrollArea, QSpacerItem, QSizePolicy
+
+        dlg = QDialog(parent)
+        dlg.setWindowTitle(nd.get("title", "Assign display names"))
+        dlg.setFixedSize(520, 500)
+        dlg.setStyleSheet(
+            self.styleSheet()
+            + f" QDialog {{ background-color: {_dlg_bg}; }}"
+            + " QDialog QLabel { background: transparent; }"
+        )
+
+        outer = QVBoxLayout(dlg)
+        outer.setContentsMargins(22, 18, 22, 18)
+        outer.setSpacing(0)
+
+        # Title
+        title_lbl = QLabel(nd.get("title", "Assign display names"))
+        title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_lbl.setStyleSheet(
+            f"font-size: 15px; font-weight: bold; color: {title_color};"
+            " padding-bottom: 12px; border: none;"
+        )
+        outer.addWidget(title_lbl)
+
+        def _sep():
+            s = _QF(); s.setFrameShape(_QF.Shape.HLine)
+            s.setFixedHeight(1)
+            s.setStyleSheet(f"background-color: {sep_color}; border: none;")
+            return s
+
+        outer.addWidget(_sep())
+        outer.addSpacing(12)
+
+        _edit_style = (
+            f"QLineEdit {{ background-color: {edit_bg}; border: 1px solid {edit_bdr};"
+            f" border-radius: 5px; padding: 4px 8px; color: {tbl_text}; }}"
+        )
+        _file_lbl_style = f"font-size: 11px; color: {lbl_color}; border: none;"
+
+        # ── File rows ──────────────────────────────────────────────────────
+        name_edits: list[QLineEdit] = []
+        for entry in config:
+            row_lbl = QLabel(Path(entry["path"]).name)
+            row_lbl.setStyleSheet(_file_lbl_style)
+            row_lbl.setToolTip(entry["path"])
+            name_edit = QLineEdit(entry.get("name", ""))
+            name_edit.setPlaceholderText("sample")
+            name_edit.setStyleSheet(_edit_style)
+            name_edits.append(name_edit)
+            outer.addWidget(row_lbl)
+            outer.addSpacing(3)
+            outer.addWidget(name_edit)
+            outer.addSpacing(10)
+
+        outer.addSpacing(4)
+        outer.addWidget(_sep())
+        outer.addSpacing(10)
+
+        # ── Saved names panel ──────────────────────────────────────────────
+        saved_hdr = QHBoxLayout()
+        saved_lbl = QLabel(nd.get("saved_names_label", "Saved names  (click to fill focused field):"))
+        saved_lbl.setStyleSheet(
+            f"font-size: 11px; font-weight: bold; color: {lbl_color}; border: none;"
+        )
+        saved_hdr.addWidget(saved_lbl)
+        saved_hdr.addStretch()
+        outer.addLayout(saved_hdr)
+        outer.addSpacing(6)
+
+        chips_container = QWidget()
+        chips_container.setStyleSheet("background: transparent;")
+        chips_layout = QHBoxLayout(chips_container)
+        chips_layout.setContentsMargins(0, 0, 0, 0)
+        chips_layout.setSpacing(6)
+        chips_layout.addStretch()
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFixedHeight(46)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll.setWidget(chips_container)
+        scroll.setStyleSheet(
+            f"QScrollArea {{ border: 1px solid {edit_bdr}; border-radius: 6px;"
+            f" background-color: {edit_bg}; }}"
+        )
+        outer.addWidget(scroll)
+
+        _chip_style = (
+            f"QPushButton {{ background-color: {chip_bg}; border: 1px solid {chip_bdr};"
+            f" border-radius: 10px; color: {chip_fg}; font-size: 11px; padding: 2px 8px; }}"
+            f" QPushButton:hover {{ background-color: {btn_hover}; }}"
+        )
+        _chip_rm_style = (
+            "QPushButton { border: none; background: transparent;"
+            " color: #cc4444; font-size: 11px; font-weight: bold; padding: 0px 2px; }"
+            " QPushButton:hover { color: #ff6666; }"
+        )
+
+        def _focused_edit() -> QLineEdit | None:
+            for ed in name_edits:
+                if ed.hasFocus():
+                    return ed
+            return name_edits[-1] if name_edits else None
+
+        def _rebuild_chips():
+            for i in reversed(range(chips_layout.count() - 1)):
+                w = chips_layout.itemAt(i).widget()
+                if w:
+                    w.setParent(None)
+            for name in self._file_sweep_saved_names:
+                chip_w = QWidget()
+                chip_w.setStyleSheet("background: transparent;")
+                ch = QHBoxLayout(chip_w)
+                ch.setContentsMargins(0, 0, 0, 0)
+                ch.setSpacing(2)
+                chip_btn = QPushButton(name)
+                chip_btn.setStyleSheet(_chip_style)
+                chip_btn.clicked.connect(lambda _, n=name: (
+                    _focused_edit().setText(n) if _focused_edit() else None
+                ))
+                rm_btn = QPushButton("✕")
+                rm_btn.setFixedSize(16, 16)
+                rm_btn.setStyleSheet(_chip_rm_style)
+                rm_btn.clicked.connect(lambda _, n=name: _remove_saved(n))
+                ch.addWidget(chip_btn)
+                ch.addWidget(rm_btn)
+                chips_layout.insertWidget(chips_layout.count() - 1, chip_w)
+
+        def _remove_saved(name):
+            if name in self._file_sweep_saved_names:
+                self._file_sweep_saved_names.remove(name)
+                _rebuild_chips()
+
+        _rebuild_chips()
+
+        outer.addSpacing(14)
+        outer.addWidget(_sep())
+        outer.addSpacing(12)
+
+        # ── Buttons ────────────────────────────────────────────────────────
+        _act_style = (
+            f"QPushButton {{ background-color: {btn_bg}; border: 1px solid {btn_bdr};"
+            f" border-radius: 6px; color: {btn_fg}; padding: 6px 22px; font-size: 12px; }}"
+            f" QPushButton:hover {{ background-color: {btn_hover}; }}"
+            f" QPushButton:pressed {{ background-color: {btn_press}; }}"
+        )
+        cancel_btn = QPushButton(t.get("cancel", "Cancel"))
+        ok_btn     = QPushButton(t.get("apply", "Apply"))
+        cancel_btn.setStyleSheet(_act_style)
+        ok_btn.setStyleSheet(_act_style)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        btn_row.addWidget(cancel_btn)
+        btn_row.addSpacing(8)
+        btn_row.addWidget(ok_btn)
+        outer.addLayout(btn_row)
+
+        cancel_btn.clicked.connect(dlg.reject)
+
+        def _confirm():
+            for entry, ed in zip(config, name_edits):
+                name = ed.text().strip()
+                entry["name"] = name
+                if name and name not in self._file_sweep_saved_names:
+                    self._file_sweep_saved_names.append(name)
+            dlg.accept()
+
+        ok_btn.clicked.connect(_confirm)
+        return dlg.exec() == QDialog.DialogCode.Accepted
 
     # --------------------------------------------------------------------- #
 

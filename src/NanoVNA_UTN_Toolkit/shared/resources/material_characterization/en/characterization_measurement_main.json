@@ -88,5 +88,9 @@
     "no_files": "No .s1p files found in this folder.",
     "cancel": "Cancel",
     "apply": "Apply"
+  },
+  "name_dialog": {
+    "title": "Assign display names",
+    "saved_names_label": "Saved names  (click to fill focused field):"
   }
 }

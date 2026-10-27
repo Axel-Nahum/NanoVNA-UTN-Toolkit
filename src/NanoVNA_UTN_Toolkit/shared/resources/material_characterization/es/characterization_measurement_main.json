@@ -88,5 +88,9 @@
     "no_files": "No se encontraron archivos .s1p en esta carpeta.",
     "cancel": "Cancelar",
     "apply": "Aplicar"
+  },
+  "name_dialog": {
+    "title": "Asignar nombres a los archivos",
+    "saved_names_label": "Nombres guardados  (click para llenar el campo activo):"
   }
 }
