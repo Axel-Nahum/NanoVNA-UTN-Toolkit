@@ -1789,7 +1789,11 @@ class MeasurementMainWindow(QMainWindow):
         dlg = QDialog(self)
         dlg.setWindowTitle(t.get("title", "Configure S11 File Source"))
         dlg.setMinimumSize(660, 500)
-        dlg.setStyleSheet(self.styleSheet() + f" QDialog {{ background-color: {_dlg_bg}; }}")
+        dlg.setStyleSheet(
+            self.styleSheet()
+            + f" QDialog {{ background-color: {_dlg_bg}; }}"
+            + " QDialog QLabel { background: transparent; }"
+        )
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(24, 20, 24, 20)
