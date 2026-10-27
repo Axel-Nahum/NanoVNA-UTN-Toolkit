@@ -100,14 +100,14 @@ def import_calibration_pkg(main_window):
           or getattr(main_window, "vna", None)
 
     try:
-        wizard = CharacterizationWizard(vna_device=vna)
+        wizard = CharacterizationWizard(vna_device=vna, caller_window=main_window)
         load_kit_into_wizard(wizard, cal_name)
     except Exception as exc:
         QMessageBox.critical(main_window, "Load failed", str(exc))
         return
 
+    main_window.hide()
     wizard.show()
-    main_window.close()
 
 
 def open_wizard(main_window):
@@ -118,9 +118,9 @@ def open_wizard(main_window):
 
     vna = getattr(getattr(main_window, "wizard_window", None), "vna", None) \
           or getattr(main_window, "vna", None)
-    wizard = CharacterizationWizard(vna_device=vna)
+    wizard = CharacterizationWizard(vna_device=vna, caller_window=main_window)
+    main_window.hide()
     wizard.show()
-    main_window.close()
 
 
 def select_calibration(main_window):
@@ -228,7 +228,7 @@ def select_calibration(main_window):
               or getattr(main_window, "vna", None)
 
         try:
-            wizard = CharacterizationWizard(vna_device=vna)
+            wizard = CharacterizationWizard(vna_device=vna, caller_window=main_window)
             load_kit_into_wizard(wizard, cal_name)
         except Exception as exc:
             full = _tb.format_exc()
@@ -237,8 +237,8 @@ def select_calibration(main_window):
             return
 
         dialog.accept()
+        main_window.hide()
         wizard.show()
-        main_window.close()
 
     btn_cancel.clicked.connect(dialog.reject)
     btn_select.clicked.connect(on_select)

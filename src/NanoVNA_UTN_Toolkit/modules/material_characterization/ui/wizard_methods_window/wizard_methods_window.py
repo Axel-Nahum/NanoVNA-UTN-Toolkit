@@ -75,8 +75,11 @@ apply_window_icon = safe_import("NanoVNA_UTN_Toolkit.shared.utils.icon.app_icon"
 
 class CharacterizationWizard(QMainWindow):
 
-    def __init__(self, vna_device=None):
+    def __init__(self, vna_device=None, caller_window=None):
         super().__init__()
+        # Window that opened this wizard (e.g. MeasurementMainWindow); if set,
+        # going back restores it instead of opening the welcome screen.
+        self._caller_window = caller_window
 
         self.vna = vna_device
 
@@ -407,6 +410,15 @@ class CharacterizationWizard(QMainWindow):
             MeasurementMainWindow
         )
 
+        # If a caller window was hidden to open this wizard, close it now so
+        # only the new MeasurementMainWindow remains.
+        if self._caller_window is not None:
+            try:
+                self._caller_window.close()
+            except RuntimeError:
+                pass
+            self._caller_window = None
+
         self.measurement_window = MeasurementMainWindow(
             vna_device=self.vna_device, wizard_window=self
         )
@@ -420,6 +432,15 @@ class CharacterizationWizard(QMainWindow):
         logging.info(
             "[CharacterizationWizard] Returning to previous window"
         )
+
+        if self._caller_window is not None:
+            try:
+                self._caller_window.show()
+                self._caller_window.raise_()
+            except RuntimeError:
+                pass
+            self.close()
+            return
 
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.characterization_welcome.characterization_welcome import (
             MaterialCharacterizationWelcome

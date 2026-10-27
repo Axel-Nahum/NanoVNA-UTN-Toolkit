@@ -1850,7 +1850,7 @@ class MeasurementMainWindow(QMainWindow):
 
             old_wiz = self.wizard_window
             vna = getattr(old_wiz, "vna_device", None) or getattr(self, "vna", None)
-            wiz = CharacterizationWizard(vna_device=vna)
+            wiz = CharacterizationWizard(vna_device=vna, caller_window=self)
 
             if old_wiz is not None:
                 cal = getattr(old_wiz, "perm_calibration", None)
@@ -1878,9 +1878,9 @@ class MeasurementMainWindow(QMainWindow):
                         wiz.current_step = dut_step
                         update_step_screen(wiz)
 
+            self.hide()
             wiz.show()
             dlg.accept()
-            self.close()
 
         wizard_btn.clicked.connect(_reopen)
         layout.addWidget(wizard_btn)
