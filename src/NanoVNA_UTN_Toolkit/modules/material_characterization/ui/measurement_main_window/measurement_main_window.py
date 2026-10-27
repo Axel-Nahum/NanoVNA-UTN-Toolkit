@@ -1698,6 +1698,7 @@ class MeasurementMainWindow(QMainWindow):
             self._open_file_sweep_config_dialog()
         else:
             self._switch_to_device_mode()
+            self._open_device_sweep_settings_dialog()
 
     def _switch_to_device_mode(self):
         self._sweep_mode = "device"
@@ -1706,17 +1707,215 @@ class MeasurementMainWindow(QMainWindow):
         self._set_sweep_status(sc.get("status_ready", "Ready"), "#4caf50")
 
     def _update_sweep_source_action(self):
-        if not hasattr(self, "_sweep_source_action"):
-            return
         m = self._texts.get("menu", {})
-        if self._sweep_mode == "device":
-            self._sweep_source_action.setText(
-                m.get("source_file_mode", "Configure File Source…")
-            )
+        if hasattr(self, "_sweep_source_action"):
+            if self._sweep_mode == "device":
+                self._sweep_source_action.setText(
+                    m.get("source_file_mode", "Configure File Source…")
+                )
+            else:
+                self._sweep_source_action.setText(
+                    m.get("source_device_mode", "Use Device (NanoVNA)")
+                )
+        if hasattr(self, "_sweep_config_action"):
+            if self._sweep_mode == "device":
+                self._sweep_config_action.setText(
+                    m.get("sweep_settings", "Sweep Settings…")
+                )
+            else:
+                self._sweep_config_action.setText(
+                    m.get("source_file_mode", "Configure File Source…")
+                )
+
+    def _handle_sweep_config_action(self):
+        if self._sweep_mode == "file":
+            self._open_file_sweep_config_dialog()
         else:
-            self._sweep_source_action.setText(
-                m.get("source_device_mode", "Use Device (NanoVNA)")
+            self._open_device_sweep_settings_dialog()
+
+    def _open_device_sweep_settings_dialog(self):
+        t = self._texts.get("device_settings_dialog", {})
+
+        _is_dark    = self.palette().window().color().lightness() < 128
+        _dlg_bg     = "#0a1220" if _is_dark else "#eef4fa"
+        title_color = "#c8daf5" if _is_dark else "#1a2a3a"
+        sep_color   = "#2d5a8e" if _is_dark else "#c8d4e0"
+        lbl_color   = "#7ab3f5" if _is_dark else "#3a5a7a"
+        tbl_text    = "#c8daf5" if _is_dark else "#1a1a1a"
+        edit_bg     = "#0d1520" if _is_dark else "#ffffff"
+        edit_bdr    = "#2d5a8e" if _is_dark else "#9bbcd8"
+        btn_bg      = "#1a2640" if _is_dark else "#dce8f5"
+        btn_fg      = "#7ab3f5" if _is_dark else "#1a3a5c"
+        btn_bdr     = "#2d5a8e" if _is_dark else "#9bbcd8"
+        btn_hover   = "#1e3a60" if _is_dark else "#c8dcf0"
+        btn_press   = "#142a50" if _is_dark else "#b0ccec"
+
+        from PySide6.QtWidgets import QFrame as _QF, QDoubleSpinBox
+
+        class _FlexSpin(QDoubleSpinBox):
+            def valueFromText(self, text):
+                sfx = self.suffix()
+                s = text[: text.rfind(sfx)].strip() if sfx and sfx in text else text.strip()
+                try:
+                    return float(s.replace(",", "."))
+                except ValueError:
+                    return self.value()
+            def validate(self, text, pos):
+                return super().validate(text.replace(",", "."), pos)
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle(t.get("title", "Sweep Settings"))
+        dlg.setFixedSize(400, 260)
+        dlg.setStyleSheet(
+            self.styleSheet()
+            + f" QDialog {{ background-color: {_dlg_bg}; }}"
+            + " QDialog QLabel { background: transparent; }"
+        )
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setSpacing(0)
+
+        def _sep():
+            s = _QF(); s.setFrameShape(_QF.Shape.HLine)
+            s.setFixedHeight(1)
+            s.setStyleSheet(f"background-color: {sep_color}; border: none;")
+            return s
+
+        title_lbl = QLabel(t.get("title", "Sweep Settings"))
+        title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_lbl.setStyleSheet(
+            f"font-size: 15px; font-weight: bold; color: {title_color};"
+            " padding-bottom: 12px; border: none;"
+        )
+        layout.addWidget(title_lbl)
+        layout.addWidget(_sep())
+        layout.addSpacing(18)
+
+        # Interval row
+        iv_row = QHBoxLayout()
+        iv_lbl = QLabel(t.get("interval_label", "Sweep every:"))
+        iv_lbl.setStyleSheet(f"font-size: 11px; font-weight: bold; color: {lbl_color}; border: none;")
+
+        spin = _FlexSpin()
+        spin.setRange(0.1, 3600.0)
+        spin.setSingleStep(0.1)
+        spin.setDecimals(1)
+        spin.setSuffix(t.get("interval_suffix", " s"))
+        spin.setValue(max(0.1, self._realtime_timer.interval() / 1000.0))
+        spin.setButtonSymbols(_FlexSpin.ButtonSymbols.NoButtons)
+        spin.setStyleSheet("QDoubleSpinBox { border: none; background: transparent; }")
+
+        spin_frame = _QF()
+        spin_frame.setObjectName("spinboxContainer")
+        spin_frame.setFixedHeight(32)
+        spin_frame.setFixedWidth(100)
+        spin_frame.setStyleSheet(
+            f"QFrame#spinboxContainer {{ background-color: {edit_bg}; border: 1px solid {edit_bdr}; border-radius: 6px; }}"
+            f" QPushButton#spinboxUpBtn, QPushButton#spinboxDownBtn {{ background-color: {btn_bg}; border: 1px solid {btn_bdr}; color: {btn_fg}; }}"
+            f" QPushButton#spinboxUpBtn:hover, QPushButton#spinboxDownBtn:hover {{ background-color: {btn_hover}; }}"
+        )
+        sfl = QHBoxLayout(spin_frame); sfl.setContentsMargins(6, 1, 0, 1); sfl.setSpacing(0)
+        _su = QPushButton("▲"); _su.setObjectName("spinboxUpBtn");   _su.setFixedSize(18, 14); _su.clicked.connect(spin.stepUp)
+        _sd = QPushButton("▼"); _sd.setObjectName("spinboxDownBtn"); _sd.setFixedSize(18, 14); _sd.clicked.connect(spin.stepDown)
+        _sc = QVBoxLayout(); _sc.setSpacing(1); _sc.setContentsMargins(3, 0, 0, 0); _sc.addWidget(_su); _sc.addWidget(_sd)
+        sfl.addWidget(spin, 1); sfl.addLayout(_sc)
+
+        iv_row.addWidget(iv_lbl)
+        iv_row.addSpacing(8)
+        iv_row.addWidget(spin_frame)
+        iv_row.addStretch()
+        layout.addLayout(iv_row)
+        layout.addSpacing(20)
+
+        # Re-open wizard button
+        _btn_style = (
+            f"QPushButton {{ background-color: {btn_bg}; border: 1px solid {btn_bdr};"
+            f" border-radius: 6px; color: {btn_fg}; padding: 7px 16px; font-size: 12px; }}"
+            f" QPushButton:hover {{ background-color: {btn_hover}; }}"
+            f" QPushButton:pressed {{ background-color: {btn_press}; }}"
+        )
+        wizard_btn = QPushButton(t.get("reopen_wizard", "Re-open Wizard…"))
+        wizard_btn.setStyleSheet(_btn_style)
+
+        def _reopen():
+            from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.wizard_methods_window import (
+                CharacterizationWizard,
             )
+            from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import (
+                update_step_screen,
+            )
+            from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques import get as _get_tech
+            from NanoVNA_UTN_Toolkit.modules.material_characterization.techniques.base import StepKind
+
+            old_wiz = self.wizard_window
+            vna = getattr(old_wiz, "vna_device", None) or getattr(self, "vna", None)
+            wiz = CharacterizationWizard(vna_device=vna)
+
+            if old_wiz is not None:
+                cal = getattr(old_wiz, "perm_calibration", None)
+                if cal is not None:
+                    wiz.perm_calibration = cal
+                wiz.unknown_liquid_name = getattr(old_wiz, "unknown_liquid_name", "")
+                wiz.temperature_c       = getattr(old_wiz, "temperature_c", 25.0)
+                wiz.sweep_start_freq    = getattr(old_wiz, "sweep_start_freq", 50_000)
+                wiz.sweep_stop_freq     = getattr(old_wiz, "sweep_stop_freq", 1_500_000_000)
+                wiz.sweep_steps         = getattr(old_wiz, "sweep_steps", 101)
+                wiz._precal_propagated  = True
+
+                tech_id = getattr(old_wiz, "selected_technique_id", None)
+                wiz.selected_technique_id = tech_id
+                wiz.selected_method       = getattr(old_wiz, "selected_method", None)
+
+                if tech_id:
+                    descriptor = _get_tech(tech_id)
+                    dut_step = next(
+                        (i + 1 for i, s in enumerate(descriptor.steps)
+                         if s.kind is StepKind.DUT_MEASURE),
+                        None,
+                    )
+                    if dut_step is not None:
+                        wiz.current_step = dut_step
+                        update_step_screen(wiz)
+
+            wiz.show()
+            dlg.accept()
+            self.close()
+
+        wizard_btn.clicked.connect(_reopen)
+        layout.addWidget(wizard_btn)
+
+        layout.addStretch()
+        layout.addWidget(_sep())
+        layout.addSpacing(12)
+
+        # Cancel / Apply
+        _act = (
+            f"QPushButton {{ background-color: {btn_bg}; border: 1px solid {btn_bdr};"
+            f" border-radius: 6px; color: {btn_fg}; padding: 6px 22px; font-size: 12px; }}"
+            f" QPushButton:hover {{ background-color: {btn_hover}; }}"
+            f" QPushButton:pressed {{ background-color: {btn_press}; }}"
+        )
+        cancel_btn = QPushButton(t.get("cancel", "Cancel"))
+        apply_btn  = QPushButton(t.get("apply",  "Apply"))
+        cancel_btn.setStyleSheet(_act)
+        apply_btn.setStyleSheet(_act)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        btn_row.addWidget(cancel_btn)
+        btn_row.addSpacing(8)
+        btn_row.addWidget(apply_btn)
+        layout.addLayout(btn_row)
+
+        cancel_btn.clicked.connect(dlg.reject)
+
+        def _apply():
+            self._realtime_timer.setInterval(max(100, int(spin.value() * 1000)))
+            dlg.accept()
+
+        apply_btn.clicked.connect(_apply)
+        dlg.exec()
 
     def _open_file_sweep_config_dialog(self):
         t = self._texts.get("file_sweep_dialog", {})

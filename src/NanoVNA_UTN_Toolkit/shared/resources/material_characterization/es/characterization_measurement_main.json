@@ -66,7 +66,8 @@
     "about_es": "Documentation (Español)",
     "source_file_mode": "Configurar fuente de archivos…",
     "source_device_mode": "Usar dispositivo (NanoVNA)",
-    "measurement_viewer": "Visor de Mediciones…"
+    "measurement_viewer": "Visor de Mediciones…",
+    "sweep_settings": "Configuración de barrido…"
   },
   "sweep_controls": {
     "status_ready": "Listo",
@@ -92,5 +93,13 @@
   "name_dialog": {
     "title": "Asignar nombres a los archivos",
     "saved_names_label": "Nombres guardados  (click para llenar el campo activo):"
+  },
+  "device_settings_dialog": {
+    "title": "Configuración de barrido",
+    "interval_label": "Barrer cada:",
+    "interval_suffix": " s",
+    "reopen_wizard": "Reabrir asistente…",
+    "cancel": "Cancelar",
+    "apply": "Aplicar"
   }
 }

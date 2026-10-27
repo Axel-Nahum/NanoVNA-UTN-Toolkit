@@ -66,7 +66,8 @@
     "about_es": "Documentation (Español)",
     "source_file_mode": "Configure File Source…",
     "source_device_mode": "Use Device (NanoVNA)",
-    "measurement_viewer": "Measurement Viewer…"
+    "measurement_viewer": "Measurement Viewer…",
+    "sweep_settings": "Sweep Settings…"
   },
   "sweep_controls": {
     "status_ready": "Ready",
@@ -92,5 +93,13 @@
   "name_dialog": {
     "title": "Assign display names",
     "saved_names_label": "Saved names  (click to fill focused field):"
+  },
+  "device_settings_dialog": {
+    "title": "Sweep Settings",
+    "interval_label": "Sweep every:",
+    "interval_suffix": " s",
+    "reopen_wizard": "Re-open Wizard…",
+    "cancel": "Cancel",
+    "apply": "Apply"
   }
 }
