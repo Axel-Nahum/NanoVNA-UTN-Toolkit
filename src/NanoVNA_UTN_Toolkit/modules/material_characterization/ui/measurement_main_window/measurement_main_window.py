@@ -1859,16 +1859,31 @@ class MeasurementMainWindow(QMainWindow):
         layout.addSpacing(14)
 
         # ── Sweep interval ─────────────────────────────────────────────────
-        from PySide6.QtWidgets import QSpinBox
+        from PySide6.QtWidgets import QDoubleSpinBox
+
+        class _FlexSpinBox(QDoubleSpinBox):
+            """Accepts both '.' and ',' as decimal separator."""
+            def valueFromText(self, text: str) -> float:
+                sfx = self.suffix()
+                s = text[: text.rfind(sfx)].strip() if sfx and sfx in text else text.strip()
+                try:
+                    return float(s.replace(",", "."))
+                except ValueError:
+                    return self.value()
+            def validate(self, text: str, pos: int):
+                return super().validate(text.replace(",", "."), pos)
+
         interval_row = QHBoxLayout()
         interval_lbl = QLabel(t.get("interval_label", "Sweep every:"))
         interval_lbl.setStyleSheet(
             f"font-size: 11px; font-weight: bold; color: {lbl_color}; border: none;"
         )
-        interval_spin = QSpinBox()
-        interval_spin.setRange(1, 3600)
+        interval_spin = _FlexSpinBox()
+        interval_spin.setRange(0.1, 3600.0)
+        interval_spin.setSingleStep(0.1)
+        interval_spin.setDecimals(1)
         interval_spin.setSuffix(t.get("interval_suffix", " s"))
-        interval_spin.setValue(max(1, self._realtime_timer.interval() // 1000))
+        interval_spin.setValue(max(0.1, self._realtime_timer.interval() / 1000.0))
         interval_spin.setFixedWidth(90)
         interval_row.addWidget(interval_lbl)
         interval_row.addSpacing(8)
@@ -2093,7 +2108,7 @@ class MeasurementMainWindow(QMainWindow):
                 self._file_sweep_config = config
                 self._file_sweep_idx    = 0
                 self._sweep_mode        = "file"
-                self._realtime_timer.setInterval(secs * 1000)
+                self._realtime_timer.setInterval(max(100, int(secs * 1000)))
                 self._update_sweep_source_action()
                 sc = self._texts.get("sweep_controls", {})
                 self._set_sweep_status(sc.get("status_file_mode", "File mode"), "#ff9800")
