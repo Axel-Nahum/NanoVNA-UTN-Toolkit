@@ -634,6 +634,11 @@ class MeasurementMainWindow(QMainWindow):
         self._cursor2, = ax.plot([], [], "o", markersize=m2_size, color=m2_color,
                                   zorder=5, clip_on=True)
 
+        _CHART_LEFT  = 0.08   # aligned to slider left edge
+        _CHART_RIGHT = 0.92   # aligned to slider right edge
+        _TITLE_PX    = 48     # px above axes for title  → converted to fraction at runtime
+        _XLABEL_PX   = 68     # px below axes for xticks + Frequency label
+
         # Slider axes
         sl1_ax = fig.add_axes([0.08, sl_bot0, 0.38, sl_h0])
         sl2_ax = fig.add_axes([0.54, sl_bot0, 0.38, sl_h0])
@@ -641,23 +646,31 @@ class MeasurementMainWindow(QMainWindow):
             sax.set_facecolor("#2a2a2a")
             for spine in sax.spines.values():
                 spine.set_color("#444444")
-
-        _CHART_LEFT  = 0.11   # fixed left margin — wide enough for any tick labels
-        _CHART_RIGHT = 0.97
         _CHART_TOP   = 0.87   # fixed top margin — space for the title
 
         def _adjust_layout(event=None):
             try:
                 sl_bot, sl_h = _slider_positions()
-                _bottom = sl_bot + sl_h + 0.09    # room for xtick labels + xlabel above sliders
+                fig_h_px = max(1.0, fig.get_size_inches()[1] * fig.dpi)
 
-                # Fixed margins so the axes width never shifts with tick-label changes.
-                fig.subplots_adjust(
-                    left=_CHART_LEFT, right=_CHART_RIGHT,
-                    top=_CHART_TOP,   bottom=_bottom,
-                )
+                # Convert pixel targets to fractions — margins stay ~constant in
+                # pixels so the chart grows when the window is maximised.
+                top_frac    = min(0.13, max(0.06, _TITLE_PX  / fig_h_px))
+                xlabel_frac = min(0.15, max(0.06, _XLABEL_PX / fig_h_px))
 
-                # Place slider axes manually below the chart.
+                _top    = 1.0 - top_frac
+                _bottom = sl_bot + sl_h + xlabel_frac
+
+                # Set the main axes position directly — subplots_adjust does not
+                # override positions that constrained layout already set explicitly.
+                ax.set_position([
+                    _CHART_LEFT,
+                    _bottom,
+                    _CHART_RIGHT - _CHART_LEFT,
+                    _top        - _bottom,
+                ])
+
+                # Place slider axes at their original positions.
                 sl1_ax.set_position([0.08, sl_bot, 0.38, sl_h])
                 sl2_ax.set_position([0.54, sl_bot, 0.38, sl_h])
 
@@ -668,7 +681,7 @@ class MeasurementMainWindow(QMainWindow):
 
                 canvas.draw_idle()
             except Exception:
-                pass
+                logging.exception("[_adjust_layout] failed")
 
         # Disable the constrained layout engine that epsilon_chart sets up —
         # it overrides subplots_adjust on every draw, making manual layout impossible.
@@ -1667,6 +1680,11 @@ class MeasurementMainWindow(QMainWindow):
         if hasattr(self, "_realtime_check") and self._realtime_check.isChecked():
             self._realtime_check.setChecked(False)
         self._set_sweep_status("Error", "#f44336")
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        if hasattr(self, "_adjust_chart_layout"):
+            self._adjust_chart_layout()
 
     def closeEvent(self, event):
         self._window_closed = True
