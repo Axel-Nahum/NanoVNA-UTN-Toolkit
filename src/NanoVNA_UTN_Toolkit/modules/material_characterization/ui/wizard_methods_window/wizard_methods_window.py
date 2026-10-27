@@ -12,7 +12,7 @@ from PySide6.QtCore import Qt, QObject, QEvent, QSize, QPointF, QRectF
 from PySide6.QtGui import QGuiApplication, QFont, QIcon, QPixmap, QPainter, QColor, QPolygonF
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
-    QHBoxLayout, QPushButton, QLabel
+    QHBoxLayout, QPushButton, QLabel, QScrollArea
 )
 
 logger = logging.getLogger(__name__)
@@ -221,9 +221,17 @@ class CharacterizationWizard(QMainWindow):
         # Content layout
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        self.content_layout = QVBoxLayout()
+        self._scroll_area = QScrollArea()
+        self._scroll_area.setWidgetResizable(True)
+        self._scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
+        self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self._scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
 
-        self.main_layout.addLayout(self.content_layout, stretch=1)
+        self._content_widget = QWidget()
+        self.content_layout = QVBoxLayout(self._content_widget)
+        self._scroll_area.setWidget(self._content_widget)
+
+        self.main_layout.addWidget(self._scroll_area, stretch=1)
 
 # ------------------------------------------------------------------------------------------------------------------- #
         # Bottom navigation
@@ -288,6 +296,18 @@ class CharacterizationWizard(QMainWindow):
         QApplication.instance().installEventFilter(self._flash_detector)
 
 # ------------------------------------------------------------------------------------------------------------------- #
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        screen = QGuiApplication.screenAt(self.pos()) or QGuiApplication.primaryScreen()
+        if screen:
+            avail = screen.availableGeometry()
+            max_h = avail.height() - 60
+            if self.height() > max_h:
+                self.resize(self.width(), max_h)
+            # keep the window inside the screen vertically
+            if self.y() + self.height() > avail.y() + avail.height():
+                self.move(self.x(), max(avail.y(), avail.y() + avail.height() - self.height()))
 
     def clear_content(self):
 
