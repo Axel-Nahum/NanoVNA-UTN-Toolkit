@@ -19,9 +19,8 @@ import logging
 from pathlib import Path
 
 import numpy as np
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPoint, QTimer
 from PySide6.QtGui import QAction, QColor, QGuiApplication, QIcon, QPainter, QPixmap, QPolygon
-from PySide6.QtCore import QPoint
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QDialog, QHBoxLayout, QLabel, QMainWindow, QMenu,
     QPushButton, QScrollArea, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
@@ -62,6 +61,20 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_
 
 _MAX_TABLE_ROWS = 500
 
+# REMOVE BEFORE v2.4.1
+from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_realtime_debug_enabled
+_DEBUG_S1P_DIR = Path(
+    r"C:\Users\axu_n\OneDrive\Escritorio\UTN 2026\Proyecto Final"
+    r"\NanoVNA (Caracterizacion)\Export\s1p"
+    r"\drive-download-20261015T164109Z-1-001"
+)
+_DEBUG_S1P_FILES = [
+    "nano vna sonda 3mm-smooth5 etanol.s1p",
+    "nano vna sonda 3mm-smooth5 acetona.s1p",
+    "nano vna sonda 3mm-smooth5 butanol.s1p",
+    "nano vna sonda 3mm-smooth5 ciclohex.s1p",
+]
+
 def _hsep(color="#383850"):
     line = QWidget()
     line.setFixedHeight(1)
@@ -81,6 +94,11 @@ class MeasurementMainWindow(QMainWindow):
         self._s11_fig = None
         self._epsilon_canvas = None
         self._result = None
+        self._sweep_in_progress = False
+        self._debug_sweep_idx = 0
+        self._realtime_timer = QTimer(self)
+        self._realtime_timer.setInterval(2000)
+        self._realtime_timer.timeout.connect(self._run_one_sweep)
 
         self.setWindowTitle(self._texts.get("window_title", "Material Characterization - Results"))
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -376,6 +394,7 @@ class MeasurementMainWindow(QMainWindow):
             return
 
         self.main_layout.addWidget(self._build_epsilon_chart(result), stretch=1)
+        self._wire_sweep_controls()
 
     # --------------------------------------------------------------------- #
 
@@ -740,6 +759,10 @@ class MeasurementMainWindow(QMainWindow):
 
         slider1.on_changed(lambda val: _upd1(int(val)))
         slider2.on_changed(lambda val: _upd2(int(val)))
+
+        # Expose so _on_sweep_success_result can refresh cursors after a new result
+        self._upd1 = _upd1
+        self._upd2 = _upd2
 
         # Populate labels with the initial slider positions
         _upd1(_init_idx1)
@@ -1491,6 +1514,132 @@ class MeasurementMainWindow(QMainWindow):
         notes.append("Temperature / Temperatura: "
                      + self._temperature_text(getattr(wiz, "temperature_c", None)))
         return notes
+
+    # --------------------------------------------------------------------- #
+    # Real-time sweep                                                        #
+    # --------------------------------------------------------------------- #
+
+    def _wire_sweep_controls(self):
+        """Connect Run Sweep button and Real-time checkbox to sweep logic."""
+        if hasattr(self, "_run_sweep_btn"):
+            self._run_sweep_btn.clicked.connect(self._run_one_sweep)
+        if hasattr(self, "_realtime_check"):
+            self._realtime_check.stateChanged.connect(
+                lambda state: self._on_realtime_toggled(state != 0)
+            )
+
+    def _on_realtime_toggled(self, enabled: bool):
+        if enabled:
+            self._realtime_timer.start()
+            self._set_sweep_status("Real-time", "#2196f3")
+        else:
+            self._realtime_timer.stop()
+            self._set_sweep_status("Ready", "#4caf50")
+
+    def _set_sweep_status(self, text: str, color: str):
+        if hasattr(self, "_sweep_dot"):
+            self._sweep_dot.setStyleSheet(
+                f"background-color: {color}; border-radius: 7px; border: none;"
+            )
+        if hasattr(self, "_sweep_status_label"):
+            self._sweep_status_label.setText(text)
+
+    def _run_one_sweep(self):
+        if self._sweep_in_progress or self._result is None:
+            return
+        self._sweep_in_progress = True
+        self._set_sweep_status("Measuring...", "#ff9800")
+        if hasattr(self, "_run_sweep_btn"):
+            self._run_sweep_btn.setEnabled(False)
+
+        if is_realtime_debug_enabled():
+            self._sweep_debug()
+        else:
+            self._sweep_from_device()
+
+    def _sweep_debug(self):
+        """Cycle through debug s1p files and recompute ε. REMOVE BEFORE v2.4.1."""
+        cal = getattr(self.wizard_window, "perm_calibration", None)
+        if cal is None:
+            self._on_sweep_error("No calibration available")
+            return
+        try:
+            import skrf as rf
+            fname = _DEBUG_S1P_FILES[self._debug_sweep_idx % len(_DEBUG_S1P_FILES)]
+            fpath = _DEBUG_S1P_DIR / fname
+            net   = rf.Network(str(fpath))
+            freqs = np.asarray(net.f, dtype=float)
+            s11   = np.asarray(net.s[:, 0, 0], dtype=complex)
+            self._debug_sweep_idx += 1
+            logging.info("[DEBUG] loaded s1p: %s", fname)
+            new_result = cal.compute_epsilon(freqs, s11)
+            if new_result is not None:
+                self._on_sweep_success_result(new_result)
+            else:
+                self._on_sweep_error("compute_epsilon returned None")
+        except Exception as exc:
+            self._on_sweep_error(str(exc))
+
+    def _sweep_from_device(self):
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.measure_runner import (
+            run_s11_sweep_async,
+        )
+        wiz = self.wizard_window
+        if wiz is None:
+            self._on_sweep_error("No wizard reference")
+            return
+        run_s11_sweep_async(
+            wiz,
+            on_success=self._on_sweep_s11_received,
+            on_error=lambda: self._on_sweep_error("Device sweep failed"),
+        )
+
+    def _on_sweep_s11_received(self, freqs, s11):
+        cal = getattr(self.wizard_window, "perm_calibration", None)
+        if cal is None:
+            self._on_sweep_error("No calibration available")
+            return
+        try:
+            new_result = cal.compute_epsilon(freqs, s11)
+            if new_result is not None:
+                self._on_sweep_success_result(new_result)
+            else:
+                self._on_sweep_error("compute_epsilon returned None")
+        except Exception as exc:
+            self._on_sweep_error(str(exc))
+
+    def _on_sweep_success_result(self, new_result):
+        self._result = new_result
+        # Refresh marker data arrays so cursors and badges reflect the new result
+        new_real, new_loss = permittivity_columns(new_result.eps_selected)
+        self._marker_real_eps = new_real
+        self._marker_loss_eps = new_loss
+        self._marker_freqs = np.asarray(new_result.f_hz, dtype=float)
+        self._marker_n = len(self._marker_freqs)
+        self.redraw_chart()
+        # Move cursor dots and update badge labels to current slider positions
+        if hasattr(self, "_upd1") and hasattr(self, "_slider1"):
+            self._upd1(int(self._slider1.val))
+        if hasattr(self, "_upd2") and hasattr(self, "_slider2"):
+            self._upd2(int(self._slider2.val))
+        self._sweep_in_progress = False
+        if hasattr(self, "_run_sweep_btn"):
+            self._run_sweep_btn.setEnabled(True)
+        if getattr(self, "_realtime_check", None) and self._realtime_check.isChecked():
+            self._set_sweep_status("Real-time", "#2196f3")
+        else:
+            self._set_sweep_status("Ready", "#4caf50")
+
+    def _on_sweep_error(self, msg: str = ""):
+        logging.error("[MeasurementMainWindow] sweep error: %s", msg)
+        self._sweep_in_progress = False
+        if hasattr(self, "_run_sweep_btn"):
+            self._run_sweep_btn.setEnabled(True)
+        self._set_sweep_status("Error", "#f44336")
+
+    def closeEvent(self, event):
+        self._realtime_timer.stop()
+        super().closeEvent(event)
 
     def return_to_menu_window(self):
         try:

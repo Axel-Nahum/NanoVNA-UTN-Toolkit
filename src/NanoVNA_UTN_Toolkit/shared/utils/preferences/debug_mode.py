@@ -27,7 +27,8 @@ logger = logging.getLogger(__name__)
 
 _INI_EXE = "INI/dut_measurement/preferences/preferences.ini"
 _INI_DEV = "shared/utils/preferences/preferences.ini"
-_KEY = "Preferences/debug_mode"
+_KEY              = "Preferences/debug_mode"
+_KEY_REALTIME_DBG = "Preferences/realtime_debug_mode"
 
 
 def _settings():
@@ -46,3 +47,17 @@ def is_debug_enabled() -> bool:
 def set_debug_enabled(enabled: bool) -> None:
     """Persist the Debug Mode preference."""
     _settings().setValue(_KEY, "true" if enabled else "false")
+
+
+def is_realtime_debug_enabled() -> bool:
+    """Return True when real-time debug mode is active (cycles s1p files). REMOVE BEFORE v2.4.1."""
+    try:
+        return str(_settings().value(_KEY_REALTIME_DBG, "false")).strip().lower() in ("true", "1", "yes")
+    except Exception:
+        logger.exception("[debug_mode.is_realtime_debug_enabled] could not read the preference")
+        return False
+
+
+def set_realtime_debug_enabled(enabled: bool) -> None:
+    """Persist the real-time debug mode preference. REMOVE BEFORE v2.4.1."""
+    _settings().setValue(_KEY_REALTIME_DBG, "true" if enabled else "false")
