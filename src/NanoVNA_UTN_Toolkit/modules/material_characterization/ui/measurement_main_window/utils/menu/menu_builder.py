@@ -57,6 +57,13 @@ def build_menu(main_window) -> None:
     file_menu.addAction(export_pdf_action)
 
     file_menu.addSeparator()
+
+    sweep_source_action = QAction(menu.get("source_file_mode", "Configure File Source…"), main_window)
+    sweep_source_action.triggered.connect(main_window._handle_sweep_source_action)
+    file_menu.addAction(sweep_source_action)
+    main_window._sweep_source_action = sweep_source_action
+
+    file_menu.addSeparator()
     from NanoVNA_UTN_Toolkit.shared.utils.preferences.preferences import open_preferences_dialog
     pref_action = QAction("⚙  Preferences…", main_window)
     pref_action.triggered.connect(lambda: open_preferences_dialog(main_window))

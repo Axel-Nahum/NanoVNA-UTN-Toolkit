@@ -19,8 +19,6 @@ get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_
 
 is_debug_enabled = safe_import("NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode", "is_debug_enabled")
 set_debug_enabled = safe_import("NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode", "set_debug_enabled")
-is_realtime_debug_enabled = safe_import("NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode", "is_realtime_debug_enabled")
-set_realtime_debug_enabled = safe_import("NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode", "set_realtime_debug_enabled")
 
 MenuResourceLoader = safe_import("NanoVNA_UTN_Toolkit.shared.resources.menu_resource_loader", "MenuResourceLoader")
 
@@ -39,7 +37,7 @@ def open_preferences_dialog(self):
     # from source, but not exposed anywhere in the installed (production) build.
     show_debug = is_debug_enabled()
 
-    dialog.setFixedSize(340, 370 if show_debug else 310)
+    dialog.setFixedSize(340, 350 if show_debug else 290)
 
     dialog.setStyleSheet(self.styleSheet())
 
@@ -192,21 +190,6 @@ def open_preferences_dialog(self):
     debug_layout.addStretch()
     debug_layout.addWidget(self.debug_mode_checkbox)
 
-    # Real-time debug mode — REMOVE BEFORE v2.4.1
-    rt_debug_layout = QHBoxLayout()
-    rt_debug_label = QLabel("Debug real-time:")
-    rt_debug_label.setStyleSheet("font-size: 15px; border: none;")
-    self.realtime_debug_checkbox = QCheckBox("Enable")
-    self.realtime_debug_checkbox.setStyleSheet("border: none;")
-    self.realtime_debug_checkbox.setChecked(is_realtime_debug_enabled())
-    self.realtime_debug_checkbox.setToolTip(
-        "Cycles pre-recorded .s1p files instead of measuring from the device.\n"
-        "For testing real-time mode without hardware. REMOVE BEFORE v2.4.1."
-    )
-    self.realtime_debug_checkbox.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    rt_debug_layout.addWidget(rt_debug_label)
-    rt_debug_layout.addStretch()
-    rt_debug_layout.addWidget(self.realtime_debug_checkbox)
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Add Settings Layouts
@@ -221,8 +204,6 @@ def open_preferences_dialog(self):
     else:
         debug_label.setVisible(False)
         self.debug_mode_checkbox.setVisible(False)
-
-    preferences_layout.addLayout(rt_debug_layout)  # REMOVE BEFORE v2.4.1
 
 # ------------------------------------------------------------------------------------------------------------------- #
 # Buttons
@@ -271,8 +252,6 @@ def open_preferences_dialog(self):
 def apply_preferences(self, dialog):
 
     change_debug_mode(self, self.debug_mode_checkbox.isChecked())
-    set_realtime_debug_enabled(self.realtime_debug_checkbox.isChecked())
-
     change_theme(self, self.theme_combo.currentText(), dialog)
     change_language(self, self.language_combo.currentText(), dialog)
 

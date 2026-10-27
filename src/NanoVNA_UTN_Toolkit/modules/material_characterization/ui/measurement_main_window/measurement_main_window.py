@@ -22,7 +22,8 @@ import numpy as np
 from PySide6.QtCore import Qt, QPoint, QTimer
 from PySide6.QtGui import QAction, QColor, QGuiApplication, QIcon, QPainter, QPixmap, QPolygon
 from PySide6.QtWidgets import (
-    QApplication, QCheckBox, QDialog, QHBoxLayout, QLabel, QMainWindow, QMenu,
+    QApplication, QCheckBox, QDialog, QFileDialog, QHBoxLayout, QHeaderView,
+    QLabel, QLineEdit, QMainWindow, QMenu,
     QPushButton, QScrollArea, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
@@ -61,20 +62,6 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_
 
 _MAX_TABLE_ROWS = 500
 
-# REMOVE BEFORE v2.4.1
-from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_realtime_debug_enabled
-_DEBUG_S1P_DIR = Path(
-    r"C:\Users\axu_n\OneDrive\Escritorio\UTN 2026\Proyecto Final"
-    r"\NanoVNA (Caracterizacion)\Export\s1p"
-    r"\drive-download-20261015T164109Z-1-001"
-)
-_DEBUG_S1P_FILES = [
-    "nano vna sonda 3mm-smooth5 etanol.s1p",
-    "nano vna sonda 3mm-smooth5 acetona.s1p",
-    "nano vna sonda 3mm-smooth5 butanol.s1p",
-    "nano vna sonda 3mm-smooth5 ciclohex.s1p",
-]
-
 def _hsep(color="#383850"):
     line = QWidget()
     line.setFixedHeight(1)
@@ -96,7 +83,9 @@ class MeasurementMainWindow(QMainWindow):
         self._result = None
         self._sweep_in_progress = False
         self._window_closed = False
-        self._debug_sweep_idx = 0
+        self._sweep_mode = "device"          # "device" | "file"
+        self._file_sweep_config = []         # list of {"path": str, "name": str}
+        self._file_sweep_idx = 0
         self._realtime_timer = QTimer(self)
         self._realtime_timer.setInterval(2000)
         self._realtime_timer.timeout.connect(self._run_one_sweep)
@@ -1558,10 +1547,15 @@ class MeasurementMainWindow(QMainWindow):
     def _on_realtime_toggled(self, enabled: bool):
         if enabled:
             self._realtime_timer.start()
-            self._set_sweep_status("Real-time", "#2196f3")
+            sc = self._texts.get("sweep_controls", {})
+            self._set_sweep_status(sc.get("status_realtime", "Real-time"), "#2196f3")
         else:
             self._realtime_timer.stop()
-            self._set_sweep_status("Ready", "#4caf50")
+            sc = self._texts.get("sweep_controls", {})
+            if self._sweep_mode == "file":
+                self._set_sweep_status(sc.get("status_file_mode", "File mode"), "#ff9800")
+            else:
+                self._set_sweep_status(sc.get("status_ready", "Ready"), "#4caf50")
 
     def _set_sweep_status(self, text: str, color: str):
         if hasattr(self, "_sweep_dot"):
@@ -1575,30 +1569,39 @@ class MeasurementMainWindow(QMainWindow):
         if self._sweep_in_progress or self._result is None:
             return
         self._sweep_in_progress = True
-        self._set_sweep_status("Measuring...", "#ff9800")
+        sc = self._texts.get("sweep_controls", {})
+        self._set_sweep_status(sc.get("status_measuring", "Measuring..."), "#ff9800")
         if hasattr(self, "_run_sweep_btn"):
             self._run_sweep_btn.setEnabled(False)
 
-        if is_realtime_debug_enabled():
-            self._sweep_debug()
+        if self._sweep_mode == "file":
+            self._sweep_from_file()
         else:
             self._sweep_from_device()
 
-    def _sweep_debug(self):
-        """Cycle through debug s1p files and recompute ε. REMOVE BEFORE v2.4.1."""
+    def _sweep_from_file(self):
+        """Cycle through the user-configured S11 files and recompute ε."""
+        if not self._file_sweep_config:
+            self._on_sweep_error("No S11 files configured")
+            return
         cal = getattr(self.wizard_window, "perm_calibration", None)
         if cal is None:
             self._on_sweep_error("No calibration available")
             return
         try:
             import skrf as rf
-            fname = _DEBUG_S1P_FILES[self._debug_sweep_idx % len(_DEBUG_S1P_FILES)]
-            fpath = _DEBUG_S1P_DIR / fname
-            net   = rf.Network(str(fpath))
+            entry = self._file_sweep_config[self._file_sweep_idx % len(self._file_sweep_config)]
+            net   = rf.Network(entry["path"])
             freqs = np.asarray(net.f, dtype=float)
             s11   = np.asarray(net.s[:, 0, 0], dtype=complex)
-            self._debug_sweep_idx += 1
-            logging.info("[DEBUG] loaded s1p: %s", fname)
+            self._file_sweep_idx += 1
+            name  = (entry["name"] or "").strip() or self._sample_name()
+            if hasattr(self, "_epsilon_manager") and self._epsilon_manager is not None:
+                exp = self._texts.get("export", {})
+                self._epsilon_manager._title = exp.get(
+                    "epsilon_title", "εr — {sample}"
+                ).format(sample=name)
+            logging.info("[MeasurementMainWindow] file sweep: %s", entry["path"])
             new_result = cal.compute_epsilon(freqs, s11)
             if new_result is not None:
                 self._on_sweep_success_result(new_result)
@@ -1664,10 +1667,13 @@ class MeasurementMainWindow(QMainWindow):
         self._sweep_in_progress = False
         if hasattr(self, "_run_sweep_btn"):
             self._run_sweep_btn.setEnabled(True)
+        sc = self._texts.get("sweep_controls", {})
         if getattr(self, "_realtime_check", None) and self._realtime_check.isChecked():
-            self._set_sweep_status("Real-time", "#2196f3")
+            self._set_sweep_status(sc.get("status_realtime", "Real-time"), "#2196f3")
+        elif self._sweep_mode == "file":
+            self._set_sweep_status(sc.get("status_file_mode", "File mode"), "#ff9800")
         else:
-            self._set_sweep_status("Ready", "#4caf50")
+            self._set_sweep_status(sc.get("status_ready", "Ready"), "#4caf50")
 
     def _on_sweep_error(self, msg: str = ""):
         if self._window_closed:
@@ -1679,7 +1685,176 @@ class MeasurementMainWindow(QMainWindow):
         # Stop real-time on error to avoid repeating blocking dialogs every tick
         if hasattr(self, "_realtime_check") and self._realtime_check.isChecked():
             self._realtime_check.setChecked(False)
-        self._set_sweep_status("Error", "#f44336")
+        sc = self._texts.get("sweep_controls", {})
+        self._set_sweep_status(sc.get("status_error", "Error"), "#f44336")
+
+    # --------------------------------------------------------------------- #
+    # File sweep source                                                      #
+    # --------------------------------------------------------------------- #
+
+    def _handle_sweep_source_action(self):
+        if self._sweep_mode == "device":
+            self._open_file_sweep_config_dialog()
+        else:
+            self._switch_to_device_mode()
+
+    def _switch_to_device_mode(self):
+        self._sweep_mode = "device"
+        self._update_sweep_source_action()
+        sc = self._texts.get("sweep_controls", {})
+        self._set_sweep_status(sc.get("status_ready", "Ready"), "#4caf50")
+
+    def _update_sweep_source_action(self):
+        if not hasattr(self, "_sweep_source_action"):
+            return
+        m = self._texts.get("menu", {})
+        if self._sweep_mode == "device":
+            self._sweep_source_action.setText(
+                m.get("source_file_mode", "Configure File Source…")
+            )
+        else:
+            self._sweep_source_action.setText(
+                m.get("source_device_mode", "Use Device (NanoVNA)")
+            )
+
+    def _open_file_sweep_config_dialog(self):
+        t = self._texts.get("file_sweep_dialog", {})
+        dlg = QDialog(self)
+        dlg.setWindowTitle(t.get("title", "Configure S11 File Source"))
+        dlg.setMinimumSize(600, 430)
+        dlg.setStyleSheet(self.styleSheet())
+
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(20, 20, 20, 20)
+        layout.setSpacing(12)
+
+        # Folder row
+        folder_row = QHBoxLayout()
+        folder_lbl = QLabel(t.get("folder_label", "Folder:"))
+        folder_lbl.setStyleSheet("border: none;")
+        folder_edit = QLineEdit()
+        if self._file_sweep_config:
+            folder_edit.setText(str(Path(self._file_sweep_config[0]["path"]).parent))
+        browse_btn = QPushButton(t.get("browse", "Browse…"))
+        folder_row.addWidget(folder_lbl)
+        folder_row.addWidget(folder_edit, 1)
+        folder_row.addWidget(browse_btn)
+        layout.addLayout(folder_row)
+
+        # Files table
+        files_lbl = QLabel(t.get("files_label", "S11 files (set order and display name):"))
+        files_lbl.setStyleSheet("border: none;")
+        layout.addWidget(files_lbl)
+
+        table_row = QHBoxLayout()
+        table = QTableWidget(0, 2)
+        table.setHorizontalHeaderLabels([
+            t.get("col_file", "File"),
+            t.get("col_name", "Display name (replaces \"sample\" in chart title)"),
+        ])
+        table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        table.setEditTriggers(QTableWidget.EditTrigger.DoubleClicked | QTableWidget.EditTrigger.SelectedClicked)
+        table_row.addWidget(table, 1)
+
+        btn_col = QVBoxLayout()
+        up_btn = QPushButton("↑")
+        dn_btn = QPushButton("↓")
+        up_btn.setFixedWidth(32)
+        dn_btn.setFixedWidth(32)
+        btn_col.addStretch()
+        btn_col.addWidget(up_btn)
+        btn_col.addWidget(dn_btn)
+        btn_col.addStretch()
+        table_row.addLayout(btn_col)
+        layout.addLayout(table_row, 1)
+
+        no_files_lbl = QLabel(t.get("no_files", "No .s1p files found in this folder."))
+        no_files_lbl.setStyleSheet("color: #f44336; border: none;")
+        no_files_lbl.setVisible(False)
+        layout.addWidget(no_files_lbl)
+
+        def _populate(folder_str):
+            folder = Path(folder_str)
+            if not folder.is_dir():
+                return
+            files = sorted(folder.glob("*.s1p"))
+            table.setRowCount(0)
+            existing = {e["path"]: e["name"] for e in self._file_sweep_config}
+            for f in files:
+                row = table.rowCount()
+                table.insertRow(row)
+                fname_item = QTableWidgetItem(f.name)
+                fname_item.setFlags(fname_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                fname_item.setData(Qt.ItemDataRole.UserRole, str(f))
+                table.setItem(row, 0, fname_item)
+                table.setItem(row, 1, QTableWidgetItem(existing.get(str(f), "")))
+            no_files_lbl.setVisible(table.rowCount() == 0)
+
+        def _swap_rows(r1, r2):
+            for col in range(table.columnCount()):
+                i1 = table.takeItem(r1, col)
+                i2 = table.takeItem(r2, col)
+                table.setItem(r1, col, i2)
+                table.setItem(r2, col, i1)
+
+        up_btn.clicked.connect(lambda: (
+            _swap_rows(table.currentRow(), table.currentRow() - 1)
+            or table.setCurrentCell(table.currentRow() - 1, table.currentColumn())
+        ) if table.currentRow() > 0 else None)
+        dn_btn.clicked.connect(lambda: (
+            _swap_rows(table.currentRow(), table.currentRow() + 1)
+            or table.setCurrentCell(table.currentRow() + 1, table.currentColumn())
+        ) if 0 <= table.currentRow() < table.rowCount() - 1 else None)
+
+        def _browse():
+            folder = QFileDialog.getExistingDirectory(dlg, t.get("browse_title", "Select folder with .s1p files"))
+            if folder:
+                folder_edit.setText(folder)
+                _populate(folder)
+
+        browse_btn.clicked.connect(_browse)
+        folder_edit.editingFinished.connect(lambda: _populate(folder_edit.text()))
+
+        if folder_edit.text():
+            _populate(folder_edit.text())
+
+        # Buttons
+        btn_row = QHBoxLayout()
+        cancel_btn = QPushButton(t.get("cancel", "Cancel"))
+        apply_btn  = QPushButton(t.get("apply", "Apply"))
+        btn_row.addStretch()
+        btn_row.addWidget(cancel_btn)
+        btn_row.addWidget(apply_btn)
+        layout.addLayout(btn_row)
+
+        cancel_btn.clicked.connect(dlg.reject)
+
+        def _apply():
+            config = []
+            for row in range(table.rowCount()):
+                path_item = table.item(row, 0)
+                name_item = table.item(row, 1)
+                if path_item:
+                    config.append({
+                        "path": path_item.data(Qt.ItemDataRole.UserRole),
+                        "name": (name_item.text() if name_item else "").strip(),
+                    })
+            if not config:
+                return
+            self._file_sweep_config = config
+            self._file_sweep_idx    = 0
+            self._sweep_mode        = "file"
+            self._update_sweep_source_action()
+            sc = self._texts.get("sweep_controls", {})
+            self._set_sweep_status(sc.get("status_file_mode", "File mode"), "#ff9800")
+            dlg.accept()
+
+        apply_btn.clicked.connect(_apply)
+        dlg.exec()
+
+    # --------------------------------------------------------------------- #
 
     def resizeEvent(self, event):
         super().resizeEvent(event)

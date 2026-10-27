@@ -63,6 +63,28 @@
     "cal_delete_kit": "Eliminar calibración…",
     "help": "Ayuda",
     "about_en": "Documentation (English)",
-    "about_es": "Documentation (Español)"
+    "about_es": "Documentation (Español)",
+    "source_file_mode": "Configurar fuente de archivos…",
+    "source_device_mode": "Usar dispositivo (NanoVNA)",
+    "measurement_viewer": "Visor de Mediciones…"
+  },
+  "sweep_controls": {
+    "status_ready": "Listo",
+    "status_realtime": "Tiempo real",
+    "status_file_mode": "Modo archivo",
+    "status_measuring": "Midiendo…",
+    "status_error": "Error"
+  },
+  "file_sweep_dialog": {
+    "title": "Configurar fuente S11 desde archivos",
+    "folder_label": "Carpeta:",
+    "browse": "Explorar…",
+    "browse_title": "Seleccionar carpeta con archivos .s1p",
+    "files_label": "Archivos S11 (definí el orden y el nombre a mostrar):",
+    "col_file": "Archivo",
+    "col_name": "Nombre para mostrar (reemplaza \"sample\" en el título del gráfico)",
+    "no_files": "No se encontraron archivos .s1p en esta carpeta.",
+    "cancel": "Cancelar",
+    "apply": "Aplicar"
   }
 }
