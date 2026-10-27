@@ -310,6 +310,10 @@ class NanoVNAGraphics(QMainWindow):
         pref_action = file_menu.addAction("⚙  Preferences…")
         pref_action.triggered.connect(lambda: open_preferences_dialog(self))
 
+        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.menu.file_menu.sweep_settings_dialog import open_sweep_settings_dialog
+        sweep_settings_action = file_menu.addAction("⏱  Sweep Settings…")
+        sweep_settings_action.triggered.connect(lambda: open_sweep_settings_dialog(self))
+
         file_menu.addSeparator()
 
         exit_action = file_menu.addAction(f"{self.measurement_menu_back_to_menu}")
