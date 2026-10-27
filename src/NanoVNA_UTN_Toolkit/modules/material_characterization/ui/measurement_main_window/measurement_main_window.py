@@ -1723,31 +1723,31 @@ class MeasurementMainWindow(QMainWindow):
         _is_dark = self.palette().window().color().lightness() < 128
         if _is_dark:
             title_color  = "#c8daf5"
-            sep_color    = "#2a2a38"
-            tbl_bg       = "#0e0e12"
-            tbl_alt      = "#1a1a22"
-            tbl_text     = "#e0e0e0"
-            tbl_grid     = "#232323"
+            sep_color    = "#2d5a8e"
+            tbl_bg       = "#0d1520"
+            tbl_alt      = "#132030"
+            tbl_text     = "#c8daf5"
+            tbl_grid     = "#1e3a5a"
             hdr_bg       = "#0f1e30"
             hdr_fg       = "#7ab3f5"
-            hdr_bdr      = "#2a2a2a"
+            hdr_bdr      = "#2d5a8e"
             sel_bg       = "#1e4878"
             sel_fg       = "#ffffff"
-            scroll_track = "#111116"
-            scroll_hdl   = "#3a3a44"
-            scroll_hov   = "#555560"
-            btn_bg       = "#1a1a24"
+            scroll_track = "#0a1020"
+            scroll_hdl   = "#2d5a8e"
+            scroll_hov   = "#3a72b0"
+            btn_bg       = "#1a2640"
             btn_fg       = "#7ab3f5"
             btn_bdr      = "#2d5a8e"
             btn_hover    = "#1e3a60"
             btn_press    = "#142a50"
-            outer_bdr    = "#2a2a30"
-            frame_bg     = "#13131a"
-            lbl_color    = "#8fa0c0"
-            edit_bg      = "#1a1a24"
+            outer_bdr    = "#2d5a8e"
+            frame_bg     = "#1a2640"
+            lbl_color    = "#7ab3f5"
+            edit_bg      = "#0d1520"
             edit_bdr     = "#2d5a8e"
             no_file_col  = "#e05050"
-            icon_btn_bg  = "#1a1a24"
+            icon_btn_bg  = "#1a2640"
             icon_btn_bdr = "#2d5a8e"
             icon_btn_fg  = "#7ab3f5"
             icon_btn_hov = "#1e3a60"
@@ -1784,10 +1784,12 @@ class MeasurementMainWindow(QMainWindow):
 
         from PySide6.QtWidgets import QFrame as _QFrame
 
+        _dlg_bg = "#0a1220" if _is_dark else "#eef4fa"
+
         dlg = QDialog(self)
         dlg.setWindowTitle(t.get("title", "Configure S11 File Source"))
         dlg.setMinimumSize(660, 500)
-        dlg.setStyleSheet(self.styleSheet())
+        dlg.setStyleSheet(self.styleSheet() + f" QDialog {{ background-color: {_dlg_bg}; }}")
 
         layout = QVBoxLayout(dlg)
         layout.setContentsMargins(24, 20, 24, 20)
