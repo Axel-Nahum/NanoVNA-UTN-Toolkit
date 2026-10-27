@@ -20,10 +20,11 @@ from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QAction, QGuiApplication
+from PySide6.QtGui import QAction, QColor, QGuiApplication, QIcon, QPainter, QPixmap, QPolygon
+from PySide6.QtCore import QPoint
 from PySide6.QtWidgets import (
-    QApplication, QDialog, QHBoxLayout, QLabel, QMainWindow, QMenu,
-    QScrollArea, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
+    QApplication, QCheckBox, QDialog, QHBoxLayout, QLabel, QMainWindow, QMenu,
+    QPushButton, QScrollArea, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
 
 get_settings = safe_import(
@@ -82,12 +83,13 @@ class MeasurementMainWindow(QMainWindow):
         self._result = None
 
         self.setWindowTitle(self._texts.get("window_title", "Material Characterization - Results"))
-        self.setGeometry(200, 200, 1150, 720)
-
         screen = QGuiApplication.primaryScreen().availableGeometry()
-        window_geometry = self.frameGeometry()
-        window_geometry.moveCenter(screen.center())
-        self.move(window_geometry.topLeft())
+        w, h = 1171, 858
+        self.setGeometry(
+            screen.x() + (screen.width() - w) // 2,
+            screen.y() + (screen.height() - h) // 2,
+            w, h,
+        )
 
         apply_window_icon(self)
         dark_light_config(self)
@@ -120,6 +122,7 @@ class MeasurementMainWindow(QMainWindow):
         self._build_header()
         self.main_layout.addWidget(_hsep())
         self._build_info_strip()
+        self.main_layout.addWidget(self._build_sweep_controls())
         self.main_layout.addWidget(_hsep())
         self._build_body()
         self._create_menus()
@@ -227,15 +230,14 @@ class MeasurementMainWindow(QMainWindow):
             _VAL_STYLE = "font-size: 12px; color: #1a3a5c; border: none; background: transparent;"
 
         row = QHBoxLayout()
-        row.setSpacing(16)
+        row.setSpacing(10)
         row.setContentsMargins(0, 6, 0, 6)
-        row.addStretch()
 
         for label_text, value_text in items:
             badge = QWidget()
             badge.setStyleSheet(_BADGE)
             badge_layout = QVBoxLayout(badge)
-            badge_layout.setContentsMargins(0, 4, 0, 4)
+            badge_layout.setContentsMargins(10, 6, 10, 6)
             badge_layout.setSpacing(2)
 
             key_lbl = QLabel(label_text.rstrip(":"))
@@ -248,10 +250,114 @@ class MeasurementMainWindow(QMainWindow):
 
             badge_layout.addWidget(key_lbl)
             badge_layout.addWidget(val_lbl)
-            row.addWidget(badge)
+            row.addWidget(badge, stretch=1)
 
-        row.addStretch()
         self.main_layout.addLayout(row)
+
+    # --------------------------------------------------------------------- #
+
+    def _build_sweep_controls(self):
+        """Sweep control bar: compact status left, solid blue Run Sweep right, symmetric."""
+        if self._is_dark:
+            _bg      = "#1e2a3a"
+            _border  = "#2d5a8e"
+            _fg      = "#7ab3f5"
+            _sep_col = "#2d5a8e"
+            _btn_bg  = "#2d6abf"
+            _btn_hover = "#3a7fd4"
+            _btn_press = "#1e5099"
+        else:
+            _bg      = "#dce8f8"
+            _border  = "#a0bcd8"
+            _fg      = "#1a3a5c"
+            _sep_col = "#a0bcd8"
+            _btn_bg  = "#2d6abf"
+            _btn_hover = "#3a7fd4"
+            _btn_press = "#1e5099"
+
+        _CONTAINER = (
+            f"QWidget#sweepBar {{ background-color: {_bg}; border: 1px solid {_border};"
+            f" border-radius: 6px; }}"
+        )
+        _LBL = f"font-size: 12px; color: {_fg}; border: none; background: transparent;"
+        _CHK = (
+            f"QCheckBox {{ color: {_fg}; font-size: 12px; spacing: 6px;"
+            f" border: none; background: transparent; }}"
+            f" QCheckBox::indicator {{ width: 14px; height: 14px; }}"
+        )
+        _BTN = (
+            f"QPushButton {{ background-color: {_btn_bg}; color: #ffffff;"
+            f" border: none; border-radius: 4px;"
+            f" font-size: 12px; font-weight: bold; padding: 0 14px; }}"
+            f" QPushButton:hover {{ background-color: {_btn_hover}; }}"
+            f" QPushButton:pressed {{ background-color: {_btn_press}; }}"
+            f" QPushButton:disabled {{ background-color: #444455; color: #888888; }}"
+        )
+
+        outer = QWidget()
+        outer.setStyleSheet("background: transparent; border: none;")
+        outer_row = QHBoxLayout(outer)
+        outer_row.setContentsMargins(0, 6, 0, 6)
+        outer_row.setSpacing(0)
+
+        bar = QWidget()
+        bar.setObjectName("sweepBar")
+        bar.setStyleSheet(_CONTAINER)
+        inner = QHBoxLayout(bar)
+        inner.setContentsMargins(14, 10, 14, 10)
+        inner.setSpacing(10)
+
+        # Left: compact status section (green dot + label, not stretching)
+        self._sweep_dot = QLabel()
+        self._sweep_dot.setFixedSize(14, 14)
+        self._sweep_dot.setStyleSheet(
+            "background-color: #4caf50; border-radius: 7px; border: none;"
+        )
+        inner.addWidget(self._sweep_dot, 0, Qt.AlignVCenter)
+
+        self._sweep_status_label = QLabel(
+            self._texts.get("sweep_controls", {}).get("status_ready", "Ready")
+        )
+        self._sweep_status_label.setStyleSheet(_LBL)
+        inner.addWidget(self._sweep_status_label, 0, Qt.AlignVCenter)
+
+        # Stretch separates left from right symmetrically
+        inner.addStretch()
+
+        # Real-time checkbox
+        self._realtime_check = QCheckBox(
+            self._texts.get("sweep_controls", {}).get("realtime_label", "Real-time")
+        )
+        self._realtime_check.setChecked(False)
+        self._realtime_check.setStyleSheet(_CHK)
+        inner.addWidget(self._realtime_check, 0, Qt.AlignVCenter)
+
+        # Vertical separator
+        sep = QWidget()
+        sep.setFixedSize(1, 20)
+        sep.setStyleSheet(f"background-color: {_sep_col}; border: none;")
+        inner.addWidget(sep, 0, Qt.AlignVCenter)
+
+        # Run Sweep — solid blue button with painted triangle icon
+        _play_pix = QPixmap(14, 14)
+        _play_pix.fill(QColor(0, 0, 0, 0))
+        _p = QPainter(_play_pix)
+        _p.setRenderHint(QPainter.Antialiasing)
+        _p.setBrush(QColor("#ffffff"))
+        _p.setPen(Qt.NoPen)
+        _p.drawPolygon(QPolygon([QPoint(2, 1), QPoint(13, 7), QPoint(2, 13)]))
+        _p.end()
+
+        self._run_sweep_btn = QPushButton(
+            self._texts.get("sweep_controls", {}).get("run_sweep_label", "Run Sweep")
+        )
+        self._run_sweep_btn.setIcon(QIcon(_play_pix))
+        self._run_sweep_btn.setFixedHeight(34)
+        self._run_sweep_btn.setStyleSheet(_BTN)
+        inner.addWidget(self._run_sweep_btn, 0, Qt.AlignVCenter)
+
+        outer_row.addWidget(bar)
+        return outer
 
     # --------------------------------------------------------------------- #
 
@@ -423,8 +529,8 @@ class MeasurementMainWindow(QMainWindow):
         row_layout.setContentsMargins(0, 4, 0, 4)
         row_layout.setSpacing(0)
 
-        badge1, self._marker1_info_label = _make_badge("Real", "—")
-        badge2, self._marker2_info_label = _make_badge("Imag", "—")
+        badge1, self._marker1_info_label = _make_badge("ε′:", "—")
+        badge2, self._marker2_info_label = _make_badge("ε″:", "—")
 
         # Mirror the matplotlib slider positions [0.08, 0.38] and [0.54, 0.38]
         # so each badge sits centered under its slider track.
@@ -633,6 +739,10 @@ class MeasurementMainWindow(QMainWindow):
 
         slider1.on_changed(lambda val: _upd1(int(val)))
         slider2.on_changed(lambda val: _upd2(int(val)))
+
+        # Populate labels with the initial slider positions
+        _upd1(_init_idx1)
+        _upd2(_init_idx2)
 
         # Persist link state (read above, before the sliders were built)
         def _toggle_link():
