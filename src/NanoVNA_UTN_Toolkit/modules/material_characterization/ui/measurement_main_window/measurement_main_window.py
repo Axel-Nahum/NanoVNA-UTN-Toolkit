@@ -1887,13 +1887,16 @@ class MeasurementMainWindow(QMainWindow):
         layout.addLayout(files_hdr)
         layout.addSpacing(6)
 
-        table = QTableWidget(0, 2)
+        table = QTableWidget(0, 3)
         table.setHorizontalHeaderLabels([
             t.get("col_file", "File"),
             t.get("col_name", "Display name"),
+            "",
         ])
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
         table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Fixed)
+        table.setColumnWidth(2, 34)
         table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         table.setEditTriggers(
             QTableWidget.EditTrigger.DoubleClicked | QTableWidget.EditTrigger.SelectedClicked
@@ -1983,6 +1986,26 @@ class MeasurementMainWindow(QMainWindow):
         layout.addLayout(btn_row)
 
         # ── Logic ──────────────────────────────────────────────────────────
+        _rm_style = (
+            "QPushButton { border: none; background: transparent;"
+            f" color: #cc4444; font-size: 13px; font-weight: bold; }}"
+            " QPushButton:hover { color: #ff6666; }"
+        )
+
+        def _add_remove_btn(row):
+            rm = QPushButton("✕")
+            rm.setFixedSize(28, 24)
+            rm.setStyleSheet(_rm_style)
+            rm.clicked.connect(lambda: _remove_row(rm))
+            table.setCellWidget(row, 2, rm)
+
+        def _remove_row(btn):
+            for r in range(table.rowCount()):
+                if table.cellWidget(r, 2) is btn:
+                    table.removeRow(r)
+                    no_files_lbl.setVisible(table.rowCount() == 0)
+                    break
+
         def _populate(folder_str):
             folder = Path(folder_str)
             if not folder.is_dir():
@@ -1998,10 +2021,11 @@ class MeasurementMainWindow(QMainWindow):
                 fname_item.setData(Qt.ItemDataRole.UserRole, str(f))
                 table.setItem(row, 0, fname_item)
                 table.setItem(row, 1, QTableWidgetItem(existing.get(str(f), "")))
+                _add_remove_btn(row)
             no_files_lbl.setVisible(table.rowCount() == 0)
 
         def _swap_rows(r1, r2):
-            for col in range(table.columnCount()):
+            for col in range(2):  # only data columns, not the button column
                 i1 = table.takeItem(r1, col)
                 i2 = table.takeItem(r2, col)
                 table.setItem(r1, col, i2)
