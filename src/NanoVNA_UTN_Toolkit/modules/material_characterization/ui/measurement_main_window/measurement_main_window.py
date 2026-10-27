@@ -641,20 +641,20 @@ class MeasurementMainWindow(QMainWindow):
             for spine in sax.spines.values():
                 spine.set_color("#444444")
 
+        _CHART_LEFT  = 0.11   # fixed left margin — wide enough for any tick labels
+        _CHART_RIGHT = 0.97
+        _CHART_TOP   = 0.91   # fixed top margin — space for the title
+
         def _adjust_layout(event=None):
             try:
                 sl_bot, sl_h = _slider_positions()
                 _bottom = sl_bot + sl_h + 0.015   # small gap above slider band
 
-                # Hide slider axes so tight_layout ignores them completely.
-                sl1_ax.set_visible(False)
-                sl2_ax.set_visible(False)
-                try:
-                    fig.tight_layout(rect=[0.0, _bottom, 1.0, 1.0])
-                except Exception:
-                    pass
-                sl1_ax.set_visible(True)
-                sl2_ax.set_visible(True)
+                # Fixed margins so the axes width never shifts with tick-label changes.
+                fig.subplots_adjust(
+                    left=_CHART_LEFT, right=_CHART_RIGHT,
+                    top=_CHART_TOP,   bottom=_bottom,
+                )
 
                 # Place slider axes manually below the chart.
                 sl1_ax.set_position([0.08, sl_bot, 0.38, sl_h])
