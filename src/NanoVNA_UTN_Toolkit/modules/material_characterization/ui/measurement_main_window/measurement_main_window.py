@@ -84,7 +84,8 @@ class MeasurementMainWindow(QMainWindow):
 
         self.setWindowTitle(self._texts.get("window_title", "Material Characterization - Results"))
         screen = QGuiApplication.primaryScreen().availableGeometry()
-        w, h = 1171, 858
+        w = min(1171, screen.width() - 40)
+        h = min(858, screen.height() - 40)
         self.setGeometry(
             screen.x() + (screen.width() - w) // 2,
             screen.y() + (screen.height() - h) // 2,
