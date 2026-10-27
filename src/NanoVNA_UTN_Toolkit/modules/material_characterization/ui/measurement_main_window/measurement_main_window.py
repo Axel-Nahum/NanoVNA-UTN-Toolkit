@@ -1788,7 +1788,7 @@ class MeasurementMainWindow(QMainWindow):
 
         dlg = QDialog(self)
         dlg.setWindowTitle(t.get("title", "Configure S11 File Source"))
-        dlg.setMinimumSize(660, 500)
+        dlg.setFixedSize(560, 600)
         dlg.setStyleSheet(
             self.styleSheet()
             + f" QDialog {{ background-color: {_dlg_bg}; }}"
