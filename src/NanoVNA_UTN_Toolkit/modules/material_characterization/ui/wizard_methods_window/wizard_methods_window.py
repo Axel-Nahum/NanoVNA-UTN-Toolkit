@@ -89,7 +89,7 @@ class CharacterizationWizard(QMainWindow):
 
         screen = QGuiApplication.primaryScreen().availableGeometry()
         _W = min(1240, max(940, int(screen.width()  * 0.82)))
-        _H = min(860,  max(610, int(screen.height() * 0.82)))
+        _H = min(740,  max(610, int(screen.height() * 0.82)))
         self._wiz_w = _W
         self._wiz_h = _H
         self.setGeometry(200, 200, _W, _H)
@@ -224,25 +224,30 @@ class CharacterizationWizard(QMainWindow):
         # Content layout
 # ------------------------------------------------------------------------------------------------------------------- #
 
-        self._scroll_area = QScrollArea()
-        self._scroll_area.setWidgetResizable(True)
-        self._scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
-        self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self._scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        self._scroll_area.setStyleSheet(
-            "QScrollBar:vertical { width: 6px; background: transparent; }"
-            " QScrollBar::handle:vertical { background: #3a4a6a; border-radius: 3px; min-height: 20px; }"
-            " QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }"
-        )
-        self._content_widget = QWidget()
-        self.content_layout = QVBoxLayout(self._content_widget)
-        self._scroll_area.setWidget(self._content_widget)
-        self.main_layout.addWidget(self._scroll_area, stretch=1)
-
         # Detect small screens so step builders can use compact spacing.
         _avail_h = (QGuiApplication.primaryScreen().availableGeometry().height()
                     if QGuiApplication.primaryScreen() else 1080)
         self._compact = _avail_h < 820
+
+        self._content_widget = QWidget()
+        self.content_layout = QVBoxLayout(self._content_widget)
+
+        if self._compact:
+            self._scroll_area = QScrollArea()
+            self._scroll_area.setWidgetResizable(True)
+            self._scroll_area.setFrameShape(QScrollArea.Shape.NoFrame)
+            self._scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+            self._scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+            self._scroll_area.setStyleSheet(
+                "QScrollBar:vertical { width: 6px; background: transparent; }"
+                " QScrollBar::handle:vertical { background: #3a4a6a; border-radius: 3px; min-height: 20px; }"
+                " QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }"
+            )
+            self._scroll_area.setWidget(self._content_widget)
+            self.main_layout.addWidget(self._scroll_area, stretch=1)
+        else:
+            self._scroll_area = None
+            self.main_layout.addWidget(self._content_widget, stretch=1)
 
 # ------------------------------------------------------------------------------------------------------------------- #
         # Bottom navigation

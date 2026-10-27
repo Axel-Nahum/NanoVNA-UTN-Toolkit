@@ -36,9 +36,6 @@ from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_ena
 from NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils import get_settings
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.resources_loader import load_text
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.probe_models import list_probes
-from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.measurement_quality import (
-    EPS_RESOLUTION_MAX,
-)
 from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms.reference_liquids import (
     get_reference_liquid, list_reference_liquids,
 )
@@ -116,8 +113,8 @@ def build_config_screen(wizard, descriptor, step_def):
     lim_max_hz = _DEBUG_MAX_HZ
 
     _compact = getattr(wizard, "_compact", False)
-    _sp  = 6  if _compact else 14   # section spacing
-    _fsp = 4  if _compact else 7    # form row spacing
+    _sp  = 6  if _compact else 10   # section spacing
+    _fsp = 4  if _compact else 6    # form row spacing
     _fh  = 24 if _compact else 30   # combo/input min height
     _ih  = 30 if _compact else 36   # unknown name input height
 
@@ -268,20 +265,12 @@ def build_config_screen(wizard, descriptor, step_def):
                 "probe_hint",
                 "Presets and indicative reference for: {probe} (C0 = {c0} pF)."
             ).format(probe=probe_combo.currentText(), c0=f"{probe.c0_f * 1e12:.4g}")
-            # Per-probe low-frequency limit (measurement_quality sensitivity
-            # check): below it 0.001 of S11 error costs more than
-            # EPS_RESOLUTION_MAX in eps.
-            text += " " + cfg.get(
-                "probe_hint_fmin",
-                "Usable from ≈ {fmin}: below it an S11 error of 0.001 costs more than ±{res:g} in εr."
-            ).format(fmin=_fmt_hz(probe.min_usable_hz(eps_resolution=EPS_RESOLUTION_MAX)),
-                     res=EPS_RESOLUTION_MAX)
         else:
             text = cfg.get(
                 "probe_hint_generic",
-                "Pick the probe in use to list its bundled presets and fit the indicative "
-                "reference. With this option only presets of unknown probe are listed and "
-                "the indicative reference uses a generic C0 = {c0} pF."
+                "Select the probe to list its bundled presets. Without a selection, only "
+                "unknown-probe presets are listed and the indicative reference uses a "
+                "generic C0 = {c0} pF."
             ).format(c0=f"{probe.c0_f * 1e12:.4g}")
         probe_hint.setText(text)
 

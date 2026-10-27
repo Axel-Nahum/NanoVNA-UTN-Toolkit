@@ -528,8 +528,6 @@ def build_standard_screen(wizard, descriptor, step_def):
     # Per-screen render state (mutated by the checkboxes).
     state = {"show_indicative": False, "show_raw": False}
 
-    _compact = getattr(wizard, "_compact", False)
-
     # Left half: sidebar + mid (occupies ~62% of the window, chart gets 38%)
     left_half_layout = QHBoxLayout()
     left_half_layout.setContentsMargins(0, 0, 0, 0)
@@ -540,7 +538,7 @@ def build_standard_screen(wizard, descriptor, step_def):
     import os, sys
     mid = QVBoxLayout()
     mid.setSpacing(0)
-    mid.setContentsMargins(10, 4 if _compact else 8, 10, 4 if _compact else 6)
+    mid.setContentsMargins(10, 8, 10, 6)
 
     # ── Pre-calibrate bar — Short, reference liquids and DUT ────────────── #
     # Each step owns its pre-cal (calibration.precal): it refers THIS step to
@@ -647,13 +645,13 @@ def build_standard_screen(wizard, descriptor, step_def):
 
         btn_delete_precal_top.clicked.connect(_delete_precal)
         mid.addLayout(precal_row)
-        mid.addSpacing(4 if _compact else 8)
+        mid.addSpacing(8)
 
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
         sep.setStyleSheet("border: none; background: #2e2e42; max-height: 1px;")
         mid.addWidget(sep)
-        mid.addSpacing(6 if _compact else 10)
+        mid.addSpacing(10)
 
     # ── Instruction text ─────────────────────────────────────────────────── #
     instr = QLabel(instruction_html)
@@ -704,29 +702,21 @@ def build_standard_screen(wizard, descriptor, step_def):
         if not _p.isNull():
             photo = QLabel()
             photo.setAlignment(Qt.AlignHCenter)
-            if _compact:
-                if is_reference or is_dut:
-                    _pw, _ph = 170, 128
-                elif is_short:
-                    _pw, _ph = 170, 128
-                else:
-                    _pw, _ph = 210, 158
+            if is_reference or is_dut:
+                _pw, _ph = 245, 184
+            elif is_short:
+                _pw, _ph = 245, 183
             else:
-                if is_reference or is_dut:
-                    _pw, _ph = 245, 184
-                elif is_short:
-                    _pw, _ph = 245, 183
-                else:
-                    _pw, _ph = 330, 245
+                _pw, _ph = 330, 245
             _scaled = _p.scaled(_pw, _ph, Qt.KeepAspectRatio, Qt.SmoothTransformation)
             photo.setPixmap(_scaled)
             photo.setFixedHeight(_scaled.height())
-            _photo_spacing = (6 if _compact else 14) if (is_reference or is_dut) else (8 if _compact else 18)
+            _photo_spacing = 14 if (is_reference or is_dut) else 18
             mid.addSpacing(_photo_spacing)
             mid.addWidget(photo, alignment=Qt.AlignHCenter)
             _has_photo = True
 
-    mid.addSpacing(_photo_spacing if _has_photo else ((6 if _compact else 10) if is_reference else (12 if _compact else 20)))
+    mid.addSpacing(_photo_spacing if _has_photo else (10 if is_reference else 20))
 
     already = wizard.perm_calibration.is_standard_measured(standard.key)
 
@@ -804,9 +794,9 @@ def build_standard_screen(wizard, descriptor, step_def):
         preset_row.addWidget(btn_save_preset)
         src_layout.addLayout(preset_row)
 
-        mid.addSpacing(0 if _has_photo else (10 if _compact else 20))
+        mid.addSpacing(0 if _has_photo else 20)
         mid.addWidget(src_frame)
-        mid.addSpacing(10 if _compact else 20)
+        mid.addSpacing(20)
     # ──────────────────────────────────────────────────────────────────── #
 
     measure_btn = QPushButton(
@@ -822,7 +812,7 @@ def build_standard_screen(wizard, descriptor, step_def):
     measure_row.addStretch(1)
     mid.addLayout(measure_row)
 
-    mid.addSpacing(6 if _compact else 10)
+    mid.addSpacing(10)
 
     if not is_reference and not is_short and not is_open and not is_dut:
         btn_save_preset.clicked.connect(
@@ -837,7 +827,7 @@ def build_standard_screen(wizard, descriptor, step_def):
     # Every path that stores a measurement re-enables saving.
     wizard._on_measurement_stored_hook = lambda: btn_save_preset.setEnabled(True)
 
-    mid.addSpacing(3 if _compact else 6)
+    mid.addSpacing(6)
 
     if already:
         _stored_now = wizard.perm_calibration.get_measurement(standard.key)
@@ -853,9 +843,8 @@ def build_standard_screen(wizard, descriptor, step_def):
     )
     mid.addWidget(wizard.status_label)
 
-    # Pre-created warning button — hidden until quality notes exist.
-    # The popup is wired here (main thread) so _apply_stored_status only
-    # needs setText/setVisible — no new QObjects from a callback thread.
+    # Warning button: always occupies the same height so it never pushes
+    # content up when it becomes visible after a measurement.
     wizard._warning_notes = []
     wizard._warning_btn = QPushButton("")
     wizard._warning_btn.setStyleSheet(
@@ -864,6 +853,9 @@ def build_standard_screen(wizard, descriptor, step_def):
         "QPushButton:hover { color: #7a5800; text-decoration: underline; }"
     )
     wizard._warning_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    _sp = wizard._warning_btn.sizePolicy()
+    _sp.setRetainSizeWhenHidden(True)
+    wizard._warning_btn.setSizePolicy(_sp)
     wizard._warning_btn.setVisible(False)
     mid.addWidget(wizard._warning_btn, alignment=Qt.AlignCenter)
 

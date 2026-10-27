@@ -23,7 +23,7 @@
         "references_title": "Líquidos de Referencia",
         "probe": "Sonda:",
         "probe_hint": "Presets y referencia indicativa para: {probe} (C0 = {c0} pF).",
-        "probe_hint_generic": "Elegí la sonda que vas a usar para ver sus presets incluidos y ajustar la referencia indicativa. Con esta opción solo se listan presets de sonda desconocida y la referencia indicativa usa un C0 genérico = {c0} pF.",
+        "probe_hint_generic": "Seleccioná la sonda para ver sus presets incluidos. Sin selección, solo se listan presets de sonda desconocida y la referencia indicativa usa un C0 genérico = {c0} pF.",
         "probe_hint_fmin": "Útil desde ≈ {fmin}: por debajo, un error de 0.001 en S11 cuesta más de ±{res:g} en εr.",
         "reference_1": "Referencia 1:",
         "reference_2": "Referencia 2:",

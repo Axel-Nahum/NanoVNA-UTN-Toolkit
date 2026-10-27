@@ -23,7 +23,7 @@
         "references_title": "Reference Liquids",
         "probe": "Probe:",
         "probe_hint": "Presets and indicative reference for: {probe} (C0 = {c0} pF).",
-        "probe_hint_generic": "Pick the probe in use to list its bundled presets and fit the indicative reference. With this option only presets of unknown probe are listed and the indicative reference uses a generic C0 = {c0} pF.",
+        "probe_hint_generic": "Select the probe to list its bundled presets. Without a selection, only unknown-probe presets are listed and the indicative reference uses a generic C0 = {c0} pF.",
         "probe_hint_fmin": "Usable from ≈ {fmin}: below it an S11 error of 0.001 costs more than ±{res:g} in εr.",
         "reference_1": "Reference 1:",
         "reference_2": "Reference 2:",
