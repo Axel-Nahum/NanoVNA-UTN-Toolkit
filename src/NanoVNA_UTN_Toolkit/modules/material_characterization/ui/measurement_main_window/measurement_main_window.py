@@ -1892,6 +1892,11 @@ class MeasurementMainWindow(QMainWindow):
         spin_frame.setObjectName("spinboxContainer")
         spin_frame.setFixedHeight(32)
         spin_frame.setFixedWidth(100)
+        spin_frame.setStyleSheet(
+            f"QFrame#spinboxContainer {{ background-color: {edit_bg}; border: 1px solid {edit_bdr}; border-radius: 6px; }}"
+            f" QPushButton#spinboxUpBtn, QPushButton#spinboxDownBtn {{ background-color: {btn_bg}; border: 1px solid {btn_bdr}; color: {btn_fg}; }}"
+            f" QPushButton#spinboxUpBtn:hover, QPushButton#spinboxDownBtn:hover {{ background-color: {btn_hover}; }}"
+        )
         spin_fl = QHBoxLayout(spin_frame)
         spin_fl.setContentsMargins(6, 1, 0, 1)
         spin_fl.setSpacing(0)
