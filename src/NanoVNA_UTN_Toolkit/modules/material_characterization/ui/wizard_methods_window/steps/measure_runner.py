@@ -21,6 +21,7 @@ import logging
 import numpy as np
 from PySide6.QtCore import QObject, QThread, Qt, Signal
 from PySide6.QtWidgets import QMessageBox
+from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import _remove_spikes, _remove_phase_spikes
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,8 @@ class _CharSweepWorker(QObject):
                     f"Frequency and S11 sample counts differ ({len(freqs)}/{len(s11)})."
                 )
                 return
+            s11 = _remove_spikes(s11, freqs)
+            s11 = _remove_phase_spikes(s11, freqs)
             self.finished.emit(freqs, s11)
         except Exception as exc:  # noqa: BLE001
             logging.debug("[CharSweepWorker] error", exc_info=True)
@@ -164,6 +167,8 @@ def run_s11_sweep(wizard):
             set_status(wizard, "Measurement failed!", "red")
             return None
 
+        s11 = _remove_spikes(s11, freqs)
+        s11 = _remove_phase_spikes(s11, freqs)
         return freqs, s11
     except Exception as exc:  # noqa: BLE001
         logger.error("[CharacterizationWizard] Measurement error: %s", exc)
