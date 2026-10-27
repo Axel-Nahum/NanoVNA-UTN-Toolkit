@@ -1765,7 +1765,7 @@ class MeasurementMainWindow(QMainWindow):
 
         dlg = QDialog(self)
         dlg.setWindowTitle(t.get("title", "Sweep Settings"))
-        dlg.setFixedSize(400, 260)
+        dlg.setFixedSize(400, 210)
         dlg.setStyleSheet(
             self.styleSheet()
             + f" QDialog {{ background-color: {_dlg_bg}; }}"
@@ -1773,7 +1773,7 @@ class MeasurementMainWindow(QMainWindow):
         )
 
         layout = QVBoxLayout(dlg)
-        layout.setContentsMargins(24, 20, 24, 20)
+        layout.setContentsMargins(24, 16, 24, 16)
         layout.setSpacing(0)
 
         def _sep():
@@ -1786,11 +1786,11 @@ class MeasurementMainWindow(QMainWindow):
         title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_lbl.setStyleSheet(
             f"font-size: 15px; font-weight: bold; color: {title_color};"
-            " padding-bottom: 12px; border: none;"
+            " padding-bottom: 10px; border: none;"
         )
         layout.addWidget(title_lbl)
         layout.addWidget(_sep())
-        layout.addSpacing(18)
+        layout.addSpacing(14)
 
         # Interval row
         iv_row = QHBoxLayout()
@@ -1826,7 +1826,7 @@ class MeasurementMainWindow(QMainWindow):
         iv_row.addWidget(spin_frame)
         iv_row.addStretch()
         layout.addLayout(iv_row)
-        layout.addSpacing(20)
+        layout.addSpacing(14)
 
         # Re-open wizard button
         _btn_style = (
@@ -1885,9 +1885,9 @@ class MeasurementMainWindow(QMainWindow):
         wizard_btn.clicked.connect(_reopen)
         layout.addWidget(wizard_btn)
 
-        layout.addStretch()
+        layout.addSpacing(14)
         layout.addWidget(_sep())
-        layout.addSpacing(12)
+        layout.addSpacing(10)
 
         # Cancel / Apply
         _act = (

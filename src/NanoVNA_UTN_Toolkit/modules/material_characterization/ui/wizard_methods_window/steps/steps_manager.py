@@ -40,6 +40,13 @@ def update_step_screen(self):
     self.clear_content()
     if hasattr(self, "save_calibration_button"):
         self.save_calibration_button.setVisible(False)
+    _rb = getattr(self, "_rename_liquid_btn", None)
+    if _rb is not None:
+        _rb.setVisible(False)
+        try:
+            _rb.clicked.disconnect()
+        except RuntimeError:
+            pass
 
     if self.current_step == 0 or not self.selected_technique_id:
         build_introduction_screen(self)

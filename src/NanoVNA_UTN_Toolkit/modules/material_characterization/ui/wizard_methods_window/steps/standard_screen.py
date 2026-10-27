@@ -503,6 +503,28 @@ def build_standard_screen(wizard, descriptor, step_def):
     title_tmpl = std_texts.get("title_template", "Step {index}/{total}: {name}")
     wizard.title_label.setText(title_tmpl.format(index=wizard.current_step, total=total, name=name))
 
+    if is_dut:
+        _rb = getattr(wizard, "_rename_liquid_btn", None)
+        if _rb is not None:
+            _rb.setVisible(True)
+
+            def _do_rename():
+                from PySide6.QtWidgets import QInputDialog
+                new_name, ok = QInputDialog.getText(
+                    wizard,
+                    std_texts.get("rename_title", "Rename liquid"),
+                    std_texts.get("rename_prompt", "Liquid name:"),
+                    text=(wizard.unknown_liquid_name or ""),
+                )
+                if ok:
+                    wizard.unknown_liquid_name = new_name.strip()
+                    from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import (
+                        update_step_screen,
+                    )
+                    update_step_screen(wizard)
+
+            _rb.clicked.connect(_do_rename)
+
     # Per-screen render state (mutated by the checkboxes).
     state = {"show_indicative": False, "show_raw": False}
 

@@ -8,8 +8,8 @@ import sys
 import os
 import traceback
 
-from PySide6.QtCore import Qt, QObject, QEvent
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtCore import Qt, QObject, QEvent, QSize, QPointF, QRectF
+from PySide6.QtGui import QGuiApplication, QFont, QIcon, QPixmap, QPainter, QColor, QPolygonF
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout,
     QHBoxLayout, QPushButton, QLabel
@@ -166,13 +166,52 @@ class CharacterizationWizard(QMainWindow):
             font-weight: bold;
         """)
 
+        def _make_pencil_icon(color_hex: str, sz: int = 20) -> QIcon:
+            px = QPixmap(sz, sz)
+            px.fill(QColor(0, 0, 0, 0))
+            p = QPainter(px)
+            p.setRenderHint(QPainter.RenderHint.Antialiasing)
+            # center + rotate so pencil runs NE-SW, fully symmetric around (sz/2, sz/2)
+            p.translate(sz / 2, sz / 2)
+            p.rotate(45)
+            c = QColor(color_hex)
+            p.setPen(Qt.PenStyle.NoPen)
+            # total span: -8.5 .. +8.5  → center at 0
+            # eraser cap (top)
+            p.setBrush(QColor("#6688aa"))
+            p.drawRoundedRect(QRectF(-3, -8.5, 6, 2.5), 1, 1)
+            # body
+            p.setBrush(c)
+            p.drawRoundedRect(QRectF(-3, -6, 6, 10), 1.5, 1.5)
+            # tip triangle (bottom)
+            tip = QPolygonF([QPointF(-3, 4), QPointF(3, 4), QPointF(0, 8.5)])
+            p.setBrush(c.darker(140))
+            p.drawPolygon(tip)
+            p.end()
+            return QIcon(px)
+
+        self._rename_liquid_btn = QPushButton()
+        self._rename_liquid_btn.setIcon(_make_pencil_icon("#7ab3f5", 20))
+        self._rename_liquid_btn.setIconSize(QSize(20, 20))
+        self._rename_liquid_btn.setFixedSize(30, 30)
+        self._rename_liquid_btn.setVisible(False)
+        self._rename_liquid_btn.setStyleSheet(
+            "QPushButton { border: none; background: transparent; }"
+            " QPushButton:hover { background: rgba(122,179,245,30); border-radius: 5px; }"
+        )
+        self._rename_liquid_btn.setToolTip("Rename liquid")
+
+        _title_row = QHBoxLayout()
+        _title_row.setSpacing(6)
+        _title_row.setContentsMargins(0, 0, 0, 0)
+        _title_row.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+        _title_row.addWidget(self.title_label)
+        _title_row.addWidget(self._rename_liquid_btn, 0, Qt.AlignmentFlag.AlignBottom)
+        _title_row.addStretch()
+
         # HEADER (FIJO)
         self.header_layout = QVBoxLayout()
-
-        self.header_layout.addWidget(
-            self.title_label,
-            alignment=Qt.AlignTop
-        )
+        self.header_layout.addLayout(_title_row)
         self.header_layout.addSpacing(10)
 
         self.main_layout.addLayout(self.header_layout)

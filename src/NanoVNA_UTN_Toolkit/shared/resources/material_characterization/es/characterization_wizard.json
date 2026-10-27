@@ -59,6 +59,8 @@
     },
     "standards": {
         "title_template": "Paso {index}/{total}: {name}",
+        "rename_title": "Renombrar líquido",
+        "rename_prompt": "Nombre del líquido:",
         "measure_button": "Medir",
         "remeasure_button": "Medir de nuevo",
         "status_ready": "Listo para medir",

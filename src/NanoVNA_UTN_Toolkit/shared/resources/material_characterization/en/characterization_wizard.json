@@ -59,6 +59,8 @@
     },
     "standards": {
         "title_template": "Step {index}/{total}: {name}",
+        "rename_title": "Rename liquid",
+        "rename_prompt": "Liquid name:",
         "measure_button": "Measure",
         "remeasure_button": "Measure again",
         "status_ready": "Ready to measure",
