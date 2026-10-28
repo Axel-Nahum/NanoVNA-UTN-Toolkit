@@ -2,7 +2,6 @@ from NanoVNA_UTN_Toolkit.utils import safe_import
 import numpy as np
 import os
 import logging
-import gc
 import sys
 
 from pathlib import Path
@@ -982,15 +981,11 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
             except Exception:
                 pass
 
-            # 5) Delete the python object and call garbage collector
+            # 5) Drop the reference. No explicit gc.collect(): it ran four times
+            # per sweep (~360 ms on the GUI thread, measured) and CPython frees
+            # the slider by refcount once nothing points at it.
             try:
-                # remove attributes that may hold references
-                try:
-                    slider.ax = None
-                except Exception:
-                    pass
-                del slider
-                gc.collect()
+                slider.ax = None
             except Exception:
                 pass
 
@@ -2085,15 +2080,11 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
             except Exception:
                 pass
 
-            # 5) Delete the python object and call garbage collector
+            # 5) Drop the reference. No explicit gc.collect(): it ran four times
+            # per sweep (~360 ms on the GUI thread, measured) and CPython frees
+            # the slider by refcount once nothing points at it.
             try:
-                # remove attributes that may hold references
-                try:
-                    slider.ax = None
-                except Exception:
-                    pass
-                del slider
-                gc.collect()
+                slider.ax = None
             except Exception:
                 pass
 
@@ -2130,8 +2121,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         canvas=None, fig=None, show_graphic2_marker1=False, show_graphic2_marker2=True, marker1=None, marker2=None,
         info_panel=None, info_panel_2=None, new_s_param=None):
 
-        logging.error(f"fig={fig}")
-        logging.error(f"canvas={canvas}")
+        logging.debug(f"[update_data_references] fig={fig} canvas={canvas}")
 
         """Update S_data and freqs and recreate slider safely using remove_slider()."""
         nonlocal S_data, freqs, s_param

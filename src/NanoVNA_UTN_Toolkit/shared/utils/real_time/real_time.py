@@ -1,7 +1,6 @@
 import logging
 
 import numpy as np
-import skrf as rf
 
 from pathlib import Path
 
@@ -18,6 +17,13 @@ _RT_MAX_RETRIES = 5
 # Lower bound for the real-time tick. Below this the GUI thread spends its time
 # on redraws; the material-characterization module clamps to the same value.
 RT_MIN_INTERVAL_MS = 100
+
+
+def _load_touchstone(path):
+    """Imported DUT file through the DUT module's touchstone cache (lazy import:
+    this shared module must stay importable without the DUT package)."""
+    from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.touchstone_cache import load_network
+    return load_network(path)
 
 # ------------------------------------------------------------------------------------------------------------------ #
 # WORKER
@@ -67,10 +73,10 @@ class SweepWorker(QObject):
                 return
 
             if self.dut is not None:
-                net = rf.Network(self.dut)
-                freqs = net.f
-                s11 = net.s[:, 0, 0]
-                s21 = net.s[:, 1, 0]
+                net = _load_touchstone(self.dut)      # cached by path + mtime
+                freqs = np.array(net.f)
+                s11 = np.array(net.s[:, 0, 0])
+                s21 = np.array(net.s[:, 1, 0])
             else:
                 s11, s21 = self.calibration_fn(s11_raw, s21_raw, freqs)
 

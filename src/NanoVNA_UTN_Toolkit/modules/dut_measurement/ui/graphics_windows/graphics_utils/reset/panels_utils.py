@@ -10,8 +10,17 @@ from PySide6.QtCore import QTimer
 
 # ------------------------------------------------------------------------------------------------------------------- #
 
+_WAITING_MSG_GID = "sweep_waiting_message"
+
+
 def _clear_axis_and_show_message(self, panel_side='right', message_pos=(0.5, 0.5)):
-    """Clear axis and show waiting message for a specific panel."""
+    """Clear axis and show waiting message for a specific panel.
+
+    The previous waiting text (if any) is removed so repeated sweeps do not pile
+    up mathtext artists, and the redraw is queued (``draw_idle``) instead of
+    forced: it happens on the next event-loop pass, before the worker's first
+    data arrives, and merges with any other pending redraw of the panel.
+    """
 
     if self.realtime_checkbox.isChecked():
         measurement_ui_text = self.measurement_ui_waiting_for_sweep
@@ -23,40 +32,31 @@ def _clear_axis_and_show_message(self, panel_side='right', message_pos=(0.5, 0.5
             measurement_ui_text = self.measurement_ui_reset_real_time_text
 
     if panel_side == 'right':
-        if hasattr(self, 'ax_right') and self.ax_right:
-            self.ax_right.text(
-                message_pos[0], message_pos[1],
-                rf"$\mathrm{{{measurement_ui_text}}}$",
-                transform=self.ax_right.transAxes,
-                ha='center', va='center',
-                fontsize=15, color='white'
-            )
-
-            for line in self.ax_right.lines:
-                line.remove()
-
-            self.ax_right.grid(False)
-
-        if hasattr(self, 'canvas_right') and self.canvas_right:
-            self.canvas_right.draw()
-
+        ax, canvas = getattr(self, 'ax_right', None), getattr(self, 'canvas_right', None)
     elif panel_side == 'left':
-        if hasattr(self, 'ax_left') and self.ax_left:
-            self.ax_left.text(
-                message_pos[0], message_pos[1],
-                rf"$\mathrm{{{measurement_ui_text}}}$",
-                transform=self.ax_left.transAxes,
-                ha='center', va='center',
-                fontsize=15, color='white'
-            )
+        ax, canvas = getattr(self, 'ax_left', None), getattr(self, 'canvas_left', None)
+    else:
+        return
 
-            for line in self.ax_left.lines:
-                line.remove()
+    if ax:
+        for text in [t for t in ax.texts if t.get_gid() == _WAITING_MSG_GID]:
+            text.remove()
+        ax.text(
+            message_pos[0], message_pos[1],
+            rf"$\mathrm{{{measurement_ui_text}}}$",
+            transform=ax.transAxes,
+            ha='center', va='center',
+            fontsize=15, color='white',
+            gid=_WAITING_MSG_GID,
+        )
 
-            self.ax_left.grid(False)
+        for line in list(ax.lines):
+            line.remove()
 
-        if hasattr(self, 'canvas_left') and self.canvas_left:
-            self.canvas_left.draw()
+        ax.grid(False)
+
+    if canvas:
+        canvas.draw_idle()
 
 def _clear_panel_labels(self, panel_side='left'):
     """Clear all labels for a specific panel (left or right)."""

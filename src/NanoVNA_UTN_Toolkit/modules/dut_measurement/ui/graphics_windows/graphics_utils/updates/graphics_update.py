@@ -340,8 +340,13 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
         logging.error(f"[graphics_window._recreate_single_plot] Error recreating plot: {e}")
         return None
 
-def update_plots_with_new_data(self, skip_reset=False):
-    """Update both plots with new sweep data."""
+def update_plots_with_new_data(self, skip_reset=False, draw=True):
+    """Update both plots with new sweep data.
+
+    ``draw=False`` leaves the two synchronous ``canvas.draw()`` calls to the
+    caller: the post-sweep path finishes positioning the markers first and then
+    lets the coalesced ``draw_idle()`` do a single full draw per panel.
+    """
     try:
         logging.info("[graphics_window.update_plots_with_new_data] Updating plots with new sweep data")
 
@@ -558,9 +563,10 @@ def update_plots_with_new_data(self, skip_reset=False):
             self.cursor_right.set_visible(False)
             self.cursor_right_2.set_visible(False)
 
-        # --- Force redraw ---
-        self.canvas_left.draw()
-        self.canvas_right.draw()
+        # --- Force redraw (unless the caller batches it with its own updates) ---
+        if draw:
+            self.canvas_left.draw()
+            self.canvas_right.draw()
 
         logging.info("[graphics_window.update_plots_with_new_data] Plots updated successfully")
 

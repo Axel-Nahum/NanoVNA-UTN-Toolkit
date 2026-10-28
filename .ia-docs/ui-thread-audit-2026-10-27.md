@@ -304,3 +304,38 @@ Fase 2, tiempo real del DUT (2026-10-28, verificada headless):
 - Pendiente de esta fase: Kalman sigue en el hilo de UI (23 ms a 201 puntos) porque su
   estado vive en la ventana y se resetea desde la UI; moverlo requiere reemplazar los
   objetos de filtro en lugar de mutarlos.
+
+Fase 3, post-barrido del DUT (2026-10-28, verificada headless):
+
+- `calibration/touchstone_cache.py` (nuevo): `load_network`/`load_s` cachean los
+  archivos de términos de error por ruta + mtime + tamaño; los usan `methods.py`,
+  `kits.py`, el DUT importado en `graphics_refresh_thread.py` y el worker de
+  `real_time.py`. Un archivo reescrito al recalibrar se vuelve a leer solo; las vistas
+  son de solo lectura. (El parseo medía 4 ms por barrido, menos de lo estimado en el
+  hallazgo; se cachea igual porque corre también en cada tick de tiempo real.)
+- `graphics_utils.py`: sin `gc.collect()` en `remove_slider` (×2). **Medido: 360 ms
+  por barrido.**
+- `graphics_update.py`: `update_plots_with_new_data(draw=False)` deja el dibujo al
+  llamador.
+- `graphics_refresh_thread.py`: `on_sweep_finished` reconstruye, posiciona los
+  marcadores y encola un `draw_idle` por panel; sin los `update_cursor` repetidos ni el
+  `singleShot(50)` con dos `draw()` síncronos.
+- `cursors_reset.py`: `_reset_markers_after_sweep` reescrita: rango y valor de los 4
+  sliders en silencio, 4 actualizadores de cursor, sin dibujos ni `singleShot(0)`. La
+  versión anterior consultaba `cursor.ax` (el atributo es `axes`) y retornaba al inicio:
+  era un no-op, y el estado final lo dejaban las llamadas repetidas del handler.
+- `sliders_reset.py`: resets antes del barrido y tras reconectar con el setter
+  silencioso; tras reconectar `draw_idle` en vez de `draw`.
+- `panels_utils.py`: el mensaje de espera reemplaza al anterior (por `gid`) en vez de
+  acumularse, y encola el dibujo con `draw_idle`.
+- `set_slider_val_silent.py`: corregido un bug latente. Reconectaba los observers con
+  `on_changed(ref)` sobre los wrappers de referencia del registry de matplotlib, y todo
+  movimiento posterior del slider fallaba con `TypeError` (afectaba al tiempo real cuando
+  cambiaba la cantidad de puntos). Ahora apaga `slider.eventson` alrededor de `set_val`.
+- **Medido por barrido (hilo de UI, 201 puntos): 840 ms → 215–235 ms.** Dibujos
+  completos por panel 6 → 2 (mensaje de espera y resultado); `gc.collect` 4 → 0;
+  parseos de calibración por barrido 1 → 0. Estado final idéntico al anterior (sliders en
+  0 con rango 0..n-1, cursores visibles en el índice 0, paneles de información llenos).
+- Lo que queda (~90 ms): `ax.clear()` y reconstrucción de ejes, sliders (4 `add_axes` +
+  4 `Slider`) y cursores en cada barrido dentro de `update_plots_with_new_data`.
+  Actualizar en lugar de reconstruir es tema de la fase 4 (marcadores).

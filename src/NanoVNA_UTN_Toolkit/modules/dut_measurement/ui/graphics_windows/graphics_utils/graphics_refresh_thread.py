@@ -2,7 +2,6 @@ from PySide6.QtCore import QObject, Signal, QThread, QTimer
 from PySide6.QtWidgets import QMessageBox
 import numpy as np
 import logging
-import skrf as rf
 from pathlib import Path
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
@@ -42,6 +41,7 @@ load_sweep_configuration = safe_import(
 
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.methods import Methods
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.kits import KitsCalibrator
+from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.touchstone_cache import load_network
 
 # =========================================================
 # WORKER (THREAD)
@@ -401,10 +401,10 @@ def on_sweep_finished(self, result):
 
     elif is_import_dut:
         settings.setValue("Calibration/DUT", True)
-        data_dut = rf.Network(self.dut)
-        freqs = data_dut.f
-        s11 = data_dut.s[:, 0, 0]
-        s21 = data_dut.s[:, 1, 0]
+        data_dut = load_network(self.dut)      # cached by path + mtime
+        freqs = np.array(data_dut.f)
+        s11 = np.array(data_dut.s[:, 0, 0])
+        s21 = np.array(data_dut.s[:, 1, 0])
 
     # -------------------------------------------------
     # SIGNAL FILTER
@@ -442,37 +442,20 @@ def on_sweep_finished(self, result):
     self.s21 = s21_f
 
     # -------------------------------------------------
-    # UPDATE UI
+    # UPDATE UI — rebuild the panels, place the four markers at index 0, and
+    # let the Qt backend's coalesced draw_idle() do ONE full draw per panel
+    # when this handler returns to the event loop. (Before: two synchronous
+    # draws here, a deferred pass with two more and four gc.collect() calls:
+    # ~840 ms on the GUI thread per sweep, measured headless.)
     # -------------------------------------------------
 
-    update_plots_with_new_data(self, skip_reset=True)
+    update_plots_with_new_data(self, skip_reset=True, draw=False)
     _reset_markers_after_sweep(self)
 
-    self.update_cursor(0)
-    self.update_right_cursor(0)
-
-    # -------------------------------------------------
-    # RESET CURSORS — single call, after rendering
-    # -------------------------------------------------
-
-    def _reset_cursors():
-        try:
-            if hasattr(self, 'update_cursor') and callable(self.update_cursor):
-                self.update_cursor(0)
-            if hasattr(self, 'update_cursor_2') and callable(self.update_cursor_2):
-                self.update_cursor_2(0)
-            if hasattr(self, 'update_right_cursor') and callable(self.update_right_cursor):
-                self.update_right_cursor(0)
-            if hasattr(self, 'update_right_cursor_2') and callable(self.update_right_cursor_2):
-                self.update_right_cursor_2(0)
-            if hasattr(self, 'canvas_left') and self.canvas_left:
-                self.canvas_left.draw()
-            if hasattr(self, 'canvas_right') and self.canvas_right:
-                self.canvas_right.draw()
-        except Exception as e:
-            logging.warning(f"[on_sweep_finished] _reset_cursors error: {e}")
-
-    QTimer.singleShot(50, _reset_cursors)
+    if getattr(self, 'canvas_left', None):
+        self.canvas_left.draw_idle()
+    if getattr(self, 'canvas_right', None):
+        self.canvas_right.draw_idle()
 
     # -------------------------------------------------
     # UI STATE

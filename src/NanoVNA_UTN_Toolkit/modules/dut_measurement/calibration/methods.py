@@ -1,7 +1,8 @@
 import os
 import logging
-import skrf as rf
 import numpy as np
+
+from NanoVNA_UTN_Toolkit.modules.dut_measurement.calibration.touchstone_cache import load_s
 
 class Methods:
     """
@@ -41,20 +42,16 @@ class Methods:
         reflection_tracking_file = os.path.join(error_dir, "reflection_tracking.s1p")
         source_match_file = os.path.join(error_dir, "source_match.s1p")
 
-        # Read S1P files using skrf
-        directivity_network = rf.Network(directivity_file)
-        reflection_tracking_network = rf.Network(reflection_tracking_file)
-        source_match_network = rf.Network(source_match_file)
-        
-        directivity = directivity_network.s[:,0,0]
-        reflection_tracking = reflection_tracking_network.s[:,0,0]
-        source_match = source_match_network.s[:,0,0]
+        # Error terms from the touchstone cache (parsed once per file version)
+        directivity = load_s(directivity_file, 0, 0)
+        reflection_tracking = load_s(reflection_tracking_file, 0, 0)
+        source_match = load_s(source_match_file, 0, 0)
 
         # Check if calibration data matches sweep data size
         cal_points = len(directivity)
         sweep_points = len(s11_med)
         original_s11_med = s11_med.copy()  # Preserve original data
-        
+
         logging.info(f"[Calibrator] Calibration data points: {cal_points}")
         logging.info(f"[Calibrator] Sweep data points: {sweep_points}")
         
@@ -112,9 +109,8 @@ class Methods:
         error_dir = os.path.join(self.calibration_dir, "normalization_errors")
         transmission_tracking_file = os.path.join(error_dir, "transmission_tracking.s2p")
 
-        # Read S2P file using skrf and extract S21
-        transmission_tracking_network = rf.Network(transmission_tracking_file)
-        transmission_tracking = transmission_tracking_network.s[:,1,0]
+        # S21 of the cached S2P error file
+        transmission_tracking = load_s(transmission_tracking_file, 1, 0)
         
         # Check if calibration data matches sweep data size
         cal_points = len(transmission_tracking)
@@ -160,8 +156,7 @@ class Methods:
         error_dir = os.path.join(self.calibration_dir, "open_short_normalization_errors")
         reflection_tracking_file = os.path.join(error_dir, "reflection_tracking.s1p")
 
-        reflection_tracking_network = rf.Network(reflection_tracking_file)
-        reflection_tracking = reflection_tracking_network.s[:, 0, 0]
+        reflection_tracking = load_s(reflection_tracking_file, 0, 0)
 
         cal_points = len(reflection_tracking)
         sweep_points = len(s11_med)
@@ -221,9 +216,9 @@ class Methods:
         reflection_tracking_file = os.path.join(error_dir_osm, "reflection_tracking.s1p")
         source_match_file = os.path.join(error_dir_osm, "source_match.s1p")
 
-        directivity = rf.Network(directivity_file).s[:,0,0]
-        reflection_tracking = rf.Network(reflection_tracking_file).s[:,0,0]
-        source_match = rf.Network(source_match_file).s[:,0,0]
+        directivity = load_s(directivity_file, 0, 0)
+        reflection_tracking = load_s(reflection_tracking_file, 0, 0)
+        source_match = load_s(source_match_file, 0, 0)
         delta_e = source_match * directivity - reflection_tracking
         
         s11_cal = (s11_med - directivity) / (s11_med * source_match - delta_e)
@@ -231,7 +226,7 @@ class Methods:
         # Calibrate S21 using normalization error from thru_dir
         error_dir_norm = os.path.join(thru_dir, "1-Port-N_errors")
         transmission_tracking_file = os.path.join(error_dir_norm, "transmission_tracking.s2p")
-        transmission_tracking = rf.Network(transmission_tracking_file).s[:,1,0]
+        transmission_tracking = load_s(transmission_tracking_file, 1, 0)
 
         s21_cal = s21_med / transmission_tracking
 
@@ -269,9 +264,9 @@ class Methods:
         reflection_tracking_file = os.path.join(error_dir_osm, "reflection_tracking.s1p")
         source_match_file = os.path.join(error_dir_osm, "source_match.s1p")
 
-        directivity = rf.Network(directivity_file).s[:,0,0]
-        reflection_tracking = rf.Network(reflection_tracking_file).s[:,0,0]
-        source_match = rf.Network(source_match_file).s[:,0,0]
+        directivity = load_s(directivity_file, 0, 0)
+        reflection_tracking = load_s(reflection_tracking_file, 0, 0)
+        source_match = load_s(source_match_file, 0, 0)
         delta_e = source_match * directivity - reflection_tracking
         
         s11_cal = (s11_med - directivity) / (s11_med * source_match - delta_e)
@@ -279,10 +274,10 @@ class Methods:
         # Calibrate S21 using normalization error from thru_dir
         error_dir_norm = os.path.join(thru_dir, "enhanced_response_errors")
         transmission_tracking_file = os.path.join(error_dir_norm, "transmission_tracking.s2p")
-        transmission_tracking = rf.Network(transmission_tracking_file).s[:,1,0]
+        transmission_tracking = load_s(transmission_tracking_file, 1, 0)
 
         load_match_file = os.path.join(error_dir_norm, "load_match.s2p")
-        load_match = rf.Network(load_match_file).s[:,0,0]
+        load_match = load_s(load_match_file, 0, 0)
 
         s21_cal = (s21_med / transmission_tracking) * (reflection_tracking/(source_match * s11_med - delta_e))
 

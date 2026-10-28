@@ -1,130 +1,80 @@
+"""
+Slider resets around a sweep / reconnection (GUI thread).
+
+EN: Programmatic slider moves go through the silent setter so they do not fire
+``on_changed`` (each callback updated a cursor, rewrote the info panel and
+queued a redraw, four times, right before everything was cleared anyway).
+
+ES: Los movimientos programáticos de slider usan el setter silencioso para no
+disparar ``on_changed`` cuatro veces justo antes de limpiar todo.
+"""
+
 from NanoVNA_UTN_Toolkit.utils import safe_import
 import logging
-import sys
-import os
-
-from PySide6.QtCore import QTimer
 
 _clear_all_marker_fields = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.panels_utils", "_clear_all_marker_fields")
+
+set_slider_val_silent = safe_import(
+    "NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.set_slider_val_silent",
+    "set_slider_val_silent"
+)
+
+_SLIDERS = ("slider_left", "slider_left_2", "slider_right", "slider_right_2")
+_CURSOR_UPDATERS = ("update_cursor", "update_cursor_2", "update_right_cursor", "update_right_cursor_2")
+
+
+def _sliders_to_zero_silent(self):
+    for name in _SLIDERS:
+        slider = getattr(self, name, None)
+        if slider is not None:
+            set_slider_val_silent(slider, 0)
+
 
 def _reset_sliders_after_reconnect(self):
     """Reset sliders and show cursor information after successful device reconnection."""
     try:
         logging.info("[graphics_window._reset_sliders_after_reconnect] Resetting sliders after successful reconnection")
-        
+
         # Only reset if we have data available
         if not (hasattr(self, 'freqs') and self.freqs is not None and len(self.freqs) > 0):
             logging.info("[graphics_window._reset_sliders_after_reconnect] No sweep data available, skipping reset")
             return
-        
-        # Reset slider positions to leftmost position (index 0)
-        if hasattr(self, 'slider_left') and self.slider_left:
-            try:
-                self.slider_left.set_val(0)
-                logging.info("[graphics_window._reset_sliders_after_reconnect] Reset left slider to index 0")
-            except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not reset left slider: {e}")
 
-        if hasattr(self, 'slider_left_2') and self.slider_left_2:
-            try:
-                self.slider_left_2.set_val(0)
-                logging.info("[graphics_window._reset_sliders_after_reconnect] Reset left slider to index 0")
-            except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not reset left slider: {e}")
-        
-        
-        if hasattr(self, 'slider_right') and self.slider_right:
-            try:
-                self.slider_right.set_val(0)
-                logging.info("[graphics_window._reset_sliders_after_reconnect] Reset right slider to index 0")
-            except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not reset right slider: {e}")
+        _sliders_to_zero_silent(self)
 
-        if hasattr(self, 'slider_right_2') and self.slider_right_2:
+        # Cursor information for the minimum position (each call queues a draw_idle)
+        for name in _CURSOR_UPDATERS:
+            fn = getattr(self, name, None)
+            if not callable(fn):
+                continue
             try:
-                self.slider_right_2.set_val(0)
-                logging.info("[graphics_window._reset_sliders_after_reconnect] Reset right slider to index 0")
+                fn(0)
             except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not reset right slider: {e}")
-        
-        # Update cursor information to show data for minimum position
-        if hasattr(self, 'update_cursor') and callable(self.update_cursor):
-            try:
-                self.update_cursor(0)
-                logging.info("[graphics_window._reset_sliders_after_reconnect] Updated left cursor info to index 0")
-            except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not update left cursor: {e}")
+                logging.warning(f"[graphics_window._reset_sliders_after_reconnect] {name}(0) failed: {e}")
 
-        if hasattr(self, 'update_cursor_2') and callable(self.update_cursor_2):
-            try:
-                self.update_cursor_2(0)
-                logging.info("[graphics_window._reset_sliders_after_reconnect] Updated left cursor info to index 0")
-            except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not update left cursor: {e}")
-        
-        if hasattr(self, 'update_right_cursor') and callable(self.update_right_cursor):
-            try:
-                self.update_right_cursor(0)
-                logging.info("[graphics_window._reset_sliders_after_reconnect] Updated right cursor info to index 0")
-            except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not update right cursor: {e}")
-        if hasattr(self, 'update_right_cursor_2') and callable(self.update_right_cursor_2):
-            try:
-                self.update_right_cursor_2(0)
-                logging.info("[graphics_window._reset_sliders_after_reconnect] Updated right cursor info to index 0")
-            except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_after_reconnect] Could not update right cursor: {e}")
-        
-        # Force canvas redraw to ensure visual update
-        if hasattr(self, 'canvas_left') and self.canvas_left:
-            self.canvas_left.draw()
-        if hasattr(self, 'canvas_right') and self.canvas_right:
-            self.canvas_right.draw()
-                
+        # One coalesced redraw per panel on the next event-loop pass
+        if getattr(self, 'canvas_left', None):
+            self.canvas_left.draw_idle()
+        if getattr(self, 'canvas_right', None):
+            self.canvas_right.draw_idle()
+
         logging.info("[graphics_window._reset_sliders_after_reconnect] Sliders reset and info updated after reconnection")
-        
+
     except Exception as e:
         logging.error(f"[graphics_window._reset_sliders_after_reconnect] Error resetting sliders after reconnection: {e}")
+
 
 def _reset_sliders_before_sweep(self):
     """Reset sliders and CLEAR all cursor information before starting a sweep."""
     try:
         logging.info("[graphics_window._reset_sliders_before_sweep] Resetting sliders and clearing info before sweep starts")
-        
-        # Reset slider positions to leftmost position (index 0)
-        if hasattr(self, 'slider_left') and self.slider_left:
-            try:
-                self.slider_left.set_val(0)
-                logging.info("[graphics_window._reset_sliders_before_sweep] Reset left slider to index 0")
-            except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_before_sweep] Could not reset left slider: {e}")
 
-        if hasattr(self, 'slider_left_2') and self.slider_left_2:
-            try:
-                self.slider_left_2.set_val(0)
-                logging.info("[graphics_window._reset_sliders_before_sweep] Reset left slider to index 0")
-            except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_before_sweep] Could not reset left slider: {e}")
-        
-        if hasattr(self, 'slider_right') and self.slider_right:
-            try:
-                self.slider_right.set_val(0)
-                logging.info("[graphics_window._reset_sliders_before_sweep] Reset right slider to index 0")
-            except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_before_sweep] Could not reset right slider: {e}")
-        
-        if hasattr(self, 'slider_right_2') and self.slider_right_2:
-            try:
-                self.slider_right_2.set_val(0)
-                logging.info("[graphics_window._reset_sliders_and_markers_for_graph_change] DELAYED: Ensured right slider at position 0")
-            except Exception as e:
-                logging.warning(f"[graphics_window._reset_sliders_and_markers_for_graph_change] DELAYED: Could not set right slider: {e}")
-        
+        _sliders_to_zero_silent(self)
+
         # CLEAR all marker information (DO NOT update cursor info - just clear it)
         _clear_all_marker_fields(self)
-        logging.info("[graphics_window._reset_sliders_before_sweep] Cleared all marker information display")
-                
+
         logging.info("[graphics_window._reset_sliders_before_sweep] Sliders reset and info cleared before sweep")
-        
+
     except Exception as e:
         logging.error(f"[graphics_window._reset_sliders_before_sweep] Error resetting sliders before sweep: {e}")
