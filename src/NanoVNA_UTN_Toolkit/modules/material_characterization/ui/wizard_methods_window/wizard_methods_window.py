@@ -307,11 +307,24 @@ class CharacterizationWizard(QMainWindow):
 
         build_introduction_screen(self)
 
-        # Debug: log any unexpected top-level window that appears while the wizard is open.
-        self._flash_detector = _FlashDetector(self)
-        QApplication.instance().installEventFilter(self._flash_detector)
+        # Debug only (NANOVNA_DEBUG_FLASH=1): log any unexpected top-level window
+        # that appears while the wizard is open. An application-wide Python
+        # event filter runs for every event of every widget and dumps a full
+        # traceback on each tooltip, so it stays out of normal runs.
+        self._flash_detector = None
+        if os.environ.get("NANOVNA_DEBUG_FLASH") == "1":
+            self._flash_detector = _FlashDetector(self)
+            QApplication.instance().installEventFilter(self._flash_detector)
 
 # ------------------------------------------------------------------------------------------------------------------- #
+
+    def closeEvent(self, event):
+        # Never leave the app-wide filter behind: it would outlive this window
+        # and stack up on every re-opened wizard.
+        if self._flash_detector is not None:
+            QApplication.instance().removeEventFilter(self._flash_detector)
+            self._flash_detector = None
+        super().closeEvent(event)
 
     def showEvent(self, event):
         super().showEvent(event)

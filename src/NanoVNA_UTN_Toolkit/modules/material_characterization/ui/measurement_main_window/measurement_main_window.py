@@ -2580,6 +2580,24 @@ class MeasurementMainWindow(QMainWindow):
         if hasattr(self, "_adjust_chart_layout"):
             self._adjust_chart_layout()
 
+    def hideEvent(self, event):
+        # A hidden window (e.g. while the wizard is re-opened on top) must not
+        # keep sweeping: every tick costs ~200 ms on the GUI thread (solver +
+        # chart redraw) and holds the VNA serial port the wizard needs.
+        self._realtime_paused_by_hide = self._realtime_timer.isActive()
+        if self._realtime_paused_by_hide:
+            self._realtime_timer.stop()
+            logging.info("[MeasurementMainWindow] hideEvent(): real-time paused")
+        super().hideEvent(event)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if getattr(self, "_realtime_paused_by_hide", False):
+            self._realtime_paused_by_hide = False
+            if getattr(self, "_realtime_check", None) and self._realtime_check.isChecked():
+                self._realtime_timer.start()
+                logging.info("[MeasurementMainWindow] showEvent(): real-time resumed")
+
     def closeEvent(self, event):
         self._window_closed = True
         self._realtime_timer.stop()
