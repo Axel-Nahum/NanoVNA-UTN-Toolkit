@@ -56,6 +56,45 @@ class _CharSweepWorker(QObject):
             logging.debug("[CharSweepWorker] error", exc_info=True)
             self.failed.emit(str(exc))
 
+class _CharSweepController(QObject):
+    """GUI-thread receiver for the worker's signals.
+
+    EN: A signal connected to a plain closure runs in the EMITTING thread, even
+        with ``Qt.QueuedConnection`` (there is no receiver object to queue
+        against). The worker emits from its QThread, so the result handlers
+        would touch widgets and matplotlib off the GUI thread. Bound methods of
+        this GUI-thread QObject force a queued delivery to the GUI thread.
+        Same pattern as ``_RealtimeController`` in shared/utils/real_time.
+    ES: Una senal conectada a un closure corre en el hilo EMISOR, aun con
+        ``Qt.QueuedConnection``. Los metodos ligados de este QObject del hilo
+        de UI fuerzan la entrega en el hilo de UI.
+    """
+
+    def __init__(self, on_finished, on_failed, on_thread_finished):
+        super().__init__()  # created on the GUI thread -> GUI-thread affinity
+        self._on_finished = on_finished
+        self._on_failed = on_failed
+        self._on_thread_finished = on_thread_finished
+
+    def finished(self, freqs, s11):  # runs on the GUI thread
+        self._on_finished(freqs, s11)
+
+    def failed(self, msg):  # runs on the GUI thread
+        self._on_failed(msg)
+
+    def thread_finished(self):  # runs on the GUI thread
+        self._on_thread_finished()
+
+
+def is_sweep_running(wizard) -> bool:
+    """True while a sweep started by run_s11_sweep_async has not finished."""
+    thread = getattr(wizard, "_active_sweep_thread", None)
+    try:
+        return thread is not None and thread.isRunning()
+    except RuntimeError:
+        return False
+
+
 # Smith-chart trace colors per standard.
 SMITH_COLOR_MAP = {
     "open": "red",
@@ -184,6 +223,11 @@ def run_s11_sweep_async(wizard, on_success, on_error=None):
     read to a QThread. Calls on_success(freqs, s11) or on_error() back on the
     main thread via Qt signals.
     """
+    if is_sweep_running(wizard):
+        # Two workers on one serial port interleave commands; ignore the click.
+        logger.warning("[CharacterizationWizard] run_s11_sweep_async(): sweep already running, ignored")
+        return
+
     device = getattr(wizard, "vna_device", None)
     device_available = device is not None and hasattr(device, "connected")
 
@@ -268,15 +312,12 @@ def run_s11_sweep_async(wizard, on_success, on_error=None):
     def _restore_nav():
         wizard._active_sweep_thread = None
         wizard._active_sweep_worker = None
+        wizard._active_sweep_controller = None
         try:
             if _back is not None:
                 _back.setEnabled(True)
         except RuntimeError:
             pass
-
-    thread.finished.connect(_restore_nav)
-    thread.finished.connect(worker.deleteLater)
-    thread.finished.connect(thread.deleteLater)
 
     def _on_finished(freqs, s11):
         thread.quit()
@@ -296,7 +337,15 @@ def run_s11_sweep_async(wizard, on_success, on_error=None):
         if on_error:
             on_error()
 
-    worker.finished.connect(_on_finished, Qt.ConnectionType.QueuedConnection)
-    worker.failed.connect(_on_failed, Qt.ConnectionType.QueuedConnection)
+    # All handlers go through the GUI-thread controller (bound-method slots):
+    # the worker's signals are emitted from the worker thread.
+    controller = _CharSweepController(_on_finished, _on_failed, _restore_nav)
+    wizard._active_sweep_controller = controller
+    worker.finished.connect(controller.finished)
+    worker.failed.connect(controller.failed)
+    thread.finished.connect(controller.thread_finished)
+    thread.finished.connect(worker.deleteLater)
+    thread.finished.connect(thread.deleteLater)
+    thread.finished.connect(controller.deleteLater)
     thread.started.connect(worker.run)
     thread.start()

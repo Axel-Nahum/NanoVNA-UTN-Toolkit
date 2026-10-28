@@ -155,6 +155,21 @@ class _SweepController(QObject):
     def on_thread_finished(self):  # teardown point
         log_thread_checkpoint("graphics_refresh: worker thread finished, deleting")
 
+def oneshot_sweep_running(window) -> bool:
+    """True while the one-shot SweepWorker thread of ``window`` is alive.
+
+    ``window.thread`` shadows ``QObject.thread()``: before the first sweep the
+    attribute is that bound method, so a bare ``is not None`` test is wrong.
+    """
+    thread = getattr(window, "thread", None)
+    if not isinstance(thread, QThread):
+        return False
+    try:
+        return thread.isRunning()
+    except RuntimeError:  # C++ object already deleted
+        return False
+
+
 # =========================================================
 # MAIN THREAD FUNCTIONS
 # =========================================================
@@ -169,6 +184,13 @@ def run_sweep(self):
         return
 
     logging.info("[run_sweep] starting sweep")
+
+    if oneshot_sweep_running(self):
+        # A second worker would overwrite self.thread while the first QThread is
+        # alive ("QThread: Destroyed while thread is still running" -> abort) and
+        # interleave commands on the serial port. The menu action has no other guard.
+        logging.warning("[run_sweep] sweep already running, ignored")
+        return
 
     if not self.vna_device:
         QMessageBox.warning(self, "Error", "No VNA device connected")

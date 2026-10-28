@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
     QLineEdit, QFileDialog, QTextEdit, QGroupBox, QMessageBox,
 )
 from PySide6.QtCore import Qt, QThread, Signal
+from NanoVNA_UTN_Toolkit.shared.utils.export.pdf_generation_task import detach_checker_thread
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.permittivity_exporter import (
     _find_latex_compiler, _test_latex_compiler,
@@ -32,24 +33,26 @@ logger = logging.getLogger(__name__)
 class _LaTeXCheckerThread(QThread):
     """Background thread — detects and tests the LaTeX compiler."""
 
-    finished = Signal(bool, str, str)   # success, compiler_info_str, error_msg
+    # Named check_done, not "finished": that would shadow QThread.finished, which
+    # the detach-on-close lifecycle relies on.
+    check_done = Signal(bool, str, str)   # success, compiler_info_str, error_msg
 
     def run(self):
         try:
             compiler_name, compiler_path = _find_latex_compiler()
             if compiler_name is None:
-                self.finished.emit(False, "", "No LaTeX compiler found")
+                self.check_done.emit(False, "", "No LaTeX compiler found")
                 return
             if _test_latex_compiler(compiler_path):
-                self.finished.emit(True, f"{compiler_name} ({compiler_path})", "")
+                self.check_done.emit(True, f"{compiler_name} ({compiler_path})", "")
             else:
-                self.finished.emit(
+                self.check_done.emit(
                     False,
                     f"{compiler_name} (non-functional)",
                     "Compiler found but not working properly",
                 )
         except Exception as exc:
-            self.finished.emit(False, "", f"Error checking LaTeX: {exc}")
+            self.check_done.emit(False, "", f"Error checking LaTeX: {exc}")
 
 
 # --------------------------------------------------------------------------- #
@@ -211,7 +214,7 @@ class PermittivityLatexSetupDialog(QDialog):
 
     def _start_latex_check(self):
         self.checker_thread = _LaTeXCheckerThread()
-        self.checker_thread.finished.connect(self._on_check_finished)
+        self.checker_thread.check_done.connect(self._on_check_finished)
         self.checker_thread.start()
 
     def _on_check_finished(self, success, compiler_info, error_msg):
@@ -354,8 +357,19 @@ class PermittivityLatexSetupDialog(QDialog):
 
     # ------------------------------------------------------------------ #
 
+    def _release_checker_thread(self):
+        """Hand a still-running checker to the shared helper so closing never
+        terminates it nor destroys it mid-run."""
+        thread = self.checker_thread
+        self.checker_thread = None
+        if thread is not None:
+            detach_checker_thread(thread, thread.check_done, self._on_check_finished)
+
+    def done(self, result):
+        # Esc, Cancel, accept and the X button all end here (closeEvent -> reject -> done).
+        self._release_checker_thread()
+        super().done(result)
+
     def closeEvent(self, event):
-        if self.checker_thread and self.checker_thread.isRunning():
-            self.checker_thread.terminate()
-            self.checker_thread.wait()
+        self._release_checker_thread()
         event.accept()

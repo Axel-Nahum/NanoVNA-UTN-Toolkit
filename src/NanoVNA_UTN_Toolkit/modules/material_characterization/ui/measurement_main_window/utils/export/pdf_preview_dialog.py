@@ -1352,5 +1352,26 @@ class PermittivityPdfPreviewDialog(QDialog):
 
         # Held on the dialog so the thread is not garbage-collected mid-run.
         self._pdf_task = PdfCompileTask(_compile, parent=self)
-        self._pdf_task.completed.connect(_on_done)
+        self._pdf_task.on_completed(_on_done)  # delivered on the GUI thread
         self._pdf_task.start()
+
+    def _pdf_task_running(self) -> bool:
+        task = getattr(self, "_pdf_task", None)
+        try:
+            return task is not None and task.isRunning()
+        except RuntimeError:
+            return False
+
+    def reject(self):
+        # Esc / X while compiling would delete the dialog and its child QThread
+        # mid-run ("QThread: Destroyed while thread is still running" -> abort).
+        if self._pdf_task_running():
+            logger.info("[PermittivityPdfPreviewDialog] reject() ignored: PDF compilation running")
+            return
+        super().reject()
+
+    def closeEvent(self, event):
+        if self._pdf_task_running():
+            event.ignore()
+            return
+        super().closeEvent(event)

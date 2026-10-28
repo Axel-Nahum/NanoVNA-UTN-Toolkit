@@ -459,7 +459,13 @@ class NanoVNAGraphics(QMainWindow):
                     
             if is_connected:
                 logging.info("[graphics_window.__init__] Device ready - scheduling auto-sweep")
-                QTimer.singleShot(1000, lambda: run_sweep(self))  # Delay to allow UI to load
+                # Kept as an attribute so closeEvent can cancel it: a window closed
+                # within the first second (calibration load/save/delete recreate the
+                # window) must not start a sweep on a dead window.
+                self._startup_sweep_timer = QTimer(self)
+                self._startup_sweep_timer.setSingleShot(True)
+                self._startup_sweep_timer.timeout.connect(lambda: run_sweep(self))
+                self._startup_sweep_timer.start(1000)  # Delay to allow UI to load
             else:
                 logging.warning("[graphics_window.__init__] Device not available for auto-sweep")
         else:
@@ -493,7 +499,10 @@ class NanoVNAGraphics(QMainWindow):
         # ---------------- INIT REALTIME STATE ----------------
 
         self._rt_generation = 0
-        QTimer.singleShot(1000, lambda: start_realtime(self))
+        self._startup_realtime_timer = QTimer(self)
+        self._startup_realtime_timer.setSingleShot(True)
+        self._startup_realtime_timer.timeout.connect(lambda: start_realtime(self))
+        self._startup_realtime_timer.start(1000)
 
         self.markers = [
             {"cursor": self.cursor_left, "cursor_2": self.cursor_left_2, "slider": self.slider_left, "slider_2": self.slider_left_2, "label": self.labels_left, "label_2": self.labels_left_2, "update_cursor": self.update_cursor, "update_cursor_2": self.update_cursor_2},
@@ -576,6 +585,15 @@ class NanoVNAGraphics(QMainWindow):
     def closeEvent(self, event):
         from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import stop_realtime
         from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh_thread import stop_sweep
+        # Pending startup timers would fire on a closed window (orphan real-time
+        # loop doing serial I/O and invisible redraws).
+        for _name in ("_startup_sweep_timer", "_startup_realtime_timer"):
+            _timer = getattr(self, _name, None)
+            if _timer is not None:
+                try:
+                    _timer.stop()
+                except RuntimeError:
+                    pass
         try:
             stop_realtime(self)
         except Exception:

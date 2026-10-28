@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QThread, Signal
 from PySide6.QtGui import QIcon, QPixmap
+from NanoVNA_UTN_Toolkit.shared.utils.export.pdf_generation_task import detach_checker_thread
 
 # Import the LaTeX detection functions
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.exporters.latex_exporter import _find_latex_compiler, _test_latex_compiler
@@ -32,35 +33,37 @@ class LaTeXCheckerThread(QThread):
     """
     Background thread to check LaTeX installation without blocking the UI.
     """
-    finished = Signal(bool, str, str)  # success, compiler_info, error_message
-    
+    # Named check_done, not "finished": that would shadow QThread.finished, which
+    # the lifecycle code below relies on.
+    check_done = Signal(bool, str, str)  # success, compiler_info, error_message
+
     def run(self):
         """Run the LaTeX detection in background."""
         try:
             logger.info("Starting LaTeX compiler detection")
             compiler_name, compiler_path = _find_latex_compiler()
-            
+
             if compiler_name is None:
                 logger.warning("No LaTeX compiler found on system")
-                self.finished.emit(False, "", "No LaTeX compiler found")
+                self.check_done.emit(False, "", "No LaTeX compiler found")
                 return
-            
+
             logger.info(f"Found LaTeX compiler: {compiler_name} at {compiler_path}")
-            
+
             # Test the compiler
             logger.info("Testing LaTeX compiler functionality")
             if _test_latex_compiler(compiler_path):
                 logger.info("LaTeX compiler test successful")
                 compiler_info = f"{compiler_name} ({compiler_path})"
-                self.finished.emit(True, compiler_info, "")
+                self.check_done.emit(True, compiler_info, "")
             else:
                 logger.error(f"LaTeX compiler test failed for {compiler_name}")
-                self.finished.emit(False, f"{compiler_name} (non-functional)", 
+                self.check_done.emit(False, f"{compiler_name} (non-functional)",
                                  "Compiler found but not working properly")
-                
+
         except Exception as e:
             logger.error(f"Error during LaTeX detection: {str(e)}")
-            self.finished.emit(False, "", f"Error checking LaTeX: {str(e)}")
+            self.check_done.emit(False, "", f"Error checking LaTeX: {str(e)}")
 
 
 class LaTeXExportDialog(QDialog):
@@ -306,7 +309,7 @@ class LaTeXExportDialog(QDialog):
         """Start the background LaTeX check."""
         logger.info("Starting background LaTeX compiler check")
         self.checker_thread = LaTeXCheckerThread()
-        self.checker_thread.finished.connect(self._on_latex_check_finished)
+        self.checker_thread.check_done.connect(self._on_latex_check_finished)
         self.checker_thread.start()
     
     def _on_latex_check_finished(self, success, compiler_info, error_message):
@@ -457,16 +460,24 @@ class LaTeXExportDialog(QDialog):
             compiler_name, compiler_path = _find_latex_compiler()
             return compiler_path
     
+    def _release_checker_thread(self):
+        """Hand a still-running checker to the module so closing never
+        terminates it nor destroys it mid-run."""
+        thread = self.checker_thread
+        self.checker_thread = None
+        if thread is not None:
+            logger.info("[LaTeXExportDialog] closing with checker running: detached")
+            detach_checker_thread(thread, thread.check_done, self._on_latex_check_finished)
+
+    def done(self, result):
+        # Esc, Cancel, accept and the X button all end here (closeEvent -> reject -> done).
+        self._release_checker_thread()
+        super().done(result)
+
     def closeEvent(self, event):
         """Handle dialog close event."""
         logger.info("LaTeX Export Dialog closing")
-        if self.checker_thread and self.checker_thread.isRunning():
-            logger.info("Terminating background LaTeX checker thread")
-            # closeEvent runs on the GUI thread; flags loudly if not (self-wait).
-            log_thread_checkpoint("latex_export_dialog.closeEvent: wait on checker_thread",
-                                  target_thread=self.checker_thread)
-            self.checker_thread.terminate()
-            self.checker_thread.wait()
+        self._release_checker_thread()
         event.accept()
 
     def open_preview_dialog(self):

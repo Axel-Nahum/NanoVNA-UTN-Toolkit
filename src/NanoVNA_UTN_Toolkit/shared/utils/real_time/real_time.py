@@ -100,16 +100,21 @@ def on_realtime_toggled(self, enabled):
             self._rt_timer = None
 
         try:
-            from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh_thread import stop_sweep as _stop_sweep
+            from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh_thread import (
+                stop_sweep as _stop_sweep,
+                oneshot_sweep_running as _oneshot_running,
+            )
         except Exception:
             _stop_sweep = None
+            _oneshot_running = None
 
         rt_thread = getattr(self, '_rt_thread', None)
-        oneshot_thread = getattr(self, 'thread', None)
+        # self.thread shadows QObject.thread(): never None, so ask the helper.
+        oneshot_running = bool(_oneshot_running(self)) if _oneshot_running else False
 
         # RT was never active and a one-shot is already running: let it
         # finish naturally — on_sweep_finished handles the UI.
-        if rt_thread is None and oneshot_thread is not None:
+        if rt_thread is None and oneshot_running:
             return
 
         # RT was active: stop it cleanly, no new sweep.
@@ -204,6 +209,16 @@ def _trigger(self):
 
     if self._rt_busy:
         return
+
+    # The one-shot sweep (startup auto-sweep, Run Sweep) owns the serial port
+    # while its worker runs; starting a real-time worker next to it interleaves
+    # commands on the device. Skip this tick, the next one retries.
+    try:
+        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh_thread import oneshot_sweep_running
+        if oneshot_sweep_running(self):
+            return
+    except Exception:
+        pass
 
     if not self.vna_device or not self.vna_device.connected():
         # Port already closed -> no point retrying; go straight to disconnected UI.
