@@ -281,3 +281,26 @@ Fase 1, seguridad de hilos (verificada headless con dispositivo simulado):
   mientras compila el PDF.
 - `latex_export_dialog.py`, `latex_export_setup_dialog.py`: señal `check_done` (ya no
   sombrea `QThread.finished`); `done`/`closeEvent` desacoplan el hilo en vez de matarlo.
+
+Fase 2, tiempo real del DUT (2026-10-28, verificada headless):
+
+- `updates/blit_manager.py` (nuevo): `RealtimeBlitter`, receta BlitManager de matplotlib.
+  Traza y cursores van `animated`; tras cada dibujo completo se captura el fondo y se
+  pintan encima; el tick restaura el fondo, dibuja los artistas y hace `blit`.
+- `graphic_real_times_update.py`: el tick usa los blitters; `set_xlabel`/`set_xlim`/
+  `set_ylim` solo cuando cambian; autoescalado con histéresis (mantiene límites mientras
+  los datos entren y usen al menos el 60 % del rango). **Medido: tick de 85 ms a 9–14 ms**,
+  un dibujo completo al inicio y otro solo cuando cambian los límites.
+- `cursor_real_time_update.py`: `draw=False` deja el dibujo al blitter.
+- `real_time.py`: despike y suavizado pasan al `SweepWorker` (señal con 5 objetos);
+  solo Kalman queda en `_done`; `pause_realtime`/`resume_realtime`; `stop_realtime` y el
+  toggle liberan los blitters; `RT_MIN_INTERVAL_MS = 100`.
+- `graphics_window.py`: `event` (WindowBlocked/Unblocked), `changeEvent` (minimizar),
+  `hideEvent`/`showEvent` pausan y reanudan el loop.
+- `graphics_utils.py`: `_pin_info_panel` fija la altura e ignora el ancho de los paneles
+  de información; sin eso cada cambio de texto redimensionaba el canvas (resizeEvent +
+  redibujado completo por tick), un costo que ya existía antes del blitting.
+- `sweep_settings_dialog.py`: intervalo acotado a `RT_MIN_INTERVAL_MS`.
+- Pendiente de esta fase: Kalman sigue en el hilo de UI (23 ms a 201 puntos) porque su
+  estado vive en la ventana y se resetea desde la UI; moverlo requiere reemplazar los
+  objetos de filtro en lugar de mutarlos.

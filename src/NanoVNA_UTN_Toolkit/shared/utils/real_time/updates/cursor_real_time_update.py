@@ -44,7 +44,11 @@ def _get_y_from_line(line, idx):
     return None
 
 
-def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit_left, unit_right):
+def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit_left, unit_right,
+                            draw=True):
+    """Move the cursor markers to the current slider indices.
+
+    ``draw=False`` leaves rendering to the caller (the real-time tick blits)."""
     try:
         if self.freqs is None:
             return
@@ -120,10 +124,11 @@ def update_realtime_cursors(self, s_left, s_right, graph_left, graph_right, unit
                     y = compute_y(s_right[idx], graph_right, unit_right)
                 self.cursor_right_2.set_data([x], [y])
 
-        if hasattr(self, "canvas_left"):
-            self.canvas_left.draw_idle()
-        if hasattr(self, "canvas_right"):
-            self.canvas_right.draw_idle()
+        if draw:
+            if hasattr(self, "canvas_left"):
+                self.canvas_left.draw_idle()
+            if hasattr(self, "canvas_right"):
+                self.canvas_right.draw_idle()
 
     except Exception as e:
         logging.error(f"[realtime_cursor_update] {e}")

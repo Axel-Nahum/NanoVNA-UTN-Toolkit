@@ -10,6 +10,7 @@ from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.context_menu.auto_scal
 from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.cursor_real_time_update import update_realtime_cursors
 from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.panels_real_time_update import update_panel_labels
 from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.set_slider_val_silent import update_slider_range_silent
+from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.blit_manager import RealtimeBlitter
 
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.db_unit.db_unit import get_graph_unit
@@ -32,28 +33,34 @@ except ImportError:
 # ----------------------------------------------------------------------------------
 
 def _update_smith_realtime(ax, freqs, s_data):
-    """Update the Smith chart data trace in-place without redrawing the grid."""
+    """Update the Smith chart data trace in-place without redrawing the grid.
+
+    Returns the trace line so the caller can blit it."""
     n = len(s_data)
     x = np.real(s_data)
     y = np.imag(s_data)
-    updated = False
     for line_obj in ax.lines:
         xd = line_obj.get_xdata()
         if hasattr(xd, '__len__') and len(xd) == n:
             line_obj.set_data(x, y)
-            updated = True
-            break
-    if not updated and len(ax.lines) > 0:
+            return line_obj
+    if len(ax.lines) > 0:
         # Fallback: update the last line added (the data trace)
         ax.lines[-1].set_data(x, y)
+        return ax.lines[-1]
+    return None
 
 # ----------------------------------------------------------------------------------
 
 def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit, ax_type):
+    """Push new data into the panel's trace.
+
+    Returns ``(line, static_changed)``: the trace artist, and whether the static
+    part of the axes (limits, label) changed, which invalidates a blit background.
+    """
 
     if graph_type == "Smith Diagram":
-        _update_smith_realtime(ax, freqs, s_data)
-        return
+        return _update_smith_realtime(ax, freqs, s_data), False
 
     # Recover a stale/None line reference by finding the data trace in the axes
     if line is None:
@@ -69,7 +76,7 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
                     self.line_right = line
                 break
         if line is None:
-            return
+            return None, False
 
     if graph_type == "Magnitude":
         if unit == "dB":
@@ -100,27 +107,49 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
     x_data = freqs / freq_div
     line.set_data(x_data, y_data)
 
-    ax.set_xlabel(f'Frequency ({freq_unit})')
+    # Touch the static part only when it really changes: every set_xlim/set_ylim
+    # forces a tick relayout, and any change invalidates the blit background.
+    static_changed = False
+    xlabel = f'Frequency ({freq_unit})'
+    if ax.get_xlabel() != xlabel:
+        ax.set_xlabel(xlabel)
+        static_changed = True
 
     freq_start = x_data[0]
     freq_end   = x_data[-1]
     margin_x   = (freq_end - freq_start) * 0.05 or 1
-    ax.set_xlim(freq_start - margin_x, freq_end + margin_x)
+    new_xlim = (freq_start - margin_x, freq_end + margin_x)
 
     if ax_type == "left":
-        if self.auto_scale_left:
-            y_min, y_max = np.min(y_data), np.max(y_data)
-            margin_y = (y_max - y_min) * 0.05 if y_max != y_min else 1
-            ax.set_ylim(y_min - margin_y, y_max + margin_y)
+        auto_scale, ymin_fixed, ymax_fixed = self.auto_scale_left, self.ymin_left, self.ymax_left
+    else:
+        auto_scale, ymin_fixed, ymax_fixed = self.auto_scale_right, self.ymin_right, self.ymax_right
+    if auto_scale:
+        y_min, y_max = float(np.min(y_data)), float(np.max(y_data))
+        cur_lo, cur_hi = ax.get_ylim()
+        cur_span = cur_hi - cur_lo
+        # Hysteresis: keep the current limits while the data stays inside them
+        # and still uses at least 60 % of the range. Otherwise every tick moves
+        # the limits by a hair, the axis ticks jitter, and the cached blit
+        # background has to be rebuilt (a full redraw) on every sweep.
+        fits = cur_lo <= y_min and y_max <= cur_hi
+        uses_enough = cur_span > 0 and (y_max - y_min) >= 0.6 * cur_span
+        if fits and uses_enough:
+            new_ylim = (cur_lo, cur_hi)
         else:
-            ax.set_ylim(self.ymin_left, self.ymax_left)
-    elif ax_type == "right":
-        if self.auto_scale_right:
-            y_min, y_max = np.min(y_data), np.max(y_data)
             margin_y = (y_max - y_min) * 0.05 if y_max != y_min else 1
-            ax.set_ylim(y_min - margin_y, y_max + margin_y)
-        else:
-            ax.set_ylim(self.ymin_right, self.ymax_right)
+            new_ylim = (y_min - margin_y, y_max + margin_y)
+    else:
+        new_ylim = (ymin_fixed, ymax_fixed)
+
+    if not np.allclose(ax.get_xlim(), new_xlim):
+        ax.set_xlim(*new_xlim)
+        static_changed = True
+    if not np.allclose(ax.get_ylim(), new_ylim):
+        ax.set_ylim(*new_ylim)
+        static_changed = True
+
+    return line, static_changed
 
 # ----------------------------------------------------------------------------------
 
@@ -169,15 +198,17 @@ def update_plots_realtime(self):
             except Exception as e:
                 logging.error(f"[update_plots_realtime] update_left_data_2: {e}")
 
-        update_single_plot_realtime(
+        unit_left, unit_right = get_graph_unit(self, 1), get_graph_unit(self, 2)
+
+        line_left, changed_left = update_single_plot_realtime(
             self, self.line_left, self.ax_left,
             self.freqs, s_data_left,
-            graph_type_tab1, get_graph_unit(self, 1), "left"
+            graph_type_tab1, unit_left, "left"
         )
-        update_single_plot_realtime(
+        line_right, changed_right = update_single_plot_realtime(
             self, self.line_right, self.ax_right,
             self.freqs, s_data_right,
-            graph_type_tab2, get_graph_unit(self, 2), "right"
+            graph_type_tab2, unit_right, "right"
         )
 
         n = len(self.freqs)
@@ -196,18 +227,59 @@ def update_plots_realtime(self):
         update_realtime_cursors(
             self, s_data_left, s_data_right,
             graph_type_tab1, graph_type_tab2,
-            get_graph_unit(self, 1), get_graph_unit(self, 2)
+            unit_left, unit_right,
+            draw=False,   # the blitters below paint the cursors
         )
 
         update_panel_labels(
             self, s_data_left, s_data_right,
             graph_type_tab1, graph_type_tab2,
-            get_graph_unit(self, 1), get_graph_unit(self, 2),
+            unit_left, unit_right,
             idx_left, idx_right
         )
 
-        self.canvas_left.draw_idle()
-        self.canvas_right.draw_idle()
+        # Blit: only the trace and the cursor markers change per tick. A full
+        # draw happens when the static part changed (limits, label) or there is
+        # no cached background yet (first tick, artists recreated, resize).
+        blitters = _realtime_blitters(self)
+        for key, canvas, line, changed, cursors in (
+            ("left",  self.canvas_left,  line_left,  changed_left,
+             (getattr(self, "cursor_left", None), getattr(self, "cursor_left_2", None))),
+            ("right", self.canvas_right, line_right, changed_right,
+             (getattr(self, "cursor_right", None), getattr(self, "cursor_right_2", None))),
+        ):
+            blitter = blitters.get(key)
+            if blitter is None or blitter.canvas is not canvas:
+                if blitter is not None:
+                    blitter.release()
+                blitter = RealtimeBlitter(canvas)
+                blitters[key] = blitter
+            blitter.set_artists([line, *cursors])
+            if changed:
+                blitter.invalidate()
+            blitter.update()
 
     except Exception as e:
         logging.error(f"[update_plots_realtime] {e}")
+
+
+def _realtime_blitters(self) -> dict:
+    blitters = getattr(self, "_rt_blitters", None)
+    if blitters is None:
+        blitters = {}
+        self._rt_blitters = blitters
+    return blitters
+
+
+def release_realtime_blitters(self):
+    """Back to normal drawing (real-time stopped or paused): artists un-flagged,
+    backgrounds dropped, one normal redraw queued."""
+    blitters = getattr(self, "_rt_blitters", None)
+    if not blitters:
+        return
+    for blitter in list(blitters.values()):
+        try:
+            blitter.release()
+        except Exception as e:
+            logging.warning(f"[release_realtime_blitters] {e}")
+    blitters.clear()

@@ -214,7 +214,8 @@ def open_sweep_settings_dialog(window):
     wizard_btn.clicked.connect(_open_wizard)
 
     def _apply():
-        new_ms = int(interval_spin.value() * 1000)
+        from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import RT_MIN_INTERVAL_MS
+        new_ms = max(RT_MIN_INTERVAL_MS, int(interval_spin.value() * 1000))
         window.realtime_interval_ms = new_ms
         timer = getattr(window, "_rt_timer", None)
         if timer is not None:

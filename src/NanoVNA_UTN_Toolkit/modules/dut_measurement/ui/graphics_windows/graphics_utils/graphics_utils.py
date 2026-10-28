@@ -90,6 +90,22 @@ def _ls(s):
 # =================== LEFT PANEL ========================================================= #
 #############################################################################################
 
+def _pin_info_panel(info_panel):
+    """Keep the cursor info panel from resizing the canvas above it.
+
+    EN: Its value labels change text on every real-time tick; when their width
+        grows the panel's size hint grows, the splitter hands the canvas a few
+        pixels less, and the canvas gets a resizeEvent -> full matplotlib
+        redraw per tick. Fixing the height and ignoring the width hint makes
+        the canvas size depend only on the window.
+    ES: Las etiquetas cambian de texto en cada tick; si su ancho crece, el
+        canvas recibe un resizeEvent y un redibujado completo. Altura fija y
+        ancho ignorado: el tamano del canvas depende solo de la ventana.
+    """
+    info_panel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
+    info_panel.setFixedHeight(info_panel.sizeHint().height())
+
+
 def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram", s_param="S11",
                       tracecolor="red", markercolor="red", marker2color="red", linewidth=2,
                       markersize=5, marker2size=5, marker_visible=True, marker_visible_2=False):
@@ -467,6 +483,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
     info_layout.addWidget(box_bottom)  
 
     # Add to external layout
+    _pin_info_panel(info_panel)
     left_layout.addWidget(info_panel)
 
     # --- Labels dictionary ---
@@ -606,6 +623,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
     info_layout_2.addWidget(box_top_2)
     info_layout_2.addWidget(box_bottom_2)
 
+    _pin_info_panel(info_panel_2)
     left_layout.addWidget(info_panel_2)
 
     # --- Labels dictionary 2 ---
@@ -1578,6 +1596,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
     info_layout.addWidget(box_bottom) 
 
     # Add to external layout
+    _pin_info_panel(info_panel)
     right_layout.addWidget(info_panel)
 
     # --- Labels dictionary ---
@@ -1716,6 +1735,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
     info_layout_2.addWidget(box_top_2)
     info_layout_2.addWidget(box_bottom_2)
 
+    _pin_info_panel(info_panel_2)
     right_layout.addWidget(info_panel_2)
 
     # --- Labels dictionary 2 ---

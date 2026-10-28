@@ -34,7 +34,7 @@ from pathlib import Path
 
 # PySide6 imports for GUI components, with error handling to log issues without crashing the application
 
-from PySide6.QtCore import QTimer
+from PySide6.QtCore import QTimer, QEvent, Qt
 from PySide6.QtWidgets import QMainWindow, QApplication
 from PySide6.QtGui import QGuiApplication
 
@@ -581,6 +581,51 @@ class NanoVNAGraphics(QMainWindow):
 
         self.menu_windows.show()
         self.close()
+
+    # ---- Real-time pause / resume ------------------------------------------ #
+    # The loop costs 60-95 ms of GUI thread per tick (two panel renders). While
+    # the window is hidden, minimized or blocked by a modal dialog nobody sees
+    # the plots, but every dialog typed into on top of it would stutter.
+
+    def _rt_pause(self):
+        try:
+            from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import pause_realtime
+            pause_realtime(self)
+        except Exception as e:
+            logging.warning(f"[graphics_window] pause_realtime: {e}")
+
+    def _rt_resume(self):
+        try:
+            from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import resume_realtime
+            resume_realtime(self)
+        except Exception as e:
+            logging.warning(f"[graphics_window] resume_realtime: {e}")
+
+    def event(self, ev):
+        t = ev.type()
+        if t == QEvent.Type.WindowBlocked:      # a modal dialog opened on top
+            self._rt_pause()
+        elif t == QEvent.Type.WindowUnblocked:  # it closed
+            if not self.isMinimized() and self.isVisible():
+                self._rt_resume()
+        return super().event(ev)
+
+    def changeEvent(self, ev):
+        super().changeEvent(ev)
+        if ev.type() == QEvent.Type.WindowStateChange:
+            if self.isMinimized():
+                self._rt_pause()
+            elif self.isVisible():
+                self._rt_resume()
+
+    def hideEvent(self, ev):
+        self._rt_pause()
+        super().hideEvent(ev)
+
+    def showEvent(self, ev):
+        super().showEvent(ev)
+        if not self.isMinimized():
+            self._rt_resume()
 
     def closeEvent(self, event):
         from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import stop_realtime

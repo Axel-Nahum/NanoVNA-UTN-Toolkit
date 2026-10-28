@@ -15,16 +15,22 @@ get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_
 # Consecutive failed real-time sweeps tolerated before declaring the device lost.
 _RT_MAX_RETRIES = 5
 
+# Lower bound for the real-time tick. Below this the GUI thread spends its time
+# on redraws; the material-characterization module clamps to the same value.
+RT_MIN_INTERVAL_MS = 100
+
 # ------------------------------------------------------------------------------------------------------------------ #
 # WORKER
 # ------------------------------------------------------------------------------------------------------------------ #
 
 class SweepWorker(QObject):
 
-    sweep_finished = Signal(object, object, object)
+    # freqs, s11, s21 (calibrated), s11_f, s21_f (despiked + optional smoothing)
+    sweep_finished = Signal(object, object, object, object, object)
     sweep_failed = Signal(str)
 
-    def __init__(self, vna_device, start_freq_hz, stop_freq_hz, segments, calibration_fn, dut=None):
+    def __init__(self, vna_device, start_freq_hz, stop_freq_hz, segments, calibration_fn, dut=None,
+                 smooth_pct=None):
         super().__init__()
         self.vna_device = vna_device
         self.start_freq_hz = start_freq_hz
@@ -32,6 +38,8 @@ class SweepWorker(QObject):
         self.segments = segments
         self.calibration_fn = calibration_fn
         self.dut = dut
+        # None -> no smoothing; an int percentage -> moving-average window.
+        self.smooth_pct = smooth_pct
         self._abort = False
 
     def abort(self):
@@ -42,7 +50,7 @@ class SweepWorker(QObject):
         try:
             if self._abort:
                 return
-            
+
             self.vna_device.setSweep(self.start_freq_hz, self.stop_freq_hz)
 
             freqs = np.linspace(self.start_freq_hz, self.stop_freq_hz, self.segments)
@@ -66,7 +74,16 @@ class SweepWorker(QObject):
             else:
                 s11, s21 = self.calibration_fn(s11_raw, s21_raw, freqs)
 
-            self.sweep_finished.emit(freqs, s11, s21)
+            # Post-processing that used to run on the GUI thread per tick: pure
+            # numpy/Python over the sweep, no Qt, so it belongs here. The Kalman
+            # filter keeps per-point state on the window and stays in _done().
+            s11_f = _remove_phase_spikes(_remove_spikes(s11, freqs), freqs)
+            s21_f = _remove_phase_spikes(_remove_spikes(s21, freqs), freqs)
+            if self.smooth_pct is not None:
+                s11_f = _smooth_moving_average(s11_f, self.smooth_pct)
+                s21_f = _smooth_moving_average(s21_f, self.smooth_pct)
+
+            self.sweep_finished.emit(freqs, s11, s21, s11_f, s21_f)
 
         except Exception as e:
             # Concise here: the GUI side (_fail) logs the user-facing message with a
@@ -119,6 +136,7 @@ def on_realtime_toggled(self, enabled):
 
         # RT was active: stop it cleanly, no new sweep.
         _abort(self)
+        _release_blitters(self)
         if _stop_sweep is not None:
             try:
                 _stop_sweep(self)
@@ -138,10 +156,11 @@ def start_realtime(self):
 
     self._rt_active = True
     self._rt_busy = False
+    self._rt_paused = False
     self._rt_failures = 0
     self._rt_proc_errors = 0
 
-    self.realtime_interval_ms = getattr(self, "realtime_interval_ms", 100)
+    self.realtime_interval_ms = max(RT_MIN_INTERVAL_MS, int(getattr(self, "realtime_interval_ms", 100)))
 
     self._rt_timer = QTimer(self)
     self._rt_timer.timeout.connect(lambda: _trigger(self))
@@ -151,6 +170,7 @@ def stop_realtime(self):
 
     self._rt_active = False
     self._rt_busy = False
+    self._rt_paused = False
 
     if hasattr(self, "_rt_timer") and self._rt_timer:
         self._rt_timer.stop()
@@ -158,6 +178,49 @@ def stop_realtime(self):
         self._rt_timer = None
 
     _abort(self)
+    _release_blitters(self)
+
+
+def pause_realtime(self):
+    """Stop ticking while the window is hidden, minimized or blocked by a modal
+    dialog. The in-flight sweep finishes and is drawn; no new one starts.
+    State (checkbox, button text) is untouched so resume_realtime is exact."""
+    if not getattr(self, "_rt_active", False) or getattr(self, "_rt_paused", False):
+        return
+    timer = getattr(self, "_rt_timer", None)
+    if timer is None:
+        return
+    try:
+        timer.stop()
+    except RuntimeError:
+        return
+    self._rt_paused = True
+    _release_blitters(self)  # the next tick starts from a fresh full draw
+    logging.info("[real_time] paused")
+
+
+def resume_realtime(self):
+    if not getattr(self, "_rt_paused", False):
+        return
+    self._rt_paused = False
+    if not getattr(self, "_rt_active", False):
+        return
+    timer = getattr(self, "_rt_timer", None)
+    if timer is None:
+        return
+    try:
+        timer.start(self.realtime_interval_ms)
+    except RuntimeError:
+        return
+    logging.info("[real_time] resumed")
+
+
+def _release_blitters(self):
+    try:
+        from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.graphic_real_times_update import release_realtime_blitters
+        release_realtime_blitters(self)
+    except Exception as e:
+        logging.warning(f"[real_time] release blitters: {e}")
 
 # ------------------------------------------------------------------------------------------------------------------ #
 # CORE LOOP — GUI-THREAD CONTROLLER
@@ -183,10 +246,10 @@ class _RealtimeController(QObject):
         self._window = window
         self._gen = gen
 
-    def on_finished(self, freqs, s11, s21):  # runs on the GUI thread
+    def on_finished(self, freqs, s11, s21, s11_f, s21_f):  # runs on the GUI thread
         log_thread_checkpoint("real_time: sweep_finished handler (expected GUI)")
         try:
-            _done(self._window, freqs, s11, s21, self._gen)
+            _done(self._window, freqs, s11, s21, self._gen, s11_f, s21_f)
         except Exception as e:
             _handle_processing_error(self._window, e)
 
@@ -227,13 +290,24 @@ def _trigger(self):
 
     self._rt_busy = True
 
+    # Smoothing window read here (GUI thread, once per tick) and applied in the worker.
+    smooth_pct = None
+    if getattr(self, '_active_filter', 'Off') == "Smoothing":
+        sf_settings = get_settings(
+            "INI/dut_measurement/signal_filters/signal_filters.ini",
+            "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
+            Path(__file__).resolve()
+        )
+        smooth_pct = sf_settings.value("smoothing/window_pct", 5, type=int)
+
     worker = SweepWorker(
         self.vna_device,
         self.start_freq_hz,
         self.stop_freq_hz,
         self.segments,
         _build_calibration_fn(self),
-        getattr(self, "dut", None)
+        getattr(self, "dut", None),
+        smooth_pct=smooth_pct,
     )
 
     thread = QThread(self)  # QThread object has GUI-thread affinity
@@ -272,7 +346,22 @@ def _trigger(self):
 # DONE
 # ------------------------------------------------------------------------------------------------------------------ #
 
-def _done(self, freqs, s11, s21, gen):
+def _smooth_moving_average(s, pct):
+    """Moving average over ``pct`` % of the sweep, real and imaginary parts apart."""
+    n = len(s)
+    w = max(1, round(n * pct / 100))
+    k = np.ones(w) / w
+    half = w // 2
+    re_f = np.convolve(np.pad(s.real, half, mode='reflect'), k, mode='valid')[:n]
+    im_f = np.convolve(np.pad(s.imag, half, mode='reflect'), k, mode='valid')[:n]
+    return re_f + 1j * im_f
+
+
+def _done(self, freqs, s11, s21, gen, s11_f, s21_f):
+    """GUI-thread end of a tick. ``s11``/``s21`` are the calibrated sweep (the
+    Smith chart wants them unfiltered); ``s11_f``/``s21_f`` come despiked and,
+    when selected, smoothed from the worker. Only the Kalman filter (stateful)
+    and the drawing remain here."""
 
     if gen != self._rt_generation or not getattr(self, "_rt_active", False):
         return
@@ -284,38 +373,9 @@ def _done(self, freqs, s11, s21, gen):
     self.s11_raw = s11
     self.s21_raw = s21
 
-    # spike removal — always applied, regardless of calibration state
-    s11 = _remove_spikes(s11, freqs)
-    s21 = _remove_spikes(s21, freqs)
-    s11 = _remove_phase_spikes(s11, freqs)
-    s21 = _remove_phase_spikes(s21, freqs)
-
-    # signal filter
-    active_filter = getattr(self, '_active_filter', 'Off')
-
-    if active_filter == "Kalman":
-        s11_f = np.array([self.kf_s11.update(x) for x in s11])
-        s21_f = np.array([self.kf_s21.update(x) for x in s21])
-    elif active_filter == "Smoothing":
-        sf_settings = get_settings(
-            "INI/dut_measurement/signal_filters/signal_filters.ini",
-            "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
-            Path(__file__).resolve()
-        )
-        pct = sf_settings.value("smoothing/window_pct", 5, type=int)
-        n   = len(s11)
-        w   = max(1, round(n * pct / 100))
-        k   = np.ones(w) / w
-        half = w // 2
-        def _smooth(s):
-            re_f = np.convolve(np.pad(s.real, half, mode='reflect'), k, mode='valid')[:len(s)]
-            im_f = np.convolve(np.pad(s.imag, half, mode='reflect'), k, mode='valid')[:len(s)]
-            return re_f + 1j * im_f
-        s11_f = _smooth(s11)
-        s21_f = _smooth(s21)
-    else:
-        s11_f = s11
-        s21_f = s21
+    if getattr(self, '_active_filter', 'Off') == "Kalman":
+        s11_f = np.array([self.kf_s11.update(x) for x in s11_f])
+        s21_f = np.array([self.kf_s21.update(x) for x in s21_f])
 
     self.freqs = freqs
     self.s11 = s11_f
