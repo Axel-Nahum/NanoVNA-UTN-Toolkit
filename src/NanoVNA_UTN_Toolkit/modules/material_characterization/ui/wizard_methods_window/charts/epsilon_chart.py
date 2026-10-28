@@ -34,6 +34,7 @@ from matplotlib.ticker import FuncFormatter, MaxNLocator
 from PySide6.QtWidgets import QSizePolicy
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
+    isolated_points,
     permittivity_columns,
     plot_with_gaps,
 )
@@ -129,6 +130,14 @@ def _make_freq_axis(freqs):
     return unit, FuncFormatter(_fmt)
 
 
+def _plot_trace(ax, x, y, **line_kwargs):
+    """``plot_with_gaps`` that also returns its isolated-point markers (or None)."""
+    before = len(ax.lines)
+    line = plot_with_gaps(ax, x, y, **line_kwargs)
+    extra = ax.lines[before + 1:]
+    return line, (extra[0] if extra else None)
+
+
 class EpsilonChartConfig:
     """Styling for the permittivity chart."""
 
@@ -154,6 +163,8 @@ class EpsilonChartManager:
         self.fig: Optional[Any] = None
         self.ax: Optional[Any] = None
         self.canvas: Optional[FigureCanvas] = None
+        # Artists of the last full update_epsilon_curves, for in-place updates.
+        self._live: Optional[dict] = None
 
     def create_wizard_epsilon_chart(self, freqs, figsize=(7, 5), container_layout=None,
                                     title=r"$\varepsilon_r$ vs Frequency",
@@ -227,41 +238,48 @@ class EpsilonChartManager:
             for spine in ax.spines.values():
                 spine.set_color(self.config.spine_color)
 
+            self._live = None
+            traces = []   # (kind, line, dots) in drawing order, for in-place updates
+
             if candidates is not None:
                 candidates = np.asarray(candidates, dtype=complex)
                 for k in range(candidates.shape[1]):
                     cand_real, _ = permittivity_columns(candidates[:, k])
-                    plot_with_gaps(
+                    traces.append(("cand",) + _plot_trace(
                         ax, freqs, cand_real,
                         color=self.config.candidate_color,
                         linewidth=self.config.candidate_linewidth,
                         alpha=self.config.candidate_alpha,
                         zorder=1,
-                    )
+                    ))
 
             # eps'' = -Im(eps) for eps = eps' - j*eps''. Gaps stay NaN in both
             # curves: a visible break is honest, an interpolated bridge is not.
             real, loss = permittivity_columns(eps_selected)
 
-            plot_with_gaps(ax, freqs, real, color=self.config.real_color,
-                           linewidth=self.config.real_linewidth,
-                           label=getattr(self, "_real_label", r"$\varepsilon_r'$"), zorder=3)
-            plot_with_gaps(ax, freqs, loss, color=self.config.loss_color,
-                           linewidth=self.config.loss_linewidth,
-                           label=getattr(self, "_loss_label", r"$\varepsilon_r''$"), zorder=3)
+            traces.append(("real",) + _plot_trace(
+                ax, freqs, real, color=self.config.real_color,
+                linewidth=self.config.real_linewidth,
+                label=getattr(self, "_real_label", r"$\varepsilon_r'$"), zorder=3))
+            traces.append(("loss",) + _plot_trace(
+                ax, freqs, loss, color=self.config.loss_color,
+                linewidth=self.config.loss_linewidth,
+                label=getattr(self, "_loss_label", r"$\varepsilon_r''$"), zorder=3))
 
             if crosscheck is not None:
                 cc_real, cc_loss = permittivity_columns(crosscheck)
                 cc_tag = crosscheck_label or "simplified"
                 # Dotted, same colors: reads as "the same quantity, other method".
-                plot_with_gaps(ax, freqs, cc_real,
-                               color=self.config.real_color, linewidth=1.4,
-                               linestyle=":", alpha=0.85, zorder=2,
-                               label=rf"$\varepsilon_r'$ ({cc_tag})")
-                plot_with_gaps(ax, freqs, cc_loss,
-                               color=self.config.loss_color, linewidth=1.4,
-                               linestyle=":", alpha=0.85, zorder=2,
-                               label=rf"$\varepsilon_r''$ ({cc_tag})")
+                traces.append(("cc_real",) + _plot_trace(
+                    ax, freqs, cc_real,
+                    color=self.config.real_color, linewidth=1.4,
+                    linestyle=":", alpha=0.85, zorder=2,
+                    label=rf"$\varepsilon_r'$ ({cc_tag})"))
+                traces.append(("cc_loss",) + _plot_trace(
+                    ax, freqs, cc_loss,
+                    color=self.config.loss_color, linewidth=1.4,
+                    linestyle=":", alpha=0.85, zorder=2,
+                    label=rf"$\varepsilon_r''$ ({cc_tag})"))
 
             ax.legend(loc="upper right")
 
@@ -277,10 +295,97 @@ class EpsilonChartManager:
                 x_margin = freq_range * 0.04
                 ax.set_xlim(float(freqs[0]) - x_margin, float(freqs[-1]) + x_margin)
 
+            self._live = {
+                "ax": ax,
+                "freqs": freqs.copy(),
+                "unit": unit,
+                "traces": traces,
+                "has_crosscheck": crosscheck is not None,
+                "n_candidates": 0 if candidates is None else int(candidates.shape[1]),
+            }
+
             if canvas:
                 canvas.draw()
         except Exception as exc:  # noqa: BLE001
             logger.error("[epsilon_chart] Error updating curves: %s", exc)
+
+    def trace_artists(self, ax=None) -> list:
+        """Lines and isolated-point markers drawn by the last full update."""
+        live = self._live
+        if not live or (ax is not None and live["ax"] is not ax):
+            return []
+        arts = []
+        for _kind, line, dots in live["traces"]:
+            for artist in (line, dots):
+                if artist is not None and getattr(artist, "axes", None) is live["ax"]:
+                    arts.append(artist)
+        return arts
+
+    def update_epsilon_curves_inplace(self, ax, freqs, eps_selected, candidates=None,
+                                      crosscheck=None) -> Optional[list]:
+        """
+        New data into the existing curves; nothing else on the axes changes.
+
+        EN: The real-time path of the results window: a full update clears the
+            axes and rebuilds title, labels, grid, ticks and legend (~70 ms of
+            the ~90 ms tick). Here only the line data (and the isolated-point
+            markers) change. Returns the trace artists for the caller to blit,
+            or None when the chart cannot be updated in place (no previous full
+            update on ``ax``, another frequency grid or unit, a different set of
+            curves, a new isolated point without a marker artist): the caller
+            then does the full update. Axis limits are the caller's business.
+        ES: Datos nuevos en las curvas existentes; None si hace falta la
+            reconstruccion completa (otra grilla, otras curvas, punto aislado
+            nuevo sin artista).
+        """
+        live = self._live
+        if not live or live["ax"] is not ax:
+            return None
+        try:
+            freqs = np.asarray(freqs, dtype=float)
+            old_freqs = live["freqs"]
+            if freqs.shape != old_freqs.shape or not np.array_equal(freqs, old_freqs):
+                return None
+            if (crosscheck is not None) != live["has_crosscheck"]:
+                return None
+            n_cand = 0 if candidates is None else int(np.asarray(candidates).shape[1])
+            if n_cand != live["n_candidates"]:
+                return None
+
+            real, loss = permittivity_columns(np.asarray(eps_selected, dtype=complex))
+            series = {"real": [real], "loss": [loss], "cand": []}
+            if candidates is not None:
+                candidates = np.asarray(candidates, dtype=complex)
+                series["cand"] = [permittivity_columns(candidates[:, k])[0] for k in range(n_cand)]
+            if crosscheck is not None:
+                cc_real, cc_loss = permittivity_columns(crosscheck)
+                series["cc_real"], series["cc_loss"] = [cc_real], [cc_loss]
+
+            # Validate everything first, then mutate: a refusal leaves the chart intact.
+            plan = []
+            cursor = {key: 0 for key in series}
+            for kind, line, dots in live["traces"]:
+                values = series.get(kind)
+                if values is None or cursor[kind] >= len(values) or getattr(line, "axes", None) is not ax:
+                    return None
+                y = np.asarray(values[cursor[kind]], dtype=float)
+                cursor[kind] += 1
+                lonely = isolated_points(y)
+                if np.any(lonely) and dots is None:
+                    return None   # a marker artist would have to be created
+                plan.append((line, dots, y, lonely))
+
+            arts = []
+            for line, dots, y, lonely in plan:
+                line.set_data(freqs, y)
+                arts.append(line)
+                if dots is not None:
+                    dots.set_data(freqs[lonely], y[lonely])
+                    arts.append(dots)
+            return arts
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("[epsilon_chart] in-place update failed, full update instead: %s", exc)
+            return None
 
 
 def create_wizard_epsilon_chart(freqs, container_layout=None, figsize=(7, 5)):

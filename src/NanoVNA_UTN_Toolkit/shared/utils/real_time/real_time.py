@@ -31,12 +31,13 @@ def _load_touchstone(path):
 
 class SweepWorker(QObject):
 
-    # freqs, s11, s21 (calibrated), s11_f, s21_f (despiked + optional smoothing)
+    # freqs, s11, s21 (calibrated), s11_f, s21_f (despiked + optional smoothing
+    # or Kalman)
     sweep_finished = Signal(object, object, object, object, object)
     sweep_failed = Signal(str)
 
     def __init__(self, vna_device, start_freq_hz, stop_freq_hz, segments, calibration_fn, dut=None,
-                 smooth_pct=None):
+                 smooth_pct=None, kalman=None):
         super().__init__()
         self.vna_device = vna_device
         self.start_freq_hz = start_freq_hz
@@ -46,6 +47,10 @@ class SweepWorker(QObject):
         self.dut = dut
         # None -> no smoothing; an int percentage -> moving-average window.
         self.smooth_pct = smooth_pct
+        # None -> no Kalman; else the (S11, S21) filters captured by _trigger.
+        # Their per-point state is advanced here, in the worker thread; the GUI
+        # replaces the pair instead of resetting it (see _kalman_for_tick).
+        self.kalman = kalman
         self._abort = False
 
     def abort(self):
@@ -81,13 +86,20 @@ class SweepWorker(QObject):
                 s11, s21 = self.calibration_fn(s11_raw, s21_raw, freqs)
 
             # Post-processing that used to run on the GUI thread per tick: pure
-            # numpy/Python over the sweep, no Qt, so it belongs here. The Kalman
-            # filter keeps per-point state on the window and stays in _done().
+            # numpy/Python over the sweep, no Qt, so it belongs here.
             s11_f = _remove_phase_spikes(_remove_spikes(s11, freqs), freqs)
             s21_f = _remove_phase_spikes(_remove_spikes(s21, freqs), freqs)
             if self.smooth_pct is not None:
                 s11_f = _smooth_moving_average(s11_f, self.smooth_pct)
                 s21_f = _smooth_moving_average(s21_f, self.smooth_pct)
+            if self.kalman is not None:
+                # ~20 ms at 201 points (two filters, real + imaginary each).
+                kf_s11, kf_s21 = self.kalman
+                s11_f = np.array([kf_s11.update(x) for x in s11_f])
+                s21_f = np.array([kf_s21.update(x) for x in s21_f])
+
+            if self._abort:
+                return
 
             self.sweep_finished.emit(freqs, s11, s21, s11_f, s21_f)
 
@@ -247,15 +259,16 @@ def _release_blitters(self):
 
 class _RealtimeController(QObject):
 
-    def __init__(self, window, gen):
+    def __init__(self, window, gen, kalman=None):
         super().__init__()  # created on the GUI thread -> GUI-thread affinity
         self._window = window
         self._gen = gen
+        self._kalman = kalman   # the filter pair the worker of this tick uses
 
     def on_finished(self, freqs, s11, s21, s11_f, s21_f):  # runs on the GUI thread
         log_thread_checkpoint("real_time: sweep_finished handler (expected GUI)")
         try:
-            _done(self._window, freqs, s11, s21, self._gen, s11_f, s21_f)
+            _done(self._window, freqs, s11, s21, self._gen, s11_f, s21_f, kalman=self._kalman)
         except Exception as e:
             _handle_processing_error(self._window, e)
 
@@ -306,6 +319,8 @@ def _trigger(self):
         )
         smooth_pct = sf_settings.value("smoothing/window_pct", 5, type=int)
 
+    kalman = _kalman_for_tick(self)
+
     worker = SweepWorker(
         self.vna_device,
         self.start_freq_hz,
@@ -314,6 +329,7 @@ def _trigger(self):
         _build_calibration_fn(self),
         getattr(self, "dut", None),
         smooth_pct=smooth_pct,
+        kalman=kalman,
     )
 
     thread = QThread(self)  # QThread object has GUI-thread affinity
@@ -323,7 +339,7 @@ def _trigger(self):
 
     # The controller lives on the GUI thread; its bound-method slots therefore run
     # on the GUI thread (queued connection), unlike a context-less lambda.
-    controller = _RealtimeController(self, gen)
+    controller = _RealtimeController(self, gen, kalman)
 
     thread.started.connect(worker.run)
 
@@ -363,11 +379,44 @@ def _smooth_moving_average(s, pct):
     return re_f + 1j * im_f
 
 
-def _done(self, freqs, s11, s21, gen, s11_f, s21_f):
+def _kalman_for_tick(self):
+    """The window's current (S11, S21) Kalman pair when that filter is active, else None.
+
+    Captured on the GUI thread when a tick starts and handed to its worker. A
+    reset (filter dialog, Reset Kalman, a one-shot sweep in real time) assigns
+    NEW filter objects to the window instead of mutating these, so the worker
+    never shares state with the GUI thread; a tick still running on the old
+    pair is dropped by ``_done``.
+    """
+    if getattr(self, '_active_filter', 'Off') != "Kalman":
+        return None
+    kf_s11 = getattr(self, "kf_s11", None)
+    kf_s21 = getattr(self, "kf_s21", None)
+    if kf_s11 is None or kf_s21 is None:
+        return None
+    return kf_s11, kf_s21
+
+
+def _same_kalman(a, b):
+    if a is None or b is None:
+        return a is b
+    return a[0] is b[0] and a[1] is b[1]
+
+
+_KALMAN_UNSET = object()
+
+
+def _done(self, freqs, s11, s21, gen, s11_f, s21_f, kalman=_KALMAN_UNSET):
     """GUI-thread end of a tick. ``s11``/``s21`` are the calibrated sweep (the
-    Smith chart wants them unfiltered); ``s11_f``/``s21_f`` come despiked and,
-    when selected, smoothed from the worker. Only the Kalman filter (stateful)
-    and the drawing remain here."""
+    Smith chart wants them unfiltered); ``s11_f``/``s21_f`` come from the worker
+    despiked and, when selected, smoothed or Kalman-filtered. Only the drawing
+    remains here.
+
+    ``kalman`` is the filter pair the worker used (None: no Kalman). When the
+    window's filters were replaced or the filter changed while the sweep ran,
+    the result belongs to the old filter state: it is dropped and the next tick
+    starts from the new filters. Direct calls without ``kalman`` skip the check.
+    """
 
     if gen != self._rt_generation or not getattr(self, "_rt_active", False):
         return
@@ -376,12 +425,13 @@ def _done(self, freqs, s11, s21, gen, s11_f, s21_f):
     self._rt_failures = 0
     self._rt_proc_errors = 0
 
+    if kalman is not _KALMAN_UNSET and not _same_kalman(kalman, _kalman_for_tick(self)):
+        logging.debug("[real_time] Kalman filters replaced during the sweep; tick superseded")
+        self._rt_busy = False
+        return
+
     self.s11_raw = s11
     self.s21_raw = s21
-
-    if getattr(self, '_active_filter', 'Off') == "Kalman":
-        s11_f = np.array([self.kf_s11.update(x) for x in s11_f])
-        s21_f = np.array([self.kf_s21.update(x) for x in s21_f])
 
     self.freqs = freqs
     self.s11 = s11_f

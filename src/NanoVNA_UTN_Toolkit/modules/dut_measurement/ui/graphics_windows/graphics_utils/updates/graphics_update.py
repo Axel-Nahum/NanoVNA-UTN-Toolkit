@@ -340,13 +340,25 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
         logging.error(f"[graphics_window._recreate_single_plot] Error recreating plot: {e}")
         return None
 
-def update_plots_with_new_data(self, skip_reset=False, draw=True):
-    """Update both plots with new sweep data.
+ALL_PANELS = ("left", "right")
 
-    ``draw=False`` leaves the two synchronous ``canvas.draw()`` calls to the
+
+def update_plots_with_new_data(self, skip_reset=False, draw=True, panels=ALL_PANELS):
+    """Update the plots with new sweep data.
+
+    ``draw=False`` leaves the synchronous ``canvas.draw()`` calls to the
     caller: the post-sweep path finishes positioning the markers first and then
     lets the coalesced ``draw_idle()`` do a single full draw per panel.
+
+    ``panels`` names the panels to rebuild ("left", "right"); a setting that
+    belongs to one panel (dB/times toggle, one View/Edit tab) rebuilds only that
+    one, and the other keeps its axes, cursors, sliders and rendered image.
     """
+    panels = tuple(p for p in ALL_PANELS if p in panels)
+    do_left = "left" in panels
+    do_right = "right" in panels
+    if not panels:
+        return
     try:
         logging.info("[graphics_window.update_plots_with_new_data] Updating plots with new sweep data")
 
@@ -400,86 +412,69 @@ def update_plots_with_new_data(self, skip_reset=False, draw=True):
         s_data_right = self.s11 if s_param_tab2 == "S11" else self.s21
 
         # --- Clear existing plots ---
-        self.ax_left.clear()
-        self.ax_right.clear()
+        if do_left:
+            self.ax_left.clear()
+        if do_right:
+            self.ax_right.clear()
 
         # --- Recreate left panel plot ---
-        logging.info(f"[graphics_window.update_plots_with_new_data] Recreating left plot: {graph_type_tab1} - {s_param_tab1}")
         unit_left = get_graph_unit(self, 1)
 
-        # --- Clean up old slider event connections before redrawing 
-        if hasattr(self, "slider_left") and self.slider_left is not None:
-            try:
-                self.slider_left.disconnect_events()
-            except Exception as e:
-                logging.debug(f"Failed to disconnect slider_left events: {e}")
-        if hasattr(self, "slider_right") and self.slider_right is not None:
-            try:
-                self.slider_right.disconnect_events()
-            except Exception as e:
-                logging.debug(f"Failed to disconnect slider_right events: {e}")
-        """if hasattr(self, "slider_left_2") and self.slider_left_2 is not None:
-            try:
-                self.slider_left_2.disconnect_events()
-            except Exception as e:
-                logging.debug(f"Failed to disconnect slider_left_2 events: {e}")
-        if hasattr(self, "slider_right_2") and self.slider_right_2 is not None:
-            try:
-                self.slider_right_2.disconnect_events()
-            except Exception as e:
-                logging.debug(f"Failed to disconnect slider_right_2 events: {e}")"""
+        # (The sliders keep their mouse-event hooks: update_left_data /
+        # update_right_data reuse them across sweeps instead of recreating.)
 
-        self.line_left = recreate_single_plot(
-            self,
-            ax=self.ax_left,
-            fig=self.fig_left,
-            s_data=s_data_left,
-            freqs=self.freqs,
-            graph_type=graph_type_tab1,
-            s_param=s_param_tab1,
-            tracecolor=trace_color1,
-            markercolor=marker_color1,
-            background_color_graphics=background_color1,
-            text_color=text_color1,
-            axis_color=axis_color1,
-            linewidth=trace_size1,
-            markersize=marker_size1,
-            unit=unit_left,
-            cursor_graph=self.cursor_left,
-            cursor_graph_2=self.cursor_left_2,
-            ax_type="left",
-            unit_mode=unit_left
-        )
+        if do_left:
+            logging.info(f"[graphics_window.update_plots_with_new_data] Recreating left plot: {graph_type_tab1} - {s_param_tab1}")
+            self.line_left = recreate_single_plot(
+                self,
+                ax=self.ax_left,
+                fig=self.fig_left,
+                s_data=s_data_left,
+                freqs=self.freqs,
+                graph_type=graph_type_tab1,
+                s_param=s_param_tab1,
+                tracecolor=trace_color1,
+                markercolor=marker_color1,
+                background_color_graphics=background_color1,
+                text_color=text_color1,
+                axis_color=axis_color1,
+                linewidth=trace_size1,
+                markersize=marker_size1,
+                unit=unit_left,
+                cursor_graph=self.cursor_left,
+                cursor_graph_2=self.cursor_left_2,
+                ax_type="left",
+                unit_mode=unit_left
+            )
 
         # --- Recreate right panel plot ---
-        logging.info(f"[graphics_window.update_plots_with_new_data] Recreating right plot: {graph_type_tab2} - {s_param_tab2} - {marker_color2}")
-        #unit_right = get_graph_unit(self, 2)
-
-        self.line_right = recreate_single_plot(
-            self,
-            ax=self.ax_right,
-            fig=self.fig_right,
-            s_data=s_data_right,
-            freqs=self.freqs,
-            graph_type=graph_type_tab2,
-            s_param=s_param_tab2,
-            tracecolor=trace_color2,
-            markercolor=marker_color2,
-            background_color_graphics=background_color2,
-            text_color=text_color2,
-            axis_color=axis_color2,
-            linewidth=trace_size2,
-            markersize=marker_size2,
-            unit=unit_right,
-            cursor_graph=self.cursor_right,
-            cursor_graph_2=self.cursor_right_2,
-            ax_type="right",
-            unit_mode=unit_right
-        )
+        if do_right:
+            logging.info(f"[graphics_window.update_plots_with_new_data] Recreating right plot: {graph_type_tab2} - {s_param_tab2} - {marker_color2}")
+            self.line_right = recreate_single_plot(
+                self,
+                ax=self.ax_right,
+                fig=self.fig_right,
+                s_data=s_data_right,
+                freqs=self.freqs,
+                graph_type=graph_type_tab2,
+                s_param=s_param_tab2,
+                tracecolor=trace_color2,
+                markercolor=marker_color2,
+                background_color_graphics=background_color2,
+                text_color=text_color2,
+                axis_color=axis_color2,
+                linewidth=trace_size2,
+                markersize=marker_size2,
+                unit=unit_right,
+                cursor_graph=self.cursor_right,
+                cursor_graph_2=self.cursor_right_2,
+                ax_type="right",
+                unit_mode=unit_right
+            )
 
         # --- Update slider data references ---
         logging.info("[graphics_window.update_plots_with_new_data] Updating cursor data references")
-        if hasattr(self, 'update_left_data') and self.update_left_data:
+        if do_left and hasattr(self, 'update_left_data') and self.update_left_data:
             self.slider_left, self.slider_left_2 = self.update_left_data(
                 s_data_left,
                 self.freqs,
@@ -497,7 +492,7 @@ def update_plots_with_new_data(self, skip_reset=False, draw=True):
             toggle_marker_visibility(self, 0, self.show_graphic1_marker1)
             toggle_marker2_visibility(self, 0, self.show_graphic1_marker2)
 
-        if hasattr(self, 'update_right_data') and self.update_right_data:
+        if do_right and hasattr(self, 'update_right_data') and self.update_right_data:
             self.slider_right, self.slider_right_2 = self.update_right_data(
                 s_data_right,
                 self.freqs,
@@ -527,7 +522,8 @@ def update_plots_with_new_data(self, skip_reset=False, draw=True):
             marker1_size_left=marker_size1,
             marker1_size_right=marker_size2,
             marker2_size_left=marker2_size1,
-            marker2_size_right=marker2_size2
+            marker2_size_right=marker2_size2,
+            panels=panels
         )
 
         # --- Reset sliders and markers if not skipping ---
@@ -537,7 +533,9 @@ def update_plots_with_new_data(self, skip_reset=False, draw=True):
         else:
             logging.info("[graphics_window.update_plots_with_new_data] Skipping reset - will be handled by sweep reset")
 
-        if self.show_graphic1_marker1 and not self.show_graphic1_marker2:
+        if not do_left:
+            pass
+        elif self.show_graphic1_marker1 and not self.show_graphic1_marker2:
             self.cursor_left.set_visible(True)
             self.cursor_left_2.set_visible(False)
         elif self.show_graphic1_marker2 and not self.show_graphic1_marker1:
@@ -550,7 +548,9 @@ def update_plots_with_new_data(self, skip_reset=False, draw=True):
             self.cursor_left.set_visible(False)
             self.cursor_left_2.set_visible(False)
 
-        if self.show_graphic2_marker1 and not self.show_graphic2_marker2:
+        if not do_right:
+            pass
+        elif self.show_graphic2_marker1 and not self.show_graphic2_marker2:
             self.cursor_right.set_visible(True)
             self.cursor_right_2.set_visible(False)
         elif self.show_graphic2_marker2 and not self.show_graphic2_marker1:
@@ -565,8 +565,10 @@ def update_plots_with_new_data(self, skip_reset=False, draw=True):
 
         # --- Force redraw (unless the caller batches it with its own updates) ---
         if draw:
-            self.canvas_left.draw()
-            self.canvas_right.draw()
+            if do_left:
+                self.canvas_left.draw()
+            if do_right:
+                self.canvas_right.draw()
 
         logging.info("[graphics_window.update_plots_with_new_data] Plots updated successfully")
 

@@ -48,8 +48,19 @@ class SParameterKalman:
 class ComplexKalman:
 
     def __init__(self, process_noise=0.0001, measurement_noise=10.0):
+        self.process_noise = process_noise
+        self.measurement_noise = measurement_noise
         self.kf_real = SParameterKalman(process_noise, measurement_noise)
         self.kf_imag = SParameterKalman(process_noise, measurement_noise)
+
+    def fresh(self):
+        """A new filter with the same noise settings, in its initial state.
+
+        The real-time sweep worker runs ``update`` on the window's filters in
+        its own thread, so the GUI never ``reset()``s them in place: it swaps
+        in a fresh pair and the worker of the next tick picks those up.
+        """
+        return ComplexKalman(self.process_noise, self.measurement_noise)
 
     def reset(self):
         self.kf_real.reset()

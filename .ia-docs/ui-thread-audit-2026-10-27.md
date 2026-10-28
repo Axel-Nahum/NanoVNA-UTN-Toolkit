@@ -481,7 +481,78 @@ módulos):
 - Verificado además: sin figuras de pyplot ni widgets Qt creados durante el render en el
   worker (`plt.get_fignums()` y `QApplication.allWidgets()` estables).
 
-Con esto quedan aplicadas las siete fases del plan. Lo que sigue pendiente está anotado en
-cada fase: Kalman del DUT en el hilo de UI (fase 2), reconstrucción de sliders por barrido
-(fase 3), Apply de View/Edit sobre ambos paneles (fase 4), y `ax.clear()` por tick en el
-gráfico de ε (fase 6).
+Pendientes resueltos (fase 8, 2026-10-28, verificada headless; `verify_phase8.py` y
+`verify_phase1.py` … `verify_phase7.py` en verde):
+
+- Kalman del DUT fuera del hilo de UI (pendiente de la fase 2). `real_time.py`: `_trigger`
+  captura el par de filtros vigente (`_kalman_for_tick`) y se lo pasa al `SweepWorker`, que
+  aplica Kalman después del despike/suavizado; `_done` ya no filtra. Los filtros no se
+  resetean en sitio desde la UI: `ComplexKalman.fresh()` (en `kalman_filter.py`) da un par
+  nuevo con el mismo Q/R y `run_sweep` (`graphics_refresh_thread.py`, "Reset Kalman" en tiempo
+  real) lo asigna a la ventana, igual que ya hacía el diálogo de filtros. El controlador del
+  tick guarda el par que usó su worker; si al llegar ya no es el de la ventana (reset o cambio
+  de filtro durante el barrido), `_done` descarta ese tick y el siguiente arranca con el par
+  nuevo. El barrido único sigue aplicando Kalman en `on_sweep_finished`, en el hilo de UI: es
+  uno por click (~20 ms) y ningún worker de tiempo real comparte esos filtros (`_trigger` no
+  arranca mientras corre el barrido único, y en tiempo real `run_sweep` ya cambió el par).
+  **Medido (201 puntos): `_done` con Kalman 30 ms → 11–12 ms, lo mismo que sin filtro; los
+  402 `update` corren en el hilo del worker** (verificado con `threading.get_ident`).
+- Sliders reutilizados en cada barrido (pendiente de la fase 3). `graphics_utils.py`: las dos
+  copias de `update_data_references` (panel izquierdo y derecho) usan
+  `_marker_sliders_for_sweep`: un slider vivo conserva el objeto, recibe rango `0..n-1` y valor
+  0 en silencio (`update_slider_range_silent`), se le borran los `on_changed` y vuelve a
+  `set_active(True)`; posición y visibilidad salen de una tabla por marcadores visibles
+  (`_SLIDER_RECTS`, los mismos rectángulos de antes). Solo se crea el que falta.
+  `graphics_update.py` ya no llama `disconnect_events()` sobre sliders que siguen en uso.
+  `cursors_visibility.py`: `slider.observers.clear()` no existe en matplotlib 3.10 y el
+  fallback `disconnect()` pide un cid; los dos fallaban en silencio y los callbacks se
+  acumulaban (en cada Apply de View/Edit ya pasaba). `_clear_changed_observers` los borra de
+  verdad. **Medido: `on_sweep_finished` 86–94 ms → 57–60 ms; `update_left_data` +
+  `update_right_data` 0,8 ms (4 `add_axes` + 4 `Slider` medidos aparte: 30–36 ms, más el
+  borrado de los viejos).** El total por barrido (reset + handler + dibujos) quedó en
+  205–260 ms, dentro del ruido de la máquina en esta sesión (los dibujos solos variaron entre
+  85 y 185 ms); la ganancia firme es la del handler. Un dibujo completo por panel antes y después del barrido, igual
+  que antes; los 4 sliders son los mismos objetos tras varios barridos, con un callback cada
+  uno; estado final idéntico (sliders en 0 con rango 0..200, cursores en el índice 0, paneles
+  llenos).
+- Reconstrucción de un solo panel (pendiente de la fase 4). `update_plots_with_new_data(...,
+  panels=("left", "right"))`, y el mismo `panels` en `recreate_cursors_for_new_plots`
+  (`cursors_update.py`), `force_marker_visibility`/`_2` y `_reset_markers_after_sweep`
+  (`cursors_reset.py`); el panel que no está en `panels` conserva ejes, cursores, sliders y su
+  imagen. `toggle_db_times.py` reconstruye el panel clickeado. `view_window.py` y
+  `edit_graphics_window.py` comparan la pestaña con lo guardado (tipo y parámetro S; colores
+  y anchos) y reconstruyen solo la que cambió; ninguna o las dos → las dos, como antes. Los
+  marcadores vuelven al índice 0 solo en el panel reconstruido (con `markers_locked`, en los
+  dos). View Apply usaba `reset_sliders_and_markers_for_graph_change`, que lanzaba siempre en
+  `_clear_marker_fields_only` (`'QLabel' object has no attribute 'setCursorPosition'`) y nunca
+  llegaba a su segunda pasada con dos `draw()`; ahora usa `_reset_markers_after_sweep` y
+  también `enable_cursor_picking` (tras View Apply el arrastre quedaba muerto). **Medido: toggle
+  dB/× 77–82 ms (+ dibujos 152–168 ms) → 36–45 ms (+ 76–88 ms), dibujos y reconstrucciones
+  izquierda/derecha 1/1 → 1/0; View Apply de una pestaña 70 ms (+151–160) → 36–39 ms (+80–83);
+  Edit Apply de una pestaña 53–54 ms (+123–131) → 36–38 ms (+75–77).** `verify_phase4.py`
+  (prueba 5) ahora espera 0 dibujos en el panel no clickeado.
+- Gráfico de ε sin `ax.clear()` por tick (pendiente de la fase 6). `epsilon_chart.py`:
+  `update_epsilon_curves` registra sus artistas (líneas y marcadores de puntos aislados, con
+  candidatos y crosscheck) y `update_epsilon_curves_inplace` cambia solo los datos; devuelve
+  None si no puede (otra grilla de frecuencias, otras curvas, un punto aislado nuevo sin
+  artista) y entonces va la reconstrucción. `measurement_main_window.py`: en tiempo real,
+  `_update_chart_inplace` exige que `_chart_static_key` (título y etiquetas, colores y anchos
+  del INI, grilla, banda no confiable, auto-escala y rango manual, grilla de frecuencias) sea
+  la del último `redraw_chart`; cualquier cambio (filtros, Edit, Plot Manager, nombre de
+  muestra) reconstruye. Límites con la histéresis del DUT: se mantienen mientras los datos
+  entren y usen al menos el 60 % del rango; si no, `set_ylim` con los mismos límites que daría
+  `redraw_chart` y ese tick es un dibujo completo sin reconstruir. Las curvas se suman a los
+  artistas de `_marker_blitter` (`_marker_artists`), así ticks y sliders comparten fondo.
+  Solo quedan `animated` durante el tiempo real: `_release_trace_blit` las devuelve al dibujo
+  normal al apagarlo y antes de abrir el diálogo de exportación (que hace `deepcopy` de la
+  figura; una curva animada no se renderiza en la copia). El barrido único sigue con
+  `redraw_chart`. **Medido: tick de tiempo real (parte de UI) 75–95 ms, un dibujo completo y un
+  `ax.clear()` → 3–6 ms, cero dibujos completos y cero `ax.clear()` tras el primero; un salto
+  de rango, un dibujo completo (~40 ms) sin reconstruir.**
+
+Con esto quedan aplicadas las siete fases del plan y resueltos los cuatro pendientes que
+anotaban (Kalman del DUT en el hilo de UI, reconstrucción de sliders por barrido, Apply de
+View/Edit y toggle dB/× sobre ambos paneles, `ax.clear()` por tick en el gráfico de ε). En el
+post-barrido del DUT queda la reconstrucción de ejes y cursores (`ax.clear()` y
+`recreate_single_plot`, ~57–60 ms del handler) y el dibujo completo de cada panel (~85–90 ms los
+dos); el barrido cambia datos, límites y etiquetas, así que ese dibujo es legítimo.

@@ -25,61 +25,56 @@ def enable_cursor_picking(self, radius=5):
 
 
 def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_color_left, marker_color_right,
-    marker2_color_left, marker2_color_right, marker1_size_left, marker1_size_right, marker2_size_left, marker2_size_right):
-    """Recreate cursors when the plot type changes."""
+    marker2_color_left, marker2_color_right, marker1_size_left, marker1_size_right, marker2_size_left, marker2_size_right,
+    panels=("left", "right")):
+    """Recreate cursors when the plot type changes.
+
+    ``panels`` names the rebuilt panels; the cursors, wrappers and slider
+    callbacks of any other panel are left as they are.
+    """
+
+    do_left = "left" in panels
+    do_right = "right" in panels
 
     try:
-        logging.info("[graphics_window._recreate_cursors_for_new_plots] Recreating cursors for plot type changes")
-        
+        logging.info("[graphics_window._recreate_cursors_for_new_plots] Recreating cursors for plot type changes (%s)", ", ".join(panels))
+
         # Clear any existing wrapper functions
-        if hasattr(self, '_original_update_cursor'):
-            self.update_cursor = self._original_update_cursor
-            delattr(self, '_original_update_cursor')
-        if hasattr(self, '_original_update_cursor_2'):
-            self.update_cursor_2 = self._original_update_cursor_2
-            delattr(self, '_original_update_cursor_2')
-        if hasattr(self, '_original_update_right_cursor'):
-            self.update_right_cursor = self._original_update_right_cursor
-            delattr(self, '_original_update_right_cursor')
-        if hasattr(self, '_original_update_right_cursor_2'):
-            self.update_right_cursor_2 = self._original_update_right_cursor_2
-            delattr(self, '_original_update_right_cursor_2')
-        
+        wrapper_names = []
+        if do_left:
+            wrapper_names += [("update_cursor", "_original_update_cursor"),
+                              ("update_cursor_2", "_original_update_cursor_2")]
+        if do_right:
+            wrapper_names += [("update_right_cursor", "_original_update_right_cursor"),
+                              ("update_right_cursor_2", "_original_update_right_cursor_2")]
+        for public, original in wrapper_names:
+            if hasattr(self, original):
+                setattr(self, public, getattr(self, original))
+                delattr(self, original)
+
         # Remove existing cursors from axes
-        if hasattr(self, 'cursor_left') and self.cursor_left:
-            try:
-                self.cursor_left.remove()
-            except:
-                pass
-            self.cursor_left = None
+        cursor_names = []
+        if do_left:
+            cursor_names += ["cursor_left", "cursor_left_2"]
+        if do_right:
+            cursor_names += ["cursor_right", "cursor_right_2"]
+        for name in cursor_names:
+            cursor = getattr(self, name, None)
+            if cursor:
+                try:
+                    cursor.remove()
+                except Exception:
+                    pass
+                setattr(self, name, None)
 
-        if hasattr(self, 'cursor_left_2') and self.cursor_left_2:
-            try:
-                self.cursor_left_2.remove()
-            except:
-                pass
-            self.cursor_left_2 = None
-            
-        if hasattr(self, 'cursor_right') and self.cursor_right:
-            try:
-                self.cursor_right.remove()
-            except:
-                pass
-            self.cursor_right = None
-
-        if hasattr(self, 'cursor_right_2') and self.cursor_right_2:
-            try:
-                self.cursor_right_2.remove()
-            except:
-                pass
-            self.cursor_right_2 = None
-        
         # Create new cursors at position (0,0) - they will be positioned correctly later
         # Make them invisible initially to avoid the "fixed cursor" problem
 
         freq_div, _ = get_freq_display_unit(self)
 
-        if graph_type_1 == "Smith Diagram":
+        if not do_left:
+            pass
+        elif graph_type_1 == "Smith Diagram":
             if hasattr(self, 'ax_left') and self.ax_left:
                 self.cursor_left = self.ax_left.plot(self.s11.real[0], self.s11.imag[0], 'o', color=marker_color_left, markersize=marker1_size_left, 
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
@@ -112,7 +107,9 @@ def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_colo
                 self.cursor_left_2 = self.ax_left.plot(self.freqs[0] / freq_div, _y0_left, 'o', color=marker2_color_left, markersize=marker2_size_left,
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
 
-        if graph_type_2 == "Smith Diagram":
+        if not do_right:
+            pass
+        elif graph_type_2 == "Smith Diagram":
             if hasattr(self, 'ax_right') and self.ax_right:
                 self.cursor_right = self.ax_right.plot(self.s11.real[0], self.s11.imag[0], 'o', color=marker_color_right, markersize=marker1_size_right, 
                                                     markeredgecolor='darkred', markeredgewidth=2, visible=False)[0]
@@ -157,15 +154,17 @@ def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_colo
                 self.markers[1]['cursor_2'] = self.cursor_right_2
 
         # Force marker visibility setup to create the wrapper functions again
-        force_marker_visibility(self, marker_color_left=marker_color_left, marker_color_right=marker_color_right, 
-            marker1_size_left=marker1_size_left, marker1_size_right=marker1_size_right)
+        force_marker_visibility(self, marker_color_left=marker_color_left, marker_color_right=marker_color_right,
+            marker1_size_left=marker1_size_left, marker1_size_right=marker1_size_right, panels=panels)
 
         force_marker_visibility_2(self, marker_color_left=marker2_color_left, marker_color_right=marker2_color_right,
-            marker_size_left=marker2_size_left, marker_size_right=marker2_size_right)
+            marker_size_left=marker2_size_left, marker_size_right=marker2_size_right, panels=panels)
 
         enable_cursor_picking(self)
 
-        if self.show_graphic1_marker1 and not self.show_graphic1_marker2:
+        if not do_left:
+            pass
+        elif self.show_graphic1_marker1 and not self.show_graphic1_marker2:
             self.cursor_left.set_visible(True)
             self.cursor_left_2.set_visible(False)
         elif self.show_graphic1_marker2 and not self.show_graphic1_marker1:
@@ -178,7 +177,9 @@ def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_colo
             self.cursor_left.set_visible(False)
             self.cursor_left_2.set_visible(False)
 
-        if self.show_graphic2_marker1 and not self.show_graphic2_marker2:
+        if not do_right:
+            pass
+        elif self.show_graphic2_marker1 and not self.show_graphic2_marker2:
             self.cursor_right.set_visible(True)
             self.cursor_right_2.set_visible(False)
         elif self.show_graphic2_marker2 and not self.show_graphic2_marker1:

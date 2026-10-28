@@ -24,7 +24,9 @@ except ImportError as e:
 
 recreate_single_plot = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.graphics_update", "recreate_single_plot")
 
-reset_sliders_and_markers_for_graph_change = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.sliders_cursors_reset", "reset_sliders_and_markers_for_graph_change")
+_reset_markers_after_sweep = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.cursors_reset", "_reset_markers_after_sweep")
+
+enable_cursor_picking = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.cursors_update", "enable_cursor_picking")
 
 get_graph_unit = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.db_unit.db_unit", "get_graph_unit")
 
@@ -194,6 +196,24 @@ class View(QMainWindow):
         selected_graph_left = self.current_graph_tab1
         selected_graph_right = self.current_graph_tab2
 
+        # Rebuild only the panel whose tab changed (against the saved INI and the
+        # window state). Neither or both changed -> both, as before.
+        nw = self.nano_window
+        changed_left = ((graph_type_tab1, s_param_tab1) != (self.current_graph_tab1, self.current_s_tab1)
+                        or getattr(nw, "left_graph_type", None) != self.current_graph_tab1
+                        or getattr(nw, "left_s_param", None) != self.current_s_tab1)
+        changed_right = ((graph_type_tab2, s_param_tab2) != (self.current_graph_tab2, self.current_s_tab2)
+                         or getattr(nw, "right_graph_type", None) != self.current_graph_tab2
+                         or getattr(nw, "right_s_param", None) != self.current_s_tab2)
+        if changed_left and not changed_right:
+            panels = ("left",)
+        elif changed_right and not changed_left:
+            panels = ("right",)
+        else:
+            panels = ("left", "right")
+        do_left = "left" in panels
+        do_right = "right" in panels
+
         settings.setValue("Tab1/SParameter", self.current_s_tab1)
         settings.setValue("Tab1/GraphType1", selected_graph_left)
         settings.setValue("Tab2/SParameter", self.current_s_tab2)
@@ -217,7 +237,9 @@ class View(QMainWindow):
                 right_markers_data.append((x, y))
 
             # --- Reset aspect only if graph type changes ---
-            if self.nano_window.left_graph_type == "Smith Diagram" and self.current_graph_tab1 != "Smith Diagram":
+            if not do_left:
+                pass
+            elif self.nano_window.left_graph_type == "Smith Diagram" and self.current_graph_tab1 != "Smith Diagram":
                 self.nano_window.ax_left.remove()
                 self.nano_window.ax_left = self.nano_window.fig_left.add_subplot(111)
                 self.nano_window.ax_left.set_aspect("auto")
@@ -227,7 +249,9 @@ class View(QMainWindow):
                 self.nano_window.ax_left = self.nano_window.fig_left.add_subplot(111)
                 self.nano_window.ax_left.set_aspect("equal")
 
-            if self.nano_window.right_graph_type == "Smith Diagram" and self.current_graph_tab2 != "Smith Diagram":
+            if not do_right:
+                pass
+            elif self.nano_window.right_graph_type == "Smith Diagram" and self.current_graph_tab2 != "Smith Diagram":
                 self.nano_window.ax_right.remove()
                 self.nano_window.ax_right = self.nano_window.fig_right.add_subplot(111)
                 self.nano_window.ax_right.set_aspect("auto")
@@ -237,8 +261,10 @@ class View(QMainWindow):
                 self.nano_window.ax_right = self.nano_window.fig_right.add_subplot(111)
                 self.nano_window.ax_right.set_aspect("equal")
 
-            self.nano_window.ax_left.clear()
-            self.nano_window.ax_right.clear()
+            if do_left:
+                self.nano_window.ax_left.clear()
+            if do_right:
+                self.nano_window.ax_right.clear()
 
             # Load configuration for graphics settings and visualization parameters
             settings = get_settings(
@@ -250,61 +276,57 @@ class View(QMainWindow):
             unit_left = settings.value("Graphic1/db_times", "dB")
             unit_right = settings.value("Graphic2/db_times", "dB")
 
-            self.nano_window.line_left = recreate_single_plot(
-                self.nano_window,
-                ax=self.nano_window.ax_left,
-                fig=self.nano_window.fig_left,
-                s_data=data_left,
-                freqs=self.freqs,
-                graph_type=self.current_graph_tab1,
-                s_param=self.current_s_tab1,
-                tracecolor=trace_color1,
-                markercolor=marker_color1,
-                background_color_graphics=background_color1,
-                text_color=text_color1,
-                axis_color=axis_color1,
-                linewidth=trace_size1,
-                markersize=marker_size1,
-                unit=unit_left,
-                cursor_graph=self.nano_window.cursor_left,
-                cursor_graph_2=self.nano_window.cursor_left_2,
-                ax_type="left",
-                unit_mode=unit_left
-            )
+            if do_left:
+                self.nano_window.line_left = recreate_single_plot(
+                    self.nano_window,
+                    ax=self.nano_window.ax_left,
+                    fig=self.nano_window.fig_left,
+                    s_data=data_left,
+                    freqs=self.freqs,
+                    graph_type=self.current_graph_tab1,
+                    s_param=self.current_s_tab1,
+                    tracecolor=trace_color1,
+                    markercolor=marker_color1,
+                    background_color_graphics=background_color1,
+                    text_color=text_color1,
+                    axis_color=axis_color1,
+                    linewidth=trace_size1,
+                    markersize=marker_size1,
+                    unit=unit_left,
+                    cursor_graph=self.nano_window.cursor_left,
+                    cursor_graph_2=self.nano_window.cursor_left_2,
+                    ax_type="left",
+                    unit_mode=unit_left
+                )
 
-            self.nano_window.line_right = recreate_single_plot(
-                self.nano_window,
-                ax=self.nano_window.ax_right,
-                fig=self.nano_window.fig_right,
-                s_data=data_right,
-                freqs=self.freqs,
-                graph_type=self.current_graph_tab2,
-                s_param=self.current_s_tab2,
-                tracecolor=trace_color2,
-                markercolor=marker_color2,
-                background_color_graphics=background_color2,
-                text_color=text_color2,
-                axis_color=axis_color2,
-                linewidth=trace_size2,
-                markersize=marker_size2,
-                unit=unit_right,
-                cursor_graph=self.nano_window.cursor_right,
-                cursor_graph_2=self.nano_window.cursor_right_2,
-                ax_type="right",
-                unit_mode=unit_right
-            )
+            if do_right:
+                self.nano_window.line_right = recreate_single_plot(
+                    self.nano_window,
+                    ax=self.nano_window.ax_right,
+                    fig=self.nano_window.fig_right,
+                    s_data=data_right,
+                    freqs=self.freqs,
+                    graph_type=self.current_graph_tab2,
+                    s_param=self.current_s_tab2,
+                    tracecolor=trace_color2,
+                    markercolor=marker_color2,
+                    background_color_graphics=background_color2,
+                    text_color=text_color2,
+                    axis_color=axis_color2,
+                    linewidth=trace_size2,
+                    markersize=marker_size2,
+                    unit=unit_right,
+                    cursor_graph=self.nano_window.cursor_right,
+                    cursor_graph_2=self.nano_window.cursor_right_2,
+                    ax_type="right",
+                    unit_mode=unit_right
+                )
 
             force_marker_visibility(self.nano_window, marker_color_left=marker_color1, marker_color_right=marker_color2,
-                marker1_size_left=marker_size1, marker1_size_right=marker_size2)
+                marker1_size_left=marker_size1, marker1_size_right=marker_size2, panels=panels)
             force_marker_visibility_2(self.nano_window, marker_color_left=marker2_color1, marker_color_right=marker2_color2,
-                marker_size_left=marker2_size1, marker_size_right=marker2_size2)
-
-            nw = self.nano_window
-
-            if hasattr(nw, 'update_cursor'):
-                nw.update_cursor(0)
-            if hasattr(nw, 'update_right_cursor'):
-                nw.update_right_cursor(0)
+                marker_size_left=marker2_size1, marker_size_right=marker2_size2, panels=panels)
+            enable_cursor_picking(nw)   # the rebuilt cursors need their picker for mouse drag
 
             # --- Update states ---
             nw.s11 = self.s11
@@ -321,15 +343,21 @@ class View(QMainWindow):
             if hasattr(nw, 'update_right_s_param') and callable(nw.update_right_s_param):
                 nw.update_right_s_param(self.current_s_tab2)
 
-            # --- Reset sliders and update QGroupBox information ---
-            reset_sliders_and_markers_for_graph_change(nw)
+            # --- Sliders, markers and info panels of the rebuilt panels at index 0 ---
+            # Silent slider moves + the cursor updaters, no draw of its own (the
+            # previous reset_sliders_and_markers_for_graph_change raised in
+            # _clear_marker_fields_only and never reached its own cursor pass).
+            _reset_markers_after_sweep(nw, panels=panels)
 
             # Enforce marker 2 visibility last — nothing after this should override it
             nw.cursor_left_2.set_visible(nw.show_graphic1_marker2)
             nw.cursor_right_2.set_visible(nw.show_graphic2_marker2)
 
-            nw.fig_left.canvas.draw_idle()
-            nw.fig_right.canvas.draw_idle()
+            # One full draw per rebuilt panel (coalesced draw_idle)
+            if do_left:
+                nw.fig_left.canvas.draw_idle()
+            if do_right:
+                nw.fig_right.canvas.draw_idle()
 
             nw.show()
 

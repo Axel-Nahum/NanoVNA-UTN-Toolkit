@@ -185,6 +185,37 @@ class EditGraphics(QMainWindow):
         
         from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_utils import create_left_panel, create_right_panel
 
+        # Rebuild only the panel whose tab changed (new values against the
+        # saved ones). Neither or both changed -> both, as before.
+        new_values = {
+            "Graphic1": {"TraceColor": trace_color, "MarkerColor1": marker_color, "MarkerColor2": marker2_color,
+                         "BackgroundColor": background_color_graphics, "TextColor": text_color,
+                         "AxisColor": axis_color, "TraceWidth": line_width, "MarkerWidth1": marker_size,
+                         "MarkerWidth2": marker2_size},
+            "Graphic2": {"TraceColor": trace_color2, "MarkerColor1": marker_color2, "MarkerColor2": marker2_color2,
+                         "BackgroundColor": background_color_graphics2, "TextColor": text_color2,
+                         "AxisColor": axis_color2, "TraceWidth": line_width2, "MarkerWidth1": marker_size2,
+                         "MarkerWidth2": marker2_size2},
+        }
+
+        def _tab_changed(group):
+            for key, new in new_values[group].items():
+                old = settings.value(f"{group}/{key}", None)
+                if old is None or str(old) != str(new):
+                    return True
+            return False
+
+        changed_left = _tab_changed("Graphic1")
+        changed_right = _tab_changed("Graphic2")
+        if changed_left and not changed_right:
+            panels = ("left",)
+        elif changed_right and not changed_left:
+            panels = ("right",)
+        else:
+            panels = ("left", "right")
+        do_left = "left" in panels
+        do_right = "right" in panels
+
         settings.setValue("Graphic1/TraceColor", trace_color)
         settings.setValue("Graphic1/MarkerColor1", marker_color)
         settings.setValue("Graphic1/MarkerColor2", marker2_color)
@@ -228,8 +259,10 @@ class EditGraphics(QMainWindow):
         unit_left = get_graph_unit(self, 1)
         unit_right = get_graph_unit(self, 2)
 
-        self.nano_window.ax_left.clear()
-        self.nano_window.ax_right.clear()
+        if do_left:
+            self.nano_window.ax_left.clear()
+        if do_right:
+            self.nano_window.ax_right.clear()
 
         # Load configuration for graphics settings and visualization parameters
         settings = get_settings(
@@ -243,54 +276,56 @@ class EditGraphics(QMainWindow):
 
         nw = self.nano_window
 
-        nw.line_left = recreate_single_plot(
-            nw,
-            ax=nw.ax_left,
-            fig=nw.fig_left,
-            s_data=data_left,
-            freqs=self.freqs,
-            graph_type=graph_type1,
-            s_param=s_param1,
-            tracecolor=trace_color,
-            markercolor=marker_color,
-            background_color_graphics=background_color_graphics,
-            text_color=text_color,
-            axis_color=axis_color,
-            linewidth=line_width,
-            markersize=marker_size,
-            unit=unit_left,
-            cursor_graph=nw.cursor_left,
-            cursor_graph_2=nw.cursor_left_2,
-            ax_type="left",
-            unit_mode=unit_left
-        )
+        if do_left:
+            nw.line_left = recreate_single_plot(
+                nw,
+                ax=nw.ax_left,
+                fig=nw.fig_left,
+                s_data=data_left,
+                freqs=self.freqs,
+                graph_type=graph_type1,
+                s_param=s_param1,
+                tracecolor=trace_color,
+                markercolor=marker_color,
+                background_color_graphics=background_color_graphics,
+                text_color=text_color,
+                axis_color=axis_color,
+                linewidth=line_width,
+                markersize=marker_size,
+                unit=unit_left,
+                cursor_graph=nw.cursor_left,
+                cursor_graph_2=nw.cursor_left_2,
+                ax_type="left",
+                unit_mode=unit_left
+            )
 
-        nw.line_right = recreate_single_plot(
-            nw,
-            ax=nw.ax_right,
-            fig=nw.fig_right,
-            s_data=data_right,
-            freqs=self.freqs,
-            graph_type=graph_type2,
-            s_param=s_param2,
-            tracecolor=trace_color2,
-            markercolor=marker_color2,
-            background_color_graphics=background_color_graphics2,
-            text_color=text_color2,
-            axis_color=axis_color2,
-            linewidth=line_width2,
-            markersize=marker_size2,
-            unit=unit_right,
-            cursor_graph=nw.cursor_right,
-            cursor_graph_2=nw.cursor_right_2,
-            ax_type="right",
-            unit_mode=unit_right
-        )
+        if do_right:
+            nw.line_right = recreate_single_plot(
+                nw,
+                ax=nw.ax_right,
+                fig=nw.fig_right,
+                s_data=data_right,
+                freqs=self.freqs,
+                graph_type=graph_type2,
+                s_param=s_param2,
+                tracecolor=trace_color2,
+                markercolor=marker_color2,
+                background_color_graphics=background_color_graphics2,
+                text_color=text_color2,
+                axis_color=axis_color2,
+                linewidth=line_width2,
+                markersize=marker_size2,
+                unit=unit_right,
+                cursor_graph=nw.cursor_right,
+                cursor_graph_2=nw.cursor_right_2,
+                ax_type="right",
+                unit_mode=unit_right
+            )
 
         force_marker_visibility(nw, marker_color_left=marker_color, marker_color_right=marker_color2,
-                                marker1_size_left=marker_size, marker1_size_right=marker_size2)
+                                marker1_size_left=marker_size, marker1_size_right=marker_size2, panels=panels)
         force_marker_visibility_2(nw, marker_color_left=marker2_color, marker_color_right=marker2_color2,
-                                marker_size_left=marker2_size, marker_size_right=marker2_size2)
+                                marker_size_left=marker2_size, marker_size_right=marker2_size2, panels=panels)
 
         # Restore cursors to their last saved positions (not index 0)
         flush_marker_indices(nw)   # a move within the last 250 ms is still pending
@@ -305,13 +340,13 @@ class EditGraphics(QMainWindow):
         idx_right  = int(_s.value("Cursor_1_2/index", 0))
         idx_right_2 = int(_s.value("Cursor_2_2/index", 0))
 
-        if hasattr(nw, 'update_cursor'):
+        if do_left and hasattr(nw, 'update_cursor'):
             nw.update_cursor(idx_left)
-        if hasattr(nw, 'update_cursor_2'):
+        if do_left and hasattr(nw, 'update_cursor_2'):
             nw.update_cursor_2(idx_left_2)
-        if hasattr(nw, 'update_right_cursor'):
+        if do_right and hasattr(nw, 'update_right_cursor'):
             nw.update_right_cursor(idx_right)
-        if hasattr(nw, 'update_right_cursor_2'):
+        if do_right and hasattr(nw, 'update_right_cursor_2'):
             nw.update_right_cursor_2(idx_right_2)
 
         nw.s11 = self.s11
@@ -326,8 +361,11 @@ class EditGraphics(QMainWindow):
         nw.cursor_left_2.set_visible(nw.show_graphic1_marker2)
         nw.cursor_right_2.set_visible(nw.show_graphic2_marker2)
 
-        nw.canvas_left.draw_idle()
-        nw.canvas_right.draw_idle()
+        # One full draw per rebuilt panel (coalesced draw_idle)
+        if do_left:
+            nw.canvas_left.draw_idle()
+        if do_right:
+            nw.canvas_right.draw_idle()
 
         nw.show()
         self.close()

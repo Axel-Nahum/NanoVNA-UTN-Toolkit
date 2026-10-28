@@ -208,8 +208,11 @@ def run_sweep(self):
     active_filter = getattr(self, '_active_filter', 'Off')
 
     if active_filter == "Kalman" and not self.realtime_checkbox.isChecked():
-        self.kf_s11.reset()
-        self.kf_s21.reset()
+        # Replace, never reset in place: a real-time worker may still be
+        # running update() on the old pair in its thread (real_time._done
+        # drops that tick when it sees the filters were swapped).
+        self.kf_s11 = self.kf_s11.fresh()
+        self.kf_s21 = self.kf_s21.fresh()
 
     self.sweep_button.setText("Sweeping...")
     self.sweep_button.setEnabled(False)
@@ -419,6 +422,10 @@ def on_sweep_finished(self, result):
     active_filter = getattr(self, '_active_filter', 'Off')
 
     if active_filter == "Kalman":
+        # One sweep per click (~20 ms), so it stays on the GUI thread. No
+        # real-time worker shares these filters: _trigger does not start one
+        # while this sweep runs, and in real time run_sweep swapped in a fresh
+        # pair before starting it.
         s11_f = np.array([self.kf_s11.update(x) for x in s11])
         s21_f = np.array([self.kf_s21.update(x) for x in s21])
     elif active_filter == "Smoothing":

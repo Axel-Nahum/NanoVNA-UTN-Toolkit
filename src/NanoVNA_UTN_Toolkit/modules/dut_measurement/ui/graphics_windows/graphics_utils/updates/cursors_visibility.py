@@ -14,10 +14,33 @@ left_slider_moved, left_slider_moved_2, right_slider_moved, right_slider_moved_2
 
 get_freq_display_unit = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils", "get_freq_display_unit")
 
+ALL_PANELS = ("left", "right")
+
 # ----------------------------------------------------------------------------------------------------------------------------------- #
 
-def force_marker_visibility(self, marker_color_left, marker_color_right, marker1_size_left, marker1_size_right):
-    """Force markers to be visible by recreating them directly on axes"""
+def _clear_changed_observers(slider):
+    """Disconnect every ``on_changed`` callback of a matplotlib Slider.
+
+    The sliders live across sweeps and Apply clicks, so each rebuild must drop
+    the previous wrapper before connecting the new one. (The former
+    ``slider.observers.clear()`` does not exist on matplotlib 3.10 Sliders and
+    its fallback ``disconnect()`` needs a cid: both failed silently and the
+    callbacks piled up.)
+    """
+    try:
+        for cid in list(slider._observers.callbacks.get("changed", {}).keys()):
+            slider._observers.disconnect(cid)
+    except Exception as e:
+        logging.debug(f"[cursors_visibility._clear_changed_observers] {e}")
+
+
+def force_marker_visibility(self, marker_color_left, marker_color_right, marker1_size_left, marker1_size_right,
+                            panels=ALL_PANELS):
+    """Force markers to be visible by recreating them directly on axes.
+
+    ``panels`` limits the work to the rebuilt panels ("left", "right"); the
+    other panel keeps its cursor artist and slider callback untouched.
+    """
 
     logging.info(f"[force_marker_visibility] self.markers = {getattr(self, 'markers', 'NO EXISTE')}")
     logging.info(f"[force_marker_visibility] show_graphic1_marker1 = {getattr(self, 'show_graphic1_marker1', 'NO EXISTE')}")
@@ -37,7 +60,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
     # ------------------------------------------------------------------ #
     # cursor_left
     # ------------------------------------------------------------------ #
-    if hasattr(self, 'cursor_left') and hasattr(self, 'ax_left') and self.cursor_left and self.ax_left:
+    if "left" in panels and hasattr(self, 'cursor_left') and hasattr(self, 'ax_left') and self.cursor_left and self.ax_left:
         try:
             try:
                 if self.cursor_left:
@@ -134,13 +157,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                 self.update_cursor = cursor_left_wrapper
 
             if hasattr(self, 'slider_left') and self.slider_left:
-                try:
-                    self.slider_left.observers.clear()
-                except:
-                    try:
-                        self.slider_left.disconnect()
-                    except:
-                        pass
+                _clear_changed_observers(self.slider_left)
                 self.slider_left.on_changed(lambda val: (cursor_left_wrapper(int(val), from_slider=True), left_slider_moved(self, int(val))))
 
         except Exception as e:
@@ -149,7 +166,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
     # ------------------------------------------------------------------ #
     # cursor_right
     # ------------------------------------------------------------------ #
-    if hasattr(self, 'cursor_right') and hasattr(self, 'ax_right') and self.cursor_right and self.ax_right:
+    if "right" in panels and hasattr(self, 'cursor_right') and hasattr(self, 'ax_right') and self.cursor_right and self.ax_right:
         try:
             try:
                 if self.cursor_right:
@@ -247,21 +264,16 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                 self.update_right_cursor = cursor_right_wrapper
 
             if hasattr(self, 'slider_right') and self.slider_right:
-                try:
-                    self.slider_right.observers.clear()
-                except:
-                    try:
-                        self.slider_right.disconnect()
-                    except:
-                        pass
+                _clear_changed_observers(self.slider_right)
                 self.slider_right.on_changed(lambda val: (cursor_right_wrapper(int(val), from_slider=True), right_slider_moved(self, int(val))))
 
         except Exception as e:
             logging.warning(f"Error forcing cursor_right to ax_right: {e}")
 
 
-def force_marker_visibility_2(self, marker_color_left, marker_color_right, marker_size_left, marker_size_right):
-    """Force markers 2 to be visible by recreating them directly on axes"""
+def force_marker_visibility_2(self, marker_color_left, marker_color_right, marker_size_left, marker_size_right,
+                              panels=ALL_PANELS):
+    """Force markers 2 to be visible by recreating them directly on axes (``panels`` as above)."""
 
     settings = get_settings(
         "INI/dut_measurement/graphics_config/graphics_config.ini",
@@ -277,7 +289,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
     # ------------------------------------------------------------------ #
     # cursor_left_2
     # ------------------------------------------------------------------ #
-    if hasattr(self, 'cursor_left_2') and hasattr(self, 'ax_left') and self.cursor_left_2 and self.ax_left:
+    if "left" in panels and hasattr(self, 'cursor_left_2') and hasattr(self, 'ax_left') and self.cursor_left_2 and self.ax_left:
         try:
             try:
                 if self.cursor_left_2:
@@ -372,13 +384,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                 self.update_cursor_2 = cursor_left_wrapper_2
 
             if hasattr(self, 'slider_left_2') and self.slider_left_2:
-                try:
-                    self.slider_left_2.observers.clear()
-                except:
-                    try:
-                        self.slider_left_2.disconnect()
-                    except:
-                        pass
+                _clear_changed_observers(self.slider_left_2)
                 self.slider_left_2.on_changed(lambda val: (cursor_left_wrapper_2(int(val), from_slider=True), left_slider_moved_2(self, int(val))))
 
         except Exception as e:
@@ -387,7 +393,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
     # ------------------------------------------------------------------ #
     # cursor_right_2
     # ------------------------------------------------------------------ #
-    if hasattr(self, 'cursor_right_2') and hasattr(self, 'ax_right') and self.cursor_right_2 and self.ax_right:
+    if "right" in panels and hasattr(self, 'cursor_right_2') and hasattr(self, 'ax_right') and self.cursor_right_2 and self.ax_right:
         try:
             try:
                 if self.cursor_right_2:
@@ -482,13 +488,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                 self.update_right_cursor_2 = cursor_right_wrapper_2
 
             if hasattr(self, 'slider_right_2') and self.slider_right_2:
-                try:
-                    self.slider_right_2.observers.clear()
-                except:
-                    try:
-                        self.slider_right_2.disconnect()
-                    except:
-                        pass
+                _clear_changed_observers(self.slider_right_2)
                 self.slider_right_2.on_changed(lambda val: (cursor_right_wrapper_2(int(val), from_slider=True), right_slider_moved_2(self, int(val))))
 
         except Exception as e:

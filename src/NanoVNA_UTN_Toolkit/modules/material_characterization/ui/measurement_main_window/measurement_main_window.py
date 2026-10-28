@@ -83,6 +83,12 @@ class MeasurementMainWindow(QMainWindow):
         self._epsilon_fig = None
         self._s11_fig = None
         self._epsilon_canvas = None
+        self._epsilon_manager = None
+        self._epsilon_ax = None
+        # Real-time ticks update the ε curves in place and blit them while this
+        # is on; _chart_key_drawn is the static part of the last full redraw.
+        self._trace_blit_active = False
+        self._chart_key_drawn = None
         self._result = None
         self._sweep_in_progress = False
         self._window_closed = False
@@ -732,6 +738,11 @@ class MeasurementMainWindow(QMainWindow):
 
         def _marker_artists():
             arts = []
+            if getattr(self, "_trace_blit_active", False) and self._epsilon_manager is not None:
+                # Real-time ticks blit the ε curves too: one artist set for
+                # ticks and marker moves, so neither invalidates the other's
+                # background (see _update_chart_inplace).
+                arts.extend(self._epsilon_manager.trace_artists(self._epsilon_ax))
             for a in (getattr(self, "_cursor1", None), getattr(self, "_cursor2", None),
                       slider1.poly, slider1._handle, slider2.poly, slider2._handle):
                 if a is not None and getattr(a, "axes", None) is not None:
@@ -990,6 +1001,9 @@ class MeasurementMainWindow(QMainWindow):
                 "vis1":      getattr(self, "_cursor1_visible", True),
                 "vis2":      getattr(self, "_cursor2_visible", True),
             }
+        # The dialog deep-copies the figure: the ε curves must not be animated
+        # (blitted real-time ticks) or the copy renders without them.
+        self._release_trace_blit()
         dlg = ChartExportDialog(
             parent=self,
             fig=self._epsilon_fig,
@@ -1584,8 +1598,127 @@ class MeasurementMainWindow(QMainWindow):
             if hasattr(self, "_adjust_chart_layout"):
                 self._adjust_chart_layout(draw=False)
             self._epsilon_canvas.draw()   # the ONE full draw of a redraw
+            self._chart_key_drawn = self._chart_static_key()
         except Exception as exc:
+            self._chart_key_drawn = None
             logging.error("[MeasurementMainWindow] redraw_chart failed: %s", exc)
+
+    # --------------------------------------------------------------------- #
+    # Real-time tick without rebuilding the chart                           #
+    # --------------------------------------------------------------------- #
+
+    def _chart_static_key(self):
+        """Everything a full redraw_chart derives besides the curve data.
+
+        EN: Title and labels, colors and widths from the INI, grid, the shaded
+            unreliable band, auto-scale state and manual range, frequency grid.
+            When it differs from the key of the last full redraw (filter dialog,
+            Edit chart, Plot Manager, new sample name, another sweep range) the
+            next tick rebuilds the chart; otherwise it updates the curves in place.
+        ES: Todo lo que redraw_chart arma ademas de los datos; si cambia, el
+            siguiente tick reconstruye el grafico.
+        """
+        mgr = self._epsilon_manager
+        if mgr is None or self._result is None:
+            return None
+        try:
+            from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.charts.epsilon_chart import (
+                EpsilonChartConfig,
+            )
+            cfg = self._make_chart_config(EpsilonChartConfig())
+            pm = get_settings(_PM_INI_EXE, _PM_INI_DEV, Path(__file__).resolve())
+            auto_scale = pm.value("auto_scale/current_state", True, type=bool)
+            manual = None if auto_scale else (pm.value("set_range/ymin", None, type=float),
+                                              pm.value("set_range/ymax", None, type=float))
+            _usable, f_min = usable_band_of(self._result)
+            f_hz = np.asarray(self._result.f_hz, dtype=float)
+            return (
+                getattr(mgr, "_title", None), getattr(mgr, "_real_label", None),
+                getattr(mgr, "_loss_label", None),
+                str(cfg.real_color), float(cfg.real_linewidth), str(cfg.loss_color),
+                float(cfg.loss_linewidth), str(cfg.background_color), str(cfg.text_color),
+                str(cfg.spine_color), str(cfg.grid_color),
+                bool(getattr(self, "_grid_enabled", True)), f_min, bool(auto_scale), manual,
+                int(f_hz.size), float(f_hz[0]) if f_hz.size else None,
+                float(f_hz[-1]) if f_hz.size else None,
+            )
+        except Exception as exc:
+            logging.debug("[MeasurementMainWindow] _chart_static_key: %s", exc)
+            return None
+
+    def _update_chart_inplace(self) -> bool:
+        """Real-time tick: new ε data into the existing curves, no axes rebuild.
+
+        EN: Valid only while the static part matches the last full redraw
+            (otherwise returns False and the caller does redraw_chart). With
+            auto-scale the y-limits follow the hysteresis of the DUT real-time
+            panels: kept while the data lies inside them and uses at least 60 %
+            of their span; else the limits a full redraw would set are applied
+            and that tick is one full draw, still without rebuilding the axes.
+            The curves join the marker blitter's animated artists; the caller
+            blits once the cursors are placed (_blit_markers).
+        ES: Tick de tiempo real: datos nuevos en las curvas existentes, sin
+            reconstruir ejes; False si hace falta el redibujado completo.
+        """
+        ax = self._epsilon_ax
+        mgr = self._epsilon_manager
+        if ax is None or mgr is None or self._result is None or not hasattr(self, "_marker_blitter"):
+            return False
+        key = self._chart_static_key()
+        if key is None or key != self._chart_key_drawn:
+            return False
+        eps = self._display_eps if self._display_eps is not None else self._result.eps_selected
+
+        new_ylim = None
+        auto_scale = get_settings(_PM_INI_EXE, _PM_INI_DEV, Path(__file__).resolve()).value(
+            "auto_scale/current_state", True, type=bool)
+        if auto_scale:
+            # The extents redraw_chart scales to (scale_limits: eps' and eps''
+            # of the raw result, finite values), without its margin.
+            real, loss = permittivity_columns(self._result.eps_selected)
+            values = np.concatenate([real, loss])
+            values = values[np.isfinite(values)]
+            if values.size == 0:
+                return False
+            lo, hi = float(values.min()), float(values.max())
+            cur_lo, cur_hi = ax.get_ylim()
+            span = cur_hi - cur_lo
+            fits = cur_lo <= lo and hi <= cur_hi
+            uses_enough = span > 0 and (hi - lo) >= 0.6 * span
+            if not (fits and uses_enough):
+                usable, _f_min = usable_band_of(self._result)
+                new_ylim = scale_limits(self._result.eps_selected, usable)
+                if new_ylim is None:
+                    return False
+
+        if mgr.update_epsilon_curves_inplace(ax, self._result.f_hz, eps) is None:
+            return False
+        if new_ylim is not None:
+            # Same limits a full redraw would set; the ticks change, so the next
+            # blit is a full draw (no axes rebuild).
+            ax.set_ylim(new_ylim)
+            self._marker_blitter.invalidate()
+        if not self._trace_blit_active:
+            self._trace_blit_active = True   # the curves join the blitted artists
+        return True
+
+    def _release_trace_blit(self):
+        """Back to normal drawing of the ε curves (real time off, export).
+
+        Animated artists are skipped by a plain ``Figure.draw``/``savefig`` and
+        by a deep copy's render, so the curves must not stay animated outside
+        the real-time ticks.
+        """
+        if not self._trace_blit_active:
+            return
+        self._trace_blit_active = False
+        try:
+            if hasattr(self, "_marker_blitter"):
+                self._marker_blitter.set_artists(self._marker_artists())   # un-animates the curves
+            if self._epsilon_canvas is not None:
+                self._epsilon_canvas.draw_idle()
+        except Exception as exc:
+            logging.warning("[MeasurementMainWindow] _release_trace_blit: %s", exc)
 
     def _export_pdf(self):
         from PySide6.QtWidgets import QMessageBox
@@ -1657,6 +1790,7 @@ class MeasurementMainWindow(QMainWindow):
             self._set_sweep_status(sc.get("status_realtime", "Real-time"), "#2196f3")
         else:
             self._realtime_timer.stop()
+            self._release_trace_blit()
             sc = self._texts.get("sweep_controls", {})
             if self._sweep_mode == "file":
                 self._set_sweep_status(sc.get("status_file_mode", "File mode"), "#ff9800")
@@ -1788,13 +1922,20 @@ class MeasurementMainWindow(QMainWindow):
         self._marker_loss_eps = filtered_loss
         self._marker_freqs = np.asarray(new_result.f_hz, dtype=float)
         self._marker_n = len(self._marker_freqs)
-        self.redraw_chart()
+        # Real time: new data into the existing curves, blitted with the
+        # markers (no axes rebuild, no full draw). A changed static part or a
+        # y-range that no longer fits falls back to the full redraw.
+        inplace = _is_realtime and self._update_chart_inplace()
+        if not inplace:
+            self.redraw_chart()
         # Badge labels for the current slider positions; the cursor dots were
         # already placed by redraw_chart (no second draw).
         if hasattr(self, "_upd1") and hasattr(self, "_slider1"):
             self._upd1(int(self._slider1.val), draw=False)
         if hasattr(self, "_upd2") and hasattr(self, "_slider2"):
             self._upd2(int(self._slider2.val), draw=False)
+        if inplace and hasattr(self, "_blit_markers"):
+            self._blit_markers()   # curves + cursors + handles, one blit
         self._sweep_in_progress = False
         if hasattr(self, "_run_sweep_btn"):
             self._run_sweep_btn.setEnabled(True)

@@ -15,6 +15,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.marker_interaction import (
     request_marker_blit, save_marker_index_later,
 )
+from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.set_slider_val_silent import update_slider_range_silent
 
 plt.rcParams['mathtext.fontset'] = 'cm'   # Computer Modern font
 plt.rcParams['text.usetex'] = False       # No external LaTeX required
@@ -123,6 +124,83 @@ def _pin_info_panel(info_panel):
     """
     info_panel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
     info_panel.setFixedHeight(info_panel.sizeHint().height())
+
+
+# Slider axes per marker visibility: (show marker 1, show marker 2) ->
+# (rect of slider 1, rect of slider 2). The rectangles the panels used when they
+# recreated both sliders on every sweep.
+_SLIDER_RECTS = {
+    (True, False):  ([0.25, 0.04, 0.5, 0.03],  [0.55, 0.04, 0.35, 0.03]),
+    (False, True):  ([0.15, 0.04, 0.35, 0.03], [0.25, 0.04, 0.5, 0.03]),
+    (True, True):   ([0.1, 0.04, 0.35, 0.03],  [0.55, 0.04, 0.35, 0.03]),
+    (False, False): ([0.25, 0.04, 0.35, 0.03], [0.55, 0.04, 0.35, 0.03]),
+}
+
+
+def _slider_in_figure(slider, fig):
+    """True when ``slider`` is still a live widget of ``fig`` (its axes not removed)."""
+    ax = getattr(slider, "ax", None) if slider is not None else None
+    return ax is not None and fig is not None and ax.figure is fig and ax in fig.axes
+
+
+def _clear_slider_callbacks(slider):
+    """Drop every ``on_changed`` observer; the cursor wrappers reconnect theirs."""
+    try:
+        for cid in list(slider._observers.callbacks.get("changed", {}).keys()):
+            slider._observers.disconnect(cid)
+    except Exception as e:
+        logging.debug(f"[graphics_utils._clear_slider_callbacks] {e}")
+
+
+def _create_marker_slider(fig, n_points):
+    slider_ax = fig.add_axes(_SLIDER_RECTS[(True, False)][0], facecolor='lightgray')
+    slider = Slider(slider_ax, '', 0, n_points - 1, valinit=0, valstep=1)
+    slider.vline.set_visible(False)
+    slider.label.set_visible(False)
+    slider.valtext.set_visible(False)
+    return slider
+
+
+def _marker_sliders_for_sweep(fig, slider, slider_2, n_points, show_marker1, show_marker2):
+    """The two marker sliders of a panel, ready for a new sweep of ``n_points``.
+
+    EN: Live sliders are reused: range ``0..n_points-1`` and value 0 set
+        silently, ``on_changed`` observers cleared (``force_marker_visibility``
+        connects the cursor wrapper again), active again. Only a missing slider
+        is created (first build, or its axes were removed). Before, every sweep
+        removed both sliders of both panels and built new ones: 4 ``add_axes`` +
+        4 ``Slider``, ~90 ms of the post-sweep handler.
+        Then axes position and visibility follow the marker flags.
+    ES: Los sliders vivos se reutilizan (rango y valor en silencio, observers
+        limpios, activos); solo se crea el que falta. Despues, posicion y
+        visibilidad segun los marcadores visibles.
+    """
+    sliders = []
+    for old in (slider, slider_2):
+        if old is not None and _slider_in_figure(old, fig):
+            update_slider_range_silent(old, n_points - 1, 0)
+            _clear_slider_callbacks(old)
+            try:
+                old.set_active(True)
+            except Exception:
+                pass
+            sliders.append(old)
+        else:
+            if old is not None:
+                # Axes already gone: just drop its canvas event hooks.
+                try:
+                    old.disconnect_events()
+                except Exception:
+                    pass
+            sliders.append(_create_marker_slider(fig, n_points))
+    new_slider, new_slider_2 = sliders
+
+    rect_1, rect_2 = _SLIDER_RECTS[(bool(show_marker1), bool(show_marker2))]
+    new_slider.ax.set_position(rect_1)
+    new_slider_2.ax.set_position(rect_2)
+    new_slider.ax.set_visible(bool(show_marker1))
+    new_slider_2.ax.set_visible(bool(show_marker2))
+    return new_slider, new_slider_2
 
 
 def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram", s_param="S11",
@@ -1048,179 +1126,27 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         canvas=None, fig=None, show_graphic1_marker1=False, show_graphic1_marker2=True, marker1=None, marker2=None,
         info_panel=None, info_panel_2=None, new_s_param=None):
 
-        """Update S_data and freqs and recreate slider safely using remove_slider()."""
+        """Point the panel at the new data and ready its two marker sliders.
+
+        The sliders are reused across sweeps (see ``_marker_sliders_for_sweep``);
+        only a missing one is created. Returns ``(slider, slider_2)``.
+        """
         nonlocal S_data, freqs, s_param
         S_data = new_s_data
         freqs = new_freqs
         if new_s_param is not None:
             s_param = new_s_param
 
-        if old_slider is not None:
-            try:
-                old_slider.disconnect_events() 
-            except Exception:
-                pass
-
-            # Libera widgetlock si está ocupado
-            try:
-                locked = fig.canvas.widgetlock.locked()
-                if locked:
-                    fig.canvas.widgetlock.release(locked)
-            except Exception:
-                pass
-
-            remove_slider(old_slider, fig, canvas)
-            old_slider = None
-
-        if old_slider_2 is not None:
-            try:
-                old_slider_2.disconnect_events() 
-            except Exception:
-                pass
-
-            # Libera widgetlock si está ocupado
-            try:
-                locked = fig.canvas.widgetlock.locked()
-                if locked:
-                    fig.canvas.widgetlock.release(locked)
-            except Exception:
-                pass
-
-            remove_slider(old_slider_2, fig, canvas)
-            old_slider_2 = None
-
-        # Remove the old slider safely (if provided)
-        if old_slider is not None:
-            try:
-                remove_slider(old_slider, fig, canvas)
-            except Exception as e:
-                print("⚠️ Warning removing old slider:", e)
-
-        if old_slider_2 is not None:
-            try:
-                remove_slider(old_slider_2, fig, canvas)
-            except Exception as e:
-                print("⚠️ Warning removing old slider:", e)
-
-        if old_slider is not None:
-            fully_disable_slider(old_slider)  
-            if old_slider.ax in fig.axes:
-                fig.delaxes(old_slider.ax)
-            old_slider = None  
-            canvas.draw_idle()
-
-        if old_slider_2 is not None:
-            fully_disable_slider(old_slider_2) 
-            if old_slider_2.ax in fig.axes:
-                fig.delaxes(old_slider_2.ax)
-            old_slider_2 = None 
-            canvas.draw_idle()
-
-        # Optionally ensure the global widgetlock is free before creating a new slider
-        try:
-            locked = fig.canvas.widgetlock.locked()
-            if locked:
-                try:
-                    fig.canvas.widgetlock.release(locked)
-                except Exception:
-                    try:
-                        # fallback
-                        fig.canvas.widgetlock.release(None)
-                    except Exception:
-                        pass
-        except Exception:
-            pass
+        new_slider, new_slider_2 = _marker_sliders_for_sweep(
+            fig, old_slider, old_slider_2, len(new_freqs),
+            show_graphic1_marker1, show_graphic1_marker2)
 
         if show_graphic1_marker1 and not show_graphic1_marker2:
-            new_slider_ax = fig.add_axes([0.25, 0.04, 0.5, 0.03], facecolor='lightgray')
-            new_slider_ax_2 = fig.add_axes([0.55,0.04,0.35,0.03], facecolor='lightgray')
-
-            # Create a new slider in the same figure
-
-            new_slider = Slider(new_slider_ax, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-            new_slider_2 = Slider(new_slider_ax_2, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-
-            new_slider_ax.set_visible(True)
-            new_slider_ax_2.set_visible(False)
-
             info_panel_2.hide()
             info_panel.show()
-
-            marker1.set_visible(True)
-            marker2.set_visible(False)
-
         elif not show_graphic1_marker1 and show_graphic1_marker2:
-            new_slider_ax = fig.add_axes([0.15,0.04,0.35,0.03], facecolor='lightgray')
-            new_slider_ax_2 = fig.add_axes([0.25, 0.04, 0.5, 0.03], facecolor='lightgray')
-
-            # Create a new slider in the same figure
-
-            new_slider = Slider(new_slider_ax, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-            new_slider_2 = Slider(new_slider_ax_2, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-
-            new_slider_ax.set_visible(False)
-            new_slider_ax_2.set_visible(True)
-
             info_panel_2.show()
             info_panel.hide()
-
-            marker1.set_visible(False)
-            marker2.set_visible(True)
-
-            canvas.draw_idle()
-
-            marker1.figure.canvas.draw_idle()
-
-        elif show_graphic1_marker1 and show_graphic1_marker2:
-
-            new_slider_ax = fig.add_axes([0.1,0.04,0.35,0.03], facecolor='lightgray')
-            new_slider_ax_2 = fig.add_axes([0.55,0.04,0.35,0.03], facecolor='lightgray')
-
-            # Create a new slider in the same figure
-
-            new_slider = Slider(new_slider_ax, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-            new_slider_2 = Slider(new_slider_ax_2, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-
-            new_slider_ax.set_visible(True)
-            new_slider_ax_2.set_visible(True)
-
-            marker1.set_visible(True)
-            marker2.set_visible(True)  
-
-        elif not show_graphic1_marker1 and not show_graphic1_marker2:
-
-            new_slider_ax = fig.add_axes([0.25,0.04,0.35,0.03], facecolor='lightgray')
-            new_slider_ax_2 = fig.add_axes([0.55,0.04,0.35,0.03], facecolor='lightgray')
-
-            # Create a new slider in the same figure
-
-            new_slider = Slider(new_slider_ax, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-            new_slider_2 = Slider(new_slider_ax_2, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-
-            new_slider_ax.set_visible(False)
-            new_slider_ax_2.set_visible(False)  
-
-            marker1.set_visible(False)
-            marker2.set_visible(False)
-
-        canvas.draw_idle()
-  
-        # Hide unused slider UI elements
-        new_slider.vline.set_visible(False)
-        new_slider.label.set_visible(False)
-        new_slider.valtext.set_visible(False)
-
-        # Hide unused slider UI elements
-        new_slider_2.vline.set_visible(False)
-        new_slider_2.label.set_visible(False)
-        new_slider_2.valtext.set_visible(False)
-
-        # Final redraw
-        try:
-            if canvas is not None:
-                canvas.draw_idle()
-        except Exception:
-            pass
 
         # Update marker visibility
         if marker1 is not None:
@@ -1228,7 +1154,6 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         if marker2 is not None:
             marker2.set_visible(show_graphic1_marker2)
 
-        # Redraw the canvas to reflect changes
         if canvas is not None:
             canvas.draw_idle()
 
@@ -2146,179 +2071,25 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         canvas=None, fig=None, show_graphic2_marker1=False, show_graphic2_marker2=True, marker1=None, marker2=None,
         info_panel=None, info_panel_2=None, new_s_param=None):
 
-        logging.debug(f"[update_data_references] fig={fig} canvas={canvas}")
+        """Point the panel at the new data and ready its two marker sliders.
 
-        """Update S_data and freqs and recreate slider safely using remove_slider()."""
+        The sliders are reused across sweeps (see ``_marker_sliders_for_sweep``);
+        only a missing one is created. Returns ``(slider, slider_2)``.
+        """
         nonlocal S_data, freqs, s_param
         S_data = new_s_data
         freqs = new_freqs
         if new_s_param is not None:
             s_param = new_s_param
 
-        if old_slider is not None:
-            try:
-                old_slider.disconnect_events() 
-            except Exception:
-                pass
+        new_slider, new_slider_2 = _marker_sliders_for_sweep(
+            fig, old_slider, old_slider_2, len(new_freqs),
+            show_graphic2_marker1, show_graphic2_marker2)
 
-            try:
-                locked = fig.canvas.widgetlock.locked()
-                if locked:
-                    fig.canvas.widgetlock.release(locked)
-            except Exception:
-                pass
-
-            remove_slider(old_slider, fig, canvas)
-            old_slider = None
-
-        if old_slider_2 is not None:
-            try:
-                old_slider_2.disconnect_events() 
-            except Exception:
-                pass
-
-            # Libera widgetlock si está ocupado
-            try:
-                locked = fig.canvas.widgetlock.locked()
-                if locked:
-                    fig.canvas.widgetlock.release(locked)
-            except Exception:
-                pass
-
-            remove_slider(old_slider_2, fig, canvas)
-            old_slider_2 = None
-
-        # Remove the old slider safely (if provided)
-        if old_slider is not None:
-            try:
-                remove_slider(old_slider, fig, canvas)
-            except Exception as e:
-                logging.error("Warning removing old slider:", e)
-
-        if old_slider_2 is not None:
-            try:
-                remove_slider(old_slider_2, fig, canvas)
-            except Exception as e:
-                logging.error("Warning removing old slider:", e)
-
-        if old_slider is not None:
-            fully_disable_slider(old_slider)  
-            if old_slider.ax in fig.axes:
-                fig.delaxes(old_slider.ax)
-            old_slider = None  
-            canvas.draw_idle()
-
-        if old_slider_2 is not None:
-            fully_disable_slider(old_slider_2) 
-            if old_slider_2.ax in fig.axes:
-                fig.delaxes(old_slider_2.ax)
-            old_slider_2 = None 
-            canvas.draw_idle()
-
-        # Optionally ensure the global widgetlock is free before creating a new slider
-        try:
-            locked = fig.canvas.widgetlock.locked()
-            if locked:
-                try:
-                    fig.canvas.widgetlock.release(locked)
-                except Exception:
-                    try:
-                        # fallback
-                        fig.canvas.widgetlock.release(None)
-                    except Exception as e:
-                        logging.error("Failed to release widgetlock:", e)
-                        pass
-        except Exception as e:
-            logging.error("Widgetlock check error:", e)
-            pass
-
+        # (The right panel never switched its info panels for "marker 2 only".)
         if show_graphic2_marker1 and not show_graphic2_marker2:
-            new_slider_ax = fig.add_axes([0.25, 0.04, 0.5, 0.03], facecolor='lightgray')
-            new_slider_ax_2 = fig.add_axes([0.55,0.04,0.35,0.03], facecolor='lightgray')
-
-            # Create a new slider in the same figure
-
-            new_slider = Slider(new_slider_ax, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-            new_slider_2 = Slider(new_slider_ax_2, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-
-            new_slider_ax.set_visible(True)
-            new_slider_ax_2.set_visible(False)
-
             info_panel_2.hide()
             info_panel.show()
-
-            marker1.set_visible(True)
-            marker2.set_visible(False)
-
-        elif not show_graphic2_marker1 and show_graphic2_marker2:
-            new_slider_ax = fig.add_axes([0.15,0.04,0.35,0.03], facecolor='lightgray')
-            new_slider_ax_2 = fig.add_axes([0.25, 0.04, 0.5, 0.03], facecolor='lightgray')
-
-            # Create a new slider in the same figure
-
-            new_slider = Slider(new_slider_ax, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-            new_slider_2 = Slider(new_slider_ax_2, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-
-            new_slider_ax.set_visible(False)
-            new_slider_ax_2.set_visible(True)
-
-            marker1.set_visible(False)
-            marker2.set_visible(True)
-
-            canvas.draw_idle()
-
-            marker1.figure.canvas.draw_idle()
-
-        elif show_graphic2_marker1 and show_graphic2_marker2:
-
-            new_slider_ax = fig.add_axes([0.1,0.04,0.35,0.03], facecolor='lightgray')
-            new_slider_ax_2 = fig.add_axes([0.55,0.04,0.35,0.03], facecolor='lightgray')
-
-            # Create a new slider in the same figure
-
-            new_slider = Slider(new_slider_ax, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-            new_slider_2 = Slider(new_slider_ax_2, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-
-            new_slider_ax.set_visible(True)
-            new_slider_ax_2.set_visible(True)
-
-            marker1.set_visible(True)
-            marker2.set_visible(True)  
-
-        elif not show_graphic2_marker1 and not show_graphic2_marker2:
-
-            new_slider_ax = fig.add_axes([0.25,0.04,0.35,0.03], facecolor='lightgray')
-            new_slider_ax_2 = fig.add_axes([0.55,0.04,0.35,0.03], facecolor='lightgray')
-
-            # Create a new slider in the same figure
-
-            new_slider = Slider(new_slider_ax, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-            new_slider_2 = Slider(new_slider_ax_2, '', 0, len(new_freqs) - 1, valinit=0, valstep=1)
-
-            new_slider_ax.set_visible(False)
-            new_slider_ax_2.set_visible(False)  
-
-            marker1.set_visible(False)
-            marker2.set_visible(False)
-
-        canvas.draw_idle()
-
-        # Hide unused slider UI elements
-        new_slider.vline.set_visible(False)
-        new_slider.label.set_visible(False)
-        new_slider.valtext.set_visible(False)
-
-        # Hide unused slider UI elements
-        new_slider_2.vline.set_visible(False)
-        new_slider_2.label.set_visible(False)
-        new_slider_2.valtext.set_visible(False)
-
-        # Final redraw
-        try:
-            if canvas is not None:
-                canvas.draw_idle()
-        except Exception:
-            pass
 
         # Update marker visibility
         if marker1 is not None:
@@ -2326,7 +2097,6 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         if marker2 is not None:
             marker2.set_visible(show_graphic2_marker2)
 
-        # Redraw the canvas to reflect changes
         if canvas is not None:
             canvas.draw_idle()
 

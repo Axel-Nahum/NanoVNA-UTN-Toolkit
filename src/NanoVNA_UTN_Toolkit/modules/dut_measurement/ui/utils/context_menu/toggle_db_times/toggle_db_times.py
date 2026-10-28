@@ -62,14 +62,13 @@ def toggle_db_times(self, event, new_mode):
 
         logging.info(f"Unit {new_mode} saved for {ini_section}")
 
-        # Rebuild both panels in the new unit, markers back at index 0 and ONE
-        # full draw per panel (coalesced draw_idle). Before: rebuild with
-        # gc.collect, 4 slider resets, 2 synchronous draws, 4 cursor chains and
-        # a 150 ms timer repeating all of it.
-        update_plots_with_new_data(self, skip_reset=True, draw=False)
-        _reset_markers_after_sweep(self)
-        self.canvas_left.draw_idle()
-        self.canvas_right.draw_idle()
+        # The unit belongs to the clicked panel only: rebuild that one, its
+        # markers back at index 0, ONE full draw (coalesced draw_idle). The
+        # other panel is untouched (before: both rebuilt and redrawn).
+        panel = "left" if graph_number == 1 else "right"
+        update_plots_with_new_data(self, skip_reset=True, draw=False, panels=(panel,))
+        _reset_markers_after_sweep(self, panels=(panel,))
+        (self.canvas_left if panel == "left" else self.canvas_right).draw_idle()
 
     except Exception as e:
         logging.error(f"Error toggling db/times: {e}")
