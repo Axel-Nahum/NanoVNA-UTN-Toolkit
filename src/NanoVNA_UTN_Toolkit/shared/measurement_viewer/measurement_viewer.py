@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from matplotlib.figure import Figure as _Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from PySide6.QtCore import Qt, QObject, QThread, QTimer, Signal
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import (
     QAction, QColor, QGuiApplication, QIcon,
     QPainter, QPainterPath, QPen, QPixmap,
@@ -26,6 +26,11 @@ from PySide6.QtWidgets import (
 )
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
+from NanoVNA_UTN_Toolkit.shared.utils.background_task import (
+    run_in_background as _run_in_background,
+    detach_background_threads as _detach_background_threads,
+    _detached as _detached_threads,   # threads of closed windows still finishing
+)
 
 logger = logging.getLogger(__name__)
 
@@ -147,27 +152,6 @@ def _scan_folder_tree(root: str):
         if files or subs:
             nodes[dirpath] = [Path(dirpath).name, dirpath, subs, files]
     return nodes.get(str(root_path)) or nodes.get(root)
-
-
-class _BackgroundWorker(QObject):
-    """Runs ``fn(*args)`` in a QThread; ``finished`` carries the result or the exception."""
-
-    finished = Signal(object)
-
-    def __init__(self, fn, args):
-        super().__init__()
-        self._fn, self._args = fn, args
-
-    def run(self):
-        try:
-            self.finished.emit(self._fn(*self._args))
-        except Exception as exc:   # delivered to the GUI thread, never raised here
-            self.finished.emit(exc)
-
-
-# Threads of closed viewer windows still finishing a scan/parse: kept alive
-# until they exit (never terminated, never destroyed while running).
-_detached_threads: list = []
 
 
 class _FileEntry:
@@ -1753,29 +1737,9 @@ class MeasurementViewerWindow(QMainWindow):
 
     # ── Background work (scan / parse) ────────────────────────────────────── #
     def _run_in_background(self, fn, args, on_done):
-        """Run ``fn(*args)`` in a QThread; ``on_done(result)`` is a bound method
-        of this window, so Qt queues it to the GUI thread. The thread has no
-        parent and is kept in ``_bg_threads`` (detached on close, never
-        terminated) so it can never be destroyed while running."""
-        thread = QThread()
-        worker = _BackgroundWorker(fn, args)
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.finished.connect(on_done)
-        worker.finished.connect(thread.quit)
-        worker.finished.connect(worker.deleteLater)
-        thread.finished.connect(thread.deleteLater)
-        record = (thread, worker, on_done)
-        self._bg_threads.append(record)
-
-        def _forget():
-            try:
-                self._bg_threads.remove(record)
-            except ValueError:
-                pass
-        thread.finished.connect(_forget)
-        thread.start()
-        return thread
+        """``on_done`` is a bound method of this window (GUI-thread delivery);
+        the thread record lives in ``_bg_threads`` until it exits."""
+        return _run_in_background(fn, args, on_done, self._bg_threads)
 
     def _start_folder_scan(self, folder: str):
         key = str(Path(folder).resolve())
@@ -2684,20 +2648,9 @@ class MeasurementViewerWindow(QMainWindow):
 
     def closeEvent(self, event):
         # Background scans/parses keep running to completion on their own
-        # thread; their result slot is this window, which is going away, so
-        # Qt drops the queued call. Never terminate(), never let a running
-        # QThread be destroyed.
-        for record in list(self._bg_threads):
-            thread, worker, on_done = record
-            try:
-                worker.finished.disconnect(on_done)
-            except (RuntimeError, TypeError):
-                pass
-            if thread.isRunning():
-                _detached_threads.append(record)
-                thread.finished.connect(lambda r=record: _detached_threads.remove(r)
-                                        if r in _detached_threads else None)
-        self._bg_threads.clear()
+        # thread, detached from this window: never terminate(), never let a
+        # running QThread be destroyed.
+        _detach_background_threads(self._bg_threads)
         super().closeEvent(event)
 
     # ── Navigation ────────────────────────────────────────────────────────── #

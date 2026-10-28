@@ -448,5 +448,22 @@ def update_smith_chart_measurement(ax, freqs, s_data, standard_name, canvas=None
 def create_wizard_smith_chart(start_freq, stop_freq, num_points, container_layout=None, figsize=(5, 5)):
     """Simple function to create Smith chart for wizard."""
     manager = SmithChartManager()
-    return manager.create_wizard_smith_chart(start_freq, stop_freq, num_points, 
+    return manager.create_wizard_smith_chart(start_freq, stop_freq, num_points,
                                            figsize=figsize, container_layout=container_layout)
+
+
+def create_wizard_chart_canvas(container_layout=None, figsize=(5, 5)):
+    """Figure, axes and canvas for a wizard step WITHOUT the Smith base chart.
+
+    Same figure setup and size policy as ``create_wizard_smith_chart``; the
+    Smith grid (~80 ms) is drawn by the step's own render when the Smith tab is
+    chosen, instead of at every step build only to be cleared by the first
+    Re/Im or dB/phase render.
+    """
+    manager = SmithChartManager()
+    fig, ax = manager.builder.setup_figure(figsize=figsize)
+    canvas = manager.builder.create_canvas()
+    canvas.setSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+    if container_layout:
+        container_layout.addWidget(canvas)
+    return fig, ax, canvas

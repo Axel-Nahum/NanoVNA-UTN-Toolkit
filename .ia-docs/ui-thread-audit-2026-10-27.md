@@ -411,3 +411,43 @@ Fase 5, Measurement Viewer (2026-10-28, verificada headless; todo en
   la selección se aplica al llegar (`_pending_select`).
 - Sin cambios: cambio de grilla (125 ms) y de layout 2/4 (460 ms) siguen siendo un dibujo
   completo, porque cambia el fondo.
+
+Fase 6, caracterización (2026-10-28, verificada headless con calibración real de
+`tests/data`, set 21 mm, 201 puntos):
+
+- `shared/utils/background_task.py` (nuevo): `run_in_background(fn, args, on_done,
+  registry)` y `detach_background_threads(registry)`, el patrón de la fase 5 extraído del
+  visor (que ahora lo importa): hilo sin padre, resultado a un método ligado de la ventana,
+  al cerrar se desconecta y se deja terminar.
+- `measure_runner.py`: `run_s11_sweep_async(..., post_process=None)` ejecuta el solver en
+  el mismo worker del barrido; `detach_active_sweep(wizard)` para cerrar el wizard con un
+  barrido en curso (antes el QThread quedaba referenciado por la ventana destruida).
+- `measurement_main_window.py` (resultados): el tick de tiempo real pasa
+  `cal.compute_epsilon` como `post_process`, y el modo archivo parsea y resuelve en
+  `_file_sweep_compute` en segundo plano. **Medido: el solver cuesta 450–680 ms en este set
+  (el informe estimaba 90 ms); el tick en el hilo de UI baja de 615 ms a 80–110 ms, con un
+  dibujo en lugar de dos** (`_adjust_chart_layout(draw=False)`, `_upd1/_upd2(draw=False)`).
+  Marcadores: cursores y manijas blitados con `RealtimeBlitter` (`drawon=False`), INI por
+  ráfaga (`_save_ini_later`, 250 ms, flush al cerrar). **Medido: paso de slider 44 → 2–5 ms,
+  cero dibujos; barrido desde archivo 914 ms bloqueando → 3 ms.** `closeEvent` sin
+  `quit()+wait(1000)`.
+- `epsilon_chart.py`: `axes.formatter.use_mathtext` dejaba de ser global. Estaba en
+  `plt.rcParams` y convertía en mathtext **todas** las etiquetas de ticks de la app en
+  cuanto se importaba el módulo; cada etiqueta nueva cuesta ~14 ms de parseo (fuente CM) y
+  el caché de matplotlib guarda 50. **Medido: el primer dibujo de un paso del wizard
+  gastaba 450 ms en etiquetas de ticks.** Ahora `_use_cm_ticks(ax)` lo activa solo en el
+  gráfico de ε (el que lo pedía) y el caché del parser se amplía a 512 entradas.
+- `standard_screen.py`: Smith bajo demanda (`create_wizard_chart_canvas` en
+  `smith_chart_utils.py`: figura y canvas sin grilla; `_render` la dibuja al elegir la
+  pestaña); `_render` con `draw_idle` (el primer resize del canvas ya encola un dibujo);
+  combo de presets con debounce de 150 ms. **Medido: reconstrucción del paso DUT (camino del
+  rename) ~450–570 ms → 230–320 ms.** El rename sigue reconstruyendo el paso: del nombre
+  dependen título, instrucción, sidebar, leyenda y la lista de presets del líquido, y una
+  actualización parcial era más riesgosa que la reconstrucción ya barata.
+- `result_screen.py`: sin `matplotlib.use("Agg")` ni `plt.subplots` en el popup de Gn
+  (`Figure` directo); el toggle de despike recalcula ε en segundo plano
+  (`wizard._on_despike_recomputed`, en `wizard_methods_window.py`) y recién entonces
+  reconstruye la pantalla; `closeEvent` del wizard desacopla barrido y recomputes.
+- Pendiente de esta fase: `update_epsilon_curves` sigue haciendo `ax.clear()` + replot por
+  tick (~70 ms del tick actual); actualizar las dos líneas en sitio con histéresis de
+  límites como en el DUT (fase 2) lo bajaría a blitting puro.

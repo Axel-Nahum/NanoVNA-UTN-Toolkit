@@ -324,7 +324,31 @@ class CharacterizationWizard(QMainWindow):
         if self._flash_detector is not None:
             QApplication.instance().removeEventFilter(self._flash_detector)
             self._flash_detector = None
+        # A sweep or a background recompute still running keeps its thread
+        # alive on its own and stops reporting to this window (never
+        # terminate(), never a QThread destroyed while running).
+        try:
+            from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.measure_runner import (
+                detach_active_sweep,
+            )
+            from NanoVNA_UTN_Toolkit.shared.utils.background_task import detach_background_threads
+            detach_active_sweep(self)
+            detach_background_threads(getattr(self, "_bg_threads", []))
+        except Exception:
+            logging.debug("[CharacterizationWizard] closeEvent detach failed", exc_info=True)
         super().closeEvent(event)
+
+    def _on_despike_recomputed(self, result):   # GUI thread (bound-method slot)
+        """Result of the background ``compute_epsilon`` after the despike toggle."""
+        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import (
+            update_step_screen,
+        )
+        if isinstance(result, Exception):
+            logging.error("[CharacterizationWizard] despike recompute failed: %s", result)
+            self.epsilon_result = None
+        else:
+            self.epsilon_result = result
+        update_step_screen(self)
 
     def showEvent(self, event):
         super().showEvent(event)

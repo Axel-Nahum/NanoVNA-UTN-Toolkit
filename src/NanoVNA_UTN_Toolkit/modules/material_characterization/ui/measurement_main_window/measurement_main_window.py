@@ -20,6 +20,9 @@ from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import Qt, QPoint, QTimer
+
+from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.blit_manager import RealtimeBlitter
+from NanoVNA_UTN_Toolkit.shared.utils.background_task import run_in_background, detach_background_threads
 from PySide6.QtGui import QAction, QColor, QGuiApplication, QIcon, QPainter, QPixmap, QPolygon
 from PySide6.QtWidgets import (
     QApplication, QCheckBox, QDialog, QFileDialog, QHBoxLayout, QHeaderView,
@@ -90,6 +93,14 @@ class MeasurementMainWindow(QMainWindow):
         self._realtime_timer = QTimer(self)
         self._realtime_timer.setInterval(2000)
         self._realtime_timer.timeout.connect(self._run_one_sweep)
+        self._bg_threads: list = []          # file-mode parse+solve running off the GUI thread
+        # Marker/link INI writes are batched: one QSettings write per burst of
+        # slider moves instead of one per event (1-2 ms each, every tick too).
+        self._ini_pending: dict = {}
+        self._ini_timer = QTimer(self)
+        self._ini_timer.setSingleShot(True)
+        self._ini_timer.setInterval(250)
+        self._ini_timer.timeout.connect(self._flush_ini)
 
         # Signal filter state (Smoothing / Kalman applied to ε after calculation)
         self._active_filter     = "Off"
@@ -644,7 +655,7 @@ class MeasurementMainWindow(QMainWindow):
                 spine.set_color("#444444")
         _CHART_TOP   = 0.87   # fixed top margin — space for the title
 
-        def _adjust_layout(event=None):
+        def _adjust_layout(event=None, draw=True):
             try:
                 sl_bot, sl_h = _slider_positions()
                 fig_h_px = max(1.0, fig.get_size_inches()[1] * fig.dpi)
@@ -675,7 +686,8 @@ class MeasurementMainWindow(QMainWindow):
                 if pos.width > 0:
                     ax.title.set_x((0.5 - pos.x0) / pos.width)
 
-                canvas.draw_idle()
+                if draw:   # redraw_chart draws once itself right after
+                    canvas.draw_idle()
             except Exception:
                 logging.exception("[_adjust_layout] failed")
 
@@ -710,6 +722,36 @@ class MeasurementMainWindow(QMainWindow):
                 pass
             s.label.set_visible(False)
             s.valtext.set_visible(False)
+            s.drawon = False   # the marker blit repaints the handle; no draw_idle per set_val
+
+        # A marker move changes only the two cursor dots and the slider
+        # handles: they are blitted over the saved background (a full draw of
+        # this chart is ~45-80 ms). The blitter re-captures its background on
+        # every full draw (redraw_chart, resize), so the chart stays consistent.
+        self._marker_blitter = RealtimeBlitter(canvas)
+
+        def _marker_artists():
+            arts = []
+            for a in (getattr(self, "_cursor1", None), getattr(self, "_cursor2", None),
+                      slider1.poly, slider1._handle, slider2.poly, slider2._handle):
+                if a is not None and getattr(a, "axes", None) is not None:
+                    arts.append(a)
+            return arts
+
+        def _blit_markers():
+            try:
+                if getattr(canvas, "_draw_pending", False):
+                    return                      # a queued full draw repaints everything
+                self._marker_blitter.set_artists(_marker_artists())
+                if not canvas.figure.stale:
+                    return                      # nothing changed since the last full draw
+                self._marker_blitter.update()
+            except Exception as exc:
+                logging.warning("[_blit_markers] %s; full draw instead", exc)
+                canvas.draw_idle()
+
+        self._marker_artists = _marker_artists
+        self._blit_markers = _blit_markers
 
         def _fmt_freq(hz):
             return f"{hz/1e9:.4f} GHz" if hz >= 1e9 else f"{hz/1e6:.4f} MHz"
@@ -719,7 +761,7 @@ class MeasurementMainWindow(QMainWindow):
 
         self._marker_updating = False
 
-        def _upd1(val):
+        def _upd1(val, draw=True):
             if self._marker_updating:
                 return
             if not hasattr(self, "_cursor1") or self._cursor1 is None:
@@ -731,9 +773,7 @@ class MeasurementMainWindow(QMainWindow):
             if hasattr(self, "_marker1_info_label"):
                 self._marker1_info_label.setText(
                     f"F = {_fmt_freq(freq)} ; ε ={_fmt_eps(eps_r)}")
-            get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
-                "markers/index_1", idx
-            )
+            self._save_ini_later("markers/index_1", idx)
             if getattr(self, "_cursors_linked", False):
                 self._marker_updating = True
                 slider2.set_val(idx)
@@ -743,12 +783,11 @@ class MeasurementMainWindow(QMainWindow):
                 if hasattr(self, "_marker2_info_label"):
                     self._marker2_info_label.setText(
                         f"F = {_fmt_freq(freq)} ; ε ={_fmt_eps(self._marker_loss_eps[idx])}")
-                get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
-                    "markers/index_2", idx
-                )
-            canvas.draw_idle()
+                self._save_ini_later("markers/index_2", idx)
+            if draw:
+                _blit_markers()
 
-        def _upd2(val):
+        def _upd2(val, draw=True):
             if self._marker_updating:
                 return
             if not hasattr(self, "_cursor2") or self._cursor2 is None:
@@ -760,9 +799,7 @@ class MeasurementMainWindow(QMainWindow):
             if hasattr(self, "_marker2_info_label"):
                 self._marker2_info_label.setText(
                     f"F = {_fmt_freq(freq)} ; ε ={_fmt_eps(eps_i)}")
-            get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
-                "markers/index_2", idx
-            )
+            self._save_ini_later("markers/index_2", idx)
             if getattr(self, "_cursors_linked", False):
                 self._marker_updating = True
                 slider1.set_val(idx)
@@ -772,10 +809,9 @@ class MeasurementMainWindow(QMainWindow):
                 if hasattr(self, "_marker1_info_label"):
                     self._marker1_info_label.setText(
                         f"F = {_fmt_freq(freq)} ; ε ={_fmt_eps(self._marker_real_eps[idx])}")
-                get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
-                    "markers/index_1", idx
-                )
-            canvas.draw_idle()
+                self._save_ini_later("markers/index_1", idx)
+            if draw:
+                _blit_markers()
 
         slider1.on_changed(lambda val: _upd1(int(val)))
         slider2.on_changed(lambda val: _upd2(int(val)))
@@ -785,15 +821,13 @@ class MeasurementMainWindow(QMainWindow):
         self._upd2 = _upd2
 
         # Populate labels with the initial slider positions
-        _upd1(_init_idx1)
-        _upd2(_init_idx2)
+        _upd1(_init_idx1, draw=False)   # the chart is drawn once when the window shows
+        _upd2(_init_idx2, draw=False)
 
         # Persist link state (read above, before the sliders were built)
         def _toggle_link():
             self._cursors_linked = not self._cursors_linked
-            get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
-                "markers/linked", self._cursors_linked
-            )
+            self._save_ini_later("markers/linked", self._cursors_linked)
             if self._cursors_linked:
                 slider2.set_val(int(slider1.val))
 
@@ -808,37 +842,38 @@ class MeasurementMainWindow(QMainWindow):
         self._cursor1_visible = str(_vis_ini.value("markers/visible_1", "true")).lower() != "false"
         self._cursor2_visible = str(_vis_ini.value("markers/visible_2", "true")).lower() != "false"
 
-        def _set_cursor1_visible(visible: bool):
+        def _set_cursor1_visible(visible: bool, draw=True):
             self._cursor1_visible = visible
             if hasattr(self, "_cursor1") and self._cursor1 is not None:
                 self._cursor1.set_visible(visible)
             if hasattr(self, "_marker1_info_label"):
                 self._marker1_info_label.setVisible(visible)
-            get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
-                "markers/visible_1", visible
-            )
-            canvas.draw_idle()
+            self._save_ini_later("markers/visible_1", visible)
+            if draw:
+                _blit_markers()
 
-        def _set_cursor2_visible(visible: bool):
+        def _set_cursor2_visible(visible: bool, draw=True):
             self._cursor2_visible = visible
             if hasattr(self, "_cursor2") and self._cursor2 is not None:
                 self._cursor2.set_visible(visible)
             if hasattr(self, "_marker2_info_label"):
                 self._marker2_info_label.setVisible(visible)
-            get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve()).setValue(
-                "markers/visible_2", visible
-            )
-            canvas.draw_idle()
+            self._save_ini_later("markers/visible_2", visible)
+            if draw:
+                _blit_markers()
 
         self._set_cursor1_visible = _set_cursor1_visible
         self._set_cursor2_visible = _set_cursor2_visible
 
         # Apply persisted state before first draw
-        _set_cursor1_visible(self._cursor1_visible)
-        _set_cursor2_visible(self._cursor2_visible)
+        _set_cursor1_visible(self._cursor1_visible, draw=False)
+        _set_cursor2_visible(self._cursor2_visible, draw=False)
+        # Animate the marker artists now: the first full draw (window shown)
+        # captures the blit background and paints them on top.
+        self._marker_blitter.set_artists(_marker_artists())
 
-        _upd1(_init_idx1)
-        _upd2(_init_idx2)
+        _upd1(_init_idx1, draw=False)   # the chart is drawn once when the window shows
+        _upd2(_init_idx2, draw=False)
 
     # --------------------------------------------------------------------- #
 
@@ -1542,9 +1577,13 @@ class MeasurementMainWindow(QMainWindow):
                 if _ymin is not None and _ymax is not None and _ymax > _ymin:
                     self._epsilon_ax.set_ylim(_ymin, _ymax)
             self._restore_markers_after_redraw()
+            if hasattr(self, "_marker_blitter"):
+                # New cursor artists: animate them before the single full draw
+                # below captures the background and paints them on top.
+                self._marker_blitter.set_artists(self._marker_artists())
             if hasattr(self, "_adjust_chart_layout"):
-                self._adjust_chart_layout()
-            self._epsilon_canvas.draw()
+                self._adjust_chart_layout(draw=False)
+            self._epsilon_canvas.draw()   # the ONE full draw of a redraw
         except Exception as exc:
             logging.error("[MeasurementMainWindow] redraw_chart failed: %s", exc)
 
@@ -1647,7 +1686,11 @@ class MeasurementMainWindow(QMainWindow):
             self._sweep_from_device()
 
     def _sweep_from_file(self):
-        """Cycle through the user-configured S11 files and recompute ε."""
+        """Cycle through the user-configured S11 files and recompute ε.
+
+        Parse and solver run off the GUI thread (``_file_sweep_compute``);
+        ``_on_file_sweep_done`` finishes on the GUI thread.
+        """
         if not self._file_sweep_config:
             self._on_sweep_error("No S11 files configured")
             return
@@ -1655,27 +1698,29 @@ class MeasurementMainWindow(QMainWindow):
         if cal is None:
             self._on_sweep_error("No calibration available")
             return
-        try:
-            import skrf as rf
-            entry = self._file_sweep_config[self._file_sweep_idx % len(self._file_sweep_config)]
-            net   = rf.Network(entry["path"])
-            freqs = np.asarray(net.f, dtype=float)
-            s11   = np.asarray(net.s[:, 0, 0], dtype=complex)
-            self._file_sweep_idx += 1
-            name  = (entry["name"] or "").strip() or self._sample_name()
-            if hasattr(self, "_epsilon_manager") and self._epsilon_manager is not None:
-                exp = self._texts.get("export", {})
-                self._epsilon_manager._title = exp.get(
-                    "epsilon_title", "εr — {sample}"
-                ).format(sample=name)
-            logging.info("[MeasurementMainWindow] file sweep: %s", entry["path"])
-            new_result = cal.compute_epsilon(freqs, s11)
-            if new_result is not None:
-                self._on_sweep_success_result(new_result)
-            else:
-                self._on_sweep_error("compute_epsilon returned None")
-        except Exception as exc:
-            self._on_sweep_error(str(exc))
+        entry = self._file_sweep_config[self._file_sweep_idx % len(self._file_sweep_config)]
+        self._file_sweep_idx += 1
+        name = (entry["name"] or "").strip() or self._sample_name()
+        if hasattr(self, "_epsilon_manager") and self._epsilon_manager is not None:
+            exp = self._texts.get("export", {})
+            self._epsilon_manager._title = exp.get(
+                "epsilon_title", "εr — {sample}"
+            ).format(sample=name)
+        logging.info("[MeasurementMainWindow] file sweep: %s", entry["path"])
+        run_in_background(_file_sweep_compute, (entry["path"], cal),
+                          self._on_file_sweep_done, self._bg_threads)
+
+    def _on_file_sweep_done(self, outcome):   # GUI thread
+        if self._window_closed:
+            return
+        if isinstance(outcome, Exception):
+            self._on_sweep_error(str(outcome))
+            return
+        new_result = outcome[2]
+        if new_result is not None:
+            self._on_sweep_success_result(new_result)
+        else:
+            self._on_sweep_error("compute_epsilon returned None")
 
     def _sweep_from_device(self):
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.measure_runner import (
@@ -1690,25 +1735,26 @@ class MeasurementMainWindow(QMainWindow):
             self._on_sweep_error("No VNA device")
             logging.warning("[MeasurementMainWindow] Run Sweep: no NanoVNA device available")
             return
-        run_s11_sweep_async(
-            wiz,
-            on_success=self._on_sweep_s11_received,
-            on_error=lambda: self._on_sweep_error("Device sweep failed"),
-        )
-
-    def _on_sweep_s11_received(self, freqs, s11):
-        cal = getattr(self.wizard_window, "perm_calibration", None)
+        cal = getattr(wiz, "perm_calibration", None)
         if cal is None:
             self._on_sweep_error("No calibration available")
             return
-        try:
-            new_result = cal.compute_epsilon(freqs, s11)
-            if new_result is not None:
-                self._on_sweep_success_result(new_result)
-            else:
-                self._on_sweep_error("compute_epsilon returned None")
-        except Exception as exc:
-            self._on_sweep_error(str(exc))
+        # The solver (0.1-0.5 s) runs in the sweep worker right after the read;
+        # only the chart update is left for the GUI thread.
+        run_s11_sweep_async(
+            wiz,
+            on_success=self._on_sweep_epsilon_ready,
+            on_error=lambda: self._on_sweep_error("Device sweep failed"),
+            post_process=cal.compute_epsilon,
+        )
+
+    def _on_sweep_epsilon_ready(self, freqs, s11, new_result):   # GUI thread
+        if self._window_closed:
+            return
+        if new_result is not None:
+            self._on_sweep_success_result(new_result)
+        else:
+            self._on_sweep_error("compute_epsilon returned None")
 
     def _on_sweep_success_result(self, new_result):
         if self._window_closed:
@@ -1743,11 +1789,12 @@ class MeasurementMainWindow(QMainWindow):
         self._marker_freqs = np.asarray(new_result.f_hz, dtype=float)
         self._marker_n = len(self._marker_freqs)
         self.redraw_chart()
-        # Move cursor dots and update badge labels to current slider positions
+        # Badge labels for the current slider positions; the cursor dots were
+        # already placed by redraw_chart (no second draw).
         if hasattr(self, "_upd1") and hasattr(self, "_slider1"):
-            self._upd1(int(self._slider1.val))
+            self._upd1(int(self._slider1.val), draw=False)
         if hasattr(self, "_upd2") and hasattr(self, "_slider2"):
-            self._upd2(int(self._slider2.val))
+            self._upd2(int(self._slider2.val), draw=False)
         self._sweep_in_progress = False
         if hasattr(self, "_run_sweep_btn"):
             self._run_sweep_btn.setEnabled(True)
@@ -1758,6 +1805,25 @@ class MeasurementMainWindow(QMainWindow):
             self._set_sweep_status(sc.get("status_file_mode", "File mode"), "#ff9800")
         else:
             self._set_sweep_status(sc.get("status_ready", "Ready"), "#4caf50")
+
+    def _save_ini_later(self, key: str, value):
+        """Batch chart INI writes (marker index, link, visibility)."""
+        self._ini_pending[key] = value
+        self._ini_timer.start()
+
+    def _flush_ini(self):
+        self._ini_timer.stop()
+        if not self._ini_pending:
+            return
+        try:
+            s = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+            for key, value in self._ini_pending.items():
+                s.setValue(key, value)
+            s.sync()
+        except Exception as exc:
+            logging.warning("[MeasurementMainWindow] chart INI save failed: %s", exc)
+        finally:
+            self._ini_pending.clear()
 
     def _on_sweep_error(self, msg: str = ""):
         if self._window_closed:
@@ -2602,16 +2668,12 @@ class MeasurementMainWindow(QMainWindow):
         self._window_closed = True
         self._realtime_timer.stop()
         self._sweep_in_progress = False  # discard any pending sweep callback
-        # Let any running thread finish without crashing Qt
-        wiz = self.wizard_window
-        if wiz is not None:
-            t = getattr(wiz, "_active_sweep_thread", None)
-            if t is not None:
-                try:
-                    t.quit()
-                    t.wait(1000)
-                except Exception:
-                    pass
+        self._flush_ini()
+        # A device sweep in flight belongs to the wizard and finishes on its
+        # own (its result handler checks _window_closed); file-mode work is
+        # detached here. No quit()+wait(): a blocking serial read ignores it
+        # and the wait only froze the close for up to a second.
+        detach_background_threads(self._bg_threads)
         super().closeEvent(event)
 
     def return_to_menu_window(self):
@@ -2626,6 +2688,17 @@ class MeasurementMainWindow(QMainWindow):
             self.menu_windows = ModuleSelectionWindow()
         self.menu_windows.show()
         self.close()
+
+
+# --------------------------------------------------------------------------- #
+
+def _file_sweep_compute(path, cal):
+    """Worker side of a file-mode sweep: parse the touchstone and solve ε."""
+    import skrf as rf
+    net = rf.Network(path)
+    freqs = np.asarray(net.f, dtype=float)
+    s11 = np.asarray(net.s[:, 0, 0], dtype=complex)
+    return freqs, s11, cal.compute_epsilon(freqs, s11)
 
 
 # --------------------------------------------------------------------------- #

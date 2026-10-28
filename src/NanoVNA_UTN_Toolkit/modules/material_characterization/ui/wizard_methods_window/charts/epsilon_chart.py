@@ -44,8 +44,40 @@ plt.rcParams.update({
     "mathtext.fontset":           "cm",
     "font.family":                "serif",
     "mathtext.rm":                "serif",
-    "axes.formatter.use_mathtext": True,   # y-axis tick numbers in CM font
 })
+
+# Tick numbers in the CM math font are wanted on THIS chart only. Setting
+# "axes.formatter.use_mathtext" globally (as before) made every tick label of
+# every chart in the app a mathtext string, and a new label costs ~14 ms to
+# parse: the first draw of a rebuilt wizard step spent 450 ms on tick labels.
+
+
+def _use_cm_ticks(ax) -> None:
+    """CM-font tick numbers on ``ax`` (what the global rcParam used to give)."""
+    for axis in (ax.xaxis, ax.yaxis):
+        fmt = axis.get_major_formatter()
+        if hasattr(fmt, "set_useMathText"):
+            fmt.set_useMathText(True)
+
+
+def _enlarge_mathtext_cache(size: int = 512) -> None:
+    """matplotlib caches parsed mathtext in an lru_cache(50); the epsilon chart
+    alone shows more distinct tick labels than that across autoscaled ticks,
+    so every tick re-parsed. Re-wrap the parser with a larger cache (best
+    effort: silently skipped if matplotlib's internals differ)."""
+    try:
+        import functools
+        from matplotlib.mathtext import MathTextParser
+        cached = MathTextParser._parse_cached
+        inner = getattr(cached, "__wrapped__", None)
+        if inner is not None and getattr(cached, "cache_info", None) is not None \
+                and cached.cache_info().maxsize is not None and cached.cache_info().maxsize < size:
+            MathTextParser._parse_cached = functools.lru_cache(size)(inner)
+    except Exception as exc:   # noqa: BLE001
+        logger.debug("[epsilon_chart] mathtext cache not enlarged: %s", exc)
+
+
+_enlarge_mathtext_cache()
 
 
 def _freq_formatter(value, _pos):
@@ -183,6 +215,7 @@ class EpsilonChartManager:
             unit, freq_fmt = _make_freq_axis(freqs)
 
             ax.clear()
+            _use_cm_ticks(ax)
             ax.set_facecolor(self.config.background_color)
             ax.set_title(getattr(self, "_title", r"$\varepsilon_r$ vs Frequency"), fontsize=13, pad=10, color=self.config.text_color)
             ax.set_xlabel(rf"Frequency $(\mathrm{{{unit}}})$", fontsize=12, color=self.config.text_color)

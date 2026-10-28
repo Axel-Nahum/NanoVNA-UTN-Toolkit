@@ -648,14 +648,19 @@ def _build_processing(wizard, layout, result, rtexts):
     detail_lbl.setStyleSheet(f"font-size: 11px; color: {_secondary_text_color()};")
 
     def _on_toggled(checked):
-        from PySide6.QtCore import QTimer
-        from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.steps_manager import (
-            update_step_screen,
-        )
+        from NanoVNA_UTN_Toolkit.shared.utils.background_task import run_in_background
         cal.set_despike_enabled(checked)
         wizard.epsilon_result = None
-        # Rebuild after this slot returns: the rebuild destroys this checkbox.
-        QTimer.singleShot(0, lambda: update_step_screen(wizard))
+        # Recompute epsilon (0.1-0.5 s) off the GUI thread; the wizard rebuilds
+        # this screen when the result arrives (that rebuild destroys this
+        # checkbox, so nothing here runs after it).
+        chk.setEnabled(False)
+        detail_lbl.setText(rtexts.get("despike_recomputing", "Recomputing…"))
+        registry = getattr(wizard, "_bg_threads", None)
+        if registry is None:
+            registry = []
+            wizard._bg_threads = registry
+        run_in_background(cal.compute_epsilon, (), wizard._on_despike_recomputed, registry)
 
     chk.toggled.connect(_on_toggled)
     layout.addSpacing(4)
@@ -1068,9 +1073,9 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
 
     # ── Gn(f) quality chart: popup button (like "Data sources" / "Warnings") ─ #
     def _show_gn_popup():
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
+        # A plain Figure: no pyplot registry and no matplotlib.use("Agg") in a
+        # handler, which switched the GLOBAL backend while Qt canvases were live.
+        from matplotlib.figure import Figure
         from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 
         dlg = QDialog(None, Qt.WindowType.Popup | Qt.WindowType.FramelessWindowHint)
@@ -1098,7 +1103,8 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
         f_mhz = result.f_hz / 1e6
         gn_abs = np.abs(gn)
 
-        fig, ax_gn = plt.subplots(figsize=(4.4, 1.8))
+        fig = Figure(figsize=(4.4, 1.8))
+        ax_gn = fig.add_subplot(111)
         fig.patch.set_facecolor("#1a1a2e")
         ax_gn.set_facecolor("#12122a")
 
@@ -1126,7 +1132,6 @@ def _build_intermediate(layout, result, rtexts, manager=None, ax=None, canvas=No
         canvas_gn.setFixedHeight(180)
         canvas_gn.setFixedWidth(430)
         v.addWidget(canvas_gn)
-        plt.close(fig)
 
         if getattr(result, "eps_crosscheck", None) is not None:
             cc_chk_popup = QCheckBox(rtexts.get(

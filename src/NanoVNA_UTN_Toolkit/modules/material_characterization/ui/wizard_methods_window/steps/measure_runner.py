@@ -27,16 +27,18 @@ logger = logging.getLogger(__name__)
 
 
 class _CharSweepWorker(QObject):
-    """Runs one S11 sweep off the main thread."""
-    finished = Signal(object, object)  # freqs, s11
+    """Runs one S11 sweep off the main thread, plus an optional post-process
+    step (the permittivity solver, ~0.1-0.5 s) in the same thread."""
+    finished = Signal(object, object, object)  # freqs, s11, post_process result (or None)
     failed = Signal(str)
 
-    def __init__(self, device, start, stop, points):
+    def __init__(self, device, start, stop, points, post_process=None):
         super().__init__()
         self._device = device
         self._start = start
         self._stop = stop
         self._points = points
+        self._post_process = post_process
 
     def run(self):
         try:
@@ -51,7 +53,8 @@ class _CharSweepWorker(QObject):
                 return
             s11 = _remove_spikes(s11, freqs)
             s11 = _remove_phase_spikes(s11, freqs)
-            self.finished.emit(freqs, s11)
+            extra = self._post_process(freqs, s11) if self._post_process is not None else None
+            self.finished.emit(freqs, s11, extra)
         except Exception as exc:  # noqa: BLE001
             logging.debug("[CharSweepWorker] error", exc_info=True)
             self.failed.emit(str(exc))
@@ -76,8 +79,8 @@ class _CharSweepController(QObject):
         self._on_failed = on_failed
         self._on_thread_finished = on_thread_finished
 
-    def finished(self, freqs, s11):  # runs on the GUI thread
-        self._on_finished(freqs, s11)
+    def finished(self, freqs, s11, extra=None):  # runs on the GUI thread
+        self._on_finished(freqs, s11, extra)
 
     def failed(self, msg):  # runs on the GUI thread
         self._on_failed(msg)
@@ -93,6 +96,41 @@ def is_sweep_running(wizard) -> bool:
         return thread is not None and thread.isRunning()
     except RuntimeError:
         return False
+
+
+# Sweeps of wizards that closed mid-sweep: kept alive until the serial read
+# returns (a QThread must never be destroyed while running, nor terminated).
+_detached_sweeps: list = []
+
+
+def detach_active_sweep(wizard) -> None:
+    """The wizard is closing: stop delivering results to it and let the sweep
+    thread finish on its own."""
+    thread = getattr(wizard, "_active_sweep_thread", None)
+    worker = getattr(wizard, "_active_sweep_worker", None)
+    controller = getattr(wizard, "_active_sweep_controller", None)
+    wizard._active_sweep_thread = None
+    wizard._active_sweep_worker = None
+    wizard._active_sweep_controller = None
+    if thread is None or worker is None:
+        return
+    if controller is not None:
+        for sig, slot in ((worker.finished, controller.finished), (worker.failed, controller.failed)):
+            try:
+                sig.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
+    try:
+        if not thread.isRunning():
+            return
+        # The controller used to quit the loop from its handlers.
+        worker.finished.connect(thread.quit)
+        worker.failed.connect(thread.quit)
+    except RuntimeError:
+        return
+    record = (thread, worker, controller)
+    _detached_sweeps.append(record)
+    thread.finished.connect(lambda r=record: _detached_sweeps.remove(r) if r in _detached_sweeps else None)
 
 
 # Smith-chart trace colors per standard.
@@ -216,12 +254,17 @@ def run_s11_sweep(wizard):
         return None
 
 
-def run_s11_sweep_async(wizard, on_success, on_error=None):
+def run_s11_sweep_async(wizard, on_success, on_error=None, post_process=None):
     """Non-blocking S11 sweep.
 
     Validates synchronously on the main thread, then moves the actual device
     read to a QThread. Calls on_success(freqs, s11) or on_error() back on the
     main thread via Qt signals.
+
+    ``post_process(freqs, s11)`` (optional) runs in the worker thread right
+    after the sweep, and ``on_success`` is then called as
+    ``on_success(freqs, s11, post_process_result)``. The results window passes
+    the permittivity solver here, which used to run on the GUI thread per tick.
     """
     if is_sweep_running(wizard):
         # Two workers on one serial port interleave commands; ignore the click.
@@ -290,7 +333,7 @@ def run_s11_sweep_async(wizard, on_success, on_error=None):
             on_error()
         return
 
-    worker = _CharSweepWorker(device, start_freq, stop_freq, num_points)
+    worker = _CharSweepWorker(device, start_freq, stop_freq, num_points, post_process=post_process)
     thread = QThread()
     worker.moveToThread(thread)
 
@@ -319,9 +362,12 @@ def run_s11_sweep_async(wizard, on_success, on_error=None):
         except RuntimeError:
             pass
 
-    def _on_finished(freqs, s11):
+    def _on_finished(freqs, s11, extra=None):
         thread.quit()
-        on_success(freqs, s11)
+        if post_process is None:
+            on_success(freqs, s11)
+        else:
+            on_success(freqs, s11, extra)
 
     def _on_failed(msg):
         thread.quit()

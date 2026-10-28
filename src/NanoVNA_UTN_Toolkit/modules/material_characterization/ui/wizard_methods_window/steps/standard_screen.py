@@ -943,8 +943,14 @@ def build_standard_screen(wizard, descriptor, step_def):
                     state.get("chart_mode", "reimag"), state.get("mag_linear", False))
 
         btn_grp.idClicked.connect(_on_source_changed)
-        preset_combo.currentIndexChanged.connect(
-            lambda *_: _load_preset(preset_combo.currentData()))
+        # Wheel-scrolling the combo fires one index change per notch; load the
+        # preset (disk read + resample checks + render) once the choice settles.
+        from PySide6.QtCore import QTimer as _QTimer
+        _preset_timer = _QTimer(preset_combo)
+        _preset_timer.setSingleShot(True)
+        _preset_timer.setInterval(150)
+        _preset_timer.timeout.connect(lambda: _load_preset(preset_combo.currentData()))
+        preset_combo.currentIndexChanged.connect(lambda *_: _preset_timer.start())
 
     mid.addStretch(1)
 
@@ -1044,14 +1050,21 @@ def build_standard_screen(wizard, descriptor, step_def):
 
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QSizePolicy as _SP
-    from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import create_wizard_smith_chart
-    fig, ax, canvas = create_wizard_smith_chart(
-        start_freq=wizard.get_sweep_start_frequency(),
-        stop_freq=wizard.get_sweep_stop_frequency(),
-        num_points=wizard.get_sweep_steps(),
-        container_layout=right,
-        figsize=(6, 6),
+    from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import (
+        create_wizard_smith_chart, create_wizard_chart_canvas,
     )
+    if _initial_mode == "smith":
+        fig, ax, canvas = create_wizard_smith_chart(
+            start_freq=wizard.get_sweep_start_frequency(),
+            stop_freq=wizard.get_sweep_stop_frequency(),
+            num_points=wizard.get_sweep_steps(),
+            container_layout=right,
+            figsize=(6, 6),
+        )
+    else:
+        # Smith grid on demand: _render draws it when that tab is chosen. Building
+        # it here cost ~80 ms per step and the first Re/Im render cleared it.
+        fig, ax, canvas = create_wizard_chart_canvas(container_layout=right, figsize=(6, 6))
     wizard.current_fig, wizard.current_ax, wizard.current_canvas = fig, ax, canvas
 
     # Hovering the indicative legend entry tells where the dotted curve comes
@@ -2010,18 +2023,20 @@ def _render(wizard, standard, name, color, std_texts, measured,
     if fig is None:
         return
 
+    # draw_idle, not draw(): on a step build the canvas' first resize queues
+    # its own full draw, and a synchronous draw here made it two.
     if chart_mode == "reimag":
         _render_real_imag(fig, wizard, standard, name, color, std_texts,
                           measured, show_indicative, show_raw)
         if wizard.current_canvas:
-            wizard.current_canvas.draw()
+            wizard.current_canvas.draw_idle()
         return
 
     if chart_mode == "dbphase":
         _render_db_phase(fig, wizard, standard, name, color, std_texts,
                          measured, show_indicative, show_raw, mag_linear)
         if wizard.current_canvas:
-            wizard.current_canvas.draw()
+            wizard.current_canvas.draw_idle()
         return
 
     # Smith: restore a single subplot if coming from a two-axis mode
@@ -2114,7 +2129,7 @@ def _render(wizard, standard, name, color, std_texts, measured,
                   labelspacing=0.2 if small else 0.25)
 
     if wizard.current_canvas:
-        wizard.current_canvas.draw()
+        wizard.current_canvas.draw_idle()
 
 
 def _resolve_strings(wizard, std_texts, liquids, standard):
