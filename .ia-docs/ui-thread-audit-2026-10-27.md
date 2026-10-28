@@ -377,3 +377,37 @@ Fase 4, interacción (2026-10-28, verificada headless):
 - Pendiente de esta fase: Apply de View/Edit y el toggle dB/× siguen reconstruyendo
   los dos paneles aunque cambie uno; la reconstrucción de sliders por barrido (~90 ms)
   sigue en `update_data_references`. Separar `update_plots_with_new_data` por panel.
+
+Fase 5, Measurement Viewer (2026-10-28, verificada headless; todo en
+`shared/measurement_viewer/measurement_viewer.py`):
+
+- `showEvent`: solo la primera vez hace el layout (`_redraw` de la selección actual).
+  Restaurar desde minimizado llamaba `_reset_axes()` y borraba las curvas con los
+  archivos aún seleccionados. **Verificado: 52 líneas antes y después de restaurar.**
+- Parseo de Touchstone en un worker (`_BackgroundWorker` en un `QThread` sin padre,
+  resultado entregado a un método de la ventana, es decir en el hilo de UI). El costo real
+  no era el parseo (2 ms por archivo) sino el `import` del parser en la primera selección:
+  **1,26 s medidos en el hilo de UI**. Ahora la llamada de selección tarda 3 ms y la curva
+  aparece ~240 ms después; el cursor del árbol muestra "ocupado" mientras tanto.
+- `itemSelectionChanged` con debounce de 40 ms (`_selection_timer`): navegar con flechas o
+  seleccionar en bloque redibuja una vez por ráfaga. **Medido: 5 selecciones, 1 dibujo
+  (antes 5 dibujos, 1,1 s).**
+- Escaneo de carpetas en el worker con un solo `os.walk` bottom-up (`_scan_folder_tree`)
+  en lugar de un `rglob` por subcarpeta y nivel; la caja de filtro agrega la carpeta solo
+  con Enter (`_filter_submitted`), tipear solo filtra por nombre (antes `is_dir` y escaneo
+  por tecla). **Medido: llamada de 4–7 ms en el hilo de UI (antes 53 ms test_data, 290 ms
+  el árbol de src); el árbol aparece ~50 ms después.** Badge "Scanning…" mientras corre.
+- Cursores C1/C2 y enlace: solo se recrean los artistas de cursor y se blitean sobre el
+  fondo guardado; antes `_redraw` completo con `tight_layout`. **Medido: 280 ms → 11–14 ms,
+  cero dibujos completos.** `_draw_cursors` ya no toma otros cursores (animados) como
+  líneas de datos. Colocar el primer cursor con click tampoco redibuja.
+- `draw_event` hook (`_on_draw_event`): cada dibujo completo, incluido el de Qt tras un
+  resize o cualquier `draw_idle`, recaptura el fondo y pinta los cursores. Antes un
+  resize dejaba los cursores invisibles hasta el siguiente `_redraw`.
+- `closeEvent`: los hilos en curso se desconectan y se dejan terminar solos
+  (`_detached_threads`), nunca `terminate()`.
+- Toggle de tema: la ventana nueva recibe la lista de archivos, los datos parseados, los
+  colores y la selección (`_transfer_files_to`); las carpetas se reescanean en el worker y
+  la selección se aplica al llegar (`_pending_select`).
+- Sin cambios: cambio de grilla (125 ms) y de layout 2/4 (460 ms) siguen siendo un dibujo
+  completo, porque cambia el fondo.

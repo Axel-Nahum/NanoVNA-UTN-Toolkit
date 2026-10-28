@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 from matplotlib.figure import Figure as _Figure
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QObject, QThread, QTimer, Signal
 from PySide6.QtGui import (
     QAction, QColor, QGuiApplication, QIcon,
     QPainter, QPainterPath, QPen, QPixmap,
@@ -115,6 +115,61 @@ def _load_touchstone(path: str):
     return freqs, s11, s21
 
 
+def _parse_touchstones(paths: list[str]):
+    """Worker-side parse of several files: ``[(path, (freqs, s11, s21) | exc)]``."""
+    out = []
+    for path in paths:
+        try:
+            out.append((path, _load_touchstone(path)))
+        except Exception as exc:
+            out.append((path, exc))
+    return out
+
+
+def _scan_folder_tree(root: str):
+    """Single-pass scan of ``root`` for touchstone files (runs in a worker).
+
+    Returns a nested node ``(name, path, subfolders, files)`` keeping only the
+    folders that contain at least one ``.s1p``/``.s2p`` somewhere below them,
+    or ``None`` when ``root`` itself has none. One ``os.walk`` instead of an
+    ``rglob`` per subfolder per level, and off the GUI thread (a pasted ``C:\\``
+    or a UNC path used to freeze the window for the whole scan).
+    """
+    root_path = Path(root)
+    nodes: dict[str, list] = {}   # path -> [name, path, subfolders, files]
+    for dirpath, dirnames, filenames in _os.walk(root_path, topdown=False, onerror=lambda e: None):
+        dirnames.sort()
+        files = sorted(str(Path(dirpath) / f) for f in filenames
+                       if f.lower().endswith((".s1p", ".s2p")))
+        subs = [nodes.pop(str(Path(dirpath) / d)) for d in dirnames
+                if str(Path(dirpath) / d) in nodes]
+        subs.sort(key=lambda n: n[0])
+        if files or subs:
+            nodes[dirpath] = [Path(dirpath).name, dirpath, subs, files]
+    return nodes.get(str(root_path)) or nodes.get(root)
+
+
+class _BackgroundWorker(QObject):
+    """Runs ``fn(*args)`` in a QThread; ``finished`` carries the result or the exception."""
+
+    finished = Signal(object)
+
+    def __init__(self, fn, args):
+        super().__init__()
+        self._fn, self._args = fn, args
+
+    def run(self):
+        try:
+            self.finished.emit(self._fn(*self._args))
+        except Exception as exc:   # delivered to the GUI thread, never raised here
+            self.finished.emit(exc)
+
+
+# Threads of closed viewer windows still finishing a scan/parse: kept alive
+# until they exit (never terminated, never destroyed while running).
+_detached_threads: list = []
+
+
 class _FileEntry:
     __slots__ = ("path", "name", "color", "freqs", "s11", "s21")
 
@@ -197,6 +252,13 @@ class MeasurementViewerWindow(QMainWindow):
         self._cursor_dragging = None   # (n, slot) or None
         self._cursors_linked  = False  # False = pairs independent; True = all sync
         self._blit_bg         = None   # saved background for fast cursor blitting
+        self._bg_threads: list = []    # running background scans / parses
+        self._pending_select: set[str] = set()   # paths to select once their folder is listed
+        self._parse_inflight: set[str] = set()
+        self._selection_timer = QTimer(self)     # coalesces itemSelectionChanged bursts
+        self._selection_timer.setSingleShot(True)
+        self._selection_timer.setInterval(40)
+        self._selection_timer.timeout.connect(self._apply_selection)
         self._y_autoscale     = [True] * 4   # per-chart autoscale flag
         self._y_range         = [(None, None)] * 4  # (ymin, ymax) when manual
         self._y_grid          = [True] * 4   # per-chart grid visibility
@@ -231,8 +293,28 @@ class MeasurementViewerWindow(QMainWindow):
             source_window=self._source_window,
             display_mode=self._display_mode,
         )
+        self._transfer_files_to(new_win)
         new_win.show()
         self.close()
+
+    def _transfer_files_to(self, other: "MeasurementViewerWindow"):
+        """Carry the file list, parsed data, colours and selection over to a
+        new window (theme toggle used to start from an empty list)."""
+        other._cache = self._cache
+        other._color_map = dict(self._color_map)
+        other._color_idx = self._color_idx
+        selected = {item.data(0, Qt.ItemDataRole.UserRole)
+                    for item in self._file_list.selectedItems()
+                    if item.data(0, Qt.ItemDataRole.UserRole)}
+        loose = [self._file_list.topLevelItem(i).data(0, Qt.ItemDataRole.UserRole)
+                 for i in range(self._file_list.topLevelItemCount())]
+        loose = [p for p in loose if p]
+        if loose:
+            other._add_file_paths(loose)
+        other._pending_select = set(selected)
+        other._select_pending_paths()
+        for folder in sorted(getattr(self, "_loaded_folder_paths", set())):
+            other._start_folder_scan(folder)
 
     # ── Menubar ───────────────────────────────────────────────────────────── #
     def _build_menu(self):
@@ -1100,6 +1182,7 @@ class MeasurementViewerWindow(QMainWindow):
             f" QLineEdit:focus {{ border-color:{self._ACCENT}; }}"
         )
         self._filter_edit.textChanged.connect(self._apply_filter)
+        self._filter_edit.returnPressed.connect(self._filter_submitted)
         lv.addWidget(self._filter_edit)
 
         # Separator — always visible between filter and list
@@ -1180,6 +1263,9 @@ class MeasurementViewerWindow(QMainWindow):
         self._canvas.mpl_connect("motion_notify_event",  self._on_canvas_motion)
         self._canvas.mpl_connect("button_release_event", self._on_canvas_release)
         self._canvas.mpl_connect("resize_event",         self._on_canvas_resize)
+        # Every full draw (ours, Qt's after a resize, draw_idle from anywhere)
+        # refreshes the blit background and paints the animated cursors on top.
+        self._canvas.mpl_connect("draw_event",           self._on_draw_event)
 
         self._reset_axes()
         return right
@@ -1344,10 +1430,7 @@ class MeasurementViewerWindow(QMainWindow):
                 if ax.get_lines():
                     ax.relim()
                     ax.autoscale_view()
-            self._canvas.draw()
-            self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
-            self._draw_cursors()
-            self._blit_cursors()
+            self._full_draw()
         self._update_range_page()
 
     def _toggle_y_grid(self, i: int):
@@ -1360,10 +1443,7 @@ class MeasurementViewerWindow(QMainWindow):
                 ax.grid(True, linestyle="--", alpha=0.45, color=self._GRID, linewidth=0.6)
             else:
                 ax.grid(False)
-            self._canvas.draw()
-            self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
-            self._draw_cursors()
-            self._blit_cursors()
+            self._full_draw()
 
     def _apply_y_range(self, i: int):
         if self._y_autoscale[i]:
@@ -1380,10 +1460,7 @@ class MeasurementViewerWindow(QMainWindow):
         axes = self._flat_axes()
         if i < len(axes):
             axes[i].set_ylim(ymin, ymax)
-            self._canvas.draw()
-            self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
-            self._draw_cursors()
-            self._blit_cursors()
+            self._full_draw()
 
     # ── Export helpers ────────────────────────────────────────────────────── #
     def _build_export_fig(self, mode: str):
@@ -1672,18 +1749,101 @@ class MeasurementViewerWindow(QMainWindow):
     def _browse_folder(self):
         folder = QFileDialog.getExistingDirectory(self, self._t("files_panel", "select_folder_title", fallback="Select Folder"), "")
         if folder:
-            key = str(Path(folder).resolve())
+            self._start_folder_scan(folder)
+
+    # ── Background work (scan / parse) ────────────────────────────────────── #
+    def _run_in_background(self, fn, args, on_done):
+        """Run ``fn(*args)`` in a QThread; ``on_done(result)`` is a bound method
+        of this window, so Qt queues it to the GUI thread. The thread has no
+        parent and is kept in ``_bg_threads`` (detached on close, never
+        terminated) so it can never be destroyed while running."""
+        thread = QThread()
+        worker = _BackgroundWorker(fn, args)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(on_done)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        record = (thread, worker, on_done)
+        self._bg_threads.append(record)
+
+        def _forget():
+            try:
+                self._bg_threads.remove(record)
+            except ValueError:
+                pass
+        thread.finished.connect(_forget)
+        thread.start()
+        return thread
+
+    def _start_folder_scan(self, folder: str):
+        key = str(Path(folder).resolve())
+        loaded = getattr(self, "_loaded_folder_paths", set())
+        if key in loaded or key in getattr(self, "_scans_inflight", set()):
+            return
+        inflight = getattr(self, "_scans_inflight", set())
+        inflight.add(key)
+        self._scans_inflight = inflight
+        self._badge.setText(self._t("files_panel", "badge_scanning", fallback="Scanning…"))
+        self._file_list.setCursor(Qt.CursorShape.BusyCursor)
+        self._run_in_background(_scan_folder_tree, (key,), self._on_folder_scanned)
+
+    def _on_folder_scanned(self, node):   # GUI thread
+        inflight = getattr(self, "_scans_inflight", set())
+        if isinstance(node, Exception):
+            logger.warning("[MeasurementViewer] folder scan failed: %s", node)
+            node = None
+        if node is not None:
+            inflight.discard(node[1])
             loaded = getattr(self, "_loaded_folder_paths", set())
-            if key in loaded:
-                return
-            self._file_list.blockSignals(True)
+            loaded.add(node[1])
+            self._loaded_folder_paths = loaded
             existing = {item.data(0, Qt.ItemDataRole.UserRole)
                         for item in self._all_file_items()}
-            self._add_folder_to_tree(folder, None, existing)
-            loaded.add(key)
-            self._loaded_folder_paths = loaded
-            self._file_list.blockSignals(False)
-            self._refresh_panel_state()
+            self._file_list.blockSignals(True)
+            try:
+                self._add_scanned_folder(node, None, existing)
+            finally:
+                self._file_list.blockSignals(False)
+        else:
+            inflight.clear()   # the failed key is unknown; allow a retry
+        if not inflight:
+            self._file_list.unsetCursor()
+        self._refresh_panel_state()
+        self._select_pending_paths()
+
+    def _add_scanned_folder(self, node, parent, existing: set, auto_expand: bool = True):
+        name, path, subfolders, files = node
+        folder_item = QTreeWidgetItem([f"{name}/"])
+        folder_item.setForeground(0, QColor(_TEXT2))
+        folder_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+        if parent is None:
+            self._file_list.addTopLevelItem(folder_item)
+        else:
+            parent.addChild(folder_item)
+        expand_children = len(subfolders) == 1
+        for sub in subfolders:
+            self._add_scanned_folder(sub, folder_item, existing, auto_expand=expand_children)
+        for f in files:
+            if f in existing:
+                continue
+            fi = QTreeWidgetItem([Path(f).name])
+            fi.setData(0, Qt.ItemDataRole.UserRole, f)
+            fi.setToolTip(0, f)
+            folder_item.addChild(fi)
+        folder_item.setExpanded(auto_expand)
+
+    def _select_pending_paths(self):
+        """Select the items whose paths were requested before they were listed
+        (theme toggle hand-over while a folder scan is still running)."""
+        if not self._pending_select:
+            return
+        for item in self._all_file_items():
+            path = item.data(0, Qt.ItemDataRole.UserRole)
+            if path in self._pending_select:
+                item.setSelected(True)
+                self._pending_select.discard(path)
 
     def _all_file_items(self) -> list:
         """Return all leaf (file) QTreeWidgetItems recursively."""
@@ -1702,46 +1862,6 @@ class MeasurementViewerWindow(QMainWindow):
             else:
                 _collect(top)
         return result
-
-    @staticmethod
-    def _folder_has_touchstone(folder: Path) -> bool:
-        try:
-            for p in folder.rglob("*"):
-                if p.is_file() and p.suffix.lower() in (".s1p", ".s2p"):
-                    return True
-        except PermissionError:
-            pass
-        return False
-
-    def _add_folder_to_tree(self, folder_path: str, parent, existing: set,
-                            auto_expand: bool = True):
-        folder = Path(folder_path)
-        folder_item = QTreeWidgetItem([f"{folder.name}/"])
-        folder_item.setForeground(0, QColor(_TEXT2))
-        folder_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-        if parent is None:
-            self._file_list.addTopLevelItem(folder_item)
-        else:
-            parent.addChild(folder_item)
-        try:
-            subfolders = sorted(p for p in folder.iterdir() if p.is_dir())
-            files = sorted(p for p in folder.iterdir()
-                           if p.is_file() and p.suffix.lower() in (".s1p", ".s2p"))
-        except PermissionError:
-            return
-        subfolders = [s for s in subfolders if self._folder_has_touchstone(s)]
-        expand_children = len(subfolders) == 1
-        for sub in subfolders:
-            self._add_folder_to_tree(str(sub), folder_item, existing,
-                                     auto_expand=expand_children)
-        for f in files:
-            if str(f) in existing:
-                continue
-            fi = QTreeWidgetItem([f.name])
-            fi.setData(0, Qt.ItemDataRole.UserRole, str(f))
-            fi.setToolTip(0, str(f))
-            folder_item.addChild(fi)
-        folder_item.setExpanded(auto_expand)
 
     def _add_file_paths(self, paths: list[str]):
         existing = {item.data(0, Qt.ItemDataRole.UserRole)
@@ -1767,24 +1887,22 @@ class MeasurementViewerWindow(QMainWindow):
         self._file_list.setVisible(has_items)
         self._empty_state.setVisible(not has_items)
 
-    def _apply_filter(self, text: str):
-        stripped = text.strip()
+    def _filter_submitted(self):
+        """Enter in the filter box with an absolute folder path adds that folder
+        (scanned in the background). Typing only filters by name: checking
+        ``is_dir`` and scanning on every keystroke froze the window on slow or
+        network paths."""
+        stripped = self._filter_edit.text().strip()
         try:
             p = Path(stripped)
             if p.is_absolute() and p.is_dir():
-                key = str(p.resolve())
-                loaded = getattr(self, "_loaded_folder_paths", set())
-                if key not in loaded:
-                    existing = {item.data(0, Qt.ItemDataRole.UserRole)
-                                for item in self._all_file_items()}
-                    self._add_folder_to_tree(str(p), None, existing)
-                    loaded.add(key)
-                    self._loaded_folder_paths = loaded
                 self._filter_edit.clear()
-                return
+                self._start_folder_scan(str(p))
         except (OSError, ValueError):
             pass
-        text = stripped.lower()
+
+    def _apply_filter(self, text: str):
+        text = text.strip().lower()
         def _filter(item) -> bool:
             if item.childCount() == 0:
                 match = not bool(text) or text in item.text(0).lower()
@@ -1826,6 +1944,11 @@ class MeasurementViewerWindow(QMainWindow):
 
     # ── Selection ─────────────────────────────────────────────────────────── #
     def _on_selection_changed(self):
+        # One redraw per burst (arrow-key navigation, shift-click ranges), not
+        # one per item.
+        self._selection_timer.start()
+
+    def _apply_selection(self):
         selected_paths = [
             item.data(0, Qt.ItemDataRole.UserRole)
             for item in self._file_list.selectedItems()
@@ -1836,23 +1959,45 @@ class MeasurementViewerWindow(QMainWindow):
                 self._color_map[path] = _PALETTE[self._color_idx % len(_PALETTE)]
                 self._color_idx += 1
 
+        missing = [p for p in selected_paths
+                   if p not in self._cache and p not in self._parse_inflight]
+        if missing:
+            # Parse off the GUI thread (first use also imports the Touchstone
+            # parser, ~1 s). The redraw happens when the result arrives.
+            self._parse_inflight.update(missing)
+            self._file_list.setCursor(Qt.CursorShape.BusyCursor)
+            self._run_in_background(_parse_touchstones, (missing,), self._on_files_parsed)
+        if any(p in self._parse_inflight for p in selected_paths):
+            self._refresh_item_swatches()
+            return
+
         entries = []
         for path in selected_paths:
-            if path not in self._cache:
-                try:
-                    freqs, s11, s21 = _load_touchstone(path)
-                    self._cache[path] = _FileEntry(
-                        path, self._color_map[path], freqs, s11, s21
-                    )
-                except Exception as exc:
-                    logger.warning("[MeasurementViewer] %s: %s", path, exc)
-                    continue
-            else:
-                self._cache[path].color = self._color_map[path]
-            entries.append(self._cache[path])
+            entry = self._cache.get(path)
+            if entry is None:
+                continue
+            entry.color = self._color_map[path]
+            entries.append(entry)
 
         self._refresh_item_swatches()
         self._redraw(entries)
+
+    def _on_files_parsed(self, results):   # GUI thread
+        if isinstance(results, Exception):
+            logger.warning("[MeasurementViewer] parse worker failed: %s", results)
+            self._parse_inflight.clear()
+        else:
+            for path, parsed in results:
+                self._parse_inflight.discard(path)
+                if isinstance(parsed, Exception):
+                    logger.warning("[MeasurementViewer] %s: %s", path, parsed)
+                    continue
+                freqs, s11, s21 = parsed
+                color = self._color_map.get(path, _PALETTE[0])
+                self._cache[path] = _FileEntry(path, color, freqs, s11, s21)
+        if not self._parse_inflight:
+            self._file_list.unsetCursor()
+        self._apply_selection()
 
     # ── Drawing ───────────────────────────────────────────────────────────── #
     def _chart_titles(self) -> list[str]:
@@ -1931,10 +2076,13 @@ class MeasurementViewerWindow(QMainWindow):
             self._fig.tight_layout(pad=1.4, h_pad=2.0, w_pad=2.0)
         except Exception:
             pass
-        self._canvas.draw()
-        self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
+        self._full_draw()
+
+    def _full_draw(self):
+        """One synchronous full draw; the draw_event hook captures the blit
+        background and paints the (recreated) cursor artists on top."""
         self._draw_cursors()
-        self._blit_cursors()
+        self._canvas.draw()
 
     def _redraw(self, entries: list[_FileEntry]):
         flat = self._flat_axes()
@@ -2140,10 +2288,7 @@ class MeasurementViewerWindow(QMainWindow):
             self._fig.tight_layout(pad=1.4, h_pad=2.0, w_pad=2.0)
         except Exception:
             pass
-        self._canvas.draw()
-        self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
-        self._draw_cursors()
-        self._blit_cursors()
+        self._full_draw()
         self._update_cursor_readout()
         self._update_cursor_buttons()
 
@@ -2166,10 +2311,7 @@ class MeasurementViewerWindow(QMainWindow):
     def _toggle_cursor(self, n: int):
         self._cursor_enabled[n] = not self._cursor_enabled[n]
         if not self._cursor_enabled[n]:
-            self._cursor_freq[n] = [None] * 4
-            for s in range(4):
-                self._cursor_lines[(n, s)] = []
-                self._cursor_markers[(n, s)] = []
+            self._cursor_freq[n] = [None] * 4   # _draw_cursors removes the artists
             if self._cursor_dragging is not None and self._cursor_dragging[0] == n:
                 self._cursor_dragging = None
         else:
@@ -2183,7 +2325,10 @@ class MeasurementViewerWindow(QMainWindow):
                 else:
                     self._cursor_freq[n] = [center_hz, center_hz, None, None]
         self._update_cursor_buttons()
-        self._redraw(self._current_entries())
+        # Only the cursor artists change: recreate them and blit over the
+        # saved background (a full _redraw with tight_layout was ~280 ms).
+        self._draw_cursors()
+        self._blit_cursors()
         self._update_cursor_readout()
 
     def _fmt_freq(self, hz: float) -> str:
@@ -2331,16 +2476,15 @@ class MeasurementViewerWindow(QMainWindow):
                         self._cursor_freq[n][1] = self._cursor_freq[n][2]
                     self._cursor_freq[n][2] = None
                     self._cursor_freq[n][3] = None
-                    for s in (2, 3):
-                        self._cursor_lines[(n, s)] = []
-                        self._cursor_markers[(n, s)] = []
         if self._layout_mode != 4 and self._cursors_linked:
             # 2-chart unlinked→linked: snap both slots to slot 0's frequency
             for n in (1, 2):
                 if self._cursor_freq[n][0] is not None:
                     self._cursor_freq[n][1] = self._cursor_freq[n][0]
         self._update_linked_buttons()
-        self._redraw(self._current_entries())
+        self._draw_cursors()
+        self._blit_cursors()
+        self._update_cursor_readout()
 
     def _cursor_slot(self, ax_idx: int) -> int:
         """Map an axis index to its cursor slot.
@@ -2369,12 +2513,7 @@ class MeasurementViewerWindow(QMainWindow):
             return [all_axes[slot]]
         return [all_axes[slot]]
 
-    def _blit_cursors(self):
-        """Fast cursor repaint using saved background — no full figure redraw."""
-        if self._blit_bg is None:
-            self._canvas.draw_idle()
-            return
-        self._canvas.restore_region(self._blit_bg)
+    def _paint_cursor_artists(self):
         for key in self._cursor_lines:
             for ln in self._cursor_lines[key]:
                 try: ln.axes.draw_artist(ln)
@@ -2383,6 +2522,26 @@ class MeasurementViewerWindow(QMainWindow):
             for dot, _, _ in self._cursor_markers[key]:
                 try: dot.axes.draw_artist(dot)
                 except Exception: pass
+
+    def _on_draw_event(self, event):
+        """After any full draw: save the background (no cursors, they are
+        animated) and paint the cursors on top. Covers Qt's own redraw after a
+        resize, which used to leave the cursors invisible until the next
+        _redraw."""
+        try:
+            self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
+            self._paint_cursor_artists()
+        except Exception as exc:
+            logger.debug("[MeasurementViewer] draw_event hook: %s", exc)
+            self._blit_bg = None
+
+    def _blit_cursors(self):
+        """Fast cursor repaint using saved background — no full figure redraw."""
+        if self._blit_bg is None:
+            self._canvas.draw_idle()   # the draw_event hook paints the cursors
+            return
+        self._canvas.restore_region(self._blit_bg)
+        self._paint_cursor_artists()
         self._canvas.blit(self._fig.bbox)
 
     def _draw_cursors(self):
@@ -2414,8 +2573,8 @@ class MeasurementViewerWindow(QMainWindow):
                                        animated=True)
                     self._cursor_lines[(n, slot)].append(vline)
                     for data_line in ax.get_lines():
-                        if data_line is vline:
-                            continue
+                        if data_line is vline or data_line.get_animated():
+                            continue   # other cursor artists are not data
                         xd = data_line.get_xdata()
                         yd = data_line.get_ydata()
                         if len(xd) < 2 or not (min(xd) <= x <= max(xd)):
@@ -2460,8 +2619,7 @@ class MeasurementViewerWindow(QMainWindow):
                 self._cursor_dragging = (n, slot)
                 self._draw_cursors()
                 self._update_cursor_readout()
-                self._canvas.draw()
-                self._blit_bg = self._canvas.copy_from_bbox(self._fig.bbox)
+                self._blit_cursors()   # new cursor artists are animated: no full draw needed
                 return
 
         # Both placed — move nearest in this slot
@@ -2517,7 +2675,30 @@ class MeasurementViewerWindow(QMainWindow):
 
     def showEvent(self, event):
         super().showEvent(event)
-        self._reset_axes()
+        # First show only: lay the axes out at the real widget size. Later shows
+        # (restore from minimized, re-show) used to call _reset_axes() and wipe
+        # the curves while the files stayed selected.
+        if not getattr(self, "_shown_once", False):
+            self._shown_once = True
+            self._redraw(self._current_entries())
+
+    def closeEvent(self, event):
+        # Background scans/parses keep running to completion on their own
+        # thread; their result slot is this window, which is going away, so
+        # Qt drops the queued call. Never terminate(), never let a running
+        # QThread be destroyed.
+        for record in list(self._bg_threads):
+            thread, worker, on_done = record
+            try:
+                worker.finished.disconnect(on_done)
+            except (RuntimeError, TypeError):
+                pass
+            if thread.isRunning():
+                _detached_threads.append(record)
+                thread.finished.connect(lambda r=record: _detached_threads.remove(r)
+                                        if r in _detached_threads else None)
+        self._bg_threads.clear()
+        super().closeEvent(event)
 
     # ── Navigation ────────────────────────────────────────────────────────── #
     def _go_back(self):
