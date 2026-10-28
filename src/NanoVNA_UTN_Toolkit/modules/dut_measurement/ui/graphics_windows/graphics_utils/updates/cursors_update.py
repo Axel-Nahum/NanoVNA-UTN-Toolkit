@@ -8,7 +8,23 @@ get_freq_display_unit = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement
 
 force_marker_visibility, force_marker_visibility_2 = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.cursors_visibility", "force_marker_visibility", "force_marker_visibility_2")
 
-def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_color_left, marker_color_right, 
+def enable_cursor_picking(self, radius=5):
+    """Make the window's current cursors draggable with the mouse.
+
+    The panels register ``pick_event`` handlers once, on the original cursor
+    artists; every recreation here (and in ``force_marker_visibility``) must
+    give the new artists a picker again or dragging dies after the first sweep.
+    """
+    for name in ("cursor_left", "cursor_left_2", "cursor_right", "cursor_right_2"):
+        cursor = getattr(self, name, None)
+        if cursor is not None:
+            try:
+                cursor.set_picker(radius)
+            except Exception as e:
+                logging.debug(f"[enable_cursor_picking] {name}: {e}")
+
+
+def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_color_left, marker_color_right,
     marker2_color_left, marker2_color_right, marker1_size_left, marker1_size_right, marker2_size_left, marker2_size_right):
     """Recreate cursors when the plot type changes."""
 
@@ -146,6 +162,8 @@ def recreate_cursors_for_new_plots(self, graph_type_1, graph_type_2, marker_colo
 
         force_marker_visibility_2(self, marker_color_left=marker2_color_left, marker_color_right=marker2_color_right,
             marker_size_left=marker2_size_left, marker_size_right=marker2_size_right)
+
+        enable_cursor_picking(self)
 
         if self.show_graphic1_marker1 and not self.show_graphic1_marker2:
             self.cursor_left.set_visible(True)

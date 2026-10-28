@@ -630,6 +630,12 @@ class NanoVNAGraphics(QMainWindow):
     def closeEvent(self, event):
         from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import stop_realtime
         from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh_thread import stop_sweep
+        # A marker index moved in the last 250 ms is still waiting to be saved.
+        try:
+            from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.marker_interaction import flush_marker_indices
+            flush_marker_indices(self)
+        except Exception:
+            logging.debug("[graphics_window.closeEvent] flush_marker_indices failed", exc_info=True)
         # Pending startup timers would fire on a closed window (orphan real-time
         # loop doing serial I/O and invisible redraws).
         for _name in ("_startup_sweep_timer", "_startup_realtime_timer"):

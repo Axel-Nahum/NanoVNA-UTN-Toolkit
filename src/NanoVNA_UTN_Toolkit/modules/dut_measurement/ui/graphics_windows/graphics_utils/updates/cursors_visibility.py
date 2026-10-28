@@ -6,6 +6,8 @@ import numpy as np
 
 from pathlib import Path
 
+from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.marker_interaction import request_marker_blit
+
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
 left_slider_moved, left_slider_moved_2, right_slider_moved, right_slider_moved_2 = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.sliders_update", "left_slider_moved", "left_slider_moved_2", "right_slider_moved", "right_slider_moved_2")
@@ -123,8 +125,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                             y_val = float(np.abs(val_complex))
                                     self.cursor_left.set_data([freq_mhz], [y_val])
 
-                                if hasattr(self, 'canvas_left') and self.canvas_left:
-                                    self.canvas_left.draw_idle()
+                                request_marker_blit(self, "left")   # coalesced blit, no full draw
                         except Exception as e:
                             logging.warning(f"Error updating cursor_left position: {e}")
 
@@ -237,8 +238,7 @@ def force_marker_visibility(self, marker_color_left, marker_color_right, marker1
                                             y_val = float(np.abs(val_complex))
                                     self.cursor_right.set_data([freq_mhz], [y_val])
 
-                                if hasattr(self, 'canvas_right') and self.canvas_right:
-                                    self.canvas_right.draw_idle()
+                                request_marker_blit(self, "right")   # coalesced blit, no full draw
                         except Exception as e:
                             logging.warning(f"Error updating cursor_right position: {e}")
 
@@ -363,8 +363,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                             y_val = float(np.abs(val_complex))
                                     self.cursor_left_2.set_data([freq_mhz], [y_val])
 
-                                if hasattr(self, 'canvas_left') and self.canvas_left:
-                                    self.canvas_left.draw_idle()
+                                request_marker_blit(self, "left")   # coalesced blit, no full draw
                         except Exception as e:
                             logging.warning(f"Error updating cursor_left_2 position: {e}")
 
@@ -474,8 +473,7 @@ def force_marker_visibility_2(self, marker_color_left, marker_color_right, marke
                                             y_val = float(np.abs(val_complex))
                                     self.cursor_right_2.set_data([freq_mhz], [y_val])
 
-                                if hasattr(self, 'canvas_right') and self.canvas_right:
-                                    self.canvas_right.draw_idle()
+                                request_marker_blit(self, "right")   # coalesced blit, no full draw
                         except Exception as e:
                             logging.warning(f"Error updating cursor_right_2 position: {e}")
 

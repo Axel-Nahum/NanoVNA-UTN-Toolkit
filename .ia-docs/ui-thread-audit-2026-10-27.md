@@ -339,3 +339,41 @@ Fase 3, post-barrido del DUT (2026-10-28, verificada headless):
 - Lo que queda (~90 ms): `ax.clear()` y reconstrucción de ejes, sliders (4 `add_axes` +
   4 `Slider`) y cursores en cada barrido dentro de `update_plots_with_new_data`.
   Actualizar en lugar de reconstruir es tema de la fase 4 (marcadores).
+
+Fase 4, interacción (2026-10-28, verificada headless):
+
+- `shared/utils/real_time/updates/marker_interaction.py` (nuevo): un movimiento de
+  marcador cambia solo los dos cursores y la barra y manija del slider; esos artistas
+  se pintan por blitting con el mismo `RealtimeBlitter` de la fase 2, compartiendo el
+  registro `_rt_blitters` y el conjunto de artistas con el tick de tiempo real, así un
+  slider durante tiempo real no invalida el fondo del tick ni al revés. Las varias
+  llamadas por evento (callback del slider, wrapper, etiquetas) se juntan en un blit por
+  pasada del loop; si ya hay un dibujo completo encolado o `figure.stale` es falso, no
+  pinta nada. `slider.drawon = False`, porque el blit repinta la manija.
+  **Medido: paso de slider de 37 ms (un dibujo completo) a 11 ms (cero).**
+- Índice del marcador (`Cursor_x_y/index`): guardado una vez por ráfaga (250 ms) en
+  lugar de 1,4 ms de escritura de INI por evento; `flush_marker_indices` antes de que lo
+  lean Edit Graphics, la diferencia de frecuencias y al cerrar la ventana.
+- `graphics_utils.py`: los cuatro `update_cursor` piden el blit en vez de `draw_idle` y
+  difieren el guardado; `on_pick`/`on_motion` comparan contra los cursores y sliders
+  **actuales** de la ventana y mueven el slider (`set_val`), que dispara toda la cadena.
+  El arrastre con el mouse estaba muerto desde el primer barrido: el handler comparaba
+  contra el artista original, reemplazado en cada barrido, y los cursores nuevos no
+  tenían `picker`. `enable_cursor_picking` (en `cursors_update.py`) lo repone tras cada
+  recreación, también en el Apply de Edit Graphics.
+- `cursors_visibility.py`: los cuatro wrappers piden el blit en vez de `draw_idle`.
+- `toggle_db_times.py`: reconstrucción con `draw=False`, `_reset_markers_after_sweep` y
+  un `draw_idle` por panel. **Medido: 1 dibujo por panel** en vez de 2 síncronos más los
+  del reset de sliders y un `singleShot(150)` que repetía todo.
+- `view_utils.py`: `update_graph(checked=True)` con guarda de reentrada; `toggled` solo
+  redibuja para el botón que queda marcado, y la rama Smith fija S11 sin reentrar.
+  **Medido: 1 dibujo por click** (antes 2, y 3 en Smith).
+- `edit_graphics_utils.py`: spinboxes con debounce de 120 ms (`QTimer` single-shot):
+  una ráfaga de 5 pasos reconstruye la vista previa una vez; los color pickers ya no
+  dibujan dos veces.
+- Figuras de paneles, View y Edit creadas con `Figure` + `add_subplot` en vez de
+  `plt.subplots`: pyplot las registraba en `Gcf` y nunca se cerraban (fuga de 2 figuras
+  por ventana o reconstrucción). Verificado: `plt.get_fignums()` no crece.
+- Pendiente de esta fase: Apply de View/Edit y el toggle dB/× siguen reconstruyendo
+  los dos paneles aunque cambie uno; la reconstrucción de sliders por barrido (~90 ms)
+  sigue en `update_data_references`. Separar `update_plots_with_new_data` por panel.

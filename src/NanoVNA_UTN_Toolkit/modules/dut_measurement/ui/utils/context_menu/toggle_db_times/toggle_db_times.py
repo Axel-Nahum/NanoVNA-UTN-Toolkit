@@ -10,6 +10,8 @@ get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_
 
 update_plots_with_new_data = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.graphics_update", "update_plots_with_new_data")
 
+_reset_markers_after_sweep = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.cursors_reset", "_reset_markers_after_sweep")
+
 # ------------------------------------------------------------------------------------------------------------------ #
 
 def toggle_db_times(self, event, new_mode):
@@ -60,13 +62,14 @@ def toggle_db_times(self, event, new_mode):
 
         logging.info(f"Unit {new_mode} saved for {ini_section}")
 
-        update_plots_with_new_data(self, skip_reset=False)
-
-        self.update_cursor()
-        self.update_right_cursor()
-
-        self.update_cursor_2()
-        self.update_right_cursor_2()
+        # Rebuild both panels in the new unit, markers back at index 0 and ONE
+        # full draw per panel (coalesced draw_idle). Before: rebuild with
+        # gc.collect, 4 slider resets, 2 synchronous draws, 4 cursor chains and
+        # a 150 ms timer repeating all of it.
+        update_plots_with_new_data(self, skip_reset=True, draw=False)
+        _reset_markers_after_sweep(self)
+        self.canvas_left.draw_idle()
+        self.canvas_right.draw_idle()
 
     except Exception as e:
         logging.error(f"Error toggling db/times: {e}")

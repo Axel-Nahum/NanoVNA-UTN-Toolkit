@@ -8,8 +8,11 @@ from pathlib import Path
 
 # --- Matplotlib ---
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.lines import Line2D
+
+from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.marker_interaction import flush_marker_indices
 
 plt.rcParams['mathtext.fontset'] = 'cm'   # Fuente Computer Modern
 plt.rcParams['text.usetex'] = False       # No requiere LaTeX externo
@@ -22,7 +25,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QGroupBox,
     QColorDialog, QSpinBox, QSizePolicy, QSpacerItem, QApplication, QPushButton
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer
 
 def _ls(s):
     """'S11' -> 'S_{11}' for LaTeX subscript in mathtext."""
@@ -92,6 +95,7 @@ def create_edit_tab1(self, tabs, nano_window):
     graph_type1 = settings.value("Tab1/GraphType1", "Smith Diagram")
     s_param1 = settings.value("Tab1/SParameter", "S11")
 
+    flush_marker_indices(nano_window)   # a move within the last 250 ms is still pending
     cursor_1_1 = int(settings.value("Cursor_1_1/index", 0))
     cursor_2_1 = int(settings.value("Cursor_2_1/index", 0))
 
@@ -304,7 +308,8 @@ def create_edit_tab1(self, tabs, nano_window):
 ####################################################################################################
 
     # --- Matplotlib figure y canvas ---
-    fig, ax = plt.subplots(figsize=(4,4))
+    fig = Figure(figsize=(4,4))        # no pyplot: nothing to leak in Gcf
+    ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.25, right=0.9, top=0.82, bottom=0.18)
     canvas = FigureCanvas(fig)
     canvas.setFixedSize(350, 350)
@@ -491,36 +496,31 @@ def create_edit_tab1(self, tabs, nano_window):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_marker1.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            update_graph(graph_type1=graph_type1)
-            canvas.draw()
+            update_graph(graph_type1=graph_type1)   # draws by itself
 
     def pick_marker2_color(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_marker2.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            update_graph(graph_type1=graph_type1)
-            canvas.draw()
+            update_graph(graph_type1=graph_type1)   # draws by itself
 
     def pick_text_color(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_text.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            update_graph(graph_type1=graph_type1)
-            canvas.draw()
+            update_graph(graph_type1=graph_type1)   # draws by itself
     
     def pick_axis_color(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_axis.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            update_graph(graph_type1=graph_type1)
-            canvas.draw()
+            update_graph(graph_type1=graph_type1)   # draws by itself
 
     def pick_graphic_color(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_graphic.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            update_graph(graph_type1=graph_type1)
-            canvas.draw()
+            update_graph(graph_type1=graph_type1)   # draws by itself
 
     btn_trace.mousePressEvent = pick_trace_color
     btn_marker1.mousePressEvent = pick_marker1_color
@@ -528,9 +528,14 @@ def create_edit_tab1(self, tabs, nano_window):
     btn_graphic.mousePressEvent = pick_graphic_color
     btn_text.mousePressEvent = pick_text_color
     btn_axis.mousePressEvent = pick_axis_color
-    spin_line_tab1.valueChanged.connect(lambda val: update_line_width())
-    spin_marker1_tab1.valueChanged.connect(lambda val: update_marker1_size())
-    spin_marker2_tab1.valueChanged.connect(lambda val: update_marker2_size())
+    # Spinbox steps arrive in bursts (held arrow, wheel): rebuild the preview
+    # once per burst instead of once per step (ax.clear + Smith grid + draw).
+    preview_timer = QTimer(spin_line_tab1)
+    preview_timer.setSingleShot(True)
+    preview_timer.setInterval(120)
+    preview_timer.timeout.connect(lambda: update_graph(graph_type1=graph_type1))
+    for spin in (spin_line_tab1, spin_marker1_tab1, spin_marker2_tab1):
+        spin.valueChanged.connect(lambda _val, t=preview_timer: t.start())
 
     layout.addWidget(layout_container_V, 1)
 
@@ -600,6 +605,7 @@ def create_edit_tab2(self, tabs, nano_window):
     graph_type2 = settings.value("Tab2/GraphType2", "Smith Diagram")
     s_param2 = settings.value("Tab2/SParameter", "S11")
 
+    flush_marker_indices(nano_window)
     cursor_1_2 = int(settings.value("Cursor_1_2/index", 0))
     cursor_2_2 = int(settings.value("Cursor_2_2/index", 0))
 
@@ -811,7 +817,8 @@ def create_edit_tab2(self, tabs, nano_window):
 #--------- Matplotlib Graph ----------------------------------------------------------------------#
 ####################################################################################################
 
-    fig, ax = plt.subplots(figsize=(4,4))
+    fig = Figure(figsize=(4,4))        # no pyplot: nothing to leak in Gcf
+    ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.25, right=0.9, top=0.82, bottom=0.18)
     canvas = FigureCanvas(fig)
     canvas.setFixedSize(350, 350)
@@ -995,36 +1002,31 @@ def create_edit_tab2(self, tabs, nano_window):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_marker1.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            update_graph2(graph_type2=graph_type2)
-            canvas.draw()
+            update_graph2(graph_type2=graph_type2)   # draws by itself
 
     def pick_marker2_color2(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_marker2.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            update_graph2(graph_type2=graph_type2)
-            canvas.draw()
+            update_graph2(graph_type2=graph_type2)   # draws by itself
 
     def pick_graphic_color2(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_graphic.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            update_graph2(graph_type2=graph_type2)
-            canvas.draw()
+            update_graph2(graph_type2=graph_type2)   # draws by itself
 
     def pick_text_color2(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_text.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            update_graph2(graph_type2=graph_type2)
-            canvas.draw()
+            update_graph2(graph_type2=graph_type2)   # draws by itself
 
     def pick_axis_color2(event=None):
         color = QColorDialog.getColor()
         if color.isValid():
             btn_axis.setStyleSheet(f"background-color: {color.name()}; border: 1px solid white; border-radius: 6px;")
-            update_graph2(graph_type2=graph_type2)
-            canvas.draw()
+            update_graph2(graph_type2=graph_type2)   # draws by itself
 
     btn_trace.mousePressEvent = pick_trace_color2
     btn_marker1.mousePressEvent = pick_marker1_color2
@@ -1032,9 +1034,12 @@ def create_edit_tab2(self, tabs, nano_window):
     btn_graphic.mousePressEvent = pick_graphic_color2
     btn_text.mousePressEvent = pick_text_color2
     btn_axis.mousePressEvent = pick_axis_color2
-    spin_line_tab2.valueChanged.connect(lambda val: update_line_width2_event())
-    spin_marker1_tab2.valueChanged.connect(lambda val: update_marker1_size2_event())
-    spin_marker2_tab2.valueChanged.connect(lambda val: update_marker2_size2_event())
+    preview_timer2 = QTimer(spin_line_tab2)
+    preview_timer2.setSingleShot(True)
+    preview_timer2.setInterval(120)
+    preview_timer2.timeout.connect(lambda: update_graph2(graph_type2=graph_type2))
+    for spin in (spin_line_tab2, spin_marker1_tab2, spin_marker2_tab2):
+        spin.valueChanged.connect(lambda _val, t=preview_timer2: t.start())
 
 ####################################################################################################
 #--------- Final Layout --------------------------------------------------------------------------#

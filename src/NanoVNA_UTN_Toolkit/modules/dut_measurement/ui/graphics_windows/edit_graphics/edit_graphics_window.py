@@ -20,6 +20,10 @@ create_edit_tab1, create_edit_tab2 = safe_import("NanoVNA_UTN_Toolkit.modules.du
 
 recreate_single_plot = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.graphics_update", "recreate_single_plot")
 
+enable_cursor_picking = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.cursors_update", "enable_cursor_picking")
+
+flush_marker_indices = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.marker_interaction", "flush_marker_indices")
+
 get_graph_unit = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.db_unit.db_unit", "get_graph_unit")
 
 force_marker_visibility, force_marker_visibility_2 = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.cursors_visibility", "force_marker_visibility", "force_marker_visibility_2")
@@ -289,6 +293,8 @@ class EditGraphics(QMainWindow):
                                 marker_size_left=marker2_size, marker_size_right=marker2_size2)
 
         # Restore cursors to their last saved positions (not index 0)
+        flush_marker_indices(nw)   # a move within the last 250 ms is still pending
+        enable_cursor_picking(nw)  # force_marker_visibility replaced the cursor artists
         _s = get_settings(
             "INI/dut_measurement/graphics_config/graphics_config.ini",
             "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini",

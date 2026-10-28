@@ -11,6 +11,7 @@ from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.cursor_real_time_update 
 from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.panels_real_time_update import update_panel_labels
 from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.set_slider_val_silent import update_slider_range_silent
 from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.blit_manager import RealtimeBlitter
+from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.marker_interaction import marker_artists, panel_blitters
 
 try:
     from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.db_unit.db_unit import get_graph_unit
@@ -242,11 +243,9 @@ def update_plots_realtime(self):
         # draw happens when the static part changed (limits, label) or there is
         # no cached background yet (first tick, artists recreated, resize).
         blitters = _realtime_blitters(self)
-        for key, canvas, line, changed, cursors in (
-            ("left",  self.canvas_left,  line_left,  changed_left,
-             (getattr(self, "cursor_left", None), getattr(self, "cursor_left_2", None))),
-            ("right", self.canvas_right, line_right, changed_right,
-             (getattr(self, "cursor_right", None), getattr(self, "cursor_right_2", None))),
+        for key, canvas, line, changed in (
+            ("left",  self.canvas_left,  line_left,  changed_left),
+            ("right", self.canvas_right, line_right, changed_right),
         ):
             blitter = blitters.get(key)
             if blitter is None or blitter.canvas is not canvas:
@@ -254,7 +253,10 @@ def update_plots_realtime(self):
                     blitter.release()
                 blitter = RealtimeBlitter(canvas)
                 blitters[key] = blitter
-            blitter.set_artists([line, *cursors])
+            # Trace + the marker artists (cursors, slider handles): the same set
+            # the marker interaction blits, so a slider move during real time
+            # does not invalidate the tick's background (and vice versa).
+            blitter.set_artists([line, *marker_artists(self, key)])
             if changed:
                 blitter.invalidate()
             blitter.update()
@@ -264,11 +266,7 @@ def update_plots_realtime(self):
 
 
 def _realtime_blitters(self) -> dict:
-    blitters = getattr(self, "_rt_blitters", None)
-    if blitters is None:
-        blitters = {}
-        self._rt_blitters = blitters
-    return blitters
+    return panel_blitters(self)
 
 
 def release_realtime_blitters(self):

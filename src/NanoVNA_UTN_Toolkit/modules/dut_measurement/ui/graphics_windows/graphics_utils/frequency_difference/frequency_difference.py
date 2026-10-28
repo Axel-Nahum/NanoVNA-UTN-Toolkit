@@ -28,7 +28,9 @@ def show_frequency_difference_dialog(self):
         Path(__file__).resolve()
     )
 
-    # --- Read cursor indices ---
+    # --- Read cursor indices (a move within the last 250 ms is still pending) ---
+    from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.marker_interaction import flush_marker_indices
+    flush_marker_indices(self)
     cursor_1_1_index = int(settings.value("Cursor_1_1/index", 0))
     cursor_1_2_index = int(settings.value("Cursor_1_2/index", 0))
     cursor_2_1_index = int(settings.value("Cursor_2_1/index", 0))

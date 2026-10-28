@@ -9,7 +9,12 @@ from pathlib import Path
 from matplotlib.widgets import Slider
 from PySide6.QtCore import Qt
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
+from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.marker_interaction import (
+    request_marker_blit, save_marker_index_later,
+)
 
 plt.rcParams['mathtext.fontset'] = 'cm'   # Computer Modern font
 plt.rcParams['text.usetex'] = False       # No external LaTeX required
@@ -28,6 +33,11 @@ get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_
 get_freq_display_unit = safe_import(
     "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils",
     "get_freq_display_unit"
+)
+
+load_graph_configuration = safe_import(
+    "NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.utils.settings.load_graph_config.load_graph_config",
+    "load_graph_configuration"
 )
 
 # ------------------------------------------------------------------------------------------------------------------ #
@@ -88,6 +98,16 @@ def _ls(s):
 #############################################################################################
 # =================== LEFT PANEL ========================================================= #
 #############################################################################################
+
+def _current_graph_type(window, side):
+    """Graph type of a panel as configured now (the closures' ``graph_type``
+    argument goes stale after a graph change)."""
+    try:
+        config = load_graph_configuration()
+        return config["graph_type_tab1" if side == "left" else "graph_type_tab2"]
+    except Exception:
+        return "Smith Diagram"
+
 
 def _pin_info_panel(info_panel):
     """Keep the cursor info panel from resizing the canvas above it.
@@ -178,7 +198,8 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
 
     elif graph_type == "Magnitude":
 
-        fig, ax = plt.subplots(figsize=(4,3))
+        fig = Figure(figsize=(4,3))        # no pyplot: nothing to leak in Gcf
+        ax = fig.add_subplot(111)
         fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
@@ -224,7 +245,8 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
 
     elif graph_type == "Phase":
 
-        fig, ax = plt.subplots(figsize=(4,3))
+        fig = Figure(figsize=(4,3))        # no pyplot: nothing to leak in Gcf
+        ax = fig.add_subplot(111)
         fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
@@ -270,7 +292,8 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
 
     elif graph_type == "Real":
 
-        fig, ax = plt.subplots(figsize=(4,3))
+        fig = Figure(figsize=(4,3))        # no pyplot: nothing to leak in Gcf
+        ax = fig.add_subplot(111)
         fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
@@ -311,7 +334,8 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
 
     elif graph_type == "Imaginary":
 
-        fig, ax = plt.subplots(figsize=(4,3))
+        fig = Figure(figsize=(4,3))        # no pyplot: nothing to leak in Gcf
+        ax = fig.add_subplot(111)
         fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
@@ -639,6 +663,8 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
 
     info_panel_2.hide()
 
+    _side = "left"   # panel key for the marker blit / deferred index save
+
     def update_cursor(index = 0, from_slider=False, new_slider=None, return_values=False):
         import os
         from PySide6.QtCore import QSettings
@@ -716,7 +742,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         vswr_val = (1 + magnitude) / (1 - magnitude) if magnitude < 1 else np.inf
         labels_dict["vswr"].setText(f"{self.measurement_ui_dut_vswr} {vswr_val:.2f}" if np.isfinite(vswr_val) else f"{self.measurement_ui_dut_vswr} ∞")
 
-        fig.canvas.draw_idle()
+        request_marker_blit(self, _side)   # cursor + slider handle only, no full draw
 
         if not from_slider:
 
@@ -731,7 +757,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
 
         edit_value.clearFocus()
 
-        settings.setValue("Cursor_1_1/index", index)
+        save_marker_index_later(self, "Cursor_1_1/index", index)
 
         if return_values:
             return {
@@ -820,7 +846,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         vswr_val = (1 + magnitude) / (1 - magnitude) if magnitude < 1 else np.inf
         labels_dict_2["vswr"].setText(f"{self.measurement_ui_dut_vswr} {vswr_val:.2f}" if np.isfinite(vswr_val) else f"{self.measurement_ui_dut_vswr} ∞")
 
-        fig.canvas.draw_idle()
+        request_marker_blit(self, _side)   # cursor + slider handle only, no full draw
 
         if not from_slider:
             if new_slider_2 is None or getattr(new_slider_2, "ax", None) is None or getattr(new_slider_2.ax, "get_figure", lambda: None)() is None:
@@ -833,7 +859,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
                 return
 
         edit_value_2.clearFocus()
-        settings.setValue("Cursor_2_1/index", index)
+        save_marker_index_later(self, "Cursor_2_1/index", index)
 
         if return_values:
             return {
@@ -887,10 +913,17 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
     # --- Inicializar ---
     update_cursor(0)
 
+    def _live(kind, n=1):
+        """The window's CURRENT cursor/slider of this panel. The closure's own
+        cursor_graph/slider are replaced on every sweep and graph change
+        (recreate_cursors_for_new_plots), which is why mouse dragging silently
+        stopped working after the first sweep."""
+        return getattr(self, f"{kind}_{_side}" + ("_2" if n == 2 else ""), None)
+
     def on_pick(event):
-        if event.artist == cursor_graph:
+        if event.artist is _live("cursor"):
             dragging_1["active"] = True
-        elif event.artist == cursor_graph_2:
+        elif event.artist is _live("cursor", 2):
             dragging_2["active"] = True
 
     def on_release(event):
@@ -898,30 +931,23 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         dragging_2["active"] = False
 
     def on_motion(event):
-        if event.inaxes != ax:
+        if event.inaxes != ax or event.xdata is None:
+            return
+        which = 1 if dragging_1["active"] else 2 if dragging_2["active"] else 0
+        if not which:
             return
 
-        if dragging_1["active"]:
-            if graph_type in ["Magnitude", "Phase", "Real", "Imaginary"]:
-                mouse_x = event.xdata
-                index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
-                update_cursor(index)
-            else:
-                mouse_point = complex(event.xdata, event.ydata)
-                distances = np.abs(S_data - mouse_point)
-                index = np.argmin(distances)
-                update_cursor(index)
+        if _current_graph_type(self, _side) == "Smith Diagram":
+            index = int(np.argmin(np.abs(S_data - complex(event.xdata, event.ydata))))
+        else:
+            freq_div, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            index = int(np.argmin(np.abs(freqs / freq_div - event.xdata)))
 
-        elif dragging_2["active"]:
-            if graph_type in ["Magnitude", "Phase", "Real", "Imaginary"]:
-                mouse_x = event.xdata
-                index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
-                update_cursor_2(index)
-            else:
-                mouse_point = complex(event.xdata, event.ydata)
-                distances = np.abs(S_data - mouse_point)
-                index = np.argmin(distances)
-                update_cursor_2(index)
+        # Drive the slider: its on_changed callback updates cursor, info panel,
+        # blit and the deferred index save, exactly like a slider step.
+        slider = _live("slider", which)
+        if slider is not None and int(slider.val) != index:
+            slider.set_val(index)
 
     # --- Conectar eventos ---
     cursor_graph.set_picker(5)
@@ -1291,7 +1317,8 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         line = None
 
     elif graph_type == "Magnitude":
-        fig, ax = plt.subplots(figsize=(4,3))
+        fig = Figure(figsize=(4,3))        # no pyplot: nothing to leak in Gcf
+        ax = fig.add_subplot(111)
         fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
@@ -1337,7 +1364,8 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         cursor_graph_2, = ax.plot([], [], 'o', markersize=marker2size, color=marker2color, visible=False)
 
     elif graph_type == "Phase":
-        fig, ax = plt.subplots(figsize=(4,3))
+        fig = Figure(figsize=(4,3))        # no pyplot: nothing to leak in Gcf
+        ax = fig.add_subplot(111)
         fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
@@ -1383,7 +1411,8 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
 
     elif graph_type == "Real":
 
-        fig, ax = plt.subplots(figsize=(4,3))
+        fig = Figure(figsize=(4,3))        # no pyplot: nothing to leak in Gcf
+        ax = fig.add_subplot(111)
         fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
@@ -1424,7 +1453,8 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
 
     elif graph_type == "Imaginary":
 
-        fig, ax = plt.subplots(figsize=(4,3))
+        fig = Figure(figsize=(4,3))        # no pyplot: nothing to leak in Gcf
+        ax = fig.add_subplot(111)
         fig.set_tight_layout(False)
         fig.subplots_adjust(left=0.22, right=0.8, top=0.8, bottom=0.22)
 
@@ -1747,6 +1777,8 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
 
     info_panel_2.hide()
 
+    _side = "right"   # panel key for the marker blit / deferred index save
+
     def update_cursor(index = 0, from_slider=False, new_slider=None, return_values = False):
         val_complex = S_data[index]
         magnitude = abs(val_complex)
@@ -1813,7 +1845,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         labels_dict["il"].setText(f"{self.measurement_ui_dut_insertion_loss} {il_db:.2f} dB")
         vswr_val = (1 + magnitude)/(1 - magnitude) if magnitude < 1 else np.inf
         labels_dict["vswr"].setText(f"{self.measurement_ui_dut_vswr} {vswr_val:.2f}" if np.isfinite(vswr_val) else f"{self.measurement_ui_dut_vswr} ∞")
-        fig.canvas.draw_idle()
+        request_marker_blit(self, _side)   # cursor + slider handle only, no full draw
 
         if not from_slider:
             if new_slider is None or new_slider.ax is None or new_slider.ax.get_figure() is None:
@@ -1823,14 +1855,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
 
         edit_value.clearFocus()
 
-        # Load configuration for graphics settings and visualization parameters
-        settings = get_settings(
-            "INI/dut_measurement/graphics_config/graphics_config.ini",
-            "modules/dut_measurement/ui/graphics_windows/graphics_config/graphics_config.ini", 
-            Path(__file__).resolve()
-        )
-
-        settings.setValue("Cursor_1_2/index", index)
+        save_marker_index_later(self, "Cursor_1_2/index", index)
 
         if return_values:
             return {
@@ -1920,7 +1945,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         vswr_val = (1 + magnitude) / (1 - magnitude) if magnitude < 1 else np.inf
         labels_dict_2["vswr"].setText(f"{self.measurement_ui_dut_vswr} {vswr_val:.2f}" if np.isfinite(vswr_val) else f"{self.measurement_ui_dut_vswr} ∞")
 
-        fig.canvas.draw_idle()
+        request_marker_blit(self, _side)   # cursor + slider handle only, no full draw
 
         if not from_slider:
             if new_slider_2 is None or getattr(new_slider_2, "ax", None) is None or getattr(new_slider_2.ax, "get_figure", lambda: None)() is None:
@@ -1933,7 +1958,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
                 return
 
         edit_value_2.clearFocus()
-        settings.setValue("Cursor_2_2/index", index)
+        save_marker_index_later(self, "Cursor_2_2/index", index)
 
         if return_values:
             return {
@@ -1986,10 +2011,17 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
     dragging_1 = {"active": False}
     dragging_2 = {"active": False}
 
+    def _live(kind, n=1):
+        """The window's CURRENT cursor/slider of this panel. The closure's own
+        cursor_graph/slider are replaced on every sweep and graph change
+        (recreate_cursors_for_new_plots), which is why mouse dragging silently
+        stopped working after the first sweep."""
+        return getattr(self, f"{kind}_{_side}" + ("_2" if n == 2 else ""), None)
+
     def on_pick(event):
-        if event.artist == cursor_graph:
+        if event.artist is _live("cursor"):
             dragging_1["active"] = True
-        elif event.artist == cursor_graph_2:
+        elif event.artist is _live("cursor", 2):
             dragging_2["active"] = True
 
     def on_release(event):
@@ -1997,30 +2029,23 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         dragging_2["active"] = False
 
     def on_motion(event):
-        if event.inaxes != ax:
+        if event.inaxes != ax or event.xdata is None:
+            return
+        which = 1 if dragging_1["active"] else 2 if dragging_2["active"] else 0
+        if not which:
             return
 
-        if dragging_1["active"]:
-            if graph_type in ["Magnitude", "Phase", "Real", "Imaginary"]:
-                mouse_x = event.xdata
-                index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
-                update_cursor(index)
-            else:
-                mouse_point = complex(event.xdata, event.ydata)
-                distances = np.abs(S_data - mouse_point)
-                index = np.argmin(distances)
-                update_cursor(index)
+        if _current_graph_type(self, _side) == "Smith Diagram":
+            index = int(np.argmin(np.abs(S_data - complex(event.xdata, event.ydata))))
+        else:
+            freq_div, _ = (get_freq_display_unit(self) if get_freq_display_unit else (1e6, "MHz"))
+            index = int(np.argmin(np.abs(freqs / freq_div - event.xdata)))
 
-        elif dragging_2["active"]:
-            if graph_type in ["Magnitude", "Phase", "Real", "Imaginary"]:
-                mouse_x = event.xdata
-                index = np.argmin(np.abs(freqs*1e-6 - mouse_x))
-                update_cursor_2(index)
-            else:
-                mouse_point = complex(event.xdata, event.ydata)
-                distances = np.abs(S_data - mouse_point)
-                index = np.argmin(distances)
-                update_cursor_2(index)
+        # Drive the slider: its on_changed callback updates cursor, info panel,
+        # blit and the deferred index save, exactly like a slider step.
+        slider = _live("slider", which)
+        if slider is not None and int(slider.val) != index:
+            slider.set_val(index)
 
     # --- Conectar eventos ---
     cursor_graph.set_picker(5)

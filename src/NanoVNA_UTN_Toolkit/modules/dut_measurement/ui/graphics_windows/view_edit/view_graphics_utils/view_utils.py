@@ -19,6 +19,7 @@ logging.getLogger('matplotlib.pyplot').setLevel(logging.WARNING)
 logging.getLogger('matplotlib').setLevel(logging.WARNING)
 
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.lines import Line2D
 
@@ -135,7 +136,8 @@ def create_tab1(self):
     self.radio_buttons_tab1[graph_type1].setChecked(True)
 
     # --- Figure and Canvas ---
-    fig, ax = plt.subplots(figsize=(4,4))
+    fig = Figure(figsize=(4,4))        # no pyplot: nothing to leak in Gcf
+    ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.12, right=0.95, top=0.82, bottom=0.18)
     canvas = FigureCanvas(fig)
     canvas.setFixedSize(350, 350)
@@ -161,7 +163,7 @@ def create_tab1(self):
     self.current_s_tab1 = s_param1
     self.current_graph_tab1 = graph_type1
 
-    def update_graph():
+    def _redraw():
         ax.clear()
         ax.legend().remove()
 
@@ -174,10 +176,12 @@ def create_tab1(self):
             self.current_graph_tab1 = "Smith Diagram"
             ntw = rf.Network(frequency=self.freqs, s=data[:, np.newaxis, np.newaxis], z0=50)
             ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
-            ax.legend([Line2D([0],[0], color='blue')],[self.current_s_tab1], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
-
+            # Smith always shows S11: switch the radio first. update_graph is
+            # guarded, so this programmatic setChecked does not re-enter it.
             self.radio_s_tab1["S21"].setEnabled(False)
             self.radio_s_tab1["S11"].setChecked(True)
+            self.current_s_tab1 = "S11"
+            ax.legend([Line2D([0],[0], color='blue')],[self.current_s_tab1], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
 
         elif self.radio_buttons_tab1["Magnitude"].isChecked():
             self.current_graph_tab1 = "Magnitude"
@@ -251,7 +255,20 @@ def create_tab1(self):
 
         canvas.draw()
 
-    # --- Conectar radio buttons a update_graph ---
+    # toggled fires for the button that lost the check AND the one that got it:
+    # only the checked one redraws, and never re-entrantly (the Smith branch
+    # checks S11 programmatically).
+    _updating = {"busy": False}
+
+    def update_graph(checked=True):
+        if checked is False or _updating["busy"]:
+            return
+        _updating["busy"] = True
+        try:
+            _redraw()
+        finally:
+            _updating["busy"] = False
+
     for rb in self.radio_s_tab1.values():
         rb.toggled.connect(update_graph)
     for rb in self.radio_buttons_tab1.values():
@@ -365,7 +382,8 @@ def create_tab2(self):
     self.radio_buttons_tab2[graph_type2].setChecked(True)
 
     # --- Figure and Canvas ---
-    fig, ax = plt.subplots(figsize=(4,4))
+    fig = Figure(figsize=(4,4))        # no pyplot: nothing to leak in Gcf
+    ax = fig.add_subplot(111)
     fig.subplots_adjust(left=0.12, right=0.95, top=0.82, bottom=0.18)
     canvas = FigureCanvas(fig)
     canvas.setFixedSize(350, 350)
@@ -391,7 +409,7 @@ def create_tab2(self):
     self.current_s_tab2 = "S11"
     self.current_graph_tab2 = "Magnitude"
 
-    def update_graph():
+    def _redraw():
         ax.clear()
         ax.legend().remove()
 
@@ -404,10 +422,11 @@ def create_tab2(self):
             self.current_graph_tab2 = "Smith Diagram"
             ntw = rf.Network(frequency=self.freqs, s=data[:, np.newaxis, np.newaxis], z0=50)
             ntw.plot_s_smith(ax=ax, draw_labels=True, show_legend=False)
-            ax.legend([Line2D([0],[0], color='blue')],[self.current_s_tab2], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
-
+            # Smith always shows S11: switch the radio first (guarded, no re-entry).
             self.radio_s_tab2["S21"].setEnabled(False)
             self.radio_s_tab2["S11"].setChecked(True)
+            self.current_s_tab2 = "S11"
+            ax.legend([Line2D([0],[0], color='blue')],[self.current_s_tab2], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
 
         elif self.radio_buttons_tab2["Magnitude"].isChecked(): 
             self.current_graph_tab2 = "Magnitude"
@@ -479,9 +498,20 @@ def create_tab2(self):
 
         canvas.draw()
 
-    for rb in self.radio_s_tab2.values(): 
+    _updating = {"busy": False}
+
+    def update_graph(checked=True):
+        if checked is False or _updating["busy"]:
+            return
+        _updating["busy"] = True
+        try:
+            _redraw()
+        finally:
+            _updating["busy"] = False
+
+    for rb in self.radio_s_tab2.values():
         rb.toggled.connect(update_graph)
-    for rb in self.radio_buttons_tab2.values():  
+    for rb in self.radio_buttons_tab2.values():
         rb.toggled.connect(update_graph)
 
     # --- Inicializa el gráfico ---
