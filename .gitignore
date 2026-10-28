@@ -239,3 +239,6 @@ test_data/
 
 # Local notes and observations (not part of source)
 Observaciones*.txt
+
+# AI-assisted working notes (audits, plans)
+.ia-docs/
