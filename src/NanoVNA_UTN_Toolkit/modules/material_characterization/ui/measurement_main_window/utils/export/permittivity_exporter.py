@@ -18,6 +18,9 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from datetime import datetime
 
+from NanoVNA_UTN_Toolkit.shared.utils.export.agg_figure import new_agg_figure
+from NanoVNA_UTN_Toolkit.shared.utils.export.latex_check import known_working, remember_working
+
 from PySide6.QtWidgets import QFileDialog, QMessageBox
 
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
@@ -73,6 +76,8 @@ def _find_latex_compiler():
 
 def _test_latex_compiler(compiler_path):
     """Return True if the given LaTeX compiler can compile a trivial document."""
+    if known_working(compiler_path):
+        return True   # compiled once in this process: no second 1-30 s test
     try:
         test_content = r"\documentclass{article}\begin{document}Test\end{document}"
         with tempfile.TemporaryDirectory() as tmp:
@@ -86,7 +91,10 @@ def _test_latex_compiler(compiler_path):
                 [compiler_path, "-interaction=nonstopmode", "test.tex"],
                 cwd=tmp, capture_output=True, timeout=30, **kwargs,
             )
-            return result.returncode == 0
+            ok = result.returncode == 0
+            if ok:
+                remember_working(compiler_path)
+            return ok
     except Exception:
         return False
 
@@ -574,7 +582,9 @@ class PermittivityExporter:
                       wizard_window=None, include_steps=False):
         """Rasterize every figure into ``output_dir``.  Uses self.figures if available.
 
-        Must run on the UI thread: matplotlib is not thread-safe.
+        Worker-safe: ``self.figures`` are plain ``Figure`` deep copies (no Qt
+        canvas, not pyplot-managed) and every other plot is an Agg figure, so
+        ``savefig`` is pure Agg rasterization off the GUI thread.
         """
         if self.figures:
             image_files = self._generate_plots_from_figures(self.figures, output_dir)
@@ -675,7 +685,7 @@ class PermittivityExporter:
         # --- Smith S11 ---
         try:
             import skrf as rf
-            fig, ax = plt.subplots(figsize=(7, 7))
+            fig, ax = new_agg_figure(figsize=(7, 7))
             fig.patch.set_facecolor("white")
             ax.set_facecolor("white")
             f_arr = np.asarray(freqs, dtype=float)
@@ -690,7 +700,7 @@ class PermittivityExporter:
             ax.set_ylim(-1.1, 1.1)
             smith_path = os.path.join(output_dir, "smith.png")
             fig.savefig(smith_path, dpi=300, bbox_inches="tight")
-            plt.close(fig)
+            del fig   # plain Figure: nothing registered with pyplot to close
             image_files["smith"] = smith_path
         except Exception as exc:
             logger.error("[PermittivityExporter] Smith plot failed: %s", exc)
@@ -700,7 +710,7 @@ class PermittivityExporter:
         real, loss = permittivity_columns(eps_selected)
         div, unit = _freq_scale(f_arr)
 
-        fig, ax = plt.subplots(figsize=(9, 5))
+        fig, ax = new_agg_figure(figsize=(9, 5))
         fig.patch.set_facecolor("white")
         ax.set_facecolor("white")
         plot_with_gaps(ax, f_arr / div, real, color=real_color, linewidth=2,
@@ -714,7 +724,7 @@ class PermittivityExporter:
         ax.legend(loc="best", fontsize=11)
         perm_path = os.path.join(output_dir, "permittivity.png")
         fig.savefig(perm_path, dpi=300, bbox_inches="tight")
-        plt.close(fig)
+        del fig   # plain Figure: nothing registered with pyplot to close
         image_files["permittivity"] = perm_path
 
         return image_files
@@ -764,7 +774,7 @@ class PermittivityExporter:
             mag_db = 20 * np.log10(np.abs(s11_s) + 1e-15)
             color = _COLORS.get(key, "#1a6bbf")
 
-            fig, ax = plt.subplots(figsize=(8, 4))
+            fig, ax = new_agg_figure(figsize=(8, 4))
             fig.patch.set_facecolor("white")
             ax.set_facecolor("white")
             ax.plot(freqs_s / div, mag_db, color=color, linewidth=1.8)
@@ -775,7 +785,7 @@ class PermittivityExporter:
             fig.subplots_adjust(left=0.12, right=0.96, top=0.88, bottom=0.16)
             path = os.path.join(output_dir, f"step_{key}.png")
             fig.savefig(path, dpi=200, bbox_inches="tight")
-            plt.close(fig)
+            del fig   # plain Figure: nothing registered with pyplot to close
             image_files[f"step_{key}"] = path
         return image_files
 

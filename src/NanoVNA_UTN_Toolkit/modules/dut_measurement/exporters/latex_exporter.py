@@ -15,6 +15,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from pathlib import Path
+
+from NanoVNA_UTN_Toolkit.shared.utils.export.agg_figure import new_agg_figure
+from NanoVNA_UTN_Toolkit.shared.utils.export.latex_check import known_working, remember_working
 from datetime import datetime
 import skrf as rf
 from PySide6.QtCore import QSettings
@@ -170,6 +173,8 @@ def _test_latex_compiler(compiler_path):
     Returns:
         bool: True if compiler works, False otherwise
     """
+    if known_working(compiler_path):
+        return True   # compiled once in this process: no second 1-30 s test
     try:
         # Create a simple test document
         test_content = r"""
@@ -188,10 +193,13 @@ Test
                 [compiler_path, "-interaction=nonstopmode", "test.tex"],
                 cwd=temp_dir,
                 capture_output=True,
-                timeout=30, 
+                timeout=30,
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
-            return result.returncode == 0
+            ok = result.returncode == 0
+            if ok:
+                remember_working(compiler_path)
+            return ok
     except (subprocess.TimeoutExpired, FileNotFoundError, Exception):
         return False
 
@@ -342,7 +350,9 @@ class LatexExporter:
     def render_images(self, freqs, s11_data, s21_data, output_dir):
         """Rasterize every figure into ``output_dir``. Uses self.figures if available.
 
-        Must run on the UI thread: matplotlib is not thread-safe.
+        Worker-safe: ``self.figures`` are plain ``Figure`` deep copies (no Qt
+        canvas, not pyplot-managed) and the fallback plots are Agg figures, so
+        ``savefig`` is pure Agg rasterization (2-5 s at 300 dpi) off the GUI thread.
         """
         if self.figures and len(self.figures) > 0:
             return self._generate_plots_from_figures(self.figures, output_dir)
@@ -471,7 +481,7 @@ class LatexExporter:
         image_files = {}
 
         # Smith Diagram
-        fig, ax = plt.subplots(figsize=(10, 10))
+        fig, ax = new_agg_figure(figsize=(10, 10))
         fig.patch.set_facecolor("white")
         ax.set_facecolor("white")
         ntw = rf.Network(frequency=freqs, s=s11_data[:, np.newaxis, np.newaxis], z0=50)
@@ -479,13 +489,13 @@ class LatexExporter:
         ax.legend([Line2D([0], [0], color='blue')], ['S11'], loc='upper left', bbox_to_anchor=(-0.17, 1.14))
         smith_path = os.path.join(output_dir, "smith.png")
         fig.savefig(smith_path, dpi=300)
-        plt.close(fig)
+        del fig   # plain Figure: nothing registered with pyplot to close
         image_files['smith'] = smith_path
 
         # Magnitude S11
         unit_s11 = self._read_magnitude_unit(1)
         mag_s11_y, mag_s11_ylabel, mag_s11_title = self._magnitude_curve(s11_data, "S11", unit_s11)
-        fig, ax = plt.subplots(figsize=(6, 4))
+        fig, ax = new_agg_figure(figsize=(6, 4))
         fig.patch.set_facecolor("white")
         ax.set_facecolor("white")
         ax.plot(freqs * 1e-6, mag_s11_y, color='blue')
@@ -498,11 +508,11 @@ class LatexExporter:
             ax.set_ylim(*ylim)
         mag_s11_path = os.path.join(output_dir, "magnitude_s11.png")
         fig.savefig(mag_s11_path, dpi=300)
-        plt.close(fig)
+        del fig   # plain Figure: nothing registered with pyplot to close
         image_files['mag_s11'] = mag_s11_path
 
         # Phase S11
-        fig, ax = plt.subplots(figsize=(6, 4))
+        fig, ax = new_agg_figure(figsize=(6, 4))
         fig.patch.set_facecolor("white")
         ax.set_facecolor("white")
         ax.plot(freqs * 1e-6, np.angle(s11_data, deg=True), color='blue')
@@ -515,13 +525,13 @@ class LatexExporter:
             ax.set_ylim(*ylim)
         phase_s11_path = os.path.join(output_dir, "phase_s11.png")
         fig.savefig(phase_s11_path, dpi=300)
-        plt.close(fig)
+        del fig   # plain Figure: nothing registered with pyplot to close
         image_files['phase_s11'] = phase_s11_path
 
         # Magnitude S21
         unit_s21 = self._read_magnitude_unit(2)
         mag_s21_y, mag_s21_ylabel, mag_s21_title = self._magnitude_curve(s21_data, "S21", unit_s21)
-        fig, ax = plt.subplots(figsize=(6, 4))
+        fig, ax = new_agg_figure(figsize=(6, 4))
         fig.patch.set_facecolor("white")
         ax.set_facecolor("white")
         ax.plot(freqs * 1e-6, mag_s21_y, color='red')
@@ -534,11 +544,11 @@ class LatexExporter:
             ax.set_ylim(*ylim)
         mag_s21_path = os.path.join(output_dir, "magnitude_s21.png")
         fig.savefig(mag_s21_path, dpi=300)
-        plt.close(fig)
+        del fig   # plain Figure: nothing registered with pyplot to close
         image_files['mag_s21'] = mag_s21_path
 
         # Phase S21
-        fig, ax = plt.subplots(figsize=(6, 4))
+        fig, ax = new_agg_figure(figsize=(6, 4))
         fig.patch.set_facecolor("white")
         ax.set_facecolor("white")
         ax.plot(freqs * 1e-6, np.angle(s21_data, deg=True), color='red')
@@ -551,7 +561,7 @@ class LatexExporter:
             ax.set_ylim(*ylim)
         phase_s21_path = os.path.join(output_dir, "phase_s21.png")
         fig.savefig(phase_s21_path, dpi=300)
-        plt.close(fig)
+        del fig   # plain Figure: nothing registered with pyplot to close
         image_files['phase_s21'] = phase_s21_path
 
         return image_files
@@ -1285,13 +1295,13 @@ class LatexExporter:
         if not is_s2p:
             # S1P → Smith chart
             out = os.path.join(tmpdirname, f"cal_{base}_smith.png")
-            fig, ax = plt.subplots(figsize=(7, 7))
+            fig, ax = new_agg_figure(figsize=(7, 7))   # Agg: this runs in the compile worker
             fig.patch.set_facecolor("white")
             ax.set_facecolor("white")
             ntw.plot_s_smith(ax=ax, draw_labels=True)
             ax.set_title(f"{label} — Smith Chart")
             fig.savefig(out, dpi=200, bbox_inches="tight")
-            plt.close(fig)
+            del fig   # plain Figure: nothing registered with pyplot to close
             with doc.create(Figure(position='H')) as fig_l:
                 fig_l.add_image(out.replace("\\", "/"),
                                 width=NoEscape(r'0.7\linewidth'))
@@ -1309,7 +1319,7 @@ class LatexExporter:
                 (mag_db,    "|S21| (dB)",      f"{label} — Magnitude",  mag_path,   "red"),
                 (phase_deg, "Phase S21 (deg)", f"{label} — Phase S21",  phase_path, "red"),
             ]:
-                f2, ax2 = plt.subplots(figsize=(8, 3))
+                f2, ax2 = new_agg_figure(figsize=(8, 3))
                 f2.patch.set_facecolor("white")
                 ax2.set_facecolor("white")
                 ax2.plot(freqs_mhz, data, color=color)
@@ -1319,7 +1329,7 @@ class LatexExporter:
                 ax2.grid(True, linestyle="--", alpha=0.5)
                 f2.tight_layout()
                 f2.savefig(path, dpi=200, bbox_inches="tight")
-                plt.close(f2)
+                del f2
 
             for path, caption in [(mag_path, f"{label} — Magnitude"),
                                    (phase_path, f"{label} — Phase S21")]:

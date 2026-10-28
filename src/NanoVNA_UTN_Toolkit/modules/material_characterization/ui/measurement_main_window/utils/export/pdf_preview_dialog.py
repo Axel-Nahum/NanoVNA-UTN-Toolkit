@@ -572,8 +572,12 @@ class PermittivityPdfPreviewDialog(QDialog):
         self.notes_step_widget.setVisible(False)
         main_layout.addWidget(self.notes_step_widget)
 
-        # Canvas
-        self.fig, self.ax = plt.subplots()
+        # Canvas. A plain Figure (not pyplot-managed): its deep copies in
+        # saved_figures carry no Qt canvas or figure manager, so the export
+        # worker can rasterize them; plt.subplots also leaked a hidden window per copy.
+        from matplotlib.figure import Figure as _Figure
+        self.fig = _Figure()
+        self.ax = self.fig.add_subplot(111)
         self.fig.patch.set_facecolor("white")
         self.ax.set_facecolor("white")
         self.fig.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.18)
@@ -1259,11 +1263,13 @@ class PermittivityPdfPreviewDialog(QDialog):
         self._save_fig_at_current()
 
     def _generate_pdf(self):
-        """Rasterize the previews here, then compile LaTeX on a worker thread.
+        """LaTeX check, plot rasterization and compilation on a worker thread.
 
-        LaTeX takes several seconds; running it inline froze the dialog with no
-        sign the click had registered. The split keeps matplotlib on the UI
-        thread (it is not thread-safe) and only hands off the compilation.
+        The GUI thread only switches the button to its busy state and shows the
+        outcome. The LaTeX test compile is remembered per process (after the
+        setup dialog it costs nothing) and the preview figures are plain Figure
+        deep copies, so rasterizing them at 300 dpi is pure Agg work off the
+        GUI thread.
         """
         from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.measurement_main_window.utils.export.permittivity_exporter import (
             PermittivityExporter,
@@ -1272,11 +1278,6 @@ class PermittivityPdfPreviewDialog(QDialog):
         self._save_current_graph()
 
         exporter = PermittivityExporter(parent_widget=self, figures=self.saved_figures)
-
-        is_available, compiler_info, error_msg = exporter.check_latex_installation()
-        if not is_available:
-            QMessageBox.critical(self, "LaTeX not found", error_msg)
-            return
 
         output_path = self.output_path
         if not output_path:
@@ -1301,35 +1302,34 @@ class PermittivityPdfPreviewDialog(QDialog):
         busy.begin()
 
         tmp_dir = tempfile.mkdtemp(prefix="nanovna_report_")
-        try:
-            image_files = exporter.render_images(
-                self.freqs, self.s11_data, self.eps_selected, tmp_dir,
-                wizard_window=self.wizard_window,
-                include_steps=self.include_steps,
-            )
-        except Exception as exc:
-            logger.exception("[PermittivityPdfPreviewDialog] figure rendering failed")
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-            busy.end()
-            QMessageBox.critical(self, "Export Failed", f"Could not render the plots:\n{exc}")
-            return
-
         notes_doc = self.notes_edit.document() if self.include_notes else None
+        freqs, s11_data, eps_selected = self.freqs, self.s11_data, self.eps_selected
+        wizard_window = self.wizard_window
+        include_steps, include_tables = self.include_steps, self.include_tables
+        nonpassive_mask = self.nonpassive_mask
 
-        def _compile():
+        def _compile():   # worker thread: no widgets, raise to report
+            is_available, compiler_info, error_msg = exporter.check_latex_installation()
+            if not is_available:
+                raise RuntimeError(f"LaTeX not found: {error_msg}")
+            image_files = exporter.render_images(
+                freqs, s11_data, eps_selected, tmp_dir,
+                wizard_window=wizard_window,
+                include_steps=include_steps,
+            )
             exporter.compile_pdf(
-                freqs=self.freqs,
-                eps_selected=self.eps_selected,
-                s11_data=self.s11_data,
+                freqs=freqs,
+                eps_selected=eps_selected,
+                s11_data=s11_data,
                 image_files=image_files,
                 sample_name=display_sample_name,
-                wizard_window=self.wizard_window,
+                wizard_window=wizard_window,
                 output_path=output_path,
                 compiler_path=compiler_info[1],
-                include_steps=self.include_steps,
+                include_steps=include_steps,
                 notes_doc=notes_doc,
-                include_tables=self.include_tables,
-                nonpassive_mask=self.nonpassive_mask,
+                include_tables=include_tables,
+                nonpassive_mask=nonpassive_mask,
             )
 
         def _on_done(success, error_message):

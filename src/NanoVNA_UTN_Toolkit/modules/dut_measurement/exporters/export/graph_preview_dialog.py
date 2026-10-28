@@ -262,7 +262,12 @@ class GraphPreviewExportDialog(QDialog):
         main_layout.addSpacing(4)
 
         # --- Create figure and canvas ---
-        self.fig, self.ax = plt.subplots()
+        # A plain Figure (not pyplot-managed): its deep copies in saved_figures
+        # then carry no Qt canvas or figure manager and can be rasterized by
+        # the export worker; plt.subplots also leaked one hidden window per copy.
+        from matplotlib.figure import Figure as _Figure
+        self.fig = _Figure()
+        self.ax = self.fig.add_subplot(111)
         self.fig.patch.set_facecolor("white")
         self.ax.set_facecolor("white")
         self.fig.subplots_adjust(left=0.15, right=0.95, top=0.9, bottom=0.18)
@@ -1417,11 +1422,13 @@ class GraphPreviewExportDialog(QDialog):
 
     # --- PDF Export ---
     def _generate_pdf(self):
-        """Rasterize the previews here, then compile LaTeX on a worker thread.
+        """LaTeX check, plot rasterization and compilation on a worker thread.
 
-        LaTeX takes several seconds; running it inline froze the dialog with no
-        sign the click had registered. The split keeps matplotlib on the UI
-        thread (it is not thread-safe) and only hands off the compilation.
+        The GUI thread only switches the button to its busy state and shows the
+        outcome. The LaTeX test compile (1-5 s, up to 30 s on a fresh MiKTeX)
+        is remembered per process, so after the setup dialog it costs nothing;
+        the preview figures are plain Figure deep copies (no Qt), so rendering
+        them at 300 dpi (2-5 s) is pure Agg work and safe off the GUI thread.
         """
         from NanoVNA_UTN_Toolkit.modules.dut_measurement.exporters.latex_exporter import LatexExporter
         from NanoVNA_UTN_Toolkit.shared.utils.export.pdf_generation_task import (
@@ -1437,14 +1444,14 @@ class GraphPreviewExportDialog(QDialog):
         self._save_current_graph()
         exporter = LatexExporter(parent_widget=self, figures=self.saved_figures)
 
-        is_available, compiler_info, error_msg = exporter.check_latex_installation()
-        if not is_available:
-            QMessageBox.critical(self, "LaTeX Installation Error", error_msg)
-            return
-
         output_path = self.output_path
         magnitude_unit = self._selected_unit()
         notes_doc = self.notes_editor.document() if hasattr(self, 'notes_editor') else None
+
+        # Make raw arrays available to the table builder without changing more signatures
+        exporter._table_s11 = self.s11_data
+        exporter._table_s21 = self.s21_data
+        exporter._table_mag_unit = magnitude_unit
 
         busy = GeneratingButton(
             self.export_button,
@@ -1453,34 +1460,26 @@ class GraphPreviewExportDialog(QDialog):
         busy.begin()
 
         tmp_dir = tempfile.mkdtemp(prefix="nanovna_report_")
-        try:
-            image_files = exporter.render_images(
-                self.freqs, self.s11_data, self.s21_data, tmp_dir
-            )
-        except Exception as exc:
-            logger.exception("PDF export failed while rendering the plots")
-            shutil.rmtree(tmp_dir, ignore_errors=True)
-            busy.end()
-            QMessageBox.critical(self, "Export Failed", f"Could not render the plots:\n{exc}")
-            return
+        freqs, s11_data, s21_data = self.freqs, self.s11_data, self.s21_data
+        measurement_name = self.measurement_name
+        include_tables, include_cal_graphs = self.include_tables, self.include_cal_graphs
 
-        # Make raw arrays available to the table builder without changing more signatures
-        exporter._table_s11 = self.s11_data
-        exporter._table_s21 = self.s21_data
-        exporter._table_mag_unit = magnitude_unit
-
-        def _compile():
+        def _compile():   # worker thread: no widgets, raise to report
+            is_available, compiler_info, error_msg = exporter.check_latex_installation()
+            if not is_available:
+                raise RuntimeError(f"LaTeX installation error: {error_msg}")
+            image_files = exporter.render_images(freqs, s11_data, s21_data, tmp_dir)
             exporter.compile_document(
-                freqs=self.freqs,
+                freqs=freqs,
                 image_files=image_files,
                 output_path=output_path,
                 tmpdirname=tmp_dir,
-                measurement_name=self.measurement_name,
+                measurement_name=measurement_name,
                 compiler_path=compiler_info[1],
                 magnitude_unit=magnitude_unit,
                 notes_doc=notes_doc,
-                include_tables=self.include_tables,
-                include_cal_graphs=self.include_cal_graphs,
+                include_tables=include_tables,
+                include_cal_graphs=include_cal_graphs,
             )
 
         def _on_done(success, error_message):

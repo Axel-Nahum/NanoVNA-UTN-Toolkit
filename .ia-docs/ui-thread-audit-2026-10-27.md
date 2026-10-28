@@ -451,3 +451,37 @@ Fase 6, caracterización (2026-10-28, verificada headless con calibración real 
 - Pendiente de esta fase: `update_epsilon_curves` sigue haciendo `ax.clear()` + replot por
   tick (~70 ms del tick actual); actualizar las dos líneas en sitio con histéresis de
   límites como en el DUT (fase 2) lo bajaría a blitting puro.
+
+Fase 7, exportación PDF (2026-10-28, verificada headless con MiKTeX real, ambos
+módulos):
+
+- `shared/utils/export/latex_check.py` (nuevo): el compilador que ya compiló el documento
+  de prueba en este proceso se recuerda; `_test_latex_compiler` de los dos exportadores lo
+  consulta antes de compilar y lo registra al pasar. El diálogo de setup ya hacía la
+  prueba en un hilo; la vista previa la repetía en el hilo de UI justo antes de exportar.
+  **Medido: 590–1100 ms la primera vez, 0,01 ms después, compartido entre DUT y
+  caracterización.** Los fallos no se recuerdan (instalar LaTeX a mitad de sesión se
+  detecta en el chequeo siguiente).
+- `shared/utils/export/agg_figure.py` (nuevo): `new_agg_figure` = `Figure` +
+  `FigureCanvasAgg`, sin pyplot ni Qt. Reemplaza `plt.subplots` en los gráficos de
+  respaldo (`_generate_plots` ×5 y ×2), en los gráficos de calibración del reporte DUT
+  (`_cal_emit_plots`, ×3) y en los de pasos de caracterización (`_render_step_charts`).
+  Los de calibración **ya corrían en el worker de compilación con pyplot y backend QtAgg**:
+  `plt.subplots` crea un canvas y una ventana Qt desde un hilo que no es el de UI.
+- `graph_preview_dialog.py`, `pdf_preview_dialog.py`: la figura de vista previa es una
+  `Figure` plana con su `FigureCanvasQTAgg`, no `plt.subplots`. Sus copias profundas
+  (`saved_figures`) dejan de arrastrar un manager de pyplot (cada copia registraba una
+  ventana QtAgg oculta: fuga por cada página navegada) y quedan con `FigureCanvasBase`, así
+  `savefig` es Agg puro y seguro fuera del hilo de UI. `_generate_pdf` manda al
+  `PdfCompileTask` el chequeo, el render a 300 dpi y la compilación; el hilo de UI solo
+  pone el botón en "Generating…" y muestra el resultado. **Medido: el click de Export
+  vuelve en 14–16 ms (antes chequeo 1–5 s + render 2–5 s bloqueando); el PDF se escribe
+  igual, sin segunda compilación de prueba.** Un error del chequeo llega por el mismo
+  `_on_done` (mensaje "LaTeX installation error…").
+- Verificado además: sin figuras de pyplot ni widgets Qt creados durante el render en el
+  worker (`plt.get_fignums()` y `QApplication.allWidgets()` estables).
+
+Con esto quedan aplicadas las siete fases del plan. Lo que sigue pendiente está anotado en
+cada fase: Kalman del DUT en el hilo de UI (fase 2), reconstrucción de sliders por barrido
+(fase 3), Apply de View/Edit sobre ambos paneles (fase 4), y `ax.clear()` por tick en el
+gráfico de ε (fase 6).
