@@ -116,14 +116,18 @@ def _pin_info_panel(info_panel):
     EN: Its value labels change text on every real-time tick; when their width
         grows the panel's size hint grows, the splitter hands the canvas a few
         pixels less, and the canvas gets a resizeEvent -> full matplotlib
-        redraw per tick. Fixing the height and ignoring the width hint makes
-        the canvas size depend only on the window.
+        redraw per tick. Ignoring the width hint makes the canvas size depend
+        only on the window. The height is Fixed to the size hint, which only
+        depends on the font, but is not frozen to a number here: the panel is
+        still unparented, so the window theme (QGroupBox padding) is not
+        applied yet and a height taken now clips the bottom of both boxes.
     ES: Las etiquetas cambian de texto en cada tick; si su ancho crece, el
-        canvas recibe un resizeEvent y un redibujado completo. Altura fija y
-        ancho ignorado: el tamano del canvas depende solo de la ventana.
+        canvas recibe un resizeEvent y un redibujado completo. Ancho ignorado:
+        el tamano del canvas depende solo de la ventana. La altura sigue al
+        size hint (depende solo de la fuente); no se congela aca porque el
+        tema de la ventana todavia no se aplico y los recuadros quedan cortados.
     """
     info_panel.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Fixed)
-    info_panel.setFixedHeight(info_panel.sizeHint().height())
 
 
 # Slider axes per marker visibility: (show marker 1, show marker 2) ->
