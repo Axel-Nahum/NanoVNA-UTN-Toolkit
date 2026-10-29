@@ -309,17 +309,13 @@ def _trigger(self):
 
     self._rt_busy = True
 
-    # Smoothing window read here (GUI thread, once per tick) and applied in the worker.
+    # Smoothing in RT uses the temporal buffer in _done (sweep-to-sweep average),
+    # not a per-sweep frequency moving average, so smooth_pct is always None here.
     smooth_pct = None
-    if getattr(self, '_active_filter', 'Off') == "Smoothing":
-        sf_settings = get_settings(
-            "INI/dut_measurement/signal_filters/signal_filters.ini",
-            "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
-            Path(__file__).resolve()
-        )
-        smooth_pct = sf_settings.value("smoothing/window_pct", 5, type=int)
 
-    kalman = _kalman_for_tick(self)
+    # In RT both Smoothing and Kalman are handled temporally in _done, not in
+    # the worker, so neither filter is passed to the sweep worker here.
+    kalman = None
 
     worker = SweepWorker(
         self.vna_device,
@@ -425,13 +421,59 @@ def _done(self, freqs, s11, s21, gen, s11_f, s21_f, kalman=_KALMAN_UNSET):
     self._rt_failures = 0
     self._rt_proc_errors = 0
 
-    if kalman is not _KALMAN_UNSET and not _same_kalman(kalman, _kalman_for_tick(self)):
+    # kalman=None means temporal mode (filter handled in _done); skip the
+    # frequency-Kalman consistency check in that case.
+    if (kalman is not _KALMAN_UNSET
+            and kalman is not None
+            and not _same_kalman(kalman, _kalman_for_tick(self))):
         logging.debug("[real_time] Kalman filters replaced during the sweep; tick superseded")
         self._rt_busy = False
         return
 
     self.s11_raw = s11
     self.s21_raw = s21
+
+    # Temporal filters — applied on the GUI thread after the worker delivers the
+    # despiked sweep, so each frequency point is tracked across sweeps instead
+    # of being blurred with its frequency neighbours.
+    cur_gen = getattr(self, '_rt_generation', 0)
+    active_filter = getattr(self, '_active_filter', 'Off')
+
+    if active_filter == "Smoothing":
+        sf = get_settings(
+            "INI/dut_measurement/signal_filters/signal_filters.ini",
+            "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
+            Path(__file__).resolve(),
+        )
+        pct = sf.value("smoothing/window_pct", 5, type=int)
+        k = max(2, round(pct / 5))
+        if getattr(self, '_tb_gen', None) != cur_gen:
+            from NanoVNA_UTN_Toolkit.shared.utils.real_time.temporal_buffer import TemporalBuffer
+            self._tb_s11 = TemporalBuffer(k)
+            self._tb_s21 = TemporalBuffer(k)
+            self._tb_gen = cur_gen
+        else:
+            self._tb_s11.resize(k)
+            self._tb_s21.resize(k)
+        s11_f = self._tb_s11.push(s11_f)
+        s21_f = self._tb_s21.push(s21_f)
+
+    elif active_filter == "Kalman":
+        # Temporal Kalman: one filter per frequency point, updated each sweep.
+        if getattr(self, '_tk_gen', None) != cur_gen:
+            sf = get_settings(
+                "INI/dut_measurement/signal_filters/signal_filters.ini",
+                "modules/dut_measurement/ui/utils/menu/plot_menu/signal_filters/signal_filters.ini",
+                Path(__file__).resolve(),
+            )
+            process_noise = sf.value("kalman/custom_Q", 0.0001, type=float)
+            measurement_noise = sf.value("kalman/custom_R", 10.0, type=float)
+            from NanoVNA_UTN_Toolkit.shared.utils.real_time.temporal_buffer import TemporalKalman
+            self._tk_s11 = TemporalKalman(len(s11_f), process_noise, measurement_noise)
+            self._tk_s21 = TemporalKalman(len(s21_f), process_noise, measurement_noise)
+            self._tk_gen = cur_gen
+        s11_f = self._tk_s11.update(s11_f)
+        s21_f = self._tk_s21.update(s21_f)
 
     self.freqs = freqs
     self.s11 = s11_f

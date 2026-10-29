@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import configparser
 import logging
+import re
 import sys
 import os
 from pathlib import Path
@@ -1319,6 +1320,66 @@ def _apply_stored_status(wizard, std_texts, name, freqs, s11):
     btn.setVisible(True)
 
 
+def _temporal_series_average(filepath: str) -> tuple | None:
+    """If *filepath* belongs to a numbered series (basename_N.s1p siblings in the
+    same folder), load all members, average Re/Im of S11 point-by-point and
+    return (freqs, avg_s11, n_files).  Returns None when no series is found.
+
+    Detection rule: strip a trailing ``_<digits>`` from the stem; if that
+    base has at least one other sibling matching ``base_<digits>.s1p`` in the
+    same directory, it is a series.  Works whether the user selects
+    ``etanol.s1p`` (no suffix) or ``etanol_3.s1p`` (any member).
+    """
+    import skrf as rf
+
+    p = Path(filepath)
+    stem = p.stem  # e.g. "nano vna sonda 3mm-smooth5 etanol_7"
+    folder = p.parent
+
+    # Strip trailing _N to get the base name
+    base = re.sub(r"_\d+$", "", stem)  # "nano vna sonda 3mm-smooth5 etanol"
+
+    # Collect all numbered siblings: base_1.s1p, base_2.s1p, …
+    pattern = re.compile(r"^" + re.escape(base) + r"_(\d+)\.s1p$", re.IGNORECASE)
+    members: list[tuple[int, Path]] = []
+    for f in folder.iterdir():
+        m = pattern.match(f.name)
+        if m:
+            members.append((int(m.group(1)), f))
+
+    if len(members) < 2:
+        return None
+
+    members.sort(key=lambda x: x[0])
+    logging.info(
+        "[temporal_series] detected %d files for base %r — applying temporal average",
+        len(members), base,
+    )
+
+    all_s11: list[np.ndarray] = []
+    freqs_ref: np.ndarray | None = None
+
+    for _, fpath in members:
+        try:
+            net = rf.Network(str(fpath))
+            f = np.asarray(net.f, dtype=float)
+            s = np.asarray(net.s[:, 0, 0], dtype=complex)
+            if freqs_ref is None:
+                freqs_ref = f
+            elif len(f) != len(freqs_ref):
+                logging.warning("[temporal_series] skipping %s — frequency count mismatch", fpath.name)
+                continue
+            all_s11.append(s)
+        except Exception:
+            logging.warning("[temporal_series] could not load %s, skipping", fpath.name)
+
+    if len(all_s11) < 2:
+        return None
+
+    avg_s11 = np.mean(np.stack(all_s11, axis=0), axis=0)
+    return freqs_ref, avg_s11, len(all_s11)
+
+
 def _ask_s1p_matching_sweep(wizard, std_texts, dialog_title=None):
     """Prompt for a .s1p file and return (freqs, s11) validated against the sweep.
 
@@ -1370,6 +1431,18 @@ def _ask_s1p_matching_sweep(wizard, std_texts, dialog_title=None):
             std_texts.get("import_error_parse", "Could not read the file:\n{err}").format(err=exc),
         )
         return None
+
+    # Temporal-series detection: if numbered siblings exist, average them
+    series = _temporal_series_average(filepath)
+    if series is not None:
+        t_freqs, t_s11, n_files = series
+        QMessageBox.information(
+            wizard,
+            "Temporal series detected",
+            f"Found {n_files} numbered files for this measurement.\n"
+            f"S11 averaged across all {n_files} sweeps (temporal filter simulation).",
+        )
+        freqs, s11 = t_freqs, t_s11
 
     # Legacy permittivity files carry no marker: catch them by magnitude
     peak = implausible_s11_peak(s11)
