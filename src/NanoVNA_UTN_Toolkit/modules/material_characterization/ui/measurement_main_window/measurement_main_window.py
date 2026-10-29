@@ -20,7 +20,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
-from PySide6.QtCore import Qt, QPoint, QTimer
+from PySide6.QtCore import Qt, QObject, QPoint, QThread, QTimer, Signal
 
 from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.blit_manager import RealtimeBlitter
 from NanoVNA_UTN_Toolkit.shared.utils.background_task import run_in_background, detach_background_threads
@@ -376,6 +376,24 @@ class MeasurementMainWindow(QMainWindow):
         )
         inner.addWidget(self._filter_status_label, 0, Qt.AlignVCenter)
 
+        # Reconnect button (device mode only, shown when no NanoVNA is connected)
+        _reconn_style = (
+            "QPushButton { background: transparent; color: #e07b54;"
+            " border: 1px solid #704030; border-radius: 4px;"
+            " font-size: 11px; padding: 2px 10px; }"
+            " QPushButton:hover { background-color: #3a2010; }"
+            " QPushButton:disabled { color: #666666; border-color: #444444; }"
+        )
+        self._reconnect_btn = QPushButton(
+            self._texts.get("sweep_controls", {}).get("reconnect_label", "Connect NanoVNA")
+        )
+        self._reconnect_btn.setFixedHeight(24)
+        self._reconnect_btn.setStyleSheet(_reconn_style)
+        self._reconnect_btn.clicked.connect(self._on_reconnect_clicked)
+        inner.addWidget(self._reconnect_btn, 0, Qt.AlignVCenter)
+        # Visibility updated after mode is known
+        self._reconnect_btn.setVisible(False)
+
         # Stretch separates left from right symmetrically
         inner.addStretch()
 
@@ -431,6 +449,7 @@ class MeasurementMainWindow(QMainWindow):
 
         self.main_layout.addWidget(self._build_epsilon_chart(result), stretch=1)
         self._wire_sweep_controls()
+        self._update_reconnect_btn_visibility()
 
     # --------------------------------------------------------------------- #
 
@@ -1834,6 +1853,87 @@ class MeasurementMainWindow(QMainWindow):
                 lambda state: self._on_realtime_toggled(state != 0)
             )
 
+    def _update_reconnect_btn_visibility(self):
+        """Show the 'Connect NanoVNA' button when device mode has no device."""
+        if not hasattr(self, "_reconnect_btn"):
+            return
+        wiz = self.wizard_window
+        device = getattr(wiz, "vna_device", None) if wiz else None
+        no_device = device is None or not hasattr(device, "connected")
+        self._reconnect_btn.setVisible(self._sweep_mode == "device" and no_device)
+
+    def _on_reconnect_clicked(self):
+        """Scan for a NanoVNA and update wizard_window.vna_device on success."""
+        if not hasattr(self, "_reconnect_btn"):
+            return
+        self._reconnect_btn.setEnabled(False)
+        self._reconnect_btn.setText(
+            self._texts.get("sweep_controls", {}).get("reconnect_scanning", "Scanning…")
+        )
+
+        class _ScanWorker(QObject):
+            found    = Signal(object)
+            error    = Signal(str)
+            finished = Signal()
+
+            def scan(self):
+                try:
+                    from NanoVNA_UTN_Toolkit.Hardware.Hardware import get_interfaces, get_VNA
+                    interfaces = get_interfaces()
+                    if not interfaces:
+                        self.error.emit("No NanoVNA detected on any port.")
+                        return
+                    for iface in interfaces:
+                        try:
+                            vna = get_VNA(iface)
+                            if vna:
+                                self.found.emit(vna)
+                                return
+                        except Exception:
+                            continue
+                    self.error.emit("Could not connect to any detected device.")
+                except Exception as exc:
+                    self.error.emit(f"Scan error: {exc}")
+                finally:
+                    self.finished.emit()
+
+        thread = QThread()
+        worker = _ScanWorker()
+        worker.moveToThread(thread)
+        self._reconn_thread = thread
+        self._reconn_worker = worker
+
+        def on_found(vna):
+            logging.info("[MeasurementMainWindow] Reconnect scan found: %s", type(vna).__name__)
+            self.vna = vna
+            wiz = self.wizard_window
+            if wiz is not None:
+                wiz.vna_device = vna
+                if hasattr(wiz, "vna"):
+                    wiz.vna = vna
+            self._update_reconnect_btn_visibility()
+            sc = self._texts.get("sweep_controls", {})
+            self._set_sweep_status(sc.get("status_ready", "Ready"), "#4caf50")
+
+        def on_error(msg):
+            logging.warning("[MeasurementMainWindow] Reconnect scan failed: %s", msg)
+            from PySide6.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Connection Failed", msg)
+            self._reconnect_btn.setEnabled(True)
+            self._reconnect_btn.setText(
+                self._texts.get("sweep_controls", {}).get("reconnect_label", "Connect NanoVNA")
+            )
+
+        def on_done():
+            thread.quit()
+
+        worker.found.connect(on_found)
+        worker.error.connect(on_error)
+        worker.finished.connect(on_done)
+        thread.started.connect(worker.scan)
+        thread.finished.connect(thread.deleteLater)
+        thread.start()
+
     def _on_realtime_toggled(self, enabled: bool):
         if hasattr(self, "_run_sweep_btn"):
             self._run_sweep_btn.setEnabled(not enabled)
@@ -2047,6 +2147,7 @@ class MeasurementMainWindow(QMainWindow):
     def _switch_to_device_mode(self):
         self._sweep_mode = "device"
         self._update_sweep_source_action()
+        self._update_reconnect_btn_visibility()
         sc = self._texts.get("sweep_controls", {})
         self._set_sweep_status(sc.get("status_ready", "Ready"), "#4caf50")
 
@@ -2678,6 +2779,7 @@ class MeasurementMainWindow(QMainWindow):
                 self._sweep_mode        = "file"
                 self._realtime_timer.setInterval(max(100, int(secs * 1000)))
                 self._update_sweep_source_action()
+                self._update_reconnect_btn_visibility()
                 sc = self._texts.get("sweep_controls", {})
                 self._set_sweep_status(sc.get("status_file_mode", "File mode"), "#ff9800")
                 dlg.accept()

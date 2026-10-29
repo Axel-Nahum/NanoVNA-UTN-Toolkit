@@ -77,7 +77,9 @@
     "status_error": "Error",
     "filter_off": "—  No filter",
     "filter_smoothing": "·  Smoothing: {pct}%",
-    "filter_kalman": "·  Kalman: {preset}"
+    "filter_kalman": "·  Kalman: {preset}",
+    "reconnect_label": "Connect NanoVNA",
+    "reconnect_scanning": "Scanning…"
   },
   "file_sweep_dialog": {
     "title": "Configure S11 File Source",
