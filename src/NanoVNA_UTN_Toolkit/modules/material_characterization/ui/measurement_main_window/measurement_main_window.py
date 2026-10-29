@@ -2033,6 +2033,7 @@ class MeasurementMainWindow(QMainWindow):
             on_success=self._on_sweep_epsilon_ready,
             on_error=lambda: self._on_sweep_error("Device sweep failed"),
             post_process=cal.compute_epsilon,
+            silent=True,  # errors logged + status bar only; no blocking dialog
         )
 
     def _on_sweep_epsilon_ready(self, freqs, s11, new_result):   # GUI thread
@@ -2127,11 +2128,13 @@ class MeasurementMainWindow(QMainWindow):
         self._sweep_in_progress = False
         if hasattr(self, "_run_sweep_btn"):
             self._run_sweep_btn.setEnabled(True)
-        # Stop real-time on error to avoid repeating blocking dialogs every tick
+        # Stop real-time on error to avoid flooding on disconnect
         if hasattr(self, "_realtime_check") and self._realtime_check.isChecked():
             self._realtime_check.setChecked(False)
         sc = self._texts.get("sweep_controls", {})
         self._set_sweep_status(sc.get("status_error", "Error"), "#f44336")
+        # If device is gone, surface the Connect button
+        self._update_reconnect_btn_visibility()
 
     # --------------------------------------------------------------------- #
     # File sweep source                                                      #

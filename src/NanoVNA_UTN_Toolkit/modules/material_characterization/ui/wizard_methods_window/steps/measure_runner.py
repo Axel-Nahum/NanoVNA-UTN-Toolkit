@@ -19,6 +19,7 @@ from __future__ import annotations
 import logging
 
 import numpy as np
+import shiboken6
 from PySide6.QtCore import QObject, QThread, Qt, Signal
 from PySide6.QtWidgets import QMessageBox
 from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import _remove_spikes, _remove_phase_spikes
@@ -254,7 +255,7 @@ def run_s11_sweep(wizard):
         return None
 
 
-def run_s11_sweep_async(wizard, on_success, on_error=None, post_process=None):
+def run_s11_sweep_async(wizard, on_success, on_error=None, post_process=None, silent=False):
     """Non-blocking S11 sweep.
 
     Validates synchronously on the main thread, then moves the actual device
@@ -280,8 +281,11 @@ def run_s11_sweep_async(wizard, on_success, on_error=None, post_process=None):
             "performing characterization measurements."
         )
         logger.error("[CharacterizationWizard] %s", msg)
-        set_status(wizard, "No VNA device connected!", "red")
-        QMessageBox.critical(wizard, "VNA Device Required", msg)
+        _wiz_alive = shiboken6.isValid(wizard)
+        if _wiz_alive:
+            set_status(wizard, "No VNA device connected!", "red")
+        if not silent and _wiz_alive:
+            QMessageBox.critical(wizard, "VNA Device Required", msg)
         if on_error:
             on_error()
         return
@@ -290,12 +294,14 @@ def run_s11_sweep_async(wizard, on_success, on_error=None, post_process=None):
         if not device.connected():
             device.connect()
             if not device.connected():
-                QMessageBox.warning(wizard, "Connection Failed", "Could not connect to VNA device.")
+                if not silent and shiboken6.isValid(wizard):
+                    QMessageBox.warning(wizard, "Connection Failed", "Could not connect to VNA device.")
                 if on_error:
                     on_error()
                 return
     except Exception as exc:  # noqa: BLE001
-        QMessageBox.critical(wizard, "Connection Error", f"Failed to connect: {exc}")
+        if not silent and shiboken6.isValid(wizard):
+            QMessageBox.critical(wizard, "Connection Error", f"Failed to connect: {exc}")
         if on_error:
             on_error()
         return
@@ -353,11 +359,15 @@ def run_s11_sweep_async(wizard, on_success, on_error=None, post_process=None):
         _nxt.setEnabled(False)
 
     def _restore_nav():
-        wizard._active_sweep_thread = None
-        wizard._active_sweep_worker = None
-        wizard._active_sweep_controller = None
         try:
-            if _back is not None:
+            if shiboken6.isValid(wizard):
+                wizard._active_sweep_thread = None
+                wizard._active_sweep_worker = None
+                wizard._active_sweep_controller = None
+        except RuntimeError:
+            pass
+        try:
+            if _back is not None and shiboken6.isValid(_back):
                 _back.setEnabled(True)
         except RuntimeError:
             pass
@@ -372,14 +382,17 @@ def run_s11_sweep_async(wizard, on_success, on_error=None, post_process=None):
     def _on_failed(msg):
         thread.quit()
         logger.error("[CharacterizationWizard] Measurement error: %s", msg)
-        set_status(wizard, "Measurement failed!", "red")
+        _wiz_alive = shiboken6.isValid(wizard)
+        if _wiz_alive:
+            set_status(wizard, "Measurement failed!", "red")
         # Restore Next to its pre-sweep state (on_success handles enabling on success).
         try:
-            if _nxt is not None:
+            if _nxt is not None and shiboken6.isValid(_nxt):
                 _nxt.setEnabled(_next_was_enabled)
         except RuntimeError:
             pass
-        QMessageBox.critical(wizard, "Measurement Error", f"Error during measurement: {msg}")
+        if not silent and _wiz_alive:
+            QMessageBox.critical(wizard, "Measurement Error", f"Error during measurement: {msg}")
         if on_error:
             on_error()
 
