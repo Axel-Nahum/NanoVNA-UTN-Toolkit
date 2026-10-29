@@ -2,6 +2,7 @@ from PySide6.QtCore import QObject, Signal, QThread, QTimer
 from PySide6.QtWidgets import QMessageBox
 import numpy as np
 import logging
+import shiboken6
 from pathlib import Path
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
@@ -144,11 +145,21 @@ class _SweepController(QObject):
         log_thread_checkpoint("graphics_refresh: sweep finished handler (expected GUI)")
         if self._aborted or self._window is None:
             return
+        try:
+            if not shiboken6.isValid(self._window):
+                return
+        except RuntimeError:
+            return
         on_sweep_finished(self._window, result)
 
     def on_error(self, msg):  # runs on the GUI thread
         log_thread_checkpoint("graphics_refresh: sweep error handler (expected GUI)")
         if self._aborted or self._window is None:
+            return
+        try:
+            if not shiboken6.isValid(self._window):
+                return
+        except RuntimeError:
             return
         on_sweep_error(self._window, msg)
 

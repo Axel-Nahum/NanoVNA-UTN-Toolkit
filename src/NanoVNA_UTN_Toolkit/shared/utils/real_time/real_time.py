@@ -1,6 +1,7 @@
 import logging
 
 import numpy as np
+import shiboken6
 
 from pathlib import Path
 
@@ -270,7 +271,11 @@ class _RealtimeController(QObject):
         try:
             _done(self._window, freqs, s11, s21, self._gen, s11_f, s21_f, kalman=self._kalman)
         except Exception as e:
-            _handle_processing_error(self._window, e)
+            try:
+                if shiboken6.isValid(self._window):
+                    _handle_processing_error(self._window, e)
+            except RuntimeError:
+                pass
 
     def on_failed(self, msg):  # runs on the GUI thread
         log_thread_checkpoint("real_time: sweep_failed handler (expected GUI)")
@@ -278,13 +283,28 @@ class _RealtimeController(QObject):
             _fail(self._window, msg, self._gen)
         except Exception:
             logging.exception("[real_time] on_failed handler error")
-            self._window._rt_busy = False
+            try:
+                if shiboken6.isValid(self._window):
+                    self._window._rt_busy = False
+            except RuntimeError:
+                pass
 
     def on_thread_finished(self):  # teardown point (where quit()+wait() used to run)
         log_thread_checkpoint("real_time: worker thread finished, deleting")
 
 
 def _trigger(self):
+    try:
+        _trigger_inner(self)
+    except Exception:
+        logging.exception("[real_time] uncaught exception in RT tick — stopping real-time")
+        try:
+            _handle_realtime_disconnect(self)
+        except Exception:
+            logging.debug("[real_time] _handle_realtime_disconnect also failed", exc_info=True)
+
+
+def _trigger_inner(self):
 
     if not self._rt_active:
         return
@@ -302,7 +322,12 @@ def _trigger(self):
     except Exception:
         pass
 
-    if not self.vna_device or not self.vna_device.connected():
+    try:
+        device_ok = bool(self.vna_device) and self.vna_device.connected()
+    except Exception:
+        device_ok = False
+
+    if not device_ok:
         # Port already closed -> no point retrying; go straight to disconnected UI.
         _handle_realtime_disconnect(self)
         return
@@ -515,6 +540,12 @@ def _handle_realtime_disconnect(self):
     """Give up after too many failed sweeps: stop the loop, keep the last data on
     screen, and surface the reconnect button so the user can retry."""
 
+    try:
+        if not shiboken6.isValid(self):
+            return
+    except RuntimeError:
+        return
+
     # Stop the loop first — this is what ends the flood of failing sweeps.
     stop_realtime(self)
     self._rt_failures = 0
@@ -549,6 +580,12 @@ def _handle_processing_error(self, exc):
     """A sweep result failed to process (e.g. a bug in _done / Kalman). Bounded
     logging so a persistent error never floods the log, and stop real-time after
     too many in a row. Last good data stays on screen."""
+
+    try:
+        if not shiboken6.isValid(self):
+            return
+    except RuntimeError:
+        return
 
     self._rt_busy = False
     self._rt_proc_errors = getattr(self, "_rt_proc_errors", 0) + 1
