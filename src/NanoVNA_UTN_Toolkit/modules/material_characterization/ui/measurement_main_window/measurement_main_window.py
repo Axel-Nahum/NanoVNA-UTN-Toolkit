@@ -1900,38 +1900,61 @@ class MeasurementMainWindow(QMainWindow):
         thread = QThread()
         worker = _ScanWorker()
         worker.moveToThread(thread)
+
+        # Controller lives on the GUI thread so its slots are delivered via
+        # queued connection (worker signals are emitted from the worker thread).
+        # Plain closures would run in the worker thread → QMessageBox off-GUI crash.
+        win_ref = self
+
+        class _ScanController(QObject):
+            def on_found(self, vna):
+                logging.info("[MeasurementMainWindow] Reconnect scan found: %s", type(vna).__name__)
+                try:
+                    import shiboken6
+                    if not shiboken6.isValid(win_ref):
+                        return
+                except RuntimeError:
+                    return
+                win_ref.vna = vna
+                wiz = win_ref.wizard_window
+                if wiz is not None:
+                    wiz.vna_device = vna
+                    if hasattr(wiz, "vna"):
+                        wiz.vna = vna
+                win_ref._update_reconnect_btn_visibility()
+                sc = win_ref._texts.get("sweep_controls", {})
+                win_ref._set_sweep_status(sc.get("status_ready", "Ready"), "#4caf50")
+
+            def on_error(self, msg):
+                logging.warning("[MeasurementMainWindow] Reconnect scan failed: %s", msg)
+                try:
+                    import shiboken6
+                    if not shiboken6.isValid(win_ref):
+                        return
+                except RuntimeError:
+                    return
+                from PySide6.QtWidgets import QMessageBox
+                QMessageBox.warning(win_ref, "Connection Failed", msg)
+                win_ref._reconnect_btn.setEnabled(True)
+                win_ref._reconnect_btn.setText(
+                    win_ref._texts.get("sweep_controls", {}).get("reconnect_label", "Connect NanoVNA")
+                )
+
+            def on_done(self):
+                thread.quit()
+
+        controller = _ScanController()
         self._reconn_thread = thread
         self._reconn_worker = worker
+        self._reconn_controller = controller
 
-        def on_found(vna):
-            logging.info("[MeasurementMainWindow] Reconnect scan found: %s", type(vna).__name__)
-            self.vna = vna
-            wiz = self.wizard_window
-            if wiz is not None:
-                wiz.vna_device = vna
-                if hasattr(wiz, "vna"):
-                    wiz.vna = vna
-            self._update_reconnect_btn_visibility()
-            sc = self._texts.get("sweep_controls", {})
-            self._set_sweep_status(sc.get("status_ready", "Ready"), "#4caf50")
-
-        def on_error(msg):
-            logging.warning("[MeasurementMainWindow] Reconnect scan failed: %s", msg)
-            from PySide6.QtWidgets import QMessageBox
-            QMessageBox.warning(self, "Connection Failed", msg)
-            self._reconnect_btn.setEnabled(True)
-            self._reconnect_btn.setText(
-                self._texts.get("sweep_controls", {}).get("reconnect_label", "Connect NanoVNA")
-            )
-
-        def on_done():
-            thread.quit()
-
-        worker.found.connect(on_found)
-        worker.error.connect(on_error)
-        worker.finished.connect(on_done)
+        worker.found.connect(controller.on_found)
+        worker.error.connect(controller.on_error)
+        worker.finished.connect(controller.on_done)
         thread.started.connect(worker.scan)
+        thread.finished.connect(worker.deleteLater)
         thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(controller.deleteLater)
         thread.start()
 
     def _on_realtime_toggled(self, enabled: bool):

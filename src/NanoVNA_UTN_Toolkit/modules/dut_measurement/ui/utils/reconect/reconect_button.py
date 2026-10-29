@@ -38,6 +38,56 @@ class _ScanWorker(QObject):
             self.finished.emit()
 
 
+class _ScanController(QObject):
+    """GUI-thread receiver for _ScanWorker signals.
+
+    Plain closures connected to worker signals run in the EMITTING thread
+    (the worker thread), so any GUI call (QMessageBox, widget setEnabled)
+    would be off the GUI thread.  Bound methods of this QObject — created on
+    the GUI thread — force a queued connection, delivering handlers on the
+    GUI thread instead.
+    """
+
+    def __init__(self, window, thread):
+        super().__init__()  # GUI-thread affinity
+        self._window = window
+        self._thread = thread
+
+    def on_found(self, vna):
+        logging.info("[reconnect_device] Scan found device: %s", type(vna).__name__)
+        try:
+            if not shiboken6.isValid(self._window):
+                return
+        except RuntimeError:
+            return
+        self._window.vna_device = vna
+        _reset_sliders_after_reconnect(self._window)
+        try:
+            if shiboken6.isValid(self._window.sweep_button):
+                self._window.sweep_button.setEnabled(True)
+        except RuntimeError:
+            pass
+
+    def on_error(self, msg):
+        logging.warning("[reconnect_device] Scan failed: %s", msg)
+        try:
+            if shiboken6.isValid(self._window):
+                QMessageBox.critical(self._window, "Connection Failed", msg)
+        except RuntimeError:
+            pass
+
+    def on_done(self):
+        try:
+            if shiboken6.isValid(self._window):
+                update_reconnect_button_state(self._window)
+        except RuntimeError:
+            pass
+        try:
+            self._thread.quit()
+        except RuntimeError:
+            pass
+
+
 def _start_scan(self):
     """Run a background device scan; update self.vna_device on success."""
     self.reconnect_button.setEnabled(False)
@@ -49,30 +99,22 @@ def _start_scan(self):
     worker = _ScanWorker()
     worker.moveToThread(thread)
 
+    # Controller lives on the GUI thread so its slots are delivered via queued
+    # connection (worker signals are emitted from the worker thread).
+    controller = _ScanController(self, thread)
+
     # Keep references so Qt doesn't garbage-collect them mid-flight
     self._reconn_thread = thread
     self._reconn_worker = worker
+    self._reconn_controller = controller
 
-    def on_found(vna):
-        logging.info("[reconnect_device] Scan found device: %s", type(vna).__name__)
-        self.vna_device = vna
-        _reset_sliders_after_reconnect(self)
-        if shiboken6.isValid(self.sweep_button):
-            self.sweep_button.setEnabled(True)
-
-    def on_error(msg):
-        logging.warning("[reconnect_device] Scan failed: %s", msg)
-        QMessageBox.critical(self, "Connection Failed", msg)
-
-    def on_done():
-        update_reconnect_button_state(self)
-        thread.quit()
-
-    worker.found.connect(on_found)
-    worker.error.connect(on_error)
-    worker.finished.connect(on_done)
+    worker.found.connect(controller.on_found)
+    worker.error.connect(controller.on_error)
+    worker.finished.connect(controller.on_done)
     thread.started.connect(worker.scan)
+    thread.finished.connect(worker.deleteLater)
     thread.finished.connect(thread.deleteLater)
+    thread.finished.connect(controller.deleteLater)
     thread.start()
 
 
