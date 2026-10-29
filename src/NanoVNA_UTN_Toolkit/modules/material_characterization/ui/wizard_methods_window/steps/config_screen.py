@@ -29,7 +29,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QIntValidator
 from PySide6.QtWidgets import (
     QComboBox, QDoubleSpinBox, QHBoxLayout, QLabel, QLineEdit, QMessageBox,
-    QFormLayout, QGroupBox, QPushButton, QVBoxLayout, QWidget, QFrame,
+    QFormLayout, QGroupBox, QPushButton, QVBoxLayout, QWidget, QFrame, QScrollArea,
 )
 
 from NanoVNA_UTN_Toolkit.shared.utils.preferences.debug_mode import is_debug_enabled
@@ -337,6 +337,8 @@ def build_config_screen(wizard, descriptor, step_def):
     note.setWordWrap(True)
     note.setStyleSheet("color: gray; font-style: italic; font-size: 11px;")
     ref_form.addRow(note)
+    # Hidden while the warning is shown (see _update_reference_warning).
+    wizard.reference_note_label = note
     root.addWidget(ref_group)
     root.addStretch(1)
 
@@ -371,7 +373,23 @@ def build_config_screen(wizard, descriptor, step_def):
 
     form_container = QWidget()
     form_container.setLayout(root)
-    left_half_layout.addWidget(form_container, stretch=1)
+    if _compact:
+        # The whole wizard content already scrolls on small screens.
+        left_half_layout.addWidget(form_container, stretch=1)
+    else:
+        # The window has a fixed height: when a wrapped warning does not fit,
+        # scroll instead of squeezing the reference rows below their height.
+        form_scroll = QScrollArea()
+        form_scroll.setWidgetResizable(True)
+        form_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        form_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        form_scroll.setStyleSheet(
+            "QScrollBar:vertical { width: 6px; background: transparent; }"
+            " QScrollBar::handle:vertical { background: #3a4a6a; border-radius: 3px; min-height: 20px; }"
+            " QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }"
+        )
+        form_scroll.setWidget(form_container)
+        left_half_layout.addWidget(form_scroll, stretch=1)
 
     left_half = QWidget()
     left_half.setLayout(left_half_layout)
@@ -584,7 +602,8 @@ def _update_reference_warning(wizard, descriptor, cfg):
             "carry no extra information and the calibration cannot be solved."))
 
     temp = float(getattr(wizard, "temperature_c", 25.0))
-    for key in keys:
+    # A duplicated liquid is reported once.
+    for key in dict.fromkeys(keys):
         if not key:
             continue
         try:
@@ -603,6 +622,11 @@ def _update_reference_warning(wizard, descriptor, cfg):
 
     label.setText("\n".join(messages))
     label.setVisible(bool(messages))
+    # The warning takes the place of the generic note: both do not fit in the
+    # fixed-height window without squeezing the reference rows.
+    note = getattr(wizard, "reference_note_label", None)
+    if note is not None:
+        note.setVisible(not messages)
     # A duplicated pair is a hard error: block Next until it is fixed.
     duplicated = len(keys) >= 2 and len(set(k for k in keys if k)) < len([k for k in keys if k])
     wizard.next_button.setEnabled(not duplicated)
