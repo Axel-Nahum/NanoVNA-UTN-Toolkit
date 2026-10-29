@@ -63,6 +63,11 @@ class _ScanController(QObject):
         self._window.vna_device = vna
         _reset_sliders_after_reconnect(self._window)
         try:
+            from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import resume_realtime_after_reconnect
+            resume_realtime_after_reconnect(self._window)
+        except Exception:
+            logging.debug("[reconnect_device] resume_realtime_after_reconnect failed", exc_info=True)
+        try:
             if shiboken6.isValid(self._window.sweep_button):
                 self._window.sweep_button.setEnabled(True)
         except RuntimeError:
@@ -153,6 +158,11 @@ def reconnect_device(self):
         logging.info("[reconnect_device] Serial reconnect succeeded")
         _reset_sliders_after_reconnect(self)
         update_reconnect_button_state(self)
+        try:
+            from NanoVNA_UTN_Toolkit.shared.utils.real_time.real_time import resume_realtime_after_reconnect
+            resume_realtime_after_reconnect(self)
+        except Exception:
+            logging.debug("[reconnect_device] resume_realtime_after_reconnect failed", exc_info=True)
         if shiboken6.isValid(self.sweep_button):
             self.sweep_button.setEnabled(True)
     else:

@@ -192,12 +192,24 @@ def stop_realtime(self):
     self._rt_paused = False
 
     if hasattr(self, "_rt_timer") and self._rt_timer:
-        self._rt_timer.stop()
-        self._rt_timer.deleteLater()
+        try:
+            self._rt_timer.stop()
+        except RuntimeError:
+            pass
+        try:
+            self._rt_timer.deleteLater()
+        except RuntimeError:
+            pass
         self._rt_timer = None
 
-    _abort(self)
-    _release_blitters(self)
+    try:
+        _abort(self)
+    except Exception:
+        logging.exception("[real_time] _abort failed in stop_realtime")
+    try:
+        _release_blitters(self)
+    except Exception:
+        logging.exception("[real_time] _release_blitters failed in stop_realtime")
 
 
 def pause_realtime(self):
@@ -332,6 +344,19 @@ def _trigger_inner(self):
         _handle_realtime_disconnect(self)
         return
 
+    # Sweep config must be loaded before we can run.  If it is missing (e.g.
+    # RT was resumed after reconnect before the first manual sweep), try a
+    # lazy load; if that also fails, skip this tick and retry on the next one.
+    if not getattr(self, "start_freq_hz", None):
+        try:
+            from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils import load_sweep_configuration
+            load_sweep_configuration(self)
+        except Exception:
+            pass
+        if not getattr(self, "start_freq_hz", None):
+            logging.debug("[real_time] sweep config not yet available — skipping tick")
+            return
+
     self._rt_busy = True
 
     # Smoothing in RT uses the temporal buffer in _done (sweep-to-sweep average),
@@ -380,6 +405,29 @@ def _trigger_inner(self):
 
     thread.start()
     log_thread_checkpoint("real_time._trigger: worker thread started", target_thread=thread)
+
+    # Keep the outgoing thread alive until it finishes naturally (it may be
+    # blocked on a serial read).  Without this, Python GC can destroy the
+    # QThread C++ object while the native thread is still running, which
+    # causes "QThread: Destroyed while thread is still running" and a crash.
+    old_thread = getattr(self, "_rt_thread", None)
+    try:
+        if (old_thread is not None
+                and old_thread is not thread
+                and shiboken6.isValid(old_thread)
+                and old_thread not in _stopping_rt_threads):
+            _stopping_rt_threads.append(old_thread)
+            def _release_old(t=old_thread):
+                try:
+                    _stopping_rt_threads.remove(t)
+                except ValueError:
+                    pass
+            try:
+                old_thread.finished.connect(_release_old)
+            except RuntimeError:
+                _release_old()
+    except Exception:
+        pass
 
     self._rt_thread = thread
     self._rt_worker = worker
@@ -546,34 +594,86 @@ def _handle_realtime_disconnect(self):
     except RuntimeError:
         return
 
+    # Remember that RT was running so reconnect can restart it automatically.
+    self._rt_before_disconnect = getattr(self, "_rt_active", False)
+
     # Stop the loop first — this is what ends the flood of failing sweeps.
-    stop_realtime(self)
+    try:
+        stop_realtime(self)
+    except Exception:
+        logging.debug("[real_time] stop_realtime raised in disconnect handler", exc_info=True)
+        self._rt_active = False
+        self._rt_busy = False
+        self._rt_timer = None
     self._rt_failures = 0
 
     # Reflect "real-time stopped" in the checkbox without re-firing on_realtime_toggled.
-    if hasattr(self, "realtime_checkbox"):
-        self.realtime_checkbox.blockSignals(True)
-        self.realtime_checkbox.setChecked(True)  # "Single Sweep Mode" => real-time off
-        self.realtime_checkbox.blockSignals(False)
+    try:
+        if hasattr(self, "realtime_checkbox"):
+            self.realtime_checkbox.blockSignals(True)
+            self.realtime_checkbox.setChecked(True)  # "Single Sweep Mode" => real-time off
+            self.realtime_checkbox.blockSignals(False)
+    except Exception:
+        logging.debug("[real_time] checkbox update failed in disconnect handler", exc_info=True)
 
     # Restore the normal sweep-button label (it read "Reset Kalman" during real-time).
-    if hasattr(self, "sweep_button"):
-        self.sweep_button.setText(getattr(self, "measurement_ui_button_run_sweep", "Run Sweep"))
+    try:
+        if hasattr(self, "sweep_button"):
+            self.sweep_button.setText(getattr(self, "measurement_ui_button_run_sweep", "Run Sweep"))
+    except Exception:
+        logging.debug("[real_time] sweep_button setText failed in disconnect handler", exc_info=True)
 
-    # Make the reconnect button available. The last measured data is left untouched
-    # on the plots (self.freqs / self.s11 / self.s21 are not cleared).
+    # Make the reconnect button available. Device is known disconnected here, so
+    # force green style directly — calling vna_device.connected() on a port that
+    # just threw PermissionError can cause a C-level crash on Windows.
     try:
         from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh import (
-            update_reconnect_button_state,
+            _GREEN_BTN_STYLE,
         )
-        update_reconnect_button_state(self)
+        if hasattr(self, "reconnect_button"):
+            self.reconnect_button.setEnabled(True)
+            self.reconnect_button.setText("Reconnect")
+            self.reconnect_button.setStyleSheet(_GREEN_BTN_STYLE)
     except Exception:
-        logging.debug("[real_time] update_reconnect_button_state failed", exc_info=True)
+        logging.debug("[real_time] reconnect button update failed", exc_info=True)
 
     logging.warning(
         "[real_time] NanoVNA unresponsive after %d retries - real-time stopped. "
         "Last data kept on screen; press Reconnect to retry.", _RT_MAX_RETRIES
     )
+
+
+def resume_realtime_after_reconnect(window):
+    """If RT was active when the device disconnected, restart it now.
+
+    Call this from any reconnect success handler after ``window.vna_device``
+    has been updated.  Clears the flag so a second reconnect does not
+    re-trigger RT if the user had stopped it in the meantime.
+    """
+    if not getattr(window, "_rt_before_disconnect", False):
+        return
+    # Require sweep config — RT needs start_freq_hz / stop_freq_hz / segments.
+    if not getattr(window, "start_freq_hz", None):
+        try:
+            from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_utils.sweep_utils import load_sweep_configuration
+            load_sweep_configuration(window)
+        except Exception:
+            logging.debug("[real_time] could not load sweep config for RT resume", exc_info=True)
+    if not getattr(window, "start_freq_hz", None):
+        logging.warning("[real_time] sweep config not available, skipping RT resume")
+        return
+    window._rt_before_disconnect = False
+    # Restore checkbox visual state (it was forced to checked on disconnect).
+    try:
+        if hasattr(window, "realtime_checkbox"):
+            window.realtime_checkbox.blockSignals(True)
+            window.realtime_checkbox.setChecked(False)  # unchecked = RT active
+            window.realtime_checkbox.blockSignals(False)
+    except Exception:
+        logging.debug("[real_time] checkbox restore failed in resume_realtime_after_reconnect", exc_info=True)
+    logging.info("[real_time] Reconnected — restarting real-time loop")
+    window._rt_generation = getattr(window, "_rt_generation", 0) + 1
+    start_realtime(window)
 
 
 def _handle_processing_error(self, exc):

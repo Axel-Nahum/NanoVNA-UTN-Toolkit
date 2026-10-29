@@ -501,6 +501,26 @@ def on_sweep_finished(self, result):
 
 def on_sweep_error(self, msg):
     QMessageBox.critical(self, "Sweep Error", msg)
+
+    _af = getattr(self, '_active_filter', 'Off')
+    if getattr(self, '_rt_active', False) and _af == "Kalman":
+        self.sweep_button.setText(getattr(self, 'measurement_ui_button_reset_kalman', 'Reset Kalman'))
+    else:
+        self.sweep_button.setText(getattr(self, 'measurement_ui_button_run_sweep', 'Run Sweep'))
     self.sweep_button.setEnabled(True)
     self.sweep_progress_bar.setVisible(False)
-    self.reconnect_button.setEnabled(True)
+
+    if not getattr(self, '_initial_sweep_done', True):
+        self.realtime_checkbox.setEnabled(True)
+
+    try:
+        from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.graphics_refresh import (
+            update_reconnect_button_state, _GREEN_BTN_STYLE,
+        )
+        # Sweep failed — device is disconnected. Force green style directly since
+        # vna_device.connected() may still return True before the next serial attempt.
+        self.reconnect_button.setEnabled(True)
+        self.reconnect_button.setText("Reconnect")
+        self.reconnect_button.setStyleSheet(_GREEN_BTN_STYLE)
+    except Exception:
+        self.reconnect_button.setEnabled(True)

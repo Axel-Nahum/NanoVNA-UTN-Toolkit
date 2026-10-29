@@ -1535,6 +1535,7 @@ class MeasurementMainWindow(QMainWindow):
             limits = scale_limits(self._result.eps_selected, usable)
             if limits is not None:
                 ax.set_ylim(limits)
+                ax.autoscale(False)
 
     # --------------------------------------------------------------------- #
     # Signal filters                                                         #
@@ -1767,6 +1768,7 @@ class MeasurementMainWindow(QMainWindow):
             # Same limits a full redraw would set; the ticks change, so the next
             # blit is a full draw (no axes rebuild).
             ax.set_ylim(new_ylim)
+            ax.autoscale(False)
             self._marker_blitter.invalidate()
         if not self._trace_blit_active:
             self._trace_blit_active = True   # the curves join the blitted artists
@@ -1922,8 +1924,15 @@ class MeasurementMainWindow(QMainWindow):
                     if hasattr(wiz, "vna"):
                         wiz.vna = vna
                 win_ref._update_reconnect_btn_visibility()
-                sc = win_ref._texts.get("sweep_controls", {})
-                win_ref._set_sweep_status(sc.get("status_ready", "Ready"), "#4caf50")
+                # Restart real-time if it was running when the device disconnected.
+                if getattr(win_ref, "_rt_before_disconnect", False):
+                    win_ref._rt_before_disconnect = False
+                    if hasattr(win_ref, "_realtime_check"):
+                        win_ref._realtime_check.setChecked(True)
+                    logging.info("[MeasurementMainWindow] Reconnected — real-time restarted")
+                else:
+                    sc = win_ref._texts.get("sweep_controls", {})
+                    win_ref._set_sweep_status(sc.get("status_ready", "Ready"), "#4caf50")
 
             def on_error(self, msg):
                 logging.warning("[MeasurementMainWindow] Reconnect scan failed: %s", msg)
@@ -2151,9 +2160,13 @@ class MeasurementMainWindow(QMainWindow):
         self._sweep_in_progress = False
         if hasattr(self, "_run_sweep_btn"):
             self._run_sweep_btn.setEnabled(True)
-        # Stop real-time on error to avoid flooding on disconnect
+        # Stop real-time on error to avoid flooding on disconnect.
+        # Save the RT state first so reconnect can restart it automatically.
         if hasattr(self, "_realtime_check") and self._realtime_check.isChecked():
+            self._rt_before_disconnect = True
             self._realtime_check.setChecked(False)
+        else:
+            self._rt_before_disconnect = False
         sc = self._texts.get("sweep_controls", {})
         self._set_sweep_status(sc.get("status_error", "Error"), "#f44336")
         # If device is gone, surface the Connect button

@@ -88,71 +88,68 @@ class SweepWorker(QObject):
         except Exception as e:
             self.error.emit(str(e))
             
+_GREEN_BTN_STYLE = """
+    QPushButton {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        padding: 5px;
+        font-weight: bold;
+    }
+    QPushButton:hover {
+        background-color: #45A049;
+    }
+"""
+
+
 def update_reconnect_button_state(self):
-    """Update the reconnect button state based on device connection."""
+    """Update the reconnect button state based on device connection.
+
+    * No device reference at all  → "Connect"    (green) — device never detected
+    * Device exists but offline   → "Reconnect"  (green) — we know the device, retry
+    * Device exists and connected → "Reconnect"  (standard style) — already good
+    """
     if not self.vna_device:
-        # Instead of disabling, show "Connect" button so user can try to connect
         self.reconnect_button.setEnabled(True)
         self.reconnect_button.setText("Connect")
-        self.reconnect_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #45A049;
-            }
-        """)
+        self.reconnect_button.setStyleSheet(_GREEN_BTN_STYLE)
         return
-        
-    is_connected = self.vna_device.connected()
+
+    try:
+        is_connected = self.vna_device.connected()
+    except Exception:
+        is_connected = False
 
     if is_connected:
-        # Connected state: standard button saying "Reconnect" (same style as Run Sweep button)
         self.reconnect_button.setEnabled(True)
         self.reconnect_button.setText("Reconnect")
-        # Force reset to standard button appearance by setting style to None and updating
         self.reconnect_button.setStyleSheet("")
         self.reconnect_button.style().unpolish(self.reconnect_button)
         self.reconnect_button.style().polish(self.reconnect_button)
         self.reconnect_button.update()
     else:
-        # Disconnected state: green button saying "Connect"
+        # Device object exists but port is closed — green Reconnect (not Connect)
         self.reconnect_button.setEnabled(True)
-        self.reconnect_button.setText("Connect")
-        self.reconnect_button.setStyleSheet("""
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #45A049;
-            }
-        """)
+        self.reconnect_button.setText("Reconnect")
+        self.reconnect_button.setStyleSheet(_GREEN_BTN_STYLE)
 
 def _reset_sweep_ui(self):
 
-    self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
-
     if hasattr(self, "sweep_button"):
-        if self._initial_sweep_done:  
-            self._initial_sweep_done = True
-            self.sweep_button.setEnabled(True)
+        self.sweep_button.setText(getattr(self, "measurement_ui_button_run_sweep", "Run Sweep"))
+        self.sweep_button.setEnabled(True)
+
+    if not getattr(self, "_initial_sweep_done", True):
+        self._initial_sweep_done = True
+        if hasattr(self, "realtime_checkbox"):
+            self.realtime_checkbox.setEnabled(True)
 
     if hasattr(self, "sweep_progress_bar"):
         self.sweep_progress_bar.setVisible(False)
         self.sweep_progress_bar.setValue(0)
 
-    if hasattr(self, "_update_reconnect_button_state"):
-        update_reconnect_button_state(self)
+    update_reconnect_button_state(self)
 
 def run_sweep(self):
     """Run a sweep on the connected device."""
