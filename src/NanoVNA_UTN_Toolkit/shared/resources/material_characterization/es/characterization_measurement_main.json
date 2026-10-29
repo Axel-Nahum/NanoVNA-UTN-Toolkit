@@ -74,7 +74,10 @@
     "status_realtime": "Tiempo real",
     "status_file_mode": "Modo archivo",
     "status_measuring": "Midiendo…",
-    "status_error": "Error"
+    "status_error": "Error",
+    "filter_off": "—  Sin filtro",
+    "filter_smoothing": "·  Suavizado: {pct}%",
+    "filter_kalman": "·  Kalman: {preset}"
   },
   "file_sweep_dialog": {
     "title": "Configurar fuente S11 desde archivos",

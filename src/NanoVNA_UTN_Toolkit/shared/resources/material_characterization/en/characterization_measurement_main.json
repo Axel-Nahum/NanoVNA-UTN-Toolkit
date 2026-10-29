@@ -74,7 +74,10 @@
     "status_realtime": "Real-time",
     "status_file_mode": "File mode",
     "status_measuring": "Measuring…",
-    "status_error": "Error"
+    "status_error": "Error",
+    "filter_off": "—  No filter",
+    "filter_smoothing": "·  Smoothing: {pct}%",
+    "filter_kalman": "·  Kalman: {preset}"
   },
   "file_sweep_dialog": {
     "title": "Configure S11 File Source",

@@ -14,6 +14,7 @@ ES: Muestra la permitividad compleja calculada del líquido incógnita: una
 """
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
+import re
 import sys
 import logging
 from pathlib import Path
@@ -244,8 +245,14 @@ class MeasurementMainWindow(QMainWindow):
             (info.get("references",   "References"),  refs_text),
             (info.get("probe",        "Probe"),       self._probe_text()),
             (info.get("sweep",        "Sweep"),
-             f"{start/1e6:.3f}–{stop/1e6:.3f} MHz · {steps} pts"
-             if start is not None and stop is not None else "—"),
+             (
+                 "–".join(
+                     f"{hz/1e9:.3f} GHz" if hz >= 1e9
+                     else f"{hz/1e6:.3f} MHz" if hz >= 1e6
+                     else f"{hz/1e3:.1f} kHz"
+                     for hz in (start, stop)
+                 ) + f" · {steps} pts"
+             ) if start is not None and stop is not None else "—"),
         ]
 
         if self._is_dark:
@@ -360,6 +367,14 @@ class MeasurementMainWindow(QMainWindow):
         )
         self._sweep_status_label.setStyleSheet(_LBL)
         inner.addWidget(self._sweep_status_label, 0, Qt.AlignVCenter)
+
+        self._filter_status_label = QLabel(
+            self._texts.get("sweep_controls", {}).get("filter_off", "—  No filter")
+        )
+        self._filter_status_label.setStyleSheet(
+            "font-size: 12px; color: #4a5a7a; border: none; background: transparent;"
+        )
+        inner.addWidget(self._filter_status_label, 0, Qt.AlignVCenter)
 
         # Stretch separates left from right symmetrically
         inner.addStretch()
@@ -1513,29 +1528,76 @@ class MeasurementMainWindow(QMainWindow):
         open_signal_filters_char(self)
 
     def _apply_eps_filter(self, real, loss):
-        """Apply the active filter to ε′ (real) and ε″ (loss) arrays."""
+        """Apply the active filter to ε′ (real) and ε″ (loss) arrays.
+
+        In real-time mode Smoothing uses a temporal buffer (sweep-to-sweep
+        average) instead of a frequency moving average, preserving the shape of
+        each curve while reducing inter-sweep variance.
+        """
         import numpy as np
         active = getattr(self, "_active_filter", "Off")
         if active == "Smoothing":
-            w = max(1, int(len(real) * self._filter_smooth_pct / 100))
-            if w > 1:
-                kernel = np.ones(w) / w
-                pad = w // 2
-                real = np.convolve(np.pad(real, pad, mode="edge"), kernel, mode="valid")[:len(real)]
-                loss = np.convolve(np.pad(loss, pad, mode="edge"), kernel, mode="valid")[:len(loss)]
-        elif active == "Kalman" and self._kf_eps is not None:
-            filtered = np.array([
-                self._kf_eps.update(complex(r, i))
-                for r, i in zip(real, loss)
-            ])
+            k = max(2, round(self._filter_smooth_pct / 5))
+            if not hasattr(self, '_tb_eps_r') or self._tb_eps_r is None:
+                from NanoVNA_UTN_Toolkit.shared.utils.real_time.temporal_buffer import TemporalBuffer
+                self._tb_eps_r = TemporalBuffer(k)
+                self._tb_eps_l = TemporalBuffer(k)
+            else:
+                self._tb_eps_r.resize(k)
+                self._tb_eps_l.resize(k)
+            real = self._tb_eps_r.push(np.asarray(real, dtype=float))
+            loss = self._tb_eps_l.push(np.asarray(loss, dtype=float))
+        elif active == "Kalman":
+            # Temporal Kalman: one filter per frequency point updated each sweep.
+            if not hasattr(self, '_tk_eps') or self._tk_eps is None:
+                from NanoVNA_UTN_Toolkit.shared.utils.real_time.temporal_buffer import TemporalKalman
+                pn = getattr(self, '_kf_process_noise', 0.0001)
+                mn = getattr(self, '_kf_measurement_noise', 10.0)
+                self._tk_eps = TemporalKalman(len(real), pn, mn)
+            # Feed ε′ + j·ε″ as a complex array; Re→ε′, Im→ε″ after filtering.
+            eps_complex = np.asarray(real, dtype=float) + 1j * np.asarray(loss, dtype=float)
+            filtered = self._tk_eps.update(eps_complex)
             real = filtered.real
             loss = filtered.imag
         return real, loss
 
+    def _update_filter_label(self):
+        if not hasattr(self, "_filter_status_label"):
+            return
+        sc = self._texts.get("sweep_controls", {})
+        active = getattr(self, "_active_filter", "Off")
+        if active == "Smoothing":
+            pct = getattr(self, "_filter_smooth_pct", 5)
+            self._filter_status_label.setText(
+                sc.get("filter_smoothing", "·  Smoothing: {pct}%").format(pct=pct)
+            )
+            self._filter_status_label.setStyleSheet(
+                "font-size: 12px; color: #8899bb; border: none; background: transparent;"
+            )
+        elif active == "Kalman":
+            preset = getattr(self, "_filter_kalman_preset", "Kalman")
+            self._filter_status_label.setText(
+                sc.get("filter_kalman", "·  Kalman: {preset}").format(preset=preset)
+            )
+            self._filter_status_label.setStyleSheet(
+                "font-size: 12px; color: #8899bb; border: none; background: transparent;"
+            )
+        else:
+            self._filter_status_label.setText(sc.get("filter_off", "—  No filter"))
+            self._filter_status_label.setStyleSheet(
+                "font-size: 12px; color: #4a5a7a; border: none; background: transparent;"
+            )
+        self._filter_status_label.show()
+
     def _on_filter_settings_changed(self):
         """Called after filter dialog applies new settings — redraw with new settings."""
+        self._update_filter_label()
         if self._result is None:
             return
+        # Reset temporal buffers/filters so the new settings take effect immediately.
+        self._tb_eps_r = None
+        self._tb_eps_l = None
+        self._tk_eps = None
         # Filter is only active in real-time; changing settings outside real-time just redraws raw.
         _is_realtime = (
             getattr(self, "_realtime_check", None) is not None
@@ -1673,23 +1735,12 @@ class MeasurementMainWindow(QMainWindow):
         auto_scale = get_settings(_PM_INI_EXE, _PM_INI_DEV, Path(__file__).resolve()).value(
             "auto_scale/current_state", True, type=bool)
         if auto_scale:
-            # The extents redraw_chart scales to (scale_limits: eps' and eps''
-            # of the raw result, finite values), without its margin.
-            real, loss = permittivity_columns(self._result.eps_selected)
-            values = np.concatenate([real, loss])
-            values = values[np.isfinite(values)]
-            if values.size == 0:
+            usable, _f_min = usable_band_of(self._result)
+            new_ylim = scale_limits(eps, usable)
+            if new_ylim is None:
                 return False
-            lo, hi = float(values.min()), float(values.max())
-            cur_lo, cur_hi = ax.get_ylim()
-            span = cur_hi - cur_lo
-            fits = cur_lo <= lo and hi <= cur_hi
-            uses_enough = span > 0 and (hi - lo) >= 0.6 * span
-            if not (fits and uses_enough):
-                usable, _f_min = usable_band_of(self._result)
-                new_ylim = scale_limits(self._result.eps_selected, usable)
-                if new_ylim is None:
-                    return False
+            if new_ylim == tuple(ax.get_ylim()):
+                new_ylim = None   # limits unchanged — skip the invalidate
 
         if mgr.update_epsilon_curves_inplace(ax, self._result.f_hz, eps) is None:
             return False
@@ -1784,6 +1835,8 @@ class MeasurementMainWindow(QMainWindow):
             )
 
     def _on_realtime_toggled(self, enabled: bool):
+        if hasattr(self, "_run_sweep_btn"):
+            self._run_sweep_btn.setEnabled(not enabled)
         if enabled:
             self._realtime_timer.start()
             sc = self._texts.get("sweep_controls", {})
@@ -1900,23 +1953,22 @@ class MeasurementMainWindow(QMainWindow):
             float(np.nanmedian(new_real)), float(np.nanmedian(new_loss)),
             int(np.sum(~np.isfinite(new_real))), len(new_real),
         )
-        # Apply filter only in real-time mode; single-shot shows raw data and resets Kalman.
         _is_realtime = (
             getattr(self, "_realtime_check", None) is not None
             and self._realtime_check.isChecked()
         )
-        if _is_realtime:
+        # Apply filter in both single-shot and real-time: each sweep accumulates
+        # into the temporal buffer/Kalman, so repeated Run Sweep clicks average
+        # across shots just like RT does across ticks.
+        if getattr(self, "_active_filter", "Off") != "Off":
             filtered_real, filtered_loss = self._apply_eps_filter(
                 np.asarray(new_real, dtype=float),
                 np.asarray(new_loss, dtype=float),
             )
-            # permittivity_columns returns eps_loss = -Im(eps), reconstruct as eps' - j*eps''
             self._display_eps = (filtered_real - 1j * filtered_loss).astype(complex)
         else:
             filtered_real, filtered_loss = new_real, new_loss
-            self._display_eps = None          # redraw_chart uses raw eps_selected
-            if self._kf_eps is not None:
-                self._kf_eps.reset()          # start fresh next real-time session
+            self._display_eps = None
         # Refresh marker data arrays so cursors and badges reflect the result
         self._marker_real_eps = filtered_real
         self._marker_loss_eps = filtered_loss
@@ -1937,10 +1989,12 @@ class MeasurementMainWindow(QMainWindow):
         if inplace and hasattr(self, "_blit_markers"):
             self._blit_markers()   # curves + cursors + handles, one blit
         self._sweep_in_progress = False
+        _rt = getattr(self, "_realtime_check", None)
+        _rt_on = _rt is not None and _rt.isChecked()
         if hasattr(self, "_run_sweep_btn"):
-            self._run_sweep_btn.setEnabled(True)
+            self._run_sweep_btn.setEnabled(not _rt_on)
         sc = self._texts.get("sweep_controls", {})
-        if getattr(self, "_realtime_check", None) and self._realtime_check.isChecked():
+        if _rt_on:
             self._set_sweep_status(sc.get("status_realtime", "Real-time"), "#2196f3")
         elif self._sweep_mode == "file":
             self._set_sweep_status(sc.get("status_file_mode", "File mode"), "#ff9800")
@@ -2552,7 +2606,10 @@ class MeasurementMainWindow(QMainWindow):
             folder = Path(folder_str)
             if not folder.is_dir():
                 return
-            files = sorted(folder.glob("*.s1p"))
+            def _nat_key(p):
+                return [int(c) if c.isdigit() else c.lower()
+                        for c in re.split(r'(\d+)', p.stem)]
+            files = sorted(folder.glob("*.s1p"), key=_nat_key)
             table.setRowCount(0)
             existing = {e["path"]: e["name"] for e in self._file_sweep_config}
             for f in files:
