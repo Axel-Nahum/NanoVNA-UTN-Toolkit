@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QComboBox, QStyledItemDelegate,
     QGroupBox, QRadioButton, QButtonGroup,
-    QSpinBox, QFrame,
+    QSpinBox, QFrame, QLineEdit, QMessageBox,
 )
 from PySide6.QtCore import Qt
 
@@ -193,6 +193,17 @@ def open_signal_filters_char(window):
         kalman_combo.setCurrentIndex(idx)
 
     preset_row.addWidget(kalman_combo)
+
+    kalman_adv_btn = QPushButton("Advanced…")
+    kalman_adv_btn.setFixedHeight(24)
+    kalman_adv_btn.setStyleSheet(
+        "QPushButton { background: transparent; color: #8899bb; border: none;"
+        " font-size: 11px; text-decoration: underline; }"
+        "QPushButton:hover { color: #aab8cc; }"
+        "QPushButton:disabled { color: #3a4a6a; }"
+    )
+    preset_row.addSpacing(8)
+    preset_row.addWidget(kalman_adv_btn)
     kf_v.addLayout(preset_row)
 
     kalman_info = QLabel()
@@ -203,6 +214,110 @@ def open_signal_filters_char(window):
     kf_v.addWidget(kalman_info)
     main.addWidget(kalman_frame)
 
+    # ── Advanced Kalman dialog ─────────────────────────────────────────── #
+    def _open_advanced():
+        adv = QDialog(dlg)
+        adv.setWindowTitle("Custom Kalman Parameters")
+        adv.setStyleSheet(window.styleSheet())
+        adv.setWindowFlags(Qt.WindowType.Dialog | Qt.WindowType.MSWindowsFixedSizeDialogHint)
+        adv.setFixedSize(400, 320)
+        a_layout = QVBoxLayout(adv)
+        a_layout.setContentsMargins(20, 20, 20, 20)
+        a_layout.setSpacing(10)
+
+        a_title = QLabel("Custom Kalman Parameters")
+        a_title.setAlignment(Qt.AlignCenter)
+        a_title.setStyleSheet("font-size: 15px; font-weight: bold;")
+        a_layout.addWidget(a_title)
+
+        q_lbl = QLabel("Process noise (Q):")
+        q_lbl.setAlignment(Qt.AlignCenter)
+        a_layout.addWidget(q_lbl)
+        q_edit = QLineEdit()
+        q_edit.setAlignment(Qt.AlignCenter)
+        saved_q = sf_settings.value("kalman/custom_Q", "")
+        if saved_q:
+            q_edit.setText(str(saved_q))
+        a_layout.addWidget(q_edit)
+        q_help = QLabel("Small Q → slower adaptation, more smoothing.  Typical: 0.0001 – 0.1")
+        q_help.setAlignment(Qt.AlignCenter)
+        q_help.setWordWrap(True)
+        q_help.setStyleSheet("border: none; color: #8899bb; font-size: 11px;")
+        a_layout.addWidget(q_help)
+
+        r_lbl = QLabel("Measurement noise (R):")
+        r_lbl.setAlignment(Qt.AlignCenter)
+        a_layout.addWidget(r_lbl)
+        r_edit = QLineEdit()
+        r_edit.setAlignment(Qt.AlignCenter)
+        saved_r = sf_settings.value("kalman/custom_R", "")
+        if saved_r:
+            r_edit.setText(str(saved_r))
+        a_layout.addWidget(r_edit)
+        r_help = QLabel("Large R → trusts measurements less.  Typical: 0.01 – 100")
+        r_help.setAlignment(Qt.AlignCenter)
+        r_help.setWordWrap(True)
+        r_help.setStyleSheet("border: none; color: #8899bb; font-size: 11px;")
+        a_layout.addWidget(r_help)
+
+        btn_row = QHBoxLayout()
+        ok_btn_a = QPushButton("Apply")
+        cancel_btn_a = QPushButton("Cancel")
+        ok_btn_a.setMinimumSize(100, 32)
+        cancel_btn_a.setMinimumSize(100, 32)
+        ok_btn_a.setStyleSheet(
+            "QPushButton { background-color: #2563eb; color: white; border: none;"
+            " border-radius: 8px; font-size: 13px; font-weight: bold; }"
+            "QPushButton:hover { background-color: #1d4fd8; }"
+        )
+        cancel_btn_a.setStyleSheet(
+            "QPushButton { background-color: #2a2d3e; color: #c0c8d8; border: 1px solid #3a3f5a;"
+            " border-radius: 8px; font-size: 13px; }"
+            "QPushButton:hover { background-color: #333754; }"
+        )
+        btn_row.addStretch()
+        btn_row.addWidget(ok_btn_a)
+        btn_row.addSpacing(10)
+        btn_row.addWidget(cancel_btn_a)
+        btn_row.addStretch()
+        a_layout.addSpacing(8)
+        a_layout.addLayout(btn_row)
+
+        def _apply_advanced():
+            q_text = q_edit.text().strip()
+            r_text = r_edit.text().strip()
+            if not q_text or not r_text:
+                QMessageBox.warning(adv, "Missing values", "Please enter both Q and R values.")
+                return
+            try:
+                q_val = float(q_text)
+                r_val = float(r_text)
+                if q_val <= 0 or r_val <= 0:
+                    raise ValueError
+            except ValueError:
+                QMessageBox.warning(adv, "Invalid values", "Q and R must be positive numbers.")
+                return
+            sf_settings.setValue("kalman/custom_Q", str(q_val))
+            sf_settings.setValue("kalman/custom_R", str(r_val))
+            if kalman_combo.findText("Custom") < 0:
+                kalman_combo.addItem("Custom")
+            kalman_combo.setCurrentText("Custom")
+            kalman_info.setText(f"Q = {q_val}  ·  R = {r_val}")
+            adv.accept()
+
+        ok_btn_a.clicked.connect(_apply_advanced)
+        cancel_btn_a.clicked.connect(adv.reject)
+        adv.exec()
+
+    kalman_adv_btn.clicked.connect(_open_advanced)
+
+    def _on_combo_changed():
+        if kalman_combo.currentText() != "Custom":
+            idx = kalman_combo.findText("Custom")
+            if idx >= 0:
+                kalman_combo.removeItem(idx)
+        _update_kalman_info()
+
     # ── Helpers ────────────────────────────────────────────────────────── #
     widgets = {
         "smooth_frame": smooth_frame, "smooth_title": smooth_title,
@@ -210,7 +325,7 @@ def open_signal_filters_char(window):
         "smooth_spin": smooth_spin, "btn_up": btn_up, "btn_dn": btn_dn,
         "kalman_frame": kalman_frame, "kalman_title": kalman_title,
         "kalman_preset_lbl": kalman_preset_lbl, "kalman_combo": kalman_combo,
-        "kalman_info": kalman_info,
+        "kalman_info": kalman_info, "kalman_adv_btn": kalman_adv_btn,
         "rb_off": rb_off, "rb_smooth": rb_smooth, "rb_kalman": rb_kalman,
     }
 
@@ -241,6 +356,7 @@ def open_signal_filters_char(window):
             f"font-size: 13px; font-weight: normal; border: none; padding-left: 8px; background: transparent; {_k_dim}"
         )
         kalman_combo.setEnabled(kalman_on)
+        kalman_adv_btn.setEnabled(kalman_on)
 
     def _update_kalman_info():
         preset = kalman_combo.currentText()
@@ -253,7 +369,7 @@ def open_signal_filters_char(window):
         kalman_info.setText(f"Q = {q}  ·  R = {r}")
 
     rb_group.buttonToggled.connect(lambda *_: _update_ui())
-    kalman_combo.currentTextChanged.connect(lambda _: _update_kalman_info())
+    kalman_combo.currentTextChanged.connect(lambda _: _on_combo_changed())
     _update_ui()
     _update_kalman_info()
 
@@ -308,11 +424,14 @@ def open_signal_filters_char(window):
             r = float(sf_settings.value("kalman/custom_R", 0.1))
         sf_settings.sync()
 
-        window._active_filter      = new_active
-        window._filter_smooth_pct  = pct
+        window._active_filter        = new_active
+        window._filter_smooth_pct    = pct
+        window._filter_kalman_preset = preset
         # Reset Kalman filter so it starts fresh with new params
         process_noise     = q if new_active == "Kalman" else 0.01
         measurement_noise = r if new_active == "Kalman" else 1.0
+        window._kf_process_noise     = process_noise
+        window._kf_measurement_noise = measurement_noise
         window._kf_eps = ComplexKalman(
             process_noise=process_noise,
             measurement_noise=measurement_noise,

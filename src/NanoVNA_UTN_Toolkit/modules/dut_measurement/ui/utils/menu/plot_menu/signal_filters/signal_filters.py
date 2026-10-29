@@ -204,6 +204,18 @@ def open_signal_filters(self):
     )
 
     preset_row.addWidget(self.sf_dialog.kalman_combo)
+
+    self.sf_dialog.kalman_adv_btn = QPushButton("Advanced…")
+    self.sf_dialog.kalman_adv_btn.setFixedHeight(24)
+    self.sf_dialog.kalman_adv_btn.setStyleSheet(
+        "QPushButton { background: transparent; color: #8899bb; border: none;"
+        " font-size: 11px; text-decoration: underline; }"
+        "QPushButton:hover { color: #aab8cc; }"
+        "QPushButton:disabled { color: #3a4a6a; }"
+    )
+    self.sf_dialog.kalman_adv_btn.clicked.connect(lambda: open_kalman_advanced(self))
+    preset_row.addSpacing(8)
+    preset_row.addWidget(self.sf_dialog.kalman_adv_btn)
     kf_v.addLayout(preset_row)
 
     self.sf_dialog.kalman_params_lbl = QLabel("Preset parameters:")
@@ -307,6 +319,7 @@ def update_filter_ui(self):
         f"font-size: 13px; font-weight: normal; border: none; padding-left: 8px; background: transparent; {_k_dim}"
     )
     self.sf_dialog.kalman_combo.setEnabled(kalman_on)
+    self.sf_dialog.kalman_adv_btn.setEnabled(kalman_on)
 
 
 # =========================================================
