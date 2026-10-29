@@ -288,8 +288,9 @@ class EpsilonChartManager:
                 finite_y = all_y[np.isfinite(all_y)]
                 if len(finite_y) > 0:
                     y_min, y_max = float(finite_y.min()), float(finite_y.max())
-                    y_margin = (y_max - y_min) * 0.05 if y_max != y_min else 1.0
+                    y_margin = (y_max - y_min) * 0.10 if y_max != y_min else 1.0
                     ax.set_ylim(y_min - y_margin, y_max + y_margin)
+                    ax.autoscale(False)
 
                 freq_range = float(freqs[-1] - freqs[0])
                 x_margin = freq_range * 0.04

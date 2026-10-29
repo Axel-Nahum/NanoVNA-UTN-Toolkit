@@ -117,7 +117,7 @@ def usable_band_of(result) -> Tuple[Optional[np.ndarray], Optional[float]]:
 
 
 def scale_limits(eps, usable: Optional[np.ndarray] = None,
-                 margin: float = 0.06) -> Optional[Tuple[float, float]]:
+                 margin: float = 0.10) -> Optional[Tuple[float, float]]:
     """
     y-limits that fit eps' and eps'' of the usable points only.
 
