@@ -122,6 +122,8 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
 
             logging.info(f"[Cursor] Frequency: {cursor_x:.6f} {freq_unit}, Magnitude: {cursor_y:.3f} {unit}")
 
+            # In dB mode the first/last 2 VNA points can be extreme outliers
+            # (near -∞ dB).  Even with a correct ylim they visually cross the
             data_line, = ax.plot(freqs / freq_div, magnitude_db, color=tracecolor, linewidth=linewidth)
 
             ax.set_xlabel(rf"$\mathrm{{Frequency\ ({freq_unit})}}$", color=f"{text_color}")
@@ -149,17 +151,7 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             ymin_right = data_config[4]
             ymax_right = data_config[5]
 
-            # In dB mode, VNA edge points can be extreme outliers (very negative
-            # dB from near-zero values); trim them so they don't compress the chart.
-            # For times/power-ratio the edge points are finite and representative —
-            # include them so the plotted trace never exceeds the computed ylim.
-            if unit == "dB":
-                _core = magnitude_db[2:-2] if len(magnitude_db) > 4 else magnitude_db
-            else:
-                _core = magnitude_db
-            _mag_valid = _core[np.isfinite(_core)]
-            if len(_mag_valid) == 0:
-                _mag_valid = magnitude_db[np.isfinite(magnitude_db)]
+            _mag_valid = magnitude_db[np.isfinite(magnitude_db)]
             if len(_mag_valid) == 0:
                 _mag_valid = np.array([0.0, 1.0])
             y_min = float(np.min(_mag_valid))
@@ -185,8 +177,6 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
                 else:
                     ax.set_ylim(ymin_right, ymax_right)
                     self._ylim_right = (ymin_right, ymax_right)
-
-            ax.autoscale(False)
 
             ax.tick_params(axis='x', colors=f"{axis_color}")
             ax.tick_params(axis='y', colors=f"{axis_color}")

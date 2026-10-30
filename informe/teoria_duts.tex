@@ -1,0 +1,562 @@
+% =============================================================================
+%  MARCO TEÓRICO — Medición de Dispositivos Bajo Prueba (DUTs)
+%  Calibración de Analizador de Redes Vectorial
+%  Proyecto Final de Ingeniería Electrónica — UTN FRBA
+%  Axel Nahum — 2026
+% =============================================================================
+
+\section{Marco Teórico: Medición de Parámetros S y Calibración del VNA}
+
+El presente capítulo desarrolla los fundamentos teóricos de la medición de
+parámetros S mediante un analizador de redes vectorial (VNA), los modelos de
+error que afectan las mediciones reales, y los cinco métodos de calibración
+implementados en el sistema NanoVNA-UTN-Toolkit para la caracterización de
+dispositivos bajo prueba (DUTs).
+
+\newpage
+\Encabezado
+
+% -----------------------------------------------------------------------------
+\subsection{Parámetros S}
+\label{sec:sparams}
+% -----------------------------------------------------------------------------
+
+Los parámetros de dispersión (S-parameters) son la representación matricial
+más adecuada para caracterizar redes de dos puertos en alta frecuencia. A
+diferencia de los parámetros Z, Y o H, los parámetros S se miden con los
+puertos terminados en la impedancia de referencia $Z_0 = 50~\Omega$, condición
+fácilmente realizable en la práctica.
+
+Para una red de dos puertos, la matriz S se define por:
+
+\begin{equation}
+    \begin{pmatrix} b_1 \\ b_2 \end{pmatrix}
+    =
+    \begin{pmatrix} S_{11} & S_{12} \\ S_{21} & S_{22} \end{pmatrix}
+    \begin{pmatrix} a_1 \\ a_2 \end{pmatrix},
+    \label{eq:matriz_s}
+\end{equation}
+
+\noindent donde $a_i$ y $b_i$ son las ondas de tensión incidente y reflejada
+normalizadas en el puerto $i$, respectivamente.
+
+El significado físico de cada parámetro es:
+
+\begin{itemize}
+    \item $S_{11}$: coeficiente de reflexión en el puerto 1 con el puerto 2
+          adaptado. Mide la energía que se refleja hacia la fuente.
+    \item $S_{21}$: coeficiente de transmisión de puerto 1 a puerto 2.
+          Mide la energía que atraviesa el dispositivo.
+    \item $S_{22}$: coeficiente de reflexión en el puerto 2 (análogo a $S_{11}$).
+    \item $S_{12}$: coeficiente de transmisión inverso (de puerto 2 a puerto 1).
+\end{itemize}
+
+En módulo, $|S_{11}|^2$ representa la fracción de potencia reflejada y
+$|S_{21}|^2$ la fracción transmitida. Se expresan habitualmente en decibeles:
+
+\begin{equation}
+    S_{11}[\text{dB}] = 20\log_{10}|S_{11}|, \qquad
+    S_{21}[\text{dB}] = 20\log_{10}|S_{21}|.
+\end{equation}
+
+Para un dispositivo pasivo de dos puertos sin pérdidas se cumple
+$|S_{11}|^2 + |S_{21}|^2 = 1$ (conservación de la energía).
+
+\newpage
+\Encabezado
+
+% -----------------------------------------------------------------------------
+\subsection{El Analizador de Redes Vectorial (VNA)}
+\label{sec:vna}
+% -----------------------------------------------------------------------------
+
+Un VNA mide los parámetros S de un dispositivo inyectando una señal de
+prueba sinusoidal en un puerto y midiendo simultáneamente las ondas incidente
+y reflejada/transmitida en todos los puertos. La medición es vectorial porque
+captura tanto la magnitud como la fase de cada parámetro S.
+
+La NanoVNA, empleada en este sistema, es un VNA de bajo costo de dos puertos
+que opera en el rango de 50~kHz a 3~GHz (según modelo). Internamente realiza
+una conversión de frecuencia hacia abajo (\emph{downconversion}) para procesar
+la señal a una frecuencia intermedia inferior, donde la digitalización es más
+sencilla.
+
+\subsubsection{Errores sistemáticos de un VNA}
+
+Las mediciones de un VNA real difieren de los valores verdaderos del DUT debido
+a imperfecciones del instrumento, del cableado y de los conectores. Estos
+errores son \emph{sistemáticos} (reproducibles y deterministas) en lugar de
+aleatorios, por lo que pueden modelarse y corregirse mediante calibración.
+
+Los principales errores sistemáticos son:
+
+\begin{itemize}
+    \item \textbf{Directividad} ($e_{00}$): señal que llega al receptor de
+          reflexión sin haber interactuado con el DUT, debido a acoplamientos
+          parásitos en el divisor de potencia interno del VNA.
+    \item \textbf{Adaptación de fuente} ($e_{11}$, \emph{source match}):
+          reflexiones producidas por la impedancia no perfectamente igual a
+          $Z_0$ en el puerto de excitación, que se reinyectan en el DUT y
+          producen múltiples rebotes.
+    \item \textbf{Seguimiento de reflexión} ($e_{10}e_{01}$,
+          \emph{reflection tracking}): variación en frecuencia de la ganancia
+          del camino de la señal de prueba y del receptor de reflexión.
+    \item \textbf{Seguimiento de transmisión} ($e_{10}e_{32}$,
+          \emph{transmission tracking}): ídem para el camino de transmisión.
+    \item \textbf{Adaptación de carga} ($e_{22}$, \emph{load match}):
+          reflexiones en el puerto de recepción debidas a su impedancia no
+          ideal.
+\end{itemize}
+
+\newpage
+\Encabezado
+
+% -----------------------------------------------------------------------------
+\subsection{Modelo de Error del VNA}
+\label{sec:modelo_error}
+% -----------------------------------------------------------------------------
+
+El modelo de error más utilizado para un VNA de dos puertos es el de
+\emph{grafo de flujo de señal} (\emph{signal flow graph}). Para la medición
+de reflexión (dirección directa), el modelo de 3 términos para S11 es
+suficiente cuando solo se requiere corregir la reflexión.
+
+\subsubsection{Modelo de 3 términos (1-puerto)}
+
+El modelo de flujo de señal para la medición de $S_{11}$ incluye tres términos
+de error~\cite{pozar2012, agilent2002}:
+
+\begin{itemize}
+    \item $e_{00}$: directividad.
+    \item $e_{11}$: adaptación de fuente.
+    \item $e_{10}e_{01}$: seguimiento de reflexión.
+\end{itemize}
+
+La relación entre el $S_{11}$ medido ($S_{11,m}$) y el $S_{11}$ real del DUT
+($S_{11,c}$) queda:
+
+\begin{equation}
+    S_{11,m} = e_{00} + \frac{e_{10}e_{01}\cdot S_{11,c}}{1 - e_{11}\cdot S_{11,c}}.
+    \label{eq:s11_medido}
+\end{equation}
+
+Definiendo $\Delta_e = e_{00}\cdot e_{11} - e_{10}e_{01}$, la corrección
+inversa (fórmula de calibración SOL) es:
+
+\begin{equation}
+    \boxed{
+    S_{11,c} = \frac{S_{11,m} - e_{00}}{S_{11,m}\cdot e_{11} - \Delta_e}.
+    }
+    \label{eq:correccion_s11}
+\end{equation}
+
+\subsubsection{Modelo de respuesta en transmisión (1 término)}
+
+Para la corrección de $S_{21}$ mediante una normalización simple, el modelo
+reduce a un único término de error de transmisión $e_{10}e_{32}$:
+
+\begin{equation}
+    S_{21,m} = e_{10}e_{32}\cdot S_{21,c},
+    \label{eq:s21_medido}
+\end{equation}
+
+cuya corrección es trivialmente:
+
+\begin{equation}
+    \boxed{
+    S_{21,c} = \frac{S_{21,m}}{e_{10}e_{32}}.
+    }
+    \label{eq:correccion_s21_simple}
+\end{equation}
+
+\subsubsection{Modelo de respuesta mejorada en transmisión (3 términos)}
+
+El método de respuesta mejorada (\emph{Enhanced-Response}) extiende el modelo
+anterior incorporando la adaptación de carga $e_{22}$ para corregir
+parcialmente el efecto de los múltiples rebotes entre el DUT y el puerto de
+recepción~\cite{rytting1987}:
+
+\begin{equation}
+    S_{21,c} = \frac{S_{21,m}}{e_{10}e_{32}}
+               \cdot
+               \frac{e_{10}e_{01}}{e_{11}\cdot S_{11,m} - \Delta_e}.
+    \label{eq:correccion_s21_enhanced}
+\end{equation}
+
+Esta expresión incluye el denominador del modelo OSM, lo que permite compensar
+la interacción entre la reflexión del DUT y la mismatch del puerto~2.
+
+\newpage
+\Encabezado
+
+% -----------------------------------------------------------------------------
+\subsection{Necesidad de Calibración}
+\label{sec:necesidad_cal}
+% -----------------------------------------------------------------------------
+
+Sin calibración, los errores sistemáticos descriptos en la
+Sección~\ref{sec:modelo_error} se superponen a la respuesta del DUT,
+produciendo mediciones incorrectas. La magnitud de estos errores es
+significativa: la directividad de un VNA de bajo costo como la NanoVNA
+puede ser tan baja como 20~dB (en lugar de los 40--50~dB típicos de un VNA
+de laboratorio), lo que introduce errores relativos de hasta el 10\,\% en
+la magnitud de $S_{11}$ antes de cualquier calibración.
+
+La calibración determina los coeficientes de error $\{e_{00}, e_{11},
+e_{10}e_{01}, e_{10}e_{32}, e_{22}\}$ midiendo estándares de impedancia
+\emph{conocidos} (circuito abierto, cortocircuito, carga adaptada, conexión
+directa) y resolviendo el sistema de ecuaciones que relaciona los valores
+medidos con los valores esperados.
+
+Una vez determinados los coeficientes, la corrección se aplica en tiempo real
+a cada barrido de frecuencia del DUT mediante las
+fórmulas~\eqref{eq:correccion_s11}--\eqref{eq:correccion_s21_enhanced}.
+
+La calibración debe rehacerse cuando cambia algún elemento del camino de
+medición: se reemplaza el cable, se cambia la temperatura significativamente,
+o se conecta/desconecta el cable del VNA.
+
+\newpage
+\Encabezado
+
+% -----------------------------------------------------------------------------
+\subsection{Estándares de Calibración}
+\label{sec:estandares}
+% -----------------------------------------------------------------------------
+
+Los estándares de calibración son componentes de impedancia conocida que
+permiten establecer la referencia de medición. En la banda de frecuencias
+del sistema se utilizan los siguientes:
+
+\begin{itemize}
+    \item \textbf{Circuito abierto (Open)}: reflexión total con $\Gamma = +1$.
+          Corresponde a un puerto sin conectar (o con un terminador de circuito
+          abierto). El modelo ideal asume $S_{11} = +1\angle 0°$ a toda
+          frecuencia.
+
+    \item \textbf{Cortocircuito (Short)}: reflexión total con $\Gamma = -1$.
+          Se logra cortocircuitando el conector. El modelo ideal asume
+          $S_{11} = -1\angle 0°$ (o equivalentemente $1\angle 180°$) a toda
+          frecuencia.
+
+    \item \textbf{Carga adaptada (Match / Load)}: absorción total con
+          $\Gamma = 0$. Se emplea una resistencia de $50~\Omega$ conectada
+          al puerto. En el modelo ideal $S_{11} = 0$ y no hay reflexión.
+
+    \item \textbf{Conexión directa (Thru)}: los dos puertos se conectan
+          directamente (longitud cero). En el modelo ideal $S_{21} = 1\angle 0°$
+          y $S_{11} = 0$.
+\end{itemize}
+
+En la práctica, los estándares reales se desvían del ideal a frecuencias
+elevadas por inductancias y capacitancias parásitas del conector. Para el
+rango de operación de la NanoVNA (hasta 3~GHz) con conectores SMA de buena
+calidad, los modelos ideales resultan suficientemente precisos para la mayoría
+de las aplicaciones.
+
+\newpage
+\Encabezado
+
+% -----------------------------------------------------------------------------
+\subsection{Métodos de Calibración Implementados}
+\label{sec:metodos_cal}
+% -----------------------------------------------------------------------------
+
+El sistema NanoVNA-UTN-Toolkit implementa cinco métodos de calibración que
+cubren distintos escenarios de medición, desde una simple normalización hasta
+una calibración completa de reflexión y transmisión con compensación de
+desadaptación de carga.
+
+\subsubsection{OSM (Open -- Short -- Match)}
+\label{sec:osm}
+
+El método OSM es la calibración de 1-puerto estándar, conocida en la
+literatura como SOL (Short -- Open -- Load)~\cite{pozar2012}.
+Se emplean tres estándares y se corrige únicamente $S_{11}$.
+
+\paragraph{Determinación de los coeficientes de error}
+
+Midiendo los tres estándares ideales (Open: $\Gamma=+1$, Short: $\Gamma=-1$,
+Match: $\Gamma=0$) se obtiene el sistema de tres ecuaciones que, resuelto en
+forma cerrada, da~\cite{rytting1987}:
+
+\begin{align}
+    e_{00} &= S_{11,M},
+    \label{eq:e00} \\[4pt]
+    e_{11} &= \frac{S_{11,O} + S_{11,K} - 2\,e_{00}}{S_{11,O} - S_{11,K}},
+    \label{eq:e11} \\[4pt]
+    e_{10}e_{01} &= \frac{-2\,(S_{11,O} - e_{00})(S_{11,K} - e_{00})}
+                         {S_{11,O} - S_{11,K}},
+    \label{eq:e10e01}
+\end{align}
+
+\noindent donde $S_{11,O}$, $S_{11,K}$ y $S_{11,M}$ son los $S_{11}$ medidos
+del Open, Short (Kurzschluss) y Match, respectivamente.
+
+\paragraph{Corrección en tiempo real}
+
+La corrección se aplica mediante~\eqref{eq:correccion_s11}:
+
+\begin{equation}
+    S_{11,c} = \frac{S_{11,m} - e_{00}}{S_{11,m}\cdot e_{11} - \Delta_e},
+    \qquad \Delta_e = e_{00}\cdot e_{11} - e_{10}e_{01}.
+    \nonumber
+\end{equation}
+
+\paragraph{Resumen}
+
+\begin{itemize}
+    \item Estándares: Open, Short, Match.
+    \item Parámetro corregido: $S_{11}$.
+    \item Coeficientes de error: $e_{00}$, $e_{11}$, $e_{10}e_{01}$.
+    \item Aplicación típica: medición de impedancias, antenas, filtros (reflexión).
+\end{itemize}
+
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\subsubsection{Normalización Open/Short (Open/Short Normalization)}
+\label{sec:os_norm}
+
+Este método es una calibración de reflexión simplificada de 1 término.
+Se realiza \emph{una única medición} de estándar (Open o Short) y se utiliza
+directamente como coeficiente de seguimiento de reflexión.
+
+\paragraph{Identificación automática del estándar}
+
+El sistema detecta automáticamente si el estándar medido es Open o Short
+evaluando el signo de la parte real media del $S_{11}$ medido:
+
+\begin{equation}
+    \text{estándar} =
+    \begin{cases}
+        \text{Short} & \text{si } \overline{\operatorname{Re}(S_{11})} < 0, \\
+        \text{Open}  & \text{en otro caso.}
+    \end{cases}
+\end{equation}
+
+Si se detecta un Short, el signo del $S_{11}$ almacenado se invierte para que
+el coeficiente quede siempre en fase positiva.
+
+\paragraph{Corrección}
+
+\begin{equation}
+    S_{11,c} = \frac{S_{11,m}}{e_{10}e_{01}},
+    \label{eq:os_norm}
+\end{equation}
+
+seguida de un desenvuelto de fase (\emph{phase unwrapping}) para garantizar
+continuidad de la respuesta en frecuencia.
+
+\paragraph{Limitaciones}
+
+Al no corregir directividad ni adaptación de fuente, este método solo elimina
+la variación en frecuencia del camino de medición. Es adecuado para
+dispositivos con reflexión moderada a alta ($|S_{11}| > -20$~dB), donde los
+errores de directividad son pequeños relativos a la señal medida.
+
+\paragraph{Resumen}
+
+\begin{itemize}
+    \item Estándares: Open \emph{o} Short (1 medición).
+    \item Parámetro corregido: $S_{11}$ (normalización de amplitud y fase).
+    \item Coeficientes de error: $e_{10}e_{01}$ únicamente.
+    \item Aplicación típica: inspección rápida de reflexión, sin requerir carga adaptada.
+\end{itemize}
+
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\subsubsection{Normalización Thru (Thru Normalization)}
+\label{sec:thru_norm}
+
+Este método corrige únicamente $S_{21}$ mediante una sola medición de
+transmisión con los puertos conectados directamente (Thru).
+
+\paragraph{Calibración y corrección}
+
+El $S_{21}$ medido del Thru se almacena como el coeficiente de seguimiento de
+transmisión:
+
+\begin{equation}
+    e_{10}e_{32} = S_{21,\text{Thru}}.
+\end{equation}
+
+Durante la medición del DUT, la corrección es:
+
+\begin{equation}
+    S_{21,c} = \frac{S_{21,m}}{e_{10}e_{32}}.
+    \label{eq:thru_norm}
+\end{equation}
+
+El parámetro $S_{11}$ no se corrige en este método.
+
+\paragraph{Limitaciones}
+
+La normalización Thru solo elimina la pérdida y el desfase del camino de
+transmisión entre los puertos. No compensa la desadaptación de ninguno de los
+puertos ni los múltiples rebotes entre el DUT y el sistema.
+
+\paragraph{Resumen}
+
+\begin{itemize}
+    \item Estándares: Thru (1 medición de 2 puertos).
+    \item Parámetro corregido: $S_{21}$.
+    \item Coeficientes de error: $e_{10}e_{32}$ únicamente.
+    \item Aplicación típica: medición de ganancia/pérdida de inserción.
+\end{itemize}
+
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\subsubsection{1-Port+N}
+\label{sec:1portn}
+
+El método 1-Port+N combina la calibración OSM completa para $S_{11}$ con la
+normalización Thru para $S_{21}$, permitiendo corregir ambos parámetros en
+un único flujo de calibración de 4 estándares.
+
+\paragraph{Secuencia de calibración}
+
+\begin{enumerate}
+    \item Open → Short → Match: se calculan $e_{00}$, $e_{11}$, $e_{10}e_{01}$
+          mediante~\eqref{eq:e00}--\eqref{eq:e10e01}.
+    \item Thru: se almacena $e_{10}e_{32} = S_{21,\text{Thru}}$.
+\end{enumerate}
+
+\paragraph{Correcciones aplicadas}
+
+\begin{align}
+    S_{11,c} &= \frac{S_{11,m} - e_{00}}{S_{11,m}\cdot e_{11} - \Delta_e},
+    \label{eq:1portn_s11} \\[4pt]
+    S_{21,c} &= \frac{S_{21,m}}{e_{10}e_{32}}.
+    \label{eq:1portn_s21}
+\end{align}
+
+\paragraph{Resumen}
+
+\begin{itemize}
+    \item Estándares: Open, Short, Match, Thru (4 mediciones).
+    \item Parámetros corregidos: $S_{11}$ (3-términos) y $S_{21}$ (1-término).
+    \item Aplicación típica: caracterización completa de dispositivos de 2 puertos
+          donde la precisión en $S_{21}$ no es crítica.
+\end{itemize}
+
+% - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+\subsubsection{Respuesta Mejorada (Enhanced-Response)}
+\label{sec:enhanced}
+
+El método de respuesta mejorada extiende el 1-Port+N incorporando la
+corrección de la adaptación de carga $e_{22}$ en la medición de $S_{21}$.
+Utiliza los mismos 4 estándares que el 1-Port+N, pero extrae información
+adicional de la medición del Thru.
+
+\paragraph{Cálculo de los coeficientes adicionales}
+
+A partir de la medición del Thru (con $S_{11}$ y $S_{21}$ conocidos) y los
+coeficientes OSM ya calculados se obtienen:
+
+\begin{align}
+    e_{22} &= \frac{S_{11,\text{Thru}} - e_{00}}
+                   {S_{11,\text{Thru}}\cdot e_{11} - \Delta_e},
+    \label{eq:e22} \\[4pt]
+    e_{10}e_{32} &= S_{21,\text{Thru}}\,(1 - e_{11}\cdot e_{22}).
+    \label{eq:e10e32}
+\end{align}
+
+\paragraph{Corrección mejorada de $S_{21}$}
+
+\begin{equation}
+    S_{21,c} = \frac{S_{21,m}}{e_{10}e_{32}}
+               \cdot
+               \frac{e_{10}e_{01}}{e_{11}\cdot S_{11,m} - \Delta_e}.
+    \label{eq:enhanced_s21}
+\end{equation}
+
+El segundo factor en~\eqref{eq:enhanced_s21} compensa la interacción entre
+la reflexión de entrada del DUT y la desadaptación del puerto de recepción,
+reduciendo el error de medición en dispositivos con alta reflexión.
+
+\paragraph{Resumen}
+
+\begin{itemize}
+    \item Estándares: Open, Short, Match, Thru (4 mediciones, mismos que 1-Port+N).
+    \item Parámetros corregidos: $S_{11}$ (3-términos) y $S_{21}$ (3-términos).
+    \item Coeficientes: $e_{00}$, $e_{11}$, $e_{10}e_{01}$, $e_{22}$, $e_{10}e_{32}$.
+    \item Aplicación típica: caracterización de dispositivos de 2 puertos con
+          mayor precisión en $S_{21}$.
+\end{itemize}
+
+\newpage
+\Encabezado
+
+% -----------------------------------------------------------------------------
+\subsection{Kits de Calibración}
+\label{sec:kits}
+% -----------------------------------------------------------------------------
+
+El sistema permite guardar una calibración completa como un \emph{kit},
+identificado por un nombre y asociado a un método y fecha de medición.
+Un kit almacena:
+
+\begin{itemize}
+    \item Las mediciones crudas de los estándares (archivos Touchstone .s1p,
+          .s2p).
+    \item Los coeficientes de error calculados, también en formato Touchstone.
+    \item Metadatos: nombre del kit, método de calibración, fecha y hora.
+\end{itemize}
+
+Los kits permiten reutilizar una calibración sin necesidad de volver a medir
+los estándares, siempre que el camino de medición (cables, conectores, VNA)
+no haya cambiado desde la última calibración. Esta funcionalidad es
+especialmente útil cuando se realizan series largas de mediciones del mismo
+tipo de DUT.
+
+\newpage
+\Encabezado
+
+% -----------------------------------------------------------------------------
+\subsection{Resumen Comparativo de los Métodos de Calibración}
+\label{sec:resumen_cal}
+% -----------------------------------------------------------------------------
+
+La Tabla~\ref{tab:comparacion_cal} resume las características de los cinco
+métodos implementados.
+
+\begin{table}[h!]
+\centering
+\caption{Comparación de los métodos de calibración del sistema NanoVNA-UTN-Toolkit.}
+\label{tab:comparacion_cal}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+\textbf{Método} &
+\textbf{Estándares} &
+\textbf{Términos} &
+$S_{11}$ &
+$S_{21}$ &
+\textbf{Uso típico} \\
+\midrule
+OSM              & O, K, M        & 3 & Completo   & ---         & Reflexión \\
+Open/Short Norm. & O \emph{o} K   & 1 & Normaliz.  & ---         & Reflexión rápida \\
+Thru Norm.       & Thru           & 1 & ---         & Normaliz.   & Ganancia/pérdida \\
+1-Port+N         & O, K, M, Thru  & 4 & Completo   & Normaliz.   & 2-puertos general \\
+Enhanced-Resp.   & O, K, M, Thru  & 5 & Completo   & Mejorado    & 2-puertos preciso \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent Referencias: O = Open, K = Short (\emph{Kurzschluss}), M = Match.
+
+% -----------------------------------------------------------------------------
+%  REFERENCIAS
+% -----------------------------------------------------------------------------
+%
+% \bibitem{pozar2012}
+% D.~M.~Pozar,
+% \emph{Microwave Engineering}, 4th ed.
+% John Wiley \& Sons, Hoboken, NJ, 2012.
+%
+% \bibitem{rytting1987}
+% D.~Rytting,
+% ``ARFTG short course notes: Network analyzer error models and calibration methods,''
+% Agilent Technologies (HP), 1987 (revisado 2001).
+%
+% \bibitem{agilent2002}
+% Agilent Technologies,
+% \emph{Applying Error Correction to Network Analyzer Measurements},
+% Application Note AN~1287-3, 2002.
+%

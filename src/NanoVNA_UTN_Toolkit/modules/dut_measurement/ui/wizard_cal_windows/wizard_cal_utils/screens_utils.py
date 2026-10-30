@@ -146,8 +146,16 @@ def show_current_step_measurement(self, step):
                         canvas=self.current_canvas
                     )
                     return
-        else:
-            # Clear and show empty Smith chart if no measurement exists
+
+        # Draw an empty base Smith chart to reset the canvas.
+        # Skip for Enhanced-Response / 1-Port+N at step 4 (THRU): the THRU step
+        # setup clears right_layout and replaces the Smith chart with a magnitude
+        # chart, leaving current_ax/current_canvas pointing at an orphaned widget
+        # that is no longer in the widget tree.  Attempting to draw on it can raise
+        # an exception that would abort this function before the magnitude-chart
+        # restoration block below gets to run.
+        _enh_thru = self.selected_method in ("Enhanced-Response", "1-Port+N") and step == 4
+        if not _enh_thru:
             self.current_ax.clear()
             manager = SmithChartManager()
             base_network = manager.builder.create_empty_network(
@@ -161,7 +169,7 @@ def show_current_step_measurement(self, step):
 
         if self.selected_method == "Thru Normalization" and step_name == "thru":
             if self.thru_calibration.is_standard_measured(step_name):
-                measurement = self.thru_calibration.get_measurement(step_name)
+                measurement = self.thru_calibration.get_measurement()
                 if measurement:
                     freqs, s11 = measurement
 
@@ -170,7 +178,7 @@ def show_current_step_measurement(self, step):
                     manager.update_wizard_measurement(
                         ax=self.current_ax,
                         freqs=freqs,
-                        s_data=np.abs(s11),  # Use magnitude instead of complex S11
+                        s21_data=np.abs(s11),
                         standard_name=step_name,
                         canvas=self.current_canvas_magnitude
                     )
@@ -221,14 +229,14 @@ def show_current_step_measurement(self, step):
                         )
             elif step == 4 and self.thru_calibration:
                 if self.thru_calibration.is_standard_measured("thru"):
-                    measurement = self.thru_calibration.get_measurement("thru")
+                    measurement = self.thru_calibration.get_measurement()
                     if measurement and hasattr(self, 'current_ax_magnitude'):
                         freqs, s11 = measurement
                         manager = MagnitudeChartManager()
                         manager.update_wizard_measurement(
                             ax=self.current_ax_magnitude,
                             freqs=freqs,
-                            s_data=np.abs(s11),
+                            s21_data=np.abs(s11),
                             standard_name="thru",
                             canvas=self.current_canvas_magnitude
                         )

@@ -34,7 +34,7 @@ class SParameterKalman:
 
         # primera muestra = inicialización estable
         if not self.initialized:
-            #self.kf.x = np.array([[value]])
+            self.kf.x = np.array([[value]])
             self.initialized = True
             return float(value)
 

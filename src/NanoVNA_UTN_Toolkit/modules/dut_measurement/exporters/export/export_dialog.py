@@ -290,6 +290,17 @@ class ExportDialog(QDialog):
         # --- Make a deep copy of the figure to avoid altering the original ---
         fig_copy = copy.deepcopy(self.figure)
 
+        # Clear the animated flag on every artist in the copy: the blit manager
+        # marks the data line and cursors as animated=True during real-time
+        # measurement.  A static export copy has no blit infrastructure, so
+        # animated artists would be invisible in savefig / canvas.draw().
+        for _ax in fig_copy.axes:
+            for _a in _ax.get_children():
+                try:
+                    _a.set_animated(False)
+                except Exception:
+                    pass
+
         # --- Keep only main axes, hide smaller axes (like sliders) ---
         axes_to_keep = [ax for ax in fig_copy.axes if ax.get_position().height > 0.1 and ax.get_position().width > 0.1]
         if not axes_to_keep:
@@ -591,6 +602,12 @@ class ExportDialog(QDialog):
         """
         import copy
         fig_copy = copy.deepcopy(self.figure)
+        for _ax in fig_copy.axes:
+            for _a in _ax.get_children():
+                try:
+                    _a.set_animated(False)
+                except Exception:
+                    pass
         fig_copy.set_dpi(dpi)
         fig_copy.set_size_inches(*size_inches)
 

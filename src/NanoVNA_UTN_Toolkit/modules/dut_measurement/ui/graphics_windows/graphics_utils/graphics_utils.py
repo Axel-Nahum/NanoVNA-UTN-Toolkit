@@ -314,13 +314,14 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         freq_range = freq_end - freq_start
         margin = freq_range * 0.05  # 5% margin on each side
         ax.set_xlim(freq_start - margin, freq_end + margin)
-        # Set Y-axis limits with 5% margin — same formula as graphics_update.py
-        y_min = np.min(magnitude_data)
-        y_max = np.max(magnitude_data)
+        _valid = magnitude_data[np.isfinite(magnitude_data)]
+        if len(_valid) == 0:
+            _valid = np.array([0.0, 1.0])
+        y_min = float(np.min(_valid))
+        y_max = float(np.max(_valid))
         y_range = y_max - y_min
         y_margin = y_range * 0.05 if y_range > 0 else 0.1
         ax.set_ylim(y_min - y_margin, y_max + y_margin)
-        ax.autoscale(False)
         ax.tick_params(axis='x', colors=f"{axis_color}")
         ax.tick_params(axis='y', colors=f"{axis_color}")
 
@@ -1289,13 +1290,14 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         freq_range = freq_end - freq_start
         margin = freq_range * 0.05  # 5% margin on each side
         ax.set_xlim(freq_start - margin, freq_end + margin)
-        # Set Y-axis limits with 5% margin — same formula as graphics_update.py
-        y_min = np.min(magnitude_data)
-        y_max = np.max(magnitude_data)
+        _valid = magnitude_data[np.isfinite(magnitude_data)]
+        if len(_valid) == 0:
+            _valid = np.array([0.0, 1.0])
+        y_min = float(np.min(_valid))
+        y_max = float(np.max(_valid))
         y_range = y_max - y_min
         y_margin = y_range * 0.05 if y_range > 0 else 0.1
         ax.set_ylim(y_min - y_margin, y_max + y_margin)
-        ax.autoscale(False)
         ax.tick_params(axis='x', colors=f"{axis_color}")
         ax.tick_params(axis='y', colors=f"{axis_color}")
 

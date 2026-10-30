@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import QColor
 from PySide6.QtCore import Qt
+from shiboken6 import isValid
 
 # Import SmartDatapointsSpinBox for intelligent datapoints navigation
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_options_window import SmartDatapointsSpinBox
@@ -538,9 +539,11 @@ def show_step_screen(self, step, parent = None):
 
     if self.selected_method == "Open/Short Normalization":
         if step == 1:
-            # Use the combo selection if it exists, otherwise default to OPEN
-            step_name = getattr(self, "_os_standard_combo", None)
-            step_name = step_name.currentText() if step_name is not None else "OPEN"
+            combo = getattr(self, "_os_standard_combo", None)
+            if combo is not None and isValid(combo):
+                step_name = combo.currentText()
+            else:
+                step_name = "OPEN"
 
     if self.selected_method == "1-Port+N":
         if step == 1:

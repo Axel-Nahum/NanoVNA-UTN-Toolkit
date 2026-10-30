@@ -106,7 +106,6 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
 
     freq_div, freq_unit = get_freq_display_unit(self)
     x_data = freqs / freq_div
-    line.set_data(x_data, y_data)
 
     # Touch the static part only when it really changes: every set_xlim/set_ylim
     # forces a tick relayout, and any change invalidates the blit background.
@@ -126,18 +125,7 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
     else:
         auto_scale, ymin_fixed, ymax_fixed = self.auto_scale_right, self.ymin_right, self.ymax_right
     if auto_scale:
-        # In dB mode, VNA edge points can be extreme outliers (very negative dB
-        # from near-zero calibrated values); trim them so they don't compress the
-        # rest of the chart. For all other units the edge points are finite and
-        # representative, so include them — otherwise the plotted trace can exceed
-        # the computed ylim and visually cross the axis boundary.
-        if graph_type == "Magnitude" and unit == "dB":
-            _core = y_data[2:-2] if len(y_data) > 4 else y_data
-        else:
-            _core = y_data
-        _valid = _core[np.isfinite(_core)]
-        if len(_valid) == 0:
-            _valid = y_data[np.isfinite(y_data)]
+        _valid = y_data[np.isfinite(y_data)]
         if len(_valid) == 0:
             _valid = np.array([0.0, 1.0])
         y_min = float(np.min(_valid))
@@ -146,6 +134,8 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
         new_ylim = (y_min - margin_y, y_max + margin_y)
     else:
         new_ylim = (ymin_fixed, ymax_fixed)
+
+    line.set_data(x_data, y_data)
 
     if not np.allclose(ax.get_xlim(), new_xlim):
         ax.set_xlim(*new_xlim)
