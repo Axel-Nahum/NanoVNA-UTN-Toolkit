@@ -81,7 +81,7 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
 
     if graph_type == "Magnitude":
         if unit == "dB":
-            y_data = 20 * np.log10(np.abs(s_data))
+            y_data = 20 * np.log10(np.abs(s_data) + 1e-12)
         elif unit == "Power ratio":
             y_data = np.abs(s_data) ** 2
         else:
@@ -126,20 +126,24 @@ def update_single_plot_realtime(self, line, ax, freqs, s_data, graph_type, unit,
     else:
         auto_scale, ymin_fixed, ymax_fixed = self.auto_scale_right, self.ymin_right, self.ymax_right
     if auto_scale:
-        y_min, y_max = float(np.min(y_data)), float(np.max(y_data))
-        cur_lo, cur_hi = ax.get_ylim()
-        cur_span = cur_hi - cur_lo
-        # Hysteresis: keep the current limits while the data stays inside them
-        # and still uses at least 60 % of the range. Otherwise every tick moves
-        # the limits by a hair, the axis ticks jitter, and the cached blit
-        # background has to be rebuilt (a full redraw) on every sweep.
-        fits = cur_lo <= y_min and y_max <= cur_hi
-        uses_enough = cur_span > 0 and (y_max - y_min) >= 0.6 * cur_span
-        if fits and uses_enough:
-            new_ylim = (cur_lo, cur_hi)
+        # In dB mode, VNA edge points can be extreme outliers (very negative dB
+        # from near-zero calibrated values); trim them so they don't compress the
+        # rest of the chart. For all other units the edge points are finite and
+        # representative, so include them — otherwise the plotted trace can exceed
+        # the computed ylim and visually cross the axis boundary.
+        if graph_type == "Magnitude" and unit == "dB":
+            _core = y_data[2:-2] if len(y_data) > 4 else y_data
         else:
-            margin_y = (y_max - y_min) * 0.05 if y_max != y_min else 1
-            new_ylim = (y_min - margin_y, y_max + margin_y)
+            _core = y_data
+        _valid = _core[np.isfinite(_core)]
+        if len(_valid) == 0:
+            _valid = y_data[np.isfinite(y_data)]
+        if len(_valid) == 0:
+            _valid = np.array([0.0, 1.0])
+        y_min = float(np.min(_valid))
+        y_max = float(np.max(_valid))
+        margin_y = (y_max - y_min) * 0.05 if y_max != y_min else 0.1
+        new_ylim = (y_min - margin_y, y_max + margin_y)
     else:
         new_ylim = (ymin_fixed, ymax_fixed)
 

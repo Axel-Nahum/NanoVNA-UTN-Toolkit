@@ -63,6 +63,7 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
         )
 
         settings_calibration.setValue("Calibration/isImportDut", False)
+        no_calibration = settings_calibration.value("Calibration/NoCalibration", False, type=bool)
 
         freq_div, freq_unit = get_freq_display_unit(self)
 
@@ -105,7 +106,7 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             # Plot magnitude
 
             if unit == "dB":
-                magnitude_db = 20 * np.log10(np.abs(s_data))
+                magnitude_db = 20 * np.log10(np.abs(s_data) + 1e-12)
             elif unit == "Power ratio":
                 magnitude_db = np.abs(s_data)**2
             elif unit == "times":
@@ -148,28 +149,42 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             ymin_right = data_config[4]
             ymax_right = data_config[5]
 
+            # In dB mode, VNA edge points can be extreme outliers (very negative
+            # dB from near-zero values); trim them so they don't compress the chart.
+            # For times/power-ratio the edge points are finite and representative —
+            # include them so the plotted trace never exceeds the computed ylim.
+            if unit == "dB":
+                _core = magnitude_db[2:-2] if len(magnitude_db) > 4 else magnitude_db
+            else:
+                _core = magnitude_db
+            _mag_valid = _core[np.isfinite(_core)]
+            if len(_mag_valid) == 0:
+                _mag_valid = magnitude_db[np.isfinite(magnitude_db)]
+            if len(_mag_valid) == 0:
+                _mag_valid = np.array([0.0, 1.0])
+            y_min = float(np.min(_mag_valid))
+            y_max = float(np.max(_mag_valid))
+
             if ax_type == "left":
                 if auto_scale_enabled_left:
-                    # Auto scale
-                    y_min = np.min(magnitude_db)
-                    y_max = np.max(magnitude_db)
                     y_range = y_max - y_min
-                    y_margin = y_range * 0.05
-
-                    ax.set_ylim(y_min - y_margin, y_max + y_margin)
+                    y_margin = y_range * 0.05 if y_range > 0 else 0.1
+                    _ylim = (y_min - y_margin, y_max + y_margin)
+                    ax.set_ylim(*_ylim)
+                    self._ylim_left = _ylim
                 else:
                     ax.set_ylim(ymin_left, ymax_left)
+                    self._ylim_left = (ymin_left, ymax_left)
             elif ax_type == "right":
                 if auto_scale_enable_right:
-                    # Auto scale
-                    y_min = np.min(magnitude_db)
-                    y_max = np.max(magnitude_db)
                     y_range = y_max - y_min
-                    y_margin = y_range * 0.05
-
-                    ax.set_ylim(y_min - y_margin, y_max + y_margin)
+                    y_margin = y_range * 0.05 if y_range > 0 else 0.1
+                    _ylim = (y_min - y_margin, y_max + y_margin)
+                    ax.set_ylim(*_ylim)
+                    self._ylim_right = _ylim
                 else:
                     ax.set_ylim(ymin_right, ymax_right)
+                    self._ylim_right = (ymin_right, ymax_right)
 
             ax.autoscale(False)
 
@@ -219,28 +234,36 @@ def recreate_single_plot(self, ax, fig, s_data, freqs, graph_type, s_param,
             ymin_right = data_config[4]
             ymax_right = data_config[5]
 
+            # Phase values are always finite and edge points are representative,
+            # so use all data (no trim) to ensure the trace never exceeds the ylim.
+            _ph_valid = phase_deg[np.isfinite(phase_deg)]
+            if len(_ph_valid) == 0:
+                _ph_valid = phase_deg[np.isfinite(phase_deg)]
+            if len(_ph_valid) == 0:
+                _ph_valid = np.array([-180.0, 180.0])
+            y_min = float(np.min(_ph_valid))
+            y_max = float(np.max(_ph_valid))
+
             if ax_type == "left":
                 if auto_scale_enabled_left:
-                    # Auto scale
-                    y_min = np.min(phase_deg)
-                    y_max = np.max(phase_deg)
                     y_range = y_max - y_min
-                    y_margin = y_range * 0.05
-
-                    ax.set_ylim(y_min - y_margin, y_max + y_margin)
+                    y_margin = y_range * 0.05 if y_range > 0 else 1.0
+                    _ylim = (y_min - y_margin, y_max + y_margin)
+                    ax.set_ylim(*_ylim)
+                    self._ylim_left = _ylim
                 else:
                     ax.set_ylim(ymin_left, ymax_left)
+                    self._ylim_left = (ymin_left, ymax_left)
             elif ax_type == "right":
                 if auto_scale_enable_right:
-                    # Auto scale
-                    y_min = np.min(phase_deg)
-                    y_max = np.max(phase_deg)
                     y_range = y_max - y_min
-                    y_margin = y_range * 0.05
-
-                    ax.set_ylim(y_min - y_margin, y_max + y_margin)
+                    y_margin = y_range * 0.05 if y_range > 0 else 1.0
+                    _ylim = (y_min - y_margin, y_max + y_margin)
+                    ax.set_ylim(*_ylim)
+                    self._ylim_right = _ylim
                 else:
                     ax.set_ylim(ymin_right, ymax_right)
+                    self._ylim_right = (ymin_right, ymax_right)
             ax.autoscale(False)
 
             ax.tick_params(axis='x', colors=f"{axis_color}")
@@ -562,6 +585,17 @@ def update_plots_with_new_data(self, skip_reset=False, draw=True, panels=ALL_PAN
         elif not self.show_graphic2_marker1 and not self.show_graphic2_marker2:
             self.cursor_right.set_visible(False)
             self.cursor_right_2.set_visible(False)
+
+        # --- Re-lock ylim after cursor recreation ---
+        # recreate_cursors_for_new_plots calls ax.plot() which can re-enable
+        # autoscale in some matplotlib versions; restore the computed limits here
+        # so they are in effect for the final draw regardless of what happened above.
+        if do_left and hasattr(self, '_ylim_left') and getattr(self, 'ax_left', None) is not None:
+            self.ax_left.set_ylim(*self._ylim_left)
+            self.ax_left.autoscale(False)
+        if do_right and hasattr(self, '_ylim_right') and getattr(self, 'ax_right', None) is not None:
+            self.ax_right.set_ylim(*self._ylim_right)
+            self.ax_right.autoscale(False)
 
         # --- Force redraw (unless the caller batches it with its own updates) ---
         if draw:

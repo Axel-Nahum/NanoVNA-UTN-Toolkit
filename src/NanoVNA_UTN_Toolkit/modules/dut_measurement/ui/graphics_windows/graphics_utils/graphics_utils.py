@@ -292,10 +292,20 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         left_layout.addWidget(canvas)
 
-        line, = ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
+        if unit_mode == "dB":
+            magnitude_data = 20 * np.log10(np.abs(S_data) + 1e-12)
+        elif unit_mode == "Power ratio":
+            magnitude_data = np.abs(S_data) ** 2
+        else:
+            magnitude_data = np.abs(S_data)
+
+        line, = ax.plot(freqs*1e-6, magnitude_data, color=tracecolor, marker='.', linestyle='-', linewidth=linewidth, zorder=2)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
-        ax.set_ylabel(r"$|%s|$" % _ls(s_param), color=text_color)
+        if unit_mode == "dB":
+            ax.set_ylabel(r"$|%s|\ \mathrm{[dB]}$" % _ls(s_param), color=text_color)
+        else:
+            ax.set_ylabel(r"$|%s|$" % _ls(s_param), color=text_color)
         ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=_ls(s_param), db_times=unit_mode)}$", color=f"{text_color}")
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
@@ -304,14 +314,13 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         freq_range = freq_end - freq_start
         margin = freq_range * 0.05  # 5% margin on each side
         ax.set_xlim(freq_start - margin, freq_end + margin)
-        # Set Y-axis limits with margins to provide visual spacing
-        magnitude_data = np.abs(S_data)
+        # Set Y-axis limits with 5% margin — same formula as graphics_update.py
         y_min = np.min(magnitude_data)
         y_max = np.max(magnitude_data)
         y_range = y_max - y_min
-        y_margin = y_range * 0.05  # 5% margin on each side
+        y_margin = y_range * 0.05 if y_range > 0 else 0.1
         ax.set_ylim(y_min - y_margin, y_max + y_margin)
-        ax.autoscale(False)  # Prevent matplotlib from overriding our xlim/ylim settings
+        ax.autoscale(False)
         ax.tick_params(axis='x', colors=f"{axis_color}")
         ax.tick_params(axis='y', colors=f"{axis_color}")
 
@@ -319,7 +328,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
             spine.set_color("white")
 
         current_state_grid = self.settings.value(f"grid/current_left_state", "true", type=bool)
-            
+
         ax.grid(current_state_grid, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
 
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
@@ -356,7 +365,7 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         y_min = np.min(phase_data)
         y_max = np.max(phase_data)
         y_range = y_max - y_min
-        y_margin = y_range * 0.05  # 5% margin on each side
+        y_margin = y_range * 0.05
         ax.set_ylim(y_min - y_margin, y_max + y_margin)
         ax.autoscale(False)  # Prevent matplotlib from overriding our xlim/ylim settings
         ax.tick_params(axis='x', colors=f"{axis_color}")
@@ -1258,10 +1267,20 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         canvas.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         right_layout.addWidget(canvas)
 
-        line, = ax.plot(freqs*1e-6, np.abs(S_data), color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
+        if unit_mode == "dB":
+            magnitude_data = 20 * np.log10(np.abs(S_data) + 1e-12)
+        elif unit_mode == "Power ratio":
+            magnitude_data = np.abs(S_data) ** 2
+        else:
+            magnitude_data = np.abs(S_data)
+
+        line, = ax.plot(freqs*1e-6, magnitude_data, color=tracecolor, marker='.', linestyle='-', linewidth=linewidth)
 
         ax.set_xlabel(rf"$\mathrm{{{self.measurement_ui_magnitude_x_axis}}}$", color=text_color)
-        ax.set_ylabel(r"$|%s|$" % _ls(s_param), color=text_color)
+        if unit_mode == "dB":
+            ax.set_ylabel(r"$|%s|\ \mathrm{[dB]}$" % _ls(s_param), color=text_color)
+        else:
+            ax.set_ylabel(r"$|%s|$" % _ls(s_param), color=text_color)
         ax.set_title(rf"${self.measurement_ui_magnitude_title.format(parameter=_ls(s_param), db_times=unit_mode)}$", color=f"{text_color}")
 
         # Set X-axis limits with margins to match actual frequency range of the sweep
@@ -1270,14 +1289,13 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         freq_range = freq_end - freq_start
         margin = freq_range * 0.05  # 5% margin on each side
         ax.set_xlim(freq_start - margin, freq_end + margin)
-        # Set Y-axis limits with margins to provide visual spacing
-        magnitude_data = np.abs(S_data)
+        # Set Y-axis limits with 5% margin — same formula as graphics_update.py
         y_min = np.min(magnitude_data)
         y_max = np.max(magnitude_data)
         y_range = y_max - y_min
-        y_margin = y_range * 0.05  # 5% margin on each side
+        y_margin = y_range * 0.05 if y_range > 0 else 0.1
         ax.set_ylim(y_min - y_margin, y_max + y_margin)
-        ax.autoscale(False)  # Prevent matplotlib from overriding our xlim/ylim settings
+        ax.autoscale(False)
         ax.tick_params(axis='x', colors=f"{axis_color}")
         ax.tick_params(axis='y', colors=f"{axis_color}")
 
@@ -1286,7 +1304,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
 
         current_state_grid = self.settings.value(f"grid/current_right_state", "true", type=bool)
 
-            
+
         ax.grid(current_state_grid, which='both', axis='both', color='white', linestyle='--', linewidth=0.5, alpha=0.3, zorder=1)
 
         cursor_graph, = ax.plot([], [], 'o', markersize=markersize, color=markercolor, visible=marker_visible)
@@ -1322,7 +1340,7 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         y_min = np.min(phase_data)
         y_max = np.max(phase_data)
         y_range = y_max - y_min
-        y_margin = y_range * 0.05  # 5% margin on each side
+        y_margin = y_range * 0.05
         ax.set_ylim(y_min - y_margin, y_max + y_margin)
         ax.autoscale(False)  # Prevent matplotlib from overriding our xlim/ylim settings
         ax.tick_params(axis='x', colors=f"{axis_color}")
