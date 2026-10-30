@@ -111,10 +111,7 @@ def show_current_step_measurement(self, step):
     from NanoVNA_UTN_Toolkit.utils.smith_chart_utils import SmithChartManager
     from NanoVNA_UTN_Toolkit.utils.magnitude_chat_utils import MagnitudeChartManager
     
-    if not self.osm_calibration or not hasattr(self, 'current_ax'):
-        return
-
-    if not self.thru_calibration or not hasattr(self, 'current_ax'):
+    if not hasattr(self, 'current_ax'):
         return
         
     try:
@@ -206,6 +203,35 @@ def show_current_step_measurement(self, step):
                         standard_name=step_name,
                         canvas=self.current_canvas
                     )
+
+        if self.selected_method in ("Enhanced-Response", "1-Port+N"):
+            if step <= 3 and self.osm_calibration:
+                enh_step_name = ["open", "short", "match"][step - 1]
+                if self.osm_calibration.is_standard_measured(enh_step_name):
+                    measurement = self.osm_calibration.get_measurement(enh_step_name)
+                    if measurement:
+                        freqs, s11 = measurement
+                        manager = SmithChartManager()
+                        manager.update_wizard_measurement(
+                            ax=self.current_ax,
+                            freqs=freqs,
+                            s11_data=s11,
+                            standard_name=enh_step_name,
+                            canvas=self.current_canvas
+                        )
+            elif step == 4 and self.thru_calibration:
+                if self.thru_calibration.is_standard_measured("thru"):
+                    measurement = self.thru_calibration.get_measurement("thru")
+                    if measurement and hasattr(self, 'current_ax_magnitude'):
+                        freqs, s11 = measurement
+                        manager = MagnitudeChartManager()
+                        manager.update_wizard_measurement(
+                            ax=self.current_ax_magnitude,
+                            freqs=freqs,
+                            s_data=np.abs(s11),
+                            standard_name="thru",
+                            canvas=self.current_canvas_magnitude
+                        )
 
     except Exception as e:
         logging.error(f"[CalibrationWizard] Error showing current step measurement: {e}")

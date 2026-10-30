@@ -564,12 +564,18 @@ def show_step_screen(self, step, parent = None):
     
     # Check if this standard has already been measured — scoped to active method
     is_measured = False
-    if self.selected_method in ("OSM (Open - Short - Match)", "1-Port+N", "Enhanced-Response"):
+    if self.selected_method == "OSM (Open - Short - Match)":
         if self.osm_calibration:
             is_measured = self.osm_calibration.is_standard_measured(step_name.lower())
-    if self.selected_method in ("Thru Normalization", "1-Port+N", "Enhanced-Response"):
+    elif self.selected_method == "Thru Normalization":
         if self.thru_calibration:
             is_measured = self.thru_calibration.is_standard_measured(step_name.lower())
+    elif self.selected_method in ("1-Port+N", "Enhanced-Response"):
+        # Steps 1-3 (Open/Short/Match) live in osm_calibration; step 4 (Thru) in thru_calibration
+        if step == 4 and self.thru_calibration:
+            is_measured = self.thru_calibration.is_standard_measured(step_name.lower())
+        elif self.osm_calibration:
+            is_measured = self.osm_calibration.is_standard_measured(step_name.lower())
     if self.selected_method == "Open/Short Normalization":
         if hasattr(self, 'os_calibration') and self.os_calibration:
             is_measured = self.os_calibration.is_standard_measured(step_name.lower())
@@ -771,6 +777,9 @@ def show_step_screen(self, step, parent = None):
     if hasattr(self, 'os_calibration') and self.os_calibration and self.selected_method == "Open/Short Normalization":
         show_current_step_measurement(self, step)
 
+    if self.selected_method in ("Enhanced-Response", "1-Port+N"):
+        show_current_step_measurement(self, step)
+
     self.current_step = step
     self.back_button.setVisible(step > 0)
     
@@ -807,3 +816,7 @@ def show_step_screen(self, step, parent = None):
         except Exception:
             pass
         self.next_button.clicked.connect(lambda: next_step(self))
+
+    # Re-enable ▶▶ if this step was already measured (e.g. user navigated back)
+    if is_measured:
+        self.next_button.setEnabled(True)
