@@ -822,7 +822,16 @@ def create_left_panel(self, S_data, freqs, settings, graph_type="Smith Diagram",
         labels_dict["val"].setText(
             f"{current_s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex) >= 0 else '-'} j{abs(np.imag(val_complex)):.3f}"
         )
-        labels_dict["mag"].setText(f"|{current_s_param}|: {magnitude:.3f}")
+        if graph_type == "Magnitude":
+            if (current_s_param == "S21" and unit_mode == "dB") or \
+               (current_s_param == "S11" and unit_mode_S11 == "dB"):
+                labels_dict["mag"].setText(f"|{current_s_param}|: {mag_value:.3f} dB")
+            elif current_s_param == "S21" and unit_mode == "Power ratio":
+                labels_dict["mag"].setText(f"|{current_s_param}|²: {mag_value:.3f}")
+            else:
+                labels_dict["mag"].setText(f"|{current_s_param}|: {magnitude:.3f}")
+        else:
+            labels_dict["mag"].setText(f"|{current_s_param}|: {magnitude:.3f}")
         labels_dict["phase"].setText(f"{self.measurement_ui_s_parameter_phase} {phase_deg:.2f}°")
 
         z = (1 + val_complex) / (1 - val_complex)
@@ -1786,7 +1795,16 @@ def create_right_panel(self, settings, S_data=None, freqs=None, graph_type="Smit
         labels_dict["unit"].setText(freq_unit)
 
         labels_dict["val"].setText(f"{current_s_param}: {np.real(val_complex):.3f} {'+' if np.imag(val_complex)>=0 else '-'} j{abs(np.imag(val_complex)):.3f}")
-        labels_dict["mag"].setText(f"|{current_s_param}|: {magnitude:.3f}")
+        if graph_type == "Magnitude":
+            if (current_s_param == "S21" and unit_mode == "dB") or \
+               (current_s_param == "S11" and unit_mode_S11 == "dB"):
+                labels_dict["mag"].setText(f"|{current_s_param}|: {mag_value:.3f} dB")
+            elif current_s_param == "S21" and unit_mode == "Power ratio":
+                labels_dict["mag"].setText(f"|{current_s_param}|²: {mag_value:.3f}")
+            else:
+                labels_dict["mag"].setText(f"|{current_s_param}|: {magnitude:.3f}")
+        else:
+            labels_dict["mag"].setText(f"|{current_s_param}|: {magnitude:.3f}")
         labels_dict["phase"].setText(f"{self.measurement_ui_s_parameter_phase} {phase_deg:.2f}°")
         z = (1 + val_complex)/(1 - val_complex)
         labels_dict["z"].setText(f"Z: {np.real(z):.2f} + j{np.imag(z):.2f}")

@@ -10,7 +10,19 @@ get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_
 
 update_plots_with_new_data = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.updates.graphics_update", "update_plots_with_new_data")
 
-_reset_markers_after_sweep = safe_import("NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.graphics_windows.graphics_utils.reset.cursors_reset", "_reset_markers_after_sweep")
+update_slider_range_silent = safe_import("NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.set_slider_val_silent", "update_slider_range_silent")
+
+# updater, slider, QSettings key for saved cursor index
+_PANEL_CURSORS = {
+    "left": [
+        ("update_cursor",         "slider_left",    "Cursor_1_1/index"),
+        ("update_cursor_2",       "slider_left_2",  "Cursor_2_1/index"),
+    ],
+    "right": [
+        ("update_right_cursor",   "slider_right",   "Cursor_1_2/index"),
+        ("update_right_cursor_2", "slider_right_2", "Cursor_2_2/index"),
+    ],
+}
 
 # ------------------------------------------------------------------------------------------------------------------ #
 
@@ -62,12 +74,28 @@ def toggle_db_times(self, event, new_mode):
 
         logging.info(f"Unit {new_mode} saved for {ini_section}")
 
-        # The unit belongs to the clicked panel only: rebuild that one, its
-        # markers back at index 0, ONE full draw (coalesced draw_idle). The
-        # other panel is untouched (before: both rebuilt and redrawn).
+        # Rebuild only the clicked panel; restore cursors to their saved
+        # position instead of resetting to 0.
         panel = "left" if graph_number == 1 else "right"
         update_plots_with_new_data(self, skip_reset=True, draw=False, panels=(panel,))
-        _reset_markers_after_sweep(self, panels=(panel,))
+
+        freqs = getattr(self, "freqs", None)
+        if freqs is not None and len(freqs) > 0:
+            max_index = len(freqs) - 1
+            pending = getattr(self, "_marker_index_pending", {})
+            for updater_name, slider_name, key in _PANEL_CURSORS[panel]:
+                saved = int(pending.get(key) if key in pending else settings.value(key, 0))
+                saved = min(max(0, saved), max_index)
+                slider = getattr(self, slider_name, None)
+                if slider is not None:
+                    update_slider_range_silent(slider, max_index, saved)
+                fn = getattr(self, updater_name, None)
+                if callable(fn):
+                    try:
+                        fn(saved)
+                    except Exception as e:
+                        logging.warning(f"[toggle_db_times] {updater_name}({saved}) failed: {e}")
+
         (self.canvas_left if panel == "left" else self.canvas_right).draw_idle()
 
     except Exception as e:

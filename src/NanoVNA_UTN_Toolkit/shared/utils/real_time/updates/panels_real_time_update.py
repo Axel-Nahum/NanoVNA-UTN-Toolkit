@@ -29,7 +29,7 @@ def update_panel_labels(self, s_left, s_right, graph_left, graph_right, unit_lef
         idx_left  = min(max(0, idx_left),  n - 1)
         idx_right = min(max(0, idx_right), n - 1)
 
-        def fill_labels(labels, s_data, idx, s_param):
+        def fill_labels(labels, s_data, idx, s_param, graph_type, unit):
             val        = s_data[idx]
             mag_linear = np.abs(val)
             phase      = np.angle(val) * 180 / np.pi
@@ -40,20 +40,26 @@ def update_panel_labels(self, s_left, s_right, graph_left, graph_right, unit_lef
             if "unit" in labels:
                 labels["unit"].setText(freq_unit)
             labels["val"].setText(f"{s_param}: {val.real:.3f} - j{abs(val.imag):.3f}" if val.imag < 0 else f"{s_param}: {val.real:.3f} + j{val.imag:.3f}")
-            labels["mag"].setText(f"|{s_param}|: {mag_linear:.3f}")
+            if graph_type == "Magnitude" and unit == "dB":
+                mag_db = 20 * np.log10(mag_linear + 1e-12)
+                labels["mag"].setText(f"|{s_param}|: {mag_db:.3f} dB")
+            elif graph_type == "Magnitude" and unit == "Power ratio":
+                labels["mag"].setText(f"|{s_param}|²: {mag_linear**2:.3f}")
+            else:
+                labels["mag"].setText(f"|{s_param}|: {mag_linear:.3f}")
             labels["phase"].setText(f"{self.measurement_ui_s_parameter_phase} {phase:.2f}°")
 
         if hasattr(self, "labels_left")   and self.labels_left   and idx_left  < len(s_left):
-            fill_labels(self.labels_left,   s_left,  idx_left,  self.left_s_param)
+            fill_labels(self.labels_left,   s_left,  idx_left,  self.left_s_param,  graph_left,  unit_left)
 
         if hasattr(self, "labels_left_2") and self.labels_left_2 and idx_left  < len(s_left):
-            fill_labels(self.labels_left_2, s_left,  idx_left,  self.left_s_param)
+            fill_labels(self.labels_left_2, s_left,  idx_left,  self.left_s_param,  graph_left,  unit_left)
 
         if hasattr(self, "labels_right")  and self.labels_right  and idx_right < len(s_right):
-            fill_labels(self.labels_right,  s_right, idx_right, self.right_s_param)
+            fill_labels(self.labels_right,  s_right, idx_right, self.right_s_param, graph_right, unit_right)
 
         if hasattr(self, "labels_right_2") and self.labels_right_2 and idx_right < len(s_right):
-            fill_labels(self.labels_right_2, s_right, idx_right, self.right_s_param)
+            fill_labels(self.labels_right_2, s_right, idx_right, self.right_s_param, graph_right, unit_right)
 
     except Exception as e:
         logging.error(f"[update_panel_labels] {e}")
