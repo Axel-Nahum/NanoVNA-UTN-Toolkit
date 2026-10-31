@@ -161,7 +161,7 @@ def open_signal_filters(self):
     pct_row.addWidget(spin_container)
     sf_v.addLayout(pct_row)
 
-    self.sf_dialog.smooth_desc = QLabel("Moving average window as a percentage of sweep points.")
+    self.sf_dialog.smooth_desc = QLabel("Number of sweeps to average (10 % ≈ 2 sweeps, 50 % ≈ 10 sweeps).")
     self.sf_dialog.smooth_desc.setWordWrap(True)
     sf_v.addWidget(self.sf_dialog.smooth_desc)
 
@@ -487,6 +487,10 @@ def apply_signal_filters(self):
     measurement_noise  = r if active == "Kalman" else 1.0
     self.kf_s11 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
     self.kf_s21 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
+
+    # Reset smoothing buffers so the new window size takes effect immediately
+    self._tb_s11 = None
+    self._tb_s21 = None
 
     # Update label
     if active == "Smoothing":

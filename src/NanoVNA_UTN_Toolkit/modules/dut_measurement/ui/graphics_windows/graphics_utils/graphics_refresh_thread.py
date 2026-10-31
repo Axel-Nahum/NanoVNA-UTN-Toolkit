@@ -440,17 +440,14 @@ def on_sweep_finished(self, result):
         s11_f = np.array([self.kf_s11.update(x) for x in s11])
         s21_f = np.array([self.kf_s21.update(x) for x in s21])
     elif active_filter == "Smoothing":
+        from NanoVNA_UTN_Toolkit.shared.utils.real_time.temporal_buffer import TemporalBuffer
         pct = sf_settings.value("smoothing/window_pct", 5, type=int)
-        n   = len(s11)
-        w   = max(1, round(n * pct / 100))
-        k   = np.ones(w) / w
-        half = w // 2
-        def _smooth(s):
-            re_f = np.convolve(np.pad(s.real, half, mode='reflect'), k, mode='valid')[:len(s)]
-            im_f = np.convolve(np.pad(s.imag, half, mode='reflect'), k, mode='valid')[:len(s)]
-            return re_f + 1j * im_f
-        s11_f = _smooth(s11)
-        s21_f = _smooth(s21)
+        k = max(2, round(pct / 5))
+        if getattr(self, '_tb_s11', None) is None or self._tb_s11.capacity != k:
+            self._tb_s11 = TemporalBuffer(k)
+            self._tb_s21 = TemporalBuffer(k)
+        s11_f = self._tb_s11.push(s11)
+        s21_f = self._tb_s21.push(s21)
     else:
         s11_f = s11
         s21_f = s21

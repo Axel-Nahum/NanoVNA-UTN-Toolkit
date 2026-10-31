@@ -166,6 +166,10 @@ class NanoVNAGraphics(QMainWindow):
         self.kf_s11 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
         self.kf_s21 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
 
+        # temporal buffers for smoothing filter (lazy-init / reset on settings change)
+        self._tb_s11 = None
+        self._tb_s21 = None
+
         # Auto Scale
 
         data_config = read_auto_scale_data(self)
