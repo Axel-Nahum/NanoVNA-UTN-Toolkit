@@ -56,7 +56,7 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 
@@ -112,6 +112,11 @@ class ReferenceLiquid:
         see the module docstring.)
     source : str
         Citation / provenance of the coefficients.
+    recommended_range_c : tuple[float, float] or None
+        Temperature range, in Celsius, the source recommends for this
+        equation when it is narrower than the tabulated one (NPL MAT 23
+        tabulates propan-2-ol up to 30 C but recommends 10-25 C). ``None``
+        means the whole tabulated range is recommended.
     """
 
     key: str
@@ -122,6 +127,7 @@ class ReferenceLiquid:
     validated: bool = False
     source: str = ""
     has_debye_model: bool = True
+    recommended_range_c: Optional[Tuple[float, float]] = None
 
     def __post_init__(self) -> None:
         # Catch transcription slips (a missing value shifts a whole column).
@@ -144,6 +150,17 @@ class ReferenceLiquid:
     @property
     def temp_max_c(self) -> float:
         return float(max(self.temp_axis_c))
+
+    def is_outside_recommended_range(self, temp_c: float) -> bool:
+        """``True`` when ``temp_c`` lies inside the tabulated range but outside
+        the narrower range the source recommends. Out-of-table temperatures
+        return ``False``: they already carry the extrapolation warning."""
+        if self.recommended_range_c is None:
+            return False
+        if temp_c < self.temp_min_c or temp_c > self.temp_max_c:
+            return False
+        low, high = self.recommended_range_c
+        return temp_c < low or temp_c > high
 
 
 def _evaluate_row(liquid: ReferenceLiquid, row: int, f_hz: np.ndarray) -> np.ndarray:
@@ -211,7 +228,8 @@ def evaluate_epsilon_r(
         permittivity is interpolated linearly (NPL MAT 23 section 1.3); on a
         tabulated temperature it is exactly the tabulated model. Unlike the
         MATLAB reference, this does NOT raise on out-of-range temperature: it
-        warns and extends the two outermost rows linearly.
+        warns and extends the two outermost rows linearly. Inside the table
+        but outside ``recommended_range_c`` it also warns.
 
     ES: Devuelve ``(epsilon_r, warnings)`` donde ``epsilon_r`` es un arreglo
         complejo alineado con ``f_hz`` (convencion eps' - j*eps'') y
@@ -220,7 +238,8 @@ def evaluate_epsilon_r(
         permitividad se interpola linealmente (NPL MAT 23 seccion 1.3); en una
         temperatura tabulada es exactamente el modelo tabulado. A diferencia
         del MATLAB original, NO lanza error si la temperatura esta fuera de
-        rango: avisa y prolonga linealmente las dos filas extremas.
+        rango: avisa y prolonga linealmente las dos filas extremas. Dentro de
+        la tabla pero fuera de ``recommended_range_c`` tambien avisa.
     """
     if not liquid.has_debye_model:
         raise NotImplementedError(
@@ -237,6 +256,14 @@ def evaluate_epsilon_r(
             f"Temperature {temp_c:.1f} C is outside the tabulated range "
             f"[{liquid.temp_min_c:.0f}, {liquid.temp_max_c:.0f}] C for "
             f"'{liquid.display_name}'; values are extrapolated."
+        )
+        warnings.append(msg)
+        logger.warning("[reference_liquids] %s", msg)
+    elif liquid.is_outside_recommended_range(temp_c):
+        low, high = liquid.recommended_range_c
+        msg = (
+            f"{liquid.display_name}: {temp_c:.1f} C is outside the NPL "
+            f"recommended range [{low:.0f}, {high:.0f}] C for this equation."
         )
         warnings.append(msg)
         logger.warning("[reference_liquids] %s", msg)
@@ -299,6 +326,7 @@ _IPA = ReferenceLiquid(
     validated=True,
     source=("NPL Report MAT 23 (Gregory & Clarke 2012), propan-2-ol double-Debye "
             "table; via MATLAB get_pattern_ipa.m (UTN 2024)."),
+    recommended_range_c=(10.0, 25.0),
 )
 
 
@@ -447,17 +475,6 @@ _ACETONE = ReferenceLiquid(
             "(approximate, not verified against the paper)."),
 )
 
-_BUTANOL = ReferenceLiquid(
-    key="butanol",
-    display_name="1-Butanol",
-    model_type=DebyeModelType.SINGLE_DEBYE,  # placeholder — not used
-    temp_axis_c=(20,),                        # placeholder
-    columns={},                               # placeholder
-    validated=False,
-    source="No Debye model available yet — listed for future use.",
-    has_debye_model=False,
-)
-
 
 REFERENCE_LIQUIDS: Dict[str, ReferenceLiquid] = {
     _WATER.key: _WATER,
@@ -467,7 +484,6 @@ REFERENCE_LIQUIDS: Dict[str, ReferenceLiquid] = {
     _BUTANOL.key: _BUTANOL,
     _CYCLOHEXANE.key: _CYCLOHEXANE,
     _ACETONE.key: _ACETONE,
-    _BUTANOL.key: _BUTANOL,
 }
 
 

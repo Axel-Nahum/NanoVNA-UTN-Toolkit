@@ -101,10 +101,14 @@ reorientación dipolar ante un campo oscilante.
     \item $f_r = 1/(2\pi\tau)$ es la frecuencia de relajación.
 \end{itemize}
 
-Este modelo se aplica al agua y al metanol en el presente sistema.
-Los coeficientes $\{\varepsilon_s, \varepsilon_\infty, \tau\}$ dependen de la
-temperatura y se tabulan a partir de los datos del NPL Report MAT~23
-\cite{gregory2012} mediante ajuste polinomial cuadrático en temperatura.
+Este modelo se aplica al agua, con los coeficientes de Kaatze~\cite{kaatze1989}
+(Tabla~III, 0--60~°C), y al metanol, con los del NPL Report MAT~23~\cite{gregory2012}
+(10--50~°C). Los coeficientes $\{\varepsilon_s, \varepsilon_\infty, \tau\}$ se tabulan
+en pasos de 5~°C (de 10~°C entre 40 y 60~°C para el agua). Para una temperatura
+intermedia el sistema evalúa el modelo en las dos temperaturas tabuladas más
+cercanas e interpola linealmente la permitividad compleja, procedimiento
+recomendado por el NPL (MAT~23, sec.~1.3); en una temperatura tabulada el
+resultado coincide exactamente con la tabla.
 
 \subsubsection{Modelo de Debye doble}
 
@@ -131,11 +135,17 @@ relajación en la parte superior de la banda:
 \begin{equation}
     \varepsilon^*(f) = \varepsilon_h
                      + \frac{\varepsilon_s - \varepsilon_h}{1 + j\,f / f_r}
-                     - j\,\gamma \left(\frac{f}{\text{GHz}}\right),
+                     - j\,\gamma\,f,
     \label{eq:debye_gamma}
 \end{equation}
 
-siendo $\gamma$ un coeficiente dimensional en GHz$^{-1}$.
+\noindent con $f$ en GHz y $\gamma$ en GHz$^{-1}$. El NPL llama $\Gamma$ a este
+coeficiente (MAT~23, ec.~3); aquí se lo denomina $\gamma$ para no confundirlo con
+el coeficiente de reflexión. El término lineal representa la cola de una segunda
+relajación situada por encima de la banda tabulada, y solo es válido hasta
+aproximadamente un tercio de esa segunda frecuencia de relajación: para el
+etanol, $\varepsilon'$ se aparta de esta ecuación por encima de unos 4~GHz
+(NPL MAT~23, nota~27).
 
 En la Tabla~\ref{tab:modelos_debye} se resume el modelo utilizado para cada
 líquido disponible en el sistema.
@@ -144,16 +154,25 @@ líquido disponible en el sistema.
 \centering
 \caption{Modelos de Debye por líquido de referencia implementados en el sistema.}
 \label{tab:modelos_debye}
-\begin{tabular}{@{}llcc@{}}
+\small
+\begin{tabular}{@{}p{3.1cm}p{3.4cm}cp{4.6cm}@{}}
 \toprule
 \textbf{Líquido} & \textbf{Modelo} & \textbf{Rango T (°C)} & \textbf{Fuente} \\
 \midrule
-Agua (H$_2$O) & Debye simple       & 0 -- 60  & NPL MAT 23 \cite{gregory2012} \\
-IPA (isopropanol) & Debye doble    & 10 -- 30 & NPL MAT 23 \cite{gregory2012} \\
+Agua (H$_2$O) & Debye simple       & 0 -- 60  & Kaatze (1989), Tabla III \cite{kaatze1989} \\
+IPA (propan-2-ol) & Debye doble    & 10 -- 30$^{a}$ & NPL MAT 23 \cite{gregory2012} \\
 Etanol         & Debye-Gamma        & 10 -- 50 & NPL MAT 23 \cite{gregory2012} \\
 Metanol        & Debye simple       & 10 -- 50 & NPL MAT 23 \cite{gregory2012} \\
+1-Butanol      & Debye doble        & 10 -- 40 & NPL MAT 23 \cite{gregory2012} \\
+Acetona        & Debye simple$^{b}$ & 5 -- 40  & NPL MAT 23, Tabla 6; Vij et al.\ (1991) \cite{vij1991} \\
+Ciclohexano    & No polar, $\varepsilon = \varepsilon_s(T)$ & 10 -- 50 & NPL MAT 23, Tabla 6 \cite{gregory2012} \\
 \bottomrule
 \end{tabular}
+
+\vspace{2pt}
+{\footnotesize $^{a}$ El NPL recomienda 10 -- 25~°C para esta tabla ($\varepsilon_s$
+ajustado sin valor de celda de admitancia); el sistema avisa entre 25 y 30~°C.\\
+$^{b}$ $\varepsilon_s$ del NPL; $\tau = 3{,}2$~ps y $\varepsilon_\infty = 2{,}0$ aproximados.}
 \end{table}
 
 \newpage
@@ -174,31 +193,52 @@ el material bajo prueba (MBP) y medir el coeficiente de reflexión~$\Gamma$
 
 Cuando el extremo de la línea coaxial se abre a un semiespacio relleno con
 el material, la terminación coaxial abierta actúa como una antena de apertura
-en campo cercano. La admitancia en la terminación depende fuertemente de las
-propiedades dieléctricas del material en contacto:
+en campo cercano. La admitancia en el plano de la apertura depende fuertemente de
+las propiedades dieléctricas del material en contacto, y se modela con el circuito
+concentrado de Marsland y Evans~\cite{marsland1987}:
 
 \begin{equation}
     Y(\varepsilon^*, \omega)
-    = j\omega C_0\,\varepsilon^*
+    = j\omega C_f
+    + j\omega C_0\,\varepsilon^*
     + G_0\,(\varepsilon^*)^{5/2},
     \label{eq:admitancia_modelo}
 \end{equation}
 
 \noindent donde:
 \begin{itemize}
-    \item $C_0$ [F] es la capacitancia de la sonda en el vacío, determinada por la
-          geometría del coaxial. Domina el comportamiento a bajas frecuencias.
-    \item $G_0$ [S] es el coeficiente de radiación. El término $G_0\,\varepsilon^{5/2}$
-          representa las pérdidas por radiación en el campo lejano; domina a altas
-          frecuencias y para sondas de mayor apertura (sonda de 21~mm respecto
-          a la de 3~mm).
+    \item $C_f$ [F] es la capacidad de borde dentro del dieléctrico de la sonda;
+          no depende del material.
+    \item $C_0$ [F] es la capacidad de borde en el medio exterior con aire,
+          determinada por la geometría de la apertura. Domina el comportamiento a
+          bajas frecuencias.
+    \item $G_0$ [S] es el coeficiente de radiación. No es constante: por el
+          teorema de Deschamps crece como $\omega^4$~\cite{marcuvitz}. El término
+          $G_0\,\varepsilon^{5/2}$ representa la potencia radiada hacia el material;
+          pesa más a altas frecuencias y en sondas de mayor apertura (sonda de
+          21~mm respecto a la de 3~mm).
 \end{itemize}
+
+Dividiendo por $j\omega C_0$ y restando $C_f/C_0$ se obtiene la admitancia
+normalizada
+\[
+    y = \varepsilon^* + G_n\,(\varepsilon^*)^{5/2},
+    \qquad
+    G_n = \frac{G_0}{j\omega C_0},
+\]
+donde $G_n$ es la conductancia de radiación normalizada: compleja y dependiente
+de la frecuencia (teóricamente proporcional a $\omega^3$, con fase $-90^\circ$).
+Como esta transformación es lineal y el error de un puerto del analizador es una
+transformación bilineal, la razón cruzada de cuatro coeficientes de reflexión
+medidos es igual a la de las cuatro admitancias normalizadas: $C_f$, $C_0$ y los
+errores del analizador se eliminan sin calcularlos, y la única incógnita de la
+sonda que queda es $G_n$.
 
 La relación entre la admitancia y el coeficiente de reflexión medido es la
 transformada de Möbius estándar de la teoría de redes:
 
 \begin{equation}
-    \Gamma = \frac{Z_0\,Y - 1}{Z_0\,Y + 1}
+    \Gamma = \frac{1 - Z_0\,Y}{1 + Z_0\,Y}
     \quad \Longleftrightarrow \quad
     Y = \frac{1}{Z_0}\cdot\frac{1 - \Gamma}{1 + \Gamma},
 \end{equation}
@@ -207,18 +247,23 @@ transformada de Möbius estándar de la teoría de redes:
 
 \subsubsection{Historia y contexto del método}
 
-El método de sonda coaxial abierta fue formalizado matemáticamente en la
-década de 1980 por Stuchly et al.~\cite{stuchly1980} y Misra~\cite{misra1990},
-quienes propusieron el modelo de admitancia de~\eqref{eq:admitancia_modelo}
-y demostraron que el exponente $5/2$ emerge del desarrollo en serie del campo
-radiado por una apertura circular en un plano conductor infinito.
+El modelo capacitivo de la sonda coaxial abierta fue desarrollado por Stuchly y
+Stuchly~\cite{stuchly1980}, y Misra~\cite{misra1990} formuló el análisis
+cuasi-estático de la apertura. Marsland y Evans~\cite{marsland1987} agregaron el
+término de radiación $G_0\,\varepsilon^{5/2}$ de~\eqref{eq:admitancia_modelo},
+cuyo exponente surge del desarrollo en serie de la admitancia de una apertura
+circular en un plano conductor infinito~\cite{marcuvitz}, y propusieron calibrar
+la sonda con líquidos de permitividad conocida mediante la razón cruzada.
 
 La calibración con líquidos de referencia, en lugar de estándares mecánicos de
-reflexión, fue introducida para eliminar la dependencia del resultado respecto
-a la calidad del contacto sonda-muestra y respecto a los errores sistemáticos
-del analizador de redes. La versión de dos líquidos que se documenta aquí es
-consistente con la referencia UTN-FRBA 2024~\cite{utnfrba2024} en la que se basa
-el presente trabajo.
+reflexión, elimina la dependencia del resultado respecto de los errores
+sistemáticos del analizador de redes y de los parámetros de la sonda; Gregory y
+Clarke~\cite{gregory2007} la analizan como una transformación bilineal. La versión
+de dos líquidos, con el término $G_n$ y el polinomio de grado~5 que se documentan
+aquí, proviene de los antecedentes de la cátedra: Grass, De Brito y
+Guarnaccio~\cite{grass2016}, los proyectos de 2019 y 2020, Kupcevich
+et al.~\cite{kupcevich2024} ---fuente directa del código del sistema--- y Henze
+et al.~\cite{henze2024}.
 
 \newpage
 \Encabezado
@@ -243,18 +288,18 @@ Los cuatro estándares son:
           $\varepsilon_{\text{open}} = \varepsilon_{\text{aire}} \approx 1$.
     \item \textbf{Cortocircuito (Short)}: la apertura de la sonda se cubre con
           una lámina metálica conductora.
-    \item \textbf{Líquido de referencia~1 (Ref\,1)}: por defecto IPA (isopropanol),
-          de permitividad baja-moderada.
-    \item \textbf{Líquido de referencia~2 (Ref\,2)}: por defecto agua destilada,
+    \item \textbf{Líquido de referencia~1 (Ref\,1)}: por defecto agua destilada,
           de permitividad alta.
+    \item \textbf{Líquido de referencia~2 (Ref\,2)}: por defecto IPA (propan-2-ol),
+          de permitividad baja-moderada.
 \end{enumerate}
 
 Las cuatro mediciones $S_{11}$ de calibración y las permitividades conocidas
 $\varepsilon_{\text{Ref1}}$, $\varepsilon_{\text{Ref2}}$ (calculadas mediante
 los modelos de Debye de la Sección~\ref{sec:debye} a la temperatura de medición)
-permiten determinar los parámetros del sistema $\{C_0, G_0\}$ y los tres
-coeficientes de error de la caja de errores del analizador (directividad,
-adaptación de fuente, seguimiento de reflexión).
+permiten eliminar los errores sistemáticos del analizador (directividad,
+adaptación de fuente, seguimiento de reflexión) y los parámetros $C_f$, $C_0$ de
+la sonda sin calcularlos, y determinar $G_n(f)$.
 
 La calibración completa absorbe todos los errores sistemáticos del analizador y
 del cable de la sonda simultáneamente con los parámetros de la sonda misma.
@@ -263,8 +308,7 @@ No se requiere una calibración OSM previa del analizador.
 \subsubsection{Método Simplificado (3 estándares)}
 \label{sec:metodo_simplificado}
 
-El método simplificado (denominado también \emph{incompleto} en la literatura)
-utiliza únicamente tres estándares:
+El método simplificado utiliza únicamente tres estándares:
 
 \begin{enumerate}
     \item \textbf{Open}: ídem al método completo.
@@ -276,7 +320,7 @@ La simplificación consiste en despreciar el término de radiación ($G_0 = 0$),
 reduciendo el modelo de admitancia a uno puramente capacitivo:
 
 \begin{equation}
-    Y \approx j\omega C_0\,\varepsilon^*.
+    Y \approx j\omega C_f + j\omega C_0\,\varepsilon^*.
 \end{equation}
 
 Con esta hipótesis, la relación entre $S_{11}$ y $\varepsilon^*$ se vuelve una
@@ -305,27 +349,29 @@ Los líquidos de referencia cumplen una doble función:
           proveen puntos de la relación $\Gamma \leftrightarrow \varepsilon^*$
           con permitividades \emph{conocidas a priori} mediante los modelos
           termodinámicos de Debye.
-    \item \textbf{Determinación de los parámetros de la sonda}: al conocer
-          $\varepsilon^*$ se puede resolver el sistema de ecuaciones que da
-          $C_0$ y $G_0$ sin necesidad de desmontarla ni medirla
-          geométricamente.
+    \item \textbf{Caracterización de la sonda}: junto con Open y Short, permiten
+          eliminar los errores sistemáticos del analizador y los parámetros
+          $C_f$, $C_0$ de la sonda sin calcularlos, y determinar $G_n(f)$, sin
+          necesidad de desmontarla ni medirla geométricamente.
 \end{itemize}
 
 \subsubsection{Por qué se necesitan dos líquidos en el método completo}
 
-El modelo de admitancia~\eqref{eq:admitancia_modelo} tiene dos incógnitas
-reales de geometría ($C_0$, $G_0$) más los tres errores del analizador,
-totalizando cinco parámetros. Los estándares Open y Short aportan dos
-ecuaciones, y cada líquido aporta una ecuación adicional (una por frecuencia,
-pero los parámetros son constantes en frecuencia). Con un solo líquido se
-tienen cuatro ecuaciones y cinco incógnitas: el sistema está indeterminado.
-Con dos líquidos se completan las cinco ecuaciones necesarias.
+A cada frecuencia, la relación entre el coeficiente de reflexión medido y la
+admitancia normalizada $y = \varepsilon + G_n\,\varepsilon^{5/2}$ es una
+transformación de Möbius con tres coeficientes complejos (que absorben los tres
+términos de error del analizador y los parámetros $C_f$ y $C_0$ de la sonda) más
+la incógnita compleja $G_n$: cuatro incógnitas complejas. Cada patrón de
+permitividad conocida aporta una ecuación compleja: Open ($y = 1 + G_n$), Short
+($y \to \infty$), Ref\,1 y Ref\,2. Con un solo líquido el sistema queda
+indeterminado; con dos se cierra. En el método simplificado se impone $G_n = 0$
+y bastan tres patrones.
 
-Desde otro punto de vista: el primer líquido (Ref\,1 = IPA) fija principalmente
-el coeficiente capacitivo~$C_0$, que domina la admitancia a baja frecuencia.
-El segundo líquido (Ref\,2 = agua) —de permitividad considerablemente mayor—
-fija principalmente el coeficiente de radiación~$G_0$, cuyo efecto resulta
-apreciable a alta frecuencia y con materiales de alta permitividad.
+El líquido de mayor permitividad (agua) domina los términos en $\varepsilon^{5/2}$
+de la ecuación~\eqref{eq:gn} ($78^{5/2} \approx 5{,}4 \cdot 10^4$ frente a
+$19^{5/2} \approx 1{,}6 \cdot 10^3$) y es por tanto el patrón que más condiciona
+$G_n$; el de menor permitividad (IPA) aporta sobre todo el tercer punto de la
+transformación bilineal junto con Open y Short.
 
 \subsubsection{Por qué los líquidos deben ser diferentes entre sí}
 
@@ -333,14 +379,15 @@ Si se utilizaran dos líquidos de permitividad idéntica o muy similar,
 sus mediciones de $S_{11}$ quedarían muy próximas en el plano complejo
 y el sistema de ecuaciones resultaría mal condicionado numéricamente
 (matriz casi singular). Esto se manifiesta como inestabilidad y ruido
-amplificado en los valores de $C_0$ y $G_0$ extraídos.
+amplificado en el valor de $G_n$ extraído.
 
 Para un buen condicionamiento, los líquidos de referencia deben:
 \begin{itemize}
     \item Tener partes reales $\varepsilon'$ significativamente distintas,
           idealmente separadas por al menos una década (por ejemplo,
-          $\varepsilon'_{\text{IPA}} \approx 4$--$20$ frente a
-          $\varepsilon'_{\text{agua}} \approx 40$--$80$ en la banda de 10~MHz a 3~GHz).
+          $\varepsilon'_{\text{IPA}} \approx 4$--$19$ frente a
+          $\varepsilon'_{\text{agua}} \approx 77$--$78$ en la banda de 10~MHz a
+          3~GHz, a 25~°C).
     \item Cubrir el rango de permitividades del material bajo prueba desde ambos lados
           siempre que sea posible.
     \item Tener permitividades tabuladas con alta confianza en el rango de temperatura
@@ -364,29 +411,30 @@ Los líquidos de referencia ideales deben además satisfacer:
 \end{itemize}
 
 En la Tabla~\ref{tab:liquidos_disponibles} se resumen las propiedades relevantes
-de los cuatro líquidos disponibles en el sistema a 25~°C y 1~GHz (valores
-aproximados; los valores exactos se calculan a partir de los coeficientes
-tabulados).
+de los cuatro líquidos polares que el sistema ofrece como referencia, a 25~°C,
+calculadas con los modelos de la Sección~\ref{sec:debye}.
 
 \begin{table}[h!]
 \centering
-\caption{Propiedades dieléctricas aproximadas de los líquidos de referencia del sistema a 25~°C y 1~GHz.}
+\caption{Propiedades dieléctricas de los líquidos de referencia del sistema a 25~°C, según los modelos del sistema.}
 \label{tab:liquidos_disponibles}
-\begin{tabular}{@{}lcccc@{}}
+\small
+\begin{tabular}{@{}lccccl@{}}
 \toprule
-\textbf{Líquido} & $\varepsilon'$ & $\varepsilon''$ & $\tan\delta$ & \textbf{Rol típico} \\
+ & & \multicolumn{2}{c}{$\varepsilon' - j\varepsilon''$} & $\tan\delta$ & \\
+\cmidrule(lr){3-4}
+\textbf{Líquido} & $\varepsilon_s$ & 100~MHz & 1~GHz & 1~GHz & \textbf{Rol típico} \\
 \midrule
-Agua (H$_2$O)         & $\approx 78$  & $\approx 10$  & $\approx 0{,}13$ & Ref\,2 (alto $\varepsilon$) \\
-Metanol               & $\approx 25$  & $\approx 17$  & $\approx 0{,}68$ & Ref\,2 alternativo \\
-IPA (isopropanol)     & $\approx 15$  & $\approx 7$   & $\approx 0{,}47$ & Ref\,1 (bajo $\varepsilon$) \\
-Etanol                & $\approx 22$  & $\approx 15$  & $\approx 0{,}68$ & Ref\,1 alternativo \\
+Agua (H$_2$O)     & 78,4 & $78{,}4 - j0{,}4$ & $78{,}2 - j3{,}8$  & 0,05 & Ref\,1 (alto $\varepsilon$) \\
+Metanol           & 32,7 & $32{,}6 - j0{,}9$ & $30{,}2 - j7{,}8$  & 0,26 & Ref\,1 alternativo \\
+Etanol            & 24,4 & $24{,}2 - j2{,}0$ & $14{,}1 - j10{,}0$ & 0,71 & Ref\,2 alternativo \\
+IPA (propan-2-ol) & 19,3 & $18{,}5 - j3{,}4$ & $6{,}1 - j5{,}9$   & 0,97 & Ref\,2 (bajo $\varepsilon$) \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\noindent El par predeterminado del sistema es \textbf{IPA} (Ref\,1) + \textbf{agua} (Ref\,2),
-combinación validada en la referencia de base~\cite{utnfrba2024} y ampliamente
-utilizada en la literatura~\cite{stuchly1980, misra1990, gregory2012}.
+\noindent El par predeterminado del sistema es \textbf{agua} (Ref\,1) + \textbf{IPA} (Ref\,2),
+el que emplean los antecedentes de la cátedra~\cite{grass2016, kupcevich2024, henze2024}.
 
 \newpage
 \Encabezado
@@ -400,8 +448,11 @@ utilizada en la literatura~\cite{stuchly1980, misra1990, gregory2012}.
 \label{sec:extraccion_completo}
 
 Una vez completada la calibración, los parámetros del sistema quedan condensados en
-la \emph{constante de patrón} $G_n$ y en las admitancias normalizadas de los
-líquidos de referencia~$y_1$, $y_2$.
+la conductancia de radiación normalizada $G_n(f) = G_0/(j\omega C_0)$, definida en la
+Sección~\ref{sec:sonda_coaxial} junto con la admitancia normalizada
+$y = \varepsilon + G_n\,\varepsilon^{5/2}$, y en las admitancias normalizadas de los
+líquidos de referencia~$y_1$, $y_2$. Ninguno de los dos parámetros $G_0$ y $C_0$ se
+obtiene por separado: solo su cociente.
 
 \paragraph{Cálculo de $G_n$}
 
@@ -426,7 +477,12 @@ se calculan los numeradores y denominadores:
 
 \noindent donde $S_O$, $S_K$, $S_1$, $S_2$ son los coeficientes de reflexión
 medidos para Open, Short, Ref\,1 y Ref\,2, respectivamente (todos complejos,
-dependientes de la frecuencia).
+dependientes de la frecuencia). Los términos $\mathcal{A}$ y $\mathcal{D}$ llevan el
+factor de la permitividad del Open, $\varepsilon_{\text{aire}}$ en $\mathcal{A}$ y
+$\varepsilon_{\text{aire}}^{5/2}$ en $\mathcal{D}$; con $\varepsilon_{\text{aire}} = 1$,
+como toma el método completo, resulta $\mathcal{A} = \mathcal{D}$. El método
+simplificado (Sección~\ref{sec:extraccion_simplificado}) usa en cambio
+$\varepsilon_{\text{aire}} = 1{,}0006$.
 
 Las admitancias normalizadas de los líquidos son:
 \begin{align}
@@ -446,6 +502,12 @@ $\{S_m, S_K, S_1, S_2\}$:
     \label{eq:third_term}
 \end{equation}
 
+\noindent El Open no interviene en $T$, solo en $G_n$. La
+expresión~\eqref{eq:third_term} equivale a $-T = y_m = (y_1 - R\,y_2)/(1 - R)$,
+con $R$ la razón cruzada
+$\{S_m, S_K; S_1, S_2\} = \dfrac{(S_m - S_1)(S_K - S_2)}{(S_m - S_2)(S_K - S_1)}$
+y $y_m$ la admitancia normalizada del material bajo prueba.
+
 \paragraph{Formulación del polinomio de grado 5}
 
 Sustituyendo el modelo de admitancia~\eqref{eq:admitancia_modelo} normalizado
@@ -462,42 +524,66 @@ raíces complejas. La permitividad se recupera como $\varepsilon_m^* = x^2$.
 
 \paragraph{Selección de la raíz física}
 
-De las cinco raíces del polinomio~\eqref{eq:polinomio}, solo aquellas con
+De las cinco raíces en $x$ del polinomio~\eqref{eq:polinomio}, solo las que
+cumplen $\operatorname{Re}(x) > 0$ (rama principal de $\sqrt{\varepsilon}$)
+resuelven $\varepsilon + G_n\,\varepsilon^{5/2} + T = 0$; las demás resuelven la
+ecuación con el término de radiación de signo cambiado y se descartan. En la
+práctica quedan dos candidatas por frecuencia: la raíz física, próxima al límite
+$G_n \to 0$ ($\varepsilon = -T$), y una raíz de radiación con
+$|\varepsilon| \approx |G_n|^{-2/3}$, que se acerca a la física a medida que
+$|G_n|$ crece, es decir, hacia alta frecuencia.
+
+La selección se hace por continuidad en frecuencia a partir de una estimación con
+$G_n = 0$: la curva del método simplificado
+(Sección~\ref{sec:extraccion_simplificado}) o, donde no exista, $-T$. El punto de
+anclaje es el de menor $|G_n|$ (mediana móvil de $\pm 2$ puntos) entre los bien
+condicionados cuya raíz más cercana a la estimación es inequívoca (la segunda
+raíz al menos al doble de distancia) y cuyos vecinos eligen lo mismo; con
+patrones medidos cae en la banda baja (60--75~MHz en los barridos de 2026). Desde
+el anclaje se recorre el barrido hacia ambos extremos tomando en cada frecuencia
+la raíz más cercana a la última raíz válida. Un punto cuyo $|G_n|$ se aparta más
+de 3 veces de su mediana móvil (fallo en un patrón) o cuya estimación salta más
+de 25\,\% respecto de sus vecinos con un paso de continuidad ambiguo (fallo en la
+muestra) conserva su raíz pero no guía la marcha.
+
+Quedan sin solución (NaN) los puntos mal condicionados
+($|S_1 - S_2| < 10^{-2}$), los que no tienen raíz de rama principal, aquellos
+cuya raíz tiene $\operatorname{Re}(\varepsilon_m^*) \leq 0$ y los que ni la
+continuidad ni la estimación resuelven. Las condiciones de medio pasivo con la
+convención de signo~\eqref{eq:permitividad_compleja},
 \begin{equation}
-    \operatorname{Re}(\varepsilon_m^*) > 0 \quad \text{y} \quad
-    \operatorname{Im}(\varepsilon_m^*) \leq 0
+    \operatorname{Im}(\varepsilon_m^*) \leq 0 \quad \text{y} \quad
+    \operatorname{Re}(\varepsilon_m^*) \geq 1,
     \label{eq:criterio_fisico}
 \end{equation}
-son físicamente admisibles (medio dieléctrico pasivo con la convención de
-signo~\eqref{eq:permitividad_compleja}).
-
-Cuando la condición~\eqref{eq:criterio_fisico} no resulta suficiente para
-seleccionar una raíz unívoca, se aplica un algoritmo de \emph{seguimiento de
-rama en frecuencia}: comenzando en la frecuencia más alta (donde los efectos
-de radiación son máximos y la raíz física es más distinguible), se sigue la
-rama de raíces de mayor continuidad hacia frecuencias decrecientes, apoyándose
-en una extrapolación polinómica de orden~2 con ventana de 5 puntos.
-
-Como referencia inicial se utiliza el resultado del método simplificado
-(Sección~\ref{sec:extraccion_simplificado}), que proporciona una solución
-aproximada sin ambigüedad de raíces.
+no se usan como filtro sino como criterio de calidad: el ruido deja la raíz
+física de los líquidos de bajas pérdidas con $\varepsilon''$ levemente negativo,
+y descartarla entregaría la raíz de radiación. Los puntos que no
+cumplen~\eqref{eq:criterio_fisico} se conservan y se marcan como no físicos con
+una advertencia al operador.
 
 \paragraph{Verificación de consistencia}
 
 Al finalizar la extracción, el sistema compara el resultado del método completo
 con el del simplificado en la mitad inferior de la banda. Si la divergencia
 mediana supera el 25\,\%, se emite una advertencia al operador indicando posible
-mal acondicionamiento de la calibración o elección inadecuada de líquidos.
+mal acondicionamiento de la calibración o elección inadecuada de líquidos. En la
+banda baja la radiación es despreciable y ambos métodos resuelven la misma
+física, por lo que deben coincidir. El chequeo es además el único que expone un
+error en Ref\,2: ese patrón entra al cálculo solo a través de $G_n$, y un error
+en él es invisible para los demás controles de consistencia.
 
 \subsubsection{Método Simplificado: Transformada Bilineal}
 \label{sec:extraccion_simplificado}
 
 Con $G_n = 0$ (sin término de radiación), el modelo de admitancia se reduce a
-$Y = j\omega C_0\,\varepsilon^*$, y la relación entre $S_{11}$ y $\varepsilon^*$ es
-una transformada de Möbius exacta. Cuatro puntos en el plano~$S_{11}$ y sus
-correspondientes en el plano~$\varepsilon$ determinan la razón cruzada.
+$Y = j\omega C_f + j\omega C_0\,\varepsilon^*$, y la relación entre $S_{11}$ y
+$\varepsilon^*$ es una transformada de Möbius exacta. Cuatro puntos en el
+plano~$S_{11}$ y sus correspondientes en el plano~$\varepsilon$ determinan la
+razón cruzada.
 
-Identificando Open ($\varepsilon_{\text{aire}} \approx 1$), Short
+Identificando Open ($\varepsilon_{\text{aire}} = 1{,}0006$, aire a 20~°C, 1013~mb
+y 50\,\% de humedad relativa~\cite{medley1991}), Short
 ($\varepsilon_{\text{cortocircuito}} \to \infty$, contribución límite) y
 Ref\,1 ($\varepsilon_{\text{Ref}}$), la permitividad del material desconocido
 se calcula directamente como:
@@ -509,7 +595,7 @@ se calcula directamente como:
     \label{eq:formula_simplificada}
 \end{equation}
 
-\noindent con coeficientes bariocéntricos:
+\noindent con coeficientes baricéntricos:
 
 \begin{align}
     c_{\text{Ref}}  &= \frac{(S_m - S_O)(S_K - S_{\text{Ref}})}{(S_m - S_K)(S_{\text{Ref}} - S_O)},
@@ -519,7 +605,7 @@ se calcula directamente como:
 \end{align}
 
 La identidad $c_{\text{Ref}} + c_{\text{aire}} = -1$ es una consecuencia
-directa de la razón cruzada (identidad de Ptolemy), y sirve como verificación
+directa de la razón cruzada (identidad de Ptolomeo), y sirve como verificación
 numérica de la coherencia del cálculo.
 
 Nótese que~\eqref{eq:formula_simplificada} es algebraicamente cerrada: no
@@ -538,14 +624,21 @@ La Figura~\ref{fig:flujo_algoritmo} (pendiente de inclusión) resume el flujo
 de datos del sistema. En forma textual, las etapas son:
 
 \begin{enumerate}
-    \item \textbf{Configuración}: selección de sonda ($C_0$ tabulated por modelo),
-          temperatura de medición, líquidos de referencia y método
-          (completo o simplificado).
+    \item \textbf{Configuración}: selección de sonda, temperatura de medición,
+          líquidos de referencia y método (completo o simplificado). El $C_0$
+          tabulado de cada sonda (19~fF la de 3~mm, 117~fF la de 21~mm) no
+          interviene en el cálculo de $\varepsilon^*$: solo alimenta la curva
+          $S_{11}$ indicativa y el chequeo de sensibilidad en baja frecuencia.
 
     \item \textbf{Fase de calibración}:
     \begin{itemize}
         \item Medir o cargar los valores presetados de $S_{11}$ para Open, Short,
               Ref\,1 (y Ref\,2 en método completo).
+        \item Pre-calibración por paso (opcional): un paso medido después de
+              manipular la sonda se refiere al estado de la sesión como
+              $S_{11}\,c_0/c$, con $c$ el $S_{11}$ del Open (o $-S_{11}$ del Short)
+              medido tras la manipulación y $c_0$ el mismo patrón medido en la
+              sesión.
         \item Evaluar $\varepsilon_{\text{Ref}}^*(f, T)$ mediante los modelos de
               Debye de la Sección~\ref{sec:debye} interpolando en temperatura.
         \item Calcular $G_n(f)$, $y_1(f)$, $y_2(f)$
@@ -553,14 +646,17 @@ de datos del sistema. En forma textual, las etapas son:
     \end{itemize}
 
     \item \textbf{Medición del material bajo prueba}: barrido en frecuencia con
-          la NanoVNA para obtener $S_{11,m}(f)$.
+          la NanoVNA para obtener $S_{11,m}(f)$, con remoción opcional de picos
+          aislados.
 
     \item \textbf{Extracción de $\varepsilon^*(f)$}:
     \begin{itemize}
         \item \emph{Método completo}: calcular $T(f)$ mediante~\eqref{eq:third_term},
               resolver el polinomio~\eqref{eq:polinomio} en cada frecuencia,
-              seleccionar la raíz física con seguimiento de rama.
+              seleccionar la raíz física por continuidad desde el punto de anclaje.
         \item \emph{Método simplificado}: evaluar directamente~\eqref{eq:formula_simplificada}.
+        \item Controles de calidad no bloqueantes: sensibilidad en baja
+              frecuencia, consistencia física de $G_n$ y $|S_{11}| > 1$.
     \end{itemize}
 
     \item \textbf{Salida}: curvas $\varepsilon'(f)$ y $\varepsilon''(f)$
@@ -580,16 +676,17 @@ de datos del sistema. En forma textual, las etapas son:
 \centering
 \caption{Comparación entre el método completo y el método simplificado.}
 \label{tab:comparacion_metodos}
-\begin{tabular}{@{}lll@{}}
+\small
+\begin{tabular}{@{}lp{5.2cm}p{4.4cm}@{}}
 \toprule
 \textbf{Característica}         & \textbf{Método completo}              & \textbf{Método simplificado} \\
 \midrule
 Estándares de calibración       & 4 (Open, Short, Ref1, Ref2)           & 3 (Open, Short, Ref) \\
-Líquidos de referencia          & 2 (IPA + Agua)                        & 1 (Agua) \\
-Modelo de admitancia            & $j\omega C_0\varepsilon + G_0\varepsilon^{5/2}$ & $j\omega C_0\varepsilon$ \\
+Líquidos de referencia          & 2 (Agua + IPA)                        & 1 (Agua) \\
+Modelo de admitancia            & $j\omega C_f + j\omega C_0\varepsilon + G_0\varepsilon^{5/2}$ & $j\omega C_f + j\omega C_0\varepsilon$ \\
 Extracción                      & Polinomio grado 5 + seguimiento       & Fórmula cerrada bilineal \\
-Precisión a alta frecuencia     & Alta                                  & Moderada \\
-Precisión para sonda de 21\,mm  & Alta                                  & Reducida \\
+Exactitud hacia alta frecuencia & Mejor: corrige la radiación (etanol, sonda de 3\,mm, 0,1--1,2~GHz: 1,9\,\% de error mediano en $\varepsilon'$) & Peor: desprecia la radiación (13\,\% en el mismo ensayo) \\
+Precisión para sonda de 21\,mm  & Sin validar                           & Sin validar \\
 Complejidad computacional       & Media                                 & Baja \\
 Velocidad de ensayo             & Normal                                & Rápida (exploración) \\
 \bottomrule
@@ -628,5 +725,50 @@ Velocidad de ensayo             & Normal                                & Rápid
 % [COMPLETAR: autores],
 % ``Mediciones de permitividad mediante una sonda coaxial,''
 % UTN-FRBA, 2024. (Informe interno de referencia del proyecto.)
+%
+% \bibitem{kaatze1989}
+% U.~Kaatze,
+% ``Complex permittivity of water as a function of frequency and temperature,''
+% \emph{J. Chem. Eng. Data}, vol.~34, no.~4, pp.~371--374, 1989.
+%
+% \bibitem{marsland1987}
+% T.~P.~Marsland y S.~Evans,
+% ``Dielectric measurements with an open-ended coaxial probe,''
+% \emph{IEE Proc. H}, vol.~134, no.~4, pp.~341--349, 1987.
+%
+% \bibitem{gregory2007}
+% A.~P.~Gregory y R.~N.~Clarke,
+% ``Dielectric metrology with coaxial sensors,''
+% \emph{Meas. Sci. Technol.}, vol.~18, pp.~1372--1386, 2007.
+%
+% \bibitem{marcuvitz}
+% N.~Marcuvitz,
+% \emph{Waveguide Handbook}. [COMPLETAR: editorial y año de la edición consultada.]
+%
+% \bibitem{medley1991}
+% [COMPLETAR: autor, título y datos completos del informe NPL de Medley (1991),
+%   PDF escaneado «Er of Air - Medley» de la carpeta de antecedentes.]
+%
+% \bibitem{vij1991}
+% J.~K.~Vij, T.~Grochulski, A.~Kocot y J.~Hufnagel,
+% [COMPLETAR: título],
+% \emph{Mol. Phys.}, vol.~72, pp.~353--361, 1991.
+%
+% \bibitem{grass2016}
+% P.~Grass, G.~De Brito y S.~Guarnaccio,
+% ``Medición de permitividad dieléctrica en líquidos con parámetros S,''
+% Informe final, Medidas Electrónicas II, UTN FRBA, 2016.
+%
+% \bibitem{kupcevich2024}
+% C.~Kupcevich, L.~Saldivia, F.~Stahl, G.~Trotta y P.~Vassena,
+% ``Sistema de medición de permitividad relativa de líquidos con sonda coaxial
+%   en función de la temperatura,''
+% Informe de proyecto, Medidas Electrónicas II, UTN FRBA, 2024.
+%
+% \bibitem{henze2024}
+% A.~Henze et al.,
+% ``Desarrollo de un sistema de medición de la permitividad compleja en alimentos
+%   para frecuencias de microondas mediante parámetros S,''
+% \emph{IEEE ARGENCON}, 2024.
 %
 % \end{thebibliography}

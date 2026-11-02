@@ -619,6 +619,13 @@ def _update_reference_warning(wizard, descriptor, cfg):
                 "[{tmin:.0f}, {tmax:.0f}] °C; its permittivity is extrapolated."
             ).format(liquid=liq.display_name, temp=temp,
                      tmin=liq.temp_min_c, tmax=liq.temp_max_c))
+        elif liq.is_outside_recommended_range(temp):
+            rmin, rmax = liq.recommended_range_c
+            messages.append(cfg.get(
+                "temperature_out_of_recommended",
+                "{liquid}: {temp:.1f} °C is outside the NPL recommended range "
+                "[{rmin:.0f}, {rmax:.0f}] °C for this equation."
+            ).format(liquid=liq.display_name, temp=temp, rmin=rmin, rmax=rmax))
 
     label.setText("\n".join(messages))
     label.setVisible(bool(messages))

@@ -41,6 +41,7 @@
         "liquid_change_keep": "Conservar medición",
         "liquid_change_cancel": "Cancelar",
         "temperature_out_of_range": "{liquid}: {temp:.1f} °C está fuera de su rango tabulado [{tmin:.0f}, {tmax:.0f}] °C; su permitividad se extrapola.",
+        "temperature_out_of_recommended": "{liquid}: {temp:.1f} °C está fuera del rango que el NPL recomienda para esta ecuación [{rmin:.0f}, {rmax:.0f}] °C.",
         "debug_sweep_warning": "⚠ Este barrido excede las capacidades del equipo conectado ({caps}). Podés importar archivos .s1p con este barrido, pero el instrumento no puede medirlo."
     },
     "liquids": {

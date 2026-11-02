@@ -41,6 +41,7 @@
         "liquid_change_keep": "Keep measurement",
         "liquid_change_cancel": "Cancel",
         "temperature_out_of_range": "{liquid}: {temp:.1f} °C is outside its tabulated range [{tmin:.0f}, {tmax:.0f}] °C; its permittivity is extrapolated.",
+        "temperature_out_of_recommended": "{liquid}: {temp:.1f} °C is outside the NPL recommended range [{rmin:.0f}, {rmax:.0f}] °C for this equation.",
         "debug_sweep_warning": "⚠ This sweep is outside the connected device's capabilities ({caps}). You can import .s1p files with this sweep, but the instrument cannot measure it."
     },
     "liquids": {

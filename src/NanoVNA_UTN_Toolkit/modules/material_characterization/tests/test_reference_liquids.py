@@ -83,6 +83,51 @@ def test_every_registered_liquid_has_a_model():
         assert np.isfinite(eps).all(), liquid.key
 
 
+def test_registry_has_no_duplicate_definitions():
+    """A second module-level ``_NAME = ReferenceLiquid(...)`` silently rebinds
+    the name, and a repeated key in the registry literal silently keeps the
+    last one: neither shows at runtime, so the source itself is checked.
+    That is how a 1-Butanol stub without a model once hid the NPL table."""
+    import ast
+    import inspect
+    from NanoVNA_UTN_Toolkit.modules.material_characterization.algorithms import (
+        reference_liquids as module,
+    )
+    tree = ast.parse(inspect.getsource(module))
+    assigned = []
+    registry_keys = []
+    for node in tree.body:
+        targets = []
+        if isinstance(node, ast.Assign):
+            targets, value = node.targets, node.value
+        elif isinstance(node, ast.AnnAssign):
+            targets, value = [node.target], node.value
+        for target in targets:
+            if not isinstance(target, ast.Name):
+                continue
+            if (isinstance(value, ast.Call) and isinstance(value.func, ast.Name)
+                    and value.func.id == "ReferenceLiquid"):
+                assigned.append(target.id)
+            if target.id == "REFERENCE_LIQUIDS" and isinstance(value, ast.Dict):
+                registry_keys = [ast.unparse(k) for k in value.keys]
+    assert len(assigned) == len(set(assigned)), sorted(assigned)
+    assert len(registry_keys) == len(set(registry_keys)), registry_keys
+    for liquid in list_reference_liquids():
+        if liquid.has_debye_model:
+            assert len(liquid.columns) > 0, liquid.key
+
+
+def test_butanol_matches_npl_double_debye_at_25c():
+    """NPL MAT 23 section 7, butan-1-ol double-Debye row at 25 C (eps_s 17.53,
+    eps_h 3.506, eps_inf 2.921, f_r1 0.318 GHz, f_r2 5.979 GHz), evaluated by
+    hand: 16.27 - j4.02 at 100 MHz and 4.78 - j4.15 at 1 GHz."""
+    eps, warns = evaluate_epsilon_r(get_reference_liquid("butanol"), np.array([1e8, 1e9]), 25.0)
+    assert warns == []
+    for got, expected in zip(eps, (16.27 - 4.02j, 4.78 - 4.15j)):
+        assert abs(got.real - expected.real) <= 0.02, (got, expected)
+        assert abs(got.imag - expected.imag) <= 0.02, (got, expected)
+
+
 def test_water_at_20c_is_kaatze_table_iii():
     """Kaatze 1989 Table III at 20 C: eps_s 80.21, eps_inf 5.6, tau 9.36 ps.
     The old order-2 fit gave tau 9.69 ps and eps'' 6.78 (+3.8 %) at 1.5 GHz."""
@@ -173,6 +218,22 @@ def test_out_of_range_warns_for_the_new_liquids():
         eps, warns = evaluate_epsilon_r(get_reference_liquid(key), np.array([1e9]), temp_c)
         assert warns, key
         assert np.isfinite(eps).all(), key
+
+
+def test_ipa_warns_outside_npl_recommended_range():
+    """NPL MAT 23 tabulates propan-2-ol up to 30 C but recommends its
+    double-Debye equation for 10-25 C only (eps_s fitted, notes 26 and 30)."""
+    ipa = get_reference_liquid("ipa")
+    f = np.array([1e8, 1e9])
+    eps, warns = evaluate_epsilon_r(ipa, f, 28.0)
+    assert len(warns) == 1 and "recommended range [10, 25]" in warns[0], warns
+    assert np.isfinite(eps).all()
+    for temp_c in (20.0, 25.0, 10.0):
+        _, warns = evaluate_epsilon_r(ipa, f, temp_c)
+        assert warns == [], (temp_c, warns)
+    # Outside the table only the extrapolation warning is given.
+    _, warns = evaluate_epsilon_r(ipa, f, 35.0)
+    assert len(warns) == 1 and "tabulated range" in warns[0], warns
 
 
 def test_extrapolation_stays_passive_near_the_table():
