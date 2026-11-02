@@ -25,6 +25,9 @@ Role mapping / Mapeo de roles (pinned for internal consistency):
         3 (Liquid)     s11_wtr       s11_ref2       Y3
         4 (Open)       s11_opn       s11_open       Y4 -> 0    (not used)
     ``ref1`` always plays the MATLAB "ipa" slot and ``ref2`` the "wtr" slot.
+    These are formula slots, not liquids: the wizard passes Ref 1 = water and
+    Ref 2 = IPA by default, and Gn is symmetric in the two (swapping liquids
+    and sweeps together leaves it unchanged), so no slot has a physical role.
 """
 
 from __future__ import annotations
@@ -97,7 +100,8 @@ def compute_pattern_constants(
     s11_short, s11_ref1, s11_ref2, s11_open : np.ndarray
         Complex S11 of each standard, aligned with ``f_hz``.
     ref1, ref2 : ReferenceLiquid
-        Reference liquids for the ref1 (ipa slot) and ref2 (wtr slot).
+        Reference liquids for the ref1 and ref2 slots (MATLAB "ipa" and
+        "wtr" slots; the wizard's Ref 1 = water and Ref 2 = IPA by default).
     temp_ref1_c, temp_ref2_c : float, optional
         Temperature at which each reference's S11 was recorded, when it is not
         the session one (e.g. a preset). Its known eps_r is evaluated there.

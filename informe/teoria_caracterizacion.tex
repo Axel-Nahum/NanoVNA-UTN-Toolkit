@@ -383,11 +383,10 @@ amplificado en el valor de $G_n$ extraído.
 
 Para un buen condicionamiento, los líquidos de referencia deben:
 \begin{itemize}
-    \item Tener partes reales $\varepsilon'$ significativamente distintas,
-          idealmente separadas por al menos una década (por ejemplo,
-          $\varepsilon'_{\text{IPA}} \approx 4$--$19$ frente a
+    \item Tener partes reales $\varepsilon'$ significativamente distintas
+          (por ejemplo, $\varepsilon'_{\text{IPA}} \approx 4$--$19$ frente a
           $\varepsilon'_{\text{agua}} \approx 77$--$78$ en la banda de 10~MHz a
-          3~GHz, a 25~°C).
+          3~GHz, a 25~°C: un factor de 4 o más en toda la banda).
     \item Cubrir el rango de permitividades del material bajo prueba desde ambos lados
           siempre que sea posible.
     \item Tener permitividades tabuladas con alta confianza en el rango de temperatura
@@ -582,8 +581,10 @@ $\varepsilon^*$ es una transformada de Möbius exacta. Cuatro puntos en el
 plano~$S_{11}$ y sus correspondientes en el plano~$\varepsilon$ determinan la
 razón cruzada.
 
-Identificando Open ($\varepsilon_{\text{aire}} = 1{,}0006$, aire a 20~°C, 1013~mb
-y 50\,\% de humedad relativa~\cite{medley1991}), Short
+Identificando Open ($\varepsilon_{\text{aire}} = 1{,}0006$: el valor
+$1{,}000637 \pm 0{,}000067$ que da la ecuación de Essen y Froome~\cite{essen1951}
+para aire a 20~°C, 1013~mb y 50\,\% de humedad relativa~\cite{medley1991},
+redondeado), Short
 ($\varepsilon_{\text{cortocircuito}} \to \infty$, contribución límite) y
 Ref\,1 ($\varepsilon_{\text{Ref}}$), la permitividad del material desconocido
 se calcula directamente como:
@@ -743,16 +744,28 @@ Velocidad de ensayo             & Normal                                & Rápid
 %
 % \bibitem{marcuvitz}
 % N.~Marcuvitz,
-% \emph{Waveguide Handbook}. [COMPLETAR: editorial y año de la edición consultada.]
+% \emph{Waveguide Handbook}, MIT Radiation Laboratory Series, vol.~10.
+% McGraw-Hill, New York, 1951. (Reimpreso por Peter Peregrinus / IEE, Londres, 1986.)
+%
+% \bibitem{essen1951}
+% L.~Essen y K.~D.~Froome,
+% ``The refractive indices and dielectric constants of air and its principal
+%   constituents at 24,000 Mc/s,''
+% \emph{Proc. Phys. Soc. B}, vol.~64, pp.~862--875, 1951.
 %
 % \bibitem{medley1991}
-% [COMPLETAR: autor, título y datos completos del informe NPL de Medley (1991),
-%   PDF escaneado «Er of Air - Medley» de la carpeta de antecedentes.]
+% J.~C.~Medley,
+% ``The dielectric constant of air (as a function of atmospheric pressure,
+%   temperature and relative humidity),''
+% Research Note, RF \& Microwave Standards Division, National Physical
+% Laboratory, may.~1991.
 %
 % \bibitem{vij1991}
-% J.~K.~Vij, T.~Grochulski, A.~Kocot y J.~Hufnagel,
-% [COMPLETAR: título],
-% \emph{Mol. Phys.}, vol.~72, pp.~353--361, 1991.
+% J.~K.~Vij, T.~Grochulski, A.~Kocot y F.~Hufnagel,
+% ``Complex permittivity measurements of acetone in the frequency region
+%   50--310~GHz,''
+% \emph{Mol. Phys.}, vol.~72, no.~2, pp.~353--361, 1991.
+% doi:10.1080/00268979100100281.
 %
 % \bibitem{grass2016}
 % P.~Grass, G.~De Brito y S.~Guarnaccio,
