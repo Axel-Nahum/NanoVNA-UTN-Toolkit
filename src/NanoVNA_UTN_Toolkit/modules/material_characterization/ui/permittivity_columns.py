@@ -119,16 +119,19 @@ def usable_band_of(result) -> Tuple[Optional[np.ndarray], Optional[float]]:
 def scale_limits(eps, usable: Optional[np.ndarray] = None,
                  margin: float = 0.10) -> Optional[Tuple[float, float]]:
     """
-    y-limits that fit eps' and eps'' of the usable points only.
+    y-limits that fit eps' and eps'' of every finite point.
 
-    EN: Points that failed the quality checks stay on the chart (they may run
-        off it) but never set its scale: one diverging value at 50 kHz must
-        not flatten the rest of the curve. None when no usable point is
-        finite (the caller then keeps its own limits).
-    ES: Los puntos que no pasaron los controles quedan en el grafico (pueden
-        salirse) pero nunca fijan su escala: un valor divergente a 50 kHz no
-        tiene que aplastar el resto de la curva. None cuando ningun punto
-        utilizable es finito (el llamador conserva sus propios limites).
+    EN: All finite data sets the scale, including points that failed the
+        quality checks: the chart shows the whole result rather than hiding
+        what lies outside the usable band (that band is shaded instead).
+        ``usable`` is accepted for the callers' signature and ignored. None
+        when no point is finite (the caller then keeps its own limits).
+    ES: Todos los datos finitos fijan la escala, incluidos los puntos que no
+        pasaron los controles: el grafico muestra el resultado completo en
+        vez de ocultar lo que queda fuera de la banda util (esa banda se
+        sombrea). ``usable`` se acepta por la firma de los llamadores y se
+        ignora. None cuando ningun punto es finito (el llamador conserva sus
+        propios limites).
     """
     eps_real, eps_loss = permittivity_columns(eps)
     values = np.concatenate([eps_real, eps_loss])

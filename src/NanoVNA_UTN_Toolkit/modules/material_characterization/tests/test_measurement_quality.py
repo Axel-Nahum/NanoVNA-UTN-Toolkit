@@ -199,22 +199,23 @@ def test_21mm_low_band_limit_and_simplified_method():
     assert any("the reference liquid and air resolve" in w for w in sres.warnings)
 
 
-def test_unreliable_points_never_set_the_chart_scale():
-    """A diverging value at the bottom of the sweep (here 500 - 300j) stays
-    in the data but the y-limits come from the usable points only; without
-    checks every finite point counts."""
+def test_every_finite_point_sets_the_chart_scale():
+    """The y-limits fit all finite data, unreliable points included (here a
+    diverging 500 - 300j at the bottom of the sweep): the usable mask only
+    shades the chart, it no longer trims the scale. Gaps are ignored."""
     from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_columns import (
         scale_limits, usable_band_of,
     )
     eps = np.full(20, 21.0 - 0.5j)
     eps[0] = 500.0 - 300.0j
-    eps[5] = complex(np.nan, np.nan)                       # a gap is ignored too
+    eps[5] = complex(np.nan, np.nan)                       # a gap is ignored
     usable = np.ones(20, dtype=bool)
     usable[:2] = False
-    lo, hi = scale_limits(eps, usable)
-    assert -1.0 < lo < 0.5 and 21.0 < hi < 23.0
-    assert scale_limits(eps)[1] > 300                      # no mask: every point
-    assert scale_limits(eps, np.zeros(20, bool)) is None   # nothing usable
+    lo, hi = scale_limits(eps)
+    assert lo < 0.5 and hi > 500.0                         # 10 % margin around 0.5 .. 500
+    assert scale_limits(eps, usable) == (lo, hi)           # the mask does not change it
+    assert scale_limits(eps, np.zeros(20, bool)) == (lo, hi)
+    assert scale_limits(np.full(4, complex(np.nan, np.nan))) is None   # nothing finite
 
     cal = _calibration(_SET3, 20.0, probe_key="probe3mm", dut="acetone")
     res = cal.compute_epsilon()

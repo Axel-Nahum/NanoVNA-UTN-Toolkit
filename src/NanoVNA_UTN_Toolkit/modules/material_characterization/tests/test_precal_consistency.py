@@ -189,19 +189,22 @@ def test_a_step_precal_changes_only_its_own_step():
         assert np.array_equal(cal.get_measurement(key)[1], _raw(key)[1]), key
 
 
-def test_the_open_and_the_short_by_itself_cannot_be_precalibrated():
-    cal = _cal(keys=("open", "short"))
-    for key, kind in (("open", KIND_OPEN), ("open", KIND_SHORT), ("short", KIND_SHORT)):
-        assert not cal.precal_allowed(key, kind)
-        try:
-            cal.set_step_precal(key, _reference_now(kind))
-        except ValueError:
-            pass
-        else:
-            raise AssertionError(f"{key} must refuse a {kind} pre-cal")
-    assert cal.precal_allowed("short", KIND_OPEN)
-    cal.set_step_precal("short", _reference_now(KIND_OPEN))
-    assert cal.is_precal_applied("short")
+def test_the_open_and_the_short_take_any_precal():
+    """Every step accepts both kinds. A step that is the reference standard of
+    its own kind (Open + OPEN, Short + SHORT) has no session c0 to refer to:
+    c0 = 1 and it becomes s11_raw / c, stable across refreshes."""
+    for key, kind in (("open", KIND_OPEN), ("open", KIND_SHORT),
+                      ("short", KIND_OPEN), ("short", KIND_SHORT)):
+        cal = _cal(keys=("open", "short"))
+        assert cal.precal_allowed(key, kind)
+        reference = _reference_now(kind)
+        cal.set_step_precal(key, reference)
+        assert cal.is_precal_applied(key), (key, kind)
+        if (key, kind) in (("open", KIND_OPEN), ("short", KIND_SHORT)):
+            expected = _raw(key)[1] / reference.divisor
+            assert np.allclose(cal.get_measurement(key)[1], expected), (key, kind)
+            cal.set_step_precal(key, reference)            # refresh does not stack
+            assert np.allclose(cal.get_measurement(key)[1], expected), (key, kind)
 
 
 def test_precal_set_before_measuring_waits_for_the_sweep():

@@ -332,11 +332,12 @@ class PermittivityProbeCalibration:
 
     @staticmethod
     def precal_allowed(standard_key: str, kind: str) -> bool:
-        """False for the step that defines the reference state of ``kind``.
+        """Every step can take a pre-calibration of either kind.
 
-        The Open is the reference of the session, so it never takes a
-        pre-calibration; the Short only takes an OPEN one (a SHORT one would
-        be referred to itself).
+        The Open and the Short included: when a step is the reference standard
+        of its own kind (the Open with an OPEN pre-cal, the Short with a SHORT
+        one) there is no session c0 to refer it to, so ``_apply_step_precal``
+        uses c0 = 1 and the step becomes s11_raw / c.
         """
         return True
 
