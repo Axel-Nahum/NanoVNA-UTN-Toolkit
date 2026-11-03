@@ -232,8 +232,8 @@ def show_app_about(parent=None, lang="en"):
     title.setStyleSheet(f"font-size: 18px; font-weight: bold; color: {fg}; background: transparent;")
     layout.addWidget(title)
 
-    _date = "Octubre 2026" if lang == "es" else "October 2026"
-    version = QLabel(f"Version 2.4.0  —  {_date}")
+    _date = "Noviembre 2026" if lang == "es" else "November 2026"
+    version = QLabel(f"Version 2.4.1  —  {_date}")
     version.setAlignment(Qt.AlignCenter)
     version.setStyleSheet(f"font-size: 13px; color: {sub}; background: transparent;")
     layout.addWidget(version)
