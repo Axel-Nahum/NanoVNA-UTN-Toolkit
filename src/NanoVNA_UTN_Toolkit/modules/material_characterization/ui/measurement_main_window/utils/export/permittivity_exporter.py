@@ -811,6 +811,17 @@ class PermittivityExporter:
         file_path = export_folder / file_path.stem
         self._last_export_folder = export_folder
 
+        # Copy images into export_folder/images/ so the .tex is self-contained
+        images_folder = export_folder / "images"
+        images_folder.mkdir(exist_ok=True)
+        copied = {}
+        for key, src in image_files.items():
+            if os.path.isfile(src):
+                dst = str(images_folder / os.path.basename(src))
+                shutil.copy2(src, dst)
+                copied[key] = dst
+        image_files = copied
+
         doc = Document(
             documentclass="article",
             document_options="12pt",
