@@ -98,7 +98,8 @@ class MeasurementMainWindow(QMainWindow):
         self._file_sweep_idx = 0
         self._file_sweep_saved_names: list = []  # user-built pool of reusable names
         self._realtime_timer = QTimer(self)
-        self._realtime_timer.setInterval(2000)
+        _chart_ini = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+        self._realtime_timer.setInterval(_chart_ini.value("sweep/interval_ms", 1000, type=int))
         self._realtime_timer.timeout.connect(self._run_one_sweep)
         self._bg_threads: list = []          # file-mode parse+solve running off the GUI thread
         # Marker/link INI writes are batched: one QSettings write per burst of
@@ -895,6 +896,7 @@ class MeasurementMainWindow(QMainWindow):
                 self._marker1_info_label.setVisible(visible)
             self._save_ini_later("markers/visible_1", visible)
             if draw:
+                self._marker_blitter.invalidate()   # force full draw so blit bg is fresh
                 _blit_markers()
 
         def _set_cursor2_visible(visible: bool, draw=True):
@@ -905,6 +907,7 @@ class MeasurementMainWindow(QMainWindow):
                 self._marker2_info_label.setVisible(visible)
             self._save_ini_later("markers/visible_2", visible)
             if draw:
+                self._marker_blitter.invalidate()   # force full draw so blit bg is fresh
                 _blit_markers()
 
         self._set_cursor1_visible = _set_cursor1_visible
@@ -2395,7 +2398,11 @@ class MeasurementMainWindow(QMainWindow):
         cancel_btn.clicked.connect(dlg.reject)
 
         def _apply():
-            self._realtime_timer.setInterval(max(100, int(spin.value() * 1000)))
+            ms = max(100, int(spin.value() * 1000))
+            self._realtime_timer.setInterval(ms)
+            _s = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+            _s.setValue("sweep/interval_ms", ms)
+            _s.sync()
             dlg.accept()
 
         apply_btn.clicked.connect(_apply)
@@ -2791,10 +2798,28 @@ class MeasurementMainWindow(QMainWindow):
                 folder_edit.setText(folder)
                 _populate(folder)
 
+        def _populate_from_config():
+            """Populate table from the current _file_sweep_config (preserves order and removals)."""
+            table.setRowCount(0)
+            for entry in self._file_sweep_config:
+                p = Path(entry["path"])
+                if not p.exists():
+                    continue
+                row = table.rowCount()
+                table.insertRow(row)
+                fname_item = QTableWidgetItem(p.name)
+                fname_item.setFlags(fname_item.flags() & ~Qt.ItemFlag.ItemIsEditable)
+                fname_item.setData(Qt.ItemDataRole.UserRole, str(p))
+                table.setItem(row, 0, fname_item)
+                _add_remove_btn(row)
+            no_files_lbl.setVisible(table.rowCount() == 0)
+
         browse_btn.clicked.connect(_browse)
         folder_edit.editingFinished.connect(lambda: _populate(folder_edit.text()))
 
-        if folder_edit.text():
+        if self._file_sweep_config and folder_edit.text():
+            _populate_from_config()
+        elif folder_edit.text():
             _populate(folder_edit.text())
 
         cancel_btn.clicked.connect(dlg.reject)
@@ -2816,7 +2841,11 @@ class MeasurementMainWindow(QMainWindow):
                 self._file_sweep_config = config
                 self._file_sweep_idx    = 0
                 self._sweep_mode        = "file"
-                self._realtime_timer.setInterval(max(100, int(secs * 1000)))
+                ms = max(100, int(secs * 1000))
+                self._realtime_timer.setInterval(ms)
+                _s = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
+                _s.setValue("sweep/interval_ms", ms)
+                _s.sync()
                 self._update_sweep_source_action()
                 self._update_reconnect_btn_visibility()
                 sc = self._texts.get("sweep_controls", {})
