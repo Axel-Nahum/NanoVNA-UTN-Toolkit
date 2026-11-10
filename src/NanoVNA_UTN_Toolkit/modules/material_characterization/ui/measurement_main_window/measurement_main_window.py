@@ -800,7 +800,11 @@ class MeasurementMainWindow(QMainWindow):
         self._blit_markers = _blit_markers
 
         def _fmt_freq(hz):
-            return f"{hz/1e9:.4f} GHz" if hz >= 1e9 else f"{hz/1e6:.4f} MHz"
+            if hz >= 1e9:
+                return f"{hz/1e9:.4f} GHz"
+            if hz >= 1e6:
+                return f"{hz/1e6:.4f} MHz"
+            return f"{hz/1e3:.4f} kHz"
 
         def _fmt_eps(value):
             return f"{value:.4f}" if np.isfinite(value) else "—"
@@ -1116,7 +1120,11 @@ class MeasurementMainWindow(QMainWindow):
             outer.addWidget(info_lbl)
 
             def _fmt_freq(hz):
-                return f"{hz/1e9:.4f} GHz" if hz >= 1e9 else f"{hz/1e6:.4f} MHz"
+                if hz >= 1e9:
+                    return f"{hz/1e9:.4f} GHz"
+                if hz >= 1e6:
+                    return f"{hz/1e6:.4f} MHz"
+                return f"{hz/1e3:.4f} kHz"
 
             def _upd_s11(idx):
                 idx = min(max(idx, 0), n - 1)
