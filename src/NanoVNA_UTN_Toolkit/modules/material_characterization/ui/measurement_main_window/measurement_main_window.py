@@ -896,8 +896,11 @@ class MeasurementMainWindow(QMainWindow):
                 self._marker1_info_label.setVisible(visible)
             self._save_ini_later("markers/visible_1", visible)
             if draw:
-                self._marker_blitter.invalidate()   # force full draw so blit bg is fresh
-                _blit_markers()
+                # Bypass the figure.stale guard in _blit_markers: invalidate clears
+                # the cached background and update() calls canvas.draw() directly,
+                # so the cursor appears at its current position without a slider move.
+                self._marker_blitter.invalidate()
+                self._marker_blitter.update()
 
         def _set_cursor2_visible(visible: bool, draw=True):
             self._cursor2_visible = visible
@@ -907,8 +910,8 @@ class MeasurementMainWindow(QMainWindow):
                 self._marker2_info_label.setVisible(visible)
             self._save_ini_later("markers/visible_2", visible)
             if draw:
-                self._marker_blitter.invalidate()   # force full draw so blit bg is fresh
-                _blit_markers()
+                self._marker_blitter.invalidate()
+                self._marker_blitter.update()
 
         self._set_cursor1_visible = _set_cursor1_visible
         self._set_cursor2_visible = _set_cursor2_visible
