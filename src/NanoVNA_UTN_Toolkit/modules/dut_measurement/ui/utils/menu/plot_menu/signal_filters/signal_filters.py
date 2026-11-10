@@ -488,9 +488,13 @@ def apply_signal_filters(self):
     self.kf_s11 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
     self.kf_s21 = ComplexKalman(process_noise=process_noise, measurement_noise=measurement_noise)
 
-    # Reset smoothing buffers so the new window size takes effect immediately
+    # Reset smoothing and Kalman temporal buffers so new settings take effect immediately
     self._tb_s11 = None
     self._tb_s21 = None
+    self._tb_gen = None
+    self._tk_s11 = None
+    self._tk_s21 = None
+    self._tk_gen = None
 
     # Update label
     if active == "Smoothing":

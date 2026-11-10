@@ -20,7 +20,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
-from PySide6.QtCore import Qt, QObject, QPoint, QThread, QTimer, Signal
+from PySide6.QtCore import Qt, QEvent, QObject, QPoint, QThread, QTimer, Signal
 
 from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.blit_manager import RealtimeBlitter
 from NanoVNA_UTN_Toolkit.shared.utils.background_task import run_in_background, detach_background_threads
@@ -2984,6 +2984,25 @@ class MeasurementMainWindow(QMainWindow):
         super().resizeEvent(event)
         if hasattr(self, "_adjust_chart_layout"):
             self._adjust_chart_layout()
+
+    def event(self, ev):
+        t = ev.type()
+        if t == QEvent.Type.WindowBlocked:
+            # A modal dialog opened on top — pause RT so the dialog doesn't stutter.
+            self._realtime_paused_by_dialog = self._realtime_timer.isActive()
+            if self._realtime_paused_by_dialog:
+                self._realtime_timer.stop()
+                logging.info("[MeasurementMainWindow] WindowBlocked: real-time paused")
+        elif t == QEvent.Type.WindowUnblocked:
+            # Dialog closed — resume RT if it was running before.
+            if getattr(self, "_realtime_paused_by_dialog", False):
+                self._realtime_paused_by_dialog = False
+                if (not self.isMinimized() and self.isVisible()
+                        and getattr(self, "_realtime_check", None)
+                        and self._realtime_check.isChecked()):
+                    self._realtime_timer.start()
+                    logging.info("[MeasurementMainWindow] WindowUnblocked: real-time resumed")
+        return super().event(ev)
 
     def hideEvent(self, event):
         # A hidden window (e.g. while the wizard is re-opened on top) must not
