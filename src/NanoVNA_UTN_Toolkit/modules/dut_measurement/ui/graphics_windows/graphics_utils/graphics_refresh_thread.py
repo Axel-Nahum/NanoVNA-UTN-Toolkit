@@ -480,11 +480,7 @@ def on_sweep_finished(self, result):
     self.sweep_progress_bar.setValue(0)
     self.reconnect_button.setEnabled(True)
 
-    _af = getattr(self, '_active_filter', 'Off')
-    if getattr(self, '_rt_active', False) and _af == "Kalman":
-        self.sweep_button.setText(f"{self.measurement_ui_button_reset_kalman}")
-    else:
-        self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
+    self.sweep_button.setText(f"{self.measurement_ui_button_run_sweep}")
 
     if not hasattr(self, '_initial_sweep_done') or not self._initial_sweep_done:
         self._initial_sweep_done = True
@@ -499,11 +495,7 @@ def on_sweep_finished(self, result):
 def on_sweep_error(self, msg):
     QMessageBox.critical(self, "Sweep Error", msg)
 
-    _af = getattr(self, '_active_filter', 'Off')
-    if getattr(self, '_rt_active', False) and _af == "Kalman":
-        self.sweep_button.setText(getattr(self, 'measurement_ui_button_reset_kalman', 'Reset Kalman'))
-    else:
-        self.sweep_button.setText(getattr(self, 'measurement_ui_button_run_sweep', 'Run Sweep'))
+    self.sweep_button.setText(getattr(self, 'measurement_ui_button_run_sweep', 'Run Sweep'))
     self.sweep_button.setEnabled(True)
     self.sweep_progress_bar.setVisible(False)
 
