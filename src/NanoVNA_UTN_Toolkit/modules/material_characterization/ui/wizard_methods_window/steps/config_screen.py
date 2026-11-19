@@ -47,6 +47,7 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_win
 from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.wizard_methods_window.steps.step_sidebar import (
     build_step_sidebar,
 )
+from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.spinbox_style import apply_borderless_spinbox_style
 
 logger = logging.getLogger(__name__)
 
@@ -651,12 +652,8 @@ def _fmt_hz(hz):
 
 def _spinbox_container(spin, height=36):
     """Wrap a spinbox in a themed QFrame with ▲▼ external buttons."""
-    spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
     spin.setMinimumHeight(height - 2)
-    spin.setStyleSheet(
-        "QDoubleSpinBox { border: none; background: transparent; }"
-        "QSpinBox { border: none; background: transparent; }"
-    )
+    apply_borderless_spinbox_style(spin)
     c = QFrame(); c.setObjectName("spinboxContainer")
     c.setMinimumHeight(height)
     cl = QHBoxLayout(c); cl.setContentsMargins(4, 1, 0, 1); cl.setSpacing(0)

@@ -15,6 +15,7 @@ from shiboken6 import isValid
 
 # Import SmartDatapointsSpinBox for intelligent datapoints navigation
 from NanoVNA_UTN_Toolkit.modules.dut_measurement.ui.sweep_window.sweep_options_window import SmartDatapointsSpinBox
+from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.spinbox_style import apply_borderless_spinbox_style
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
@@ -401,8 +402,7 @@ def show_first_screen(self):
     sweep_layout.setHorizontalSpacing(16)
 
     def _sb_container(spinbox):
-        spinbox.setButtonSymbols(spinbox.ButtonSymbols.NoButtons)
-        spinbox.setStyleSheet("QDoubleSpinBox { border: none; background: transparent; padding: 0px 2px; } QSpinBox { border: none; background: transparent; padding: 0px 2px; }")
+        apply_borderless_spinbox_style(spinbox, padding="0px 2px")
         c = QFrame()
         c.setObjectName("spinboxContainer")
         cl = QHBoxLayout(c); cl.setContentsMargins(4, 0, 0, 0); cl.setSpacing(0)
@@ -416,7 +416,6 @@ def show_first_screen(self):
     start_freq_layout.setSpacing(10)
     self.start_freq_input = QDoubleSpinBox()
     self.start_freq_input.setDecimals(4)
-    self.start_freq_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
     self.start_freq_input.setValue(50)
     start_freq_layout.addWidget(_sb_container(self.start_freq_input), 1)
     self.start_freq_unit = QComboBox()
@@ -432,7 +431,6 @@ def show_first_screen(self):
     stop_freq_layout.setSpacing(10)
     self.stop_freq_input = QDoubleSpinBox()
     self.stop_freq_input.setDecimals(4)
-    self.stop_freq_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
     self.stop_freq_input.setValue(1.5)
     stop_freq_layout.addWidget(_sb_container(self.stop_freq_input), 1)
     self.stop_freq_unit = QComboBox()
@@ -448,7 +446,6 @@ def show_first_screen(self):
     self.steps_input.setMinimum(1)
     self.steps_input.setMaximum(32000)
     self.steps_input.setValue(101)
-    self.steps_input.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
     label_steps = QLabel(f"{self.dut_wizard_ui_steps}")
     label_steps.setStyleSheet("border: none; background: transparent;")
     sweep_layout.addRow(label_steps, _sb_container(self.steps_input))

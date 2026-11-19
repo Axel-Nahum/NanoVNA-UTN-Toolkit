@@ -18,6 +18,7 @@ from NanoVNA_UTN_Toolkit.modules.material_characterization.ui.permittivity_colum
     permittivity_columns,
     plot_with_gaps,
 )
+from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.spinbox_style import apply_borderless_spinbox_style
 
 get_settings = safe_import(
     "NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings"
@@ -98,8 +99,7 @@ def _color_row(label_text: str, color: str):
 
 def _spin_container(spin):
     """Wrap a QSpinBox with ▲▼ buttons styled via dark_light_config object names."""
-    spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
-    spin.setStyleSheet("QSpinBox { border: none; background: transparent; padding: 0px 2px; }")
+    apply_borderless_spinbox_style(spin, padding="0px 2px")
     c = QFrame()
     c.setObjectName("spinboxContainer")
     c.setFixedSize(68, 26)

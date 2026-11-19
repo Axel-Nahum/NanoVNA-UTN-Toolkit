@@ -13,6 +13,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.lines import Line2D
 
 from NanoVNA_UTN_Toolkit.shared.utils.real_time.updates.marker_interaction import flush_marker_indices
+from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.spinbox_style import apply_borderless_spinbox_style
 
 plt.rcParams['mathtext.fontset'] = 'cm'   # Fuente Computer Modern
 plt.rcParams['text.usetex'] = False       # No requiere LaTeX externo
@@ -51,8 +52,7 @@ def _spin_container(spin):
     Colors come from the global dark_light_config stylesheet via object names:
       QFrame#spinboxContainer, QPushButton#spinboxUpBtn / #spinboxDownBtn.
     """
-    spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
-    spin.setStyleSheet("QSpinBox { border: none; background: transparent; padding: 0px 2px; }")
+    apply_borderless_spinbox_style(spin, padding="0px 2px")
     c = QFrame()
     c.setObjectName("spinboxContainer")
     c.setFixedSize(68, 26)

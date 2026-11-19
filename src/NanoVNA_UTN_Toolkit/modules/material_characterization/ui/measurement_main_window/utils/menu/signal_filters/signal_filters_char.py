@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
+from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.spinbox_style import apply_borderless_spinbox_style
 
 get_settings = safe_import(
     "NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils",
@@ -134,8 +135,7 @@ def open_signal_filters_char(window):
     smooth_spin = QSpinBox()
     smooth_spin.setRange(1, 100)
     smooth_spin.setSuffix(" %")
-    smooth_spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
-    smooth_spin.setStyleSheet("QSpinBox { border: none; background: transparent; }")
+    apply_borderless_spinbox_style(smooth_spin)
     smooth_spin.setValue(sf_settings.value("smoothing/window_pct", 5, type=int))
 
     btn_up = QPushButton("▲")

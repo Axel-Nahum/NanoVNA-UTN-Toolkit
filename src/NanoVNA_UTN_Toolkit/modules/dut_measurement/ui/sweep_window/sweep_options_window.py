@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QIcon, QValidator
 
 from pathlib import Path
+from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.spinbox_style import apply_borderless_spinbox_style
 
 # Import dark-light mode toggle function with error handling to log issues without crashing the application
 
@@ -375,8 +376,7 @@ class SweepOptionsWindow(QMainWindow):
         self.start_freq_edit = QDoubleSpinBox()
         self.start_freq_edit.setRange(50, 1500000000)
         self.start_freq_edit.setDecimals(3)
-        self.start_freq_edit.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
-        self.start_freq_edit.setStyleSheet("QDoubleSpinBox { border: none; background: transparent; }")
+        apply_borderless_spinbox_style(self.start_freq_edit)
         self.start_freq_edit.valueChanged.connect(self.on_frequency_changed)
 
         s_up = QPushButton("▲"); s_up.setObjectName("spinboxUpBtn"); s_up.setFixedSize(18, 12); s_up.clicked.connect(self.start_freq_edit.stepUp)
@@ -411,8 +411,7 @@ class SweepOptionsWindow(QMainWindow):
         self.stop_freq_edit = QDoubleSpinBox()
         self.stop_freq_edit.setRange(50, 1500000000)
         self.stop_freq_edit.setDecimals(3)
-        self.stop_freq_edit.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
-        self.stop_freq_edit.setStyleSheet("QDoubleSpinBox { border: none; background: transparent; }")
+        apply_borderless_spinbox_style(self.stop_freq_edit)
         self.stop_freq_edit.valueChanged.connect(self.on_frequency_changed)
 
         e_up = QPushButton("▲"); e_up.setObjectName("spinboxUpBtn"); e_up.setFixedSize(18, 12); e_up.clicked.connect(self.stop_freq_edit.stepUp)
@@ -449,8 +448,7 @@ class SweepOptionsWindow(QMainWindow):
         self.segments_spinbox.setRange(self.sweep_points_min, self.sweep_points_max)
         self.segments_spinbox.valueChanged.connect(self.on_segments_changed)
         self.segments_spinbox.setSuffix(" steps")
-        self.segments_spinbox.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
-        self.segments_spinbox.setStyleSheet("QSpinBox { border: none; background: transparent; }")
+        apply_borderless_spinbox_style(self.segments_spinbox)
 
         btn_up = QPushButton("▲")
         btn_up.setObjectName("spinboxUpBtn")

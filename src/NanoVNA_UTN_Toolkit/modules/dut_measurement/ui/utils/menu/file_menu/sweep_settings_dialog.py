@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from NanoVNA_UTN_Toolkit.utils import safe_import
+from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.spinbox_style import apply_borderless_spinbox_style
 
 get_settings = safe_import("NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings")
 
@@ -142,11 +143,8 @@ def open_sweep_settings_dialog(window):
     interval_spin.setRange(0.1, 60.0)
     interval_spin.setSingleStep(0.1)
     interval_spin.setSuffix(" s")
-    interval_spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
     interval_spin.setMinimumHeight(26)
-    interval_spin.setStyleSheet(
-        "QDoubleSpinBox { border: none; background: transparent; }"
-    )
+    apply_borderless_spinbox_style(interval_spin)
 
     current_ms = getattr(window, "realtime_interval_ms", 100)
     interval_spin.setValue(current_ms / 1000.0)

@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QLabel, QLineEdit, QMainWindow, QMenu,
     QPushButton, QScrollArea, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget,
 )
+from NanoVNA_UTN_Toolkit.shared.utils.dark_light_mode.spinbox_style import apply_borderless_spinbox_style
 
 get_settings = safe_import(
     "NanoVNA_UTN_Toolkit.shared.utils.resources.settings_utils", "get_settings"
@@ -2301,8 +2302,7 @@ class MeasurementMainWindow(QMainWindow):
         spin.setDecimals(1)
         spin.setSuffix(t.get("interval_suffix", " s"))
         spin.setValue(max(0.1, self._realtime_timer.interval() / 1000.0))
-        spin.setButtonSymbols(_FlexSpin.ButtonSymbols.NoButtons)
-        spin.setStyleSheet("QDoubleSpinBox { border: none; background: transparent; }")
+        apply_borderless_spinbox_style(spin)
 
         spin_frame = _QF()
         spin_frame.setObjectName("spinboxContainer")
@@ -2586,8 +2586,7 @@ class MeasurementMainWindow(QMainWindow):
         interval_spin.setDecimals(1)
         interval_spin.setSuffix(t.get("interval_suffix", " s"))
         interval_spin.setValue(max(0.1, self._realtime_timer.interval() / 1000.0))
-        interval_spin.setButtonSymbols(_FlexSpinBox.ButtonSymbols.NoButtons)
-        interval_spin.setStyleSheet("QDoubleSpinBox { border: none; background: transparent; }")
+        apply_borderless_spinbox_style(interval_spin)
 
         spin_frame = _QFr()
         spin_frame.setObjectName("spinboxContainer")
