@@ -97,6 +97,7 @@ class MeasurementMainWindow(QMainWindow):
         self._sweep_mode = "device"          # "device" | "file"
         self._file_sweep_config = []         # list of {"path": str, "name": str}
         self._file_sweep_idx = 0
+        self._dut_precal_enabled = True      # file-mode: apply DUT pre-cal if set
         self._file_sweep_saved_names: list = []  # user-built pool of reusable names
         self._realtime_timer = QTimer(self)
         _chart_ini = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
@@ -2041,7 +2042,7 @@ class MeasurementMainWindow(QMainWindow):
                 "epsilon_title", "εr — {sample}"
             ).format(sample=name)
         logging.info("[MeasurementMainWindow] file sweep: %s", entry["path"])
-        run_in_background(_file_sweep_compute, (entry["path"], cal),
+        run_in_background(_file_sweep_compute, (entry["path"], cal, self._dut_precal_enabled),
                           self._on_file_sweep_done, self._bg_threads)
 
     def _on_file_sweep_done(self, outcome):   # GUI thread
@@ -2079,7 +2080,7 @@ class MeasurementMainWindow(QMainWindow):
             wiz,
             on_success=self._on_sweep_epsilon_ready,
             on_error=lambda: self._on_sweep_error("Device sweep failed"),
-            post_process=cal.compute_epsilon,
+            post_process=_make_epsilon_solver(cal, self._dut_precal_enabled),
             silent=True,  # errors logged + status bar only; no blocking dialog
         )
 
@@ -2264,7 +2265,7 @@ class MeasurementMainWindow(QMainWindow):
 
         dlg = QDialog(self)
         dlg.setWindowTitle(t.get("title", "Sweep Settings"))
-        dlg.setFixedSize(400, 210)
+        dlg.setFixedSize(400, 250)
         dlg.setStyleSheet(
             self.styleSheet()
             + f" QDialog {{ background-color: {_dlg_bg}; }}"
@@ -2324,7 +2325,18 @@ class MeasurementMainWindow(QMainWindow):
         iv_row.addWidget(spin_frame)
         iv_row.addStretch()
         layout.addLayout(iv_row)
-        layout.addSpacing(14)
+        layout.addSpacing(10)
+
+        # DUT pre-cal checkbox
+        from PySide6.QtWidgets import QCheckBox
+        precal_chk = QCheckBox(t.get("precal_label", "Apply DUT pre-calibration (if set)"))
+        precal_chk.setChecked(self._dut_precal_enabled)
+        precal_chk.setStyleSheet(
+            f"QCheckBox {{ color: {lbl_color}; font-size: 11px; border: none; background: transparent; }}"
+            " QCheckBox::indicator { width: 14px; height: 14px; }"
+        )
+        layout.addWidget(precal_chk)
+        layout.addSpacing(10)
 
         # Re-open wizard button
         _btn_style = (
@@ -2411,6 +2423,7 @@ class MeasurementMainWindow(QMainWindow):
         def _apply():
             ms = max(100, int(spin.value() * 1000))
             self._realtime_timer.setInterval(ms)
+            self._dut_precal_enabled = precal_chk.isChecked()
             _s = get_settings(_CHART_INI_EXE, _CHART_INI_DEV, Path(__file__).resolve())
             _s.setValue("sweep/interval_ms", ms)
             _s.sync()
@@ -3089,13 +3102,33 @@ class MeasurementMainWindow(QMainWindow):
 
 # --------------------------------------------------------------------------- #
 
-def _file_sweep_compute(path, cal):
+def _apply_dut_precal(cal, freqs, s11, enabled=True):
+    """Apply the DUT step pre-calibration to a raw S11, if enabled and set and matches the grid."""
+    if not enabled:
+        return s11
+    precal = cal.step_precal("dut")
+    if precal is None:
+        return s11
+    c0 = cal.precal_reference_sweep(precal.kind)
+    if c0 is not None and c0.matches(freqs) and precal.matches(freqs):
+        return precal.correct(s11, c0.divisor)
+    return s11
+
+
+def _make_epsilon_solver(cal, precal_enabled=True):
+    """Return a post-process callable that applies DUT pre-cal then solves ε."""
+    def _solve(freqs, s11):
+        return cal.compute_epsilon(freqs, _apply_dut_precal(cal, freqs, s11, precal_enabled))
+    return _solve
+
+
+def _file_sweep_compute(path, cal, precal_enabled=True):
     """Worker side of a file-mode sweep: parse the touchstone and solve ε."""
     import skrf as rf
     net = rf.Network(path)
     freqs = np.asarray(net.f, dtype=float)
     s11 = np.asarray(net.s[:, 0, 0], dtype=complex)
-    return freqs, s11, cal.compute_epsilon(freqs, s11)
+    return freqs, s11, cal.compute_epsilon(freqs, _apply_dut_precal(cal, freqs, s11, precal_enabled))
 
 
 # --------------------------------------------------------------------------- #

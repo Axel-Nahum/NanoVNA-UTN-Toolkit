@@ -93,7 +93,8 @@ class CharacterizationWizard(QMainWindow):
         self._wiz_w = _W
         self._wiz_h = _H
         self.setGeometry(200, 200, _W, _H)
-        self.setFixedSize(_W, _H)
+        self.setMinimumSize(700, 500)
+        self.resize(_W, _H)
 
         window_geometry = self.frameGeometry()
         center_point = screen.center()
@@ -355,11 +356,22 @@ class CharacterizationWizard(QMainWindow):
         screen = QGuiApplication.screenAt(self.pos()) or QGuiApplication.primaryScreen()
         if screen:
             avail = screen.availableGeometry()
+            new_w, new_h = self.width(), self.height()
+            max_w = avail.width() - 10
             max_h = avail.height() - 40
-            if self.height() > max_h:
-                self.resize(self.width(), max_h)
-            if self.y() + self.height() > avail.y() + avail.height():
-                self.move(self.x(), max(avail.y(), avail.y() + avail.height() - self.height()))
+            if new_w > max_w:
+                new_w = max_w
+            if new_h > max_h:
+                new_h = max_h
+            if new_w != self.width() or new_h != self.height():
+                self.resize(new_w, new_h)
+            x, y = self.x(), self.y()
+            if x + self.width() > avail.x() + avail.width():
+                x = max(avail.x(), avail.x() + avail.width() - self.width())
+            if y + self.height() > avail.y() + avail.height():
+                y = max(avail.y(), avail.y() + avail.height() - self.height())
+            if x != self.x() or y != self.y():
+                self.move(x, y)
 
     def clear_content(self):
 
