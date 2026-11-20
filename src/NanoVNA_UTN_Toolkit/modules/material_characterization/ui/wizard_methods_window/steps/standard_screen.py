@@ -2450,6 +2450,8 @@ def _open_precal_dialog(wizard, standard, std_texts, on_applied):
         _propagate_precal_first_time(wizard, standard.key, reference)
         wizard.epsilon_result = None
         on_applied()
+        if wizard.perm_calibration.is_standard_measured(standard.key):
+            wizard.next_button.setEnabled(True)
         dlg.accept()
 
     _measure_open_btn.clicked.connect(_do_measure_open)
